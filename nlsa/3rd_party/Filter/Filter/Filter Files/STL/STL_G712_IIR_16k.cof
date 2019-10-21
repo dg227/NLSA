@@ -1,0 +1,21 @@
+!IIR
+!   TSP Lab
+!   Electrical & Computer Engineering
+!   McGill University
+! File: STL_G712_IIR_16k.cof
+! See ITU-T G.191 (2000), Software Tools Library (module iir_g712.c)
+! $Id: STL_G712_IIR_16k.cof,v 1.4 2002/07/09 13:17:53 kabal Exp $
+!
+! ITU-T Recommendation G.712 filter (bandpass).
+! Each line gives the 5 coefficients for a second-order section
+!             h(i,0)*z^2 + h(i,1)*z + h(i,2)
+!    H(i,z) = ------------------------------
+!                z^2 + h(i,3)*z + h(i,4)
+!  - 4 second-order sections (converted from a parallel-form filter, zeros
+!    forced to lie on the unit cirle)
+!  - Designed for 16 kHz sampling
+!  - Passband gain is unity
+ 5.4156836e-002  0.0000000e+000 -5.4156836e-002 -1.2301500e+000  2.9645205e-001
+ 1.0000000e+000  1.1377672e+000  1.0000000e+000 -4.9109197e-001  3.8132596e-001
+ 1.0000000e+000  4.6313538e-001  1.0000000e+000 -2.9808998e-001  8.0496407e-001
+ 1.0000000e+000 -1.9995781e+000  1.0000000e+000 -1.9538741e+000  9.5859194e-001

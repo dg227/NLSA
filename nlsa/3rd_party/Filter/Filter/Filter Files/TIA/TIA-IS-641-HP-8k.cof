@@ -1,0 +1,4 @@
+!IIR
+! Highpass filter from TIA IS-641 (EFRC) speech coder
+! 80 Hz cutoff
+0.927246093 -1.8544941 0.927246093 -1.906005859 0.911376953

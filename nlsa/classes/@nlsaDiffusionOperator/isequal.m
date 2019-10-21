@@ -1,0 +1,9 @@
+function res = isequal( obj1, obj2 )
+% ISEQUAL  Returns true if two nlsaDiffusionOperator objects are identical, false otherwise
+%
+% Modified 2014/04/03
+
+res =  all( getPartition( obj1 ) == getPartition( obj2 ) ) ...
+    && getEpsilon( epsilon ) == getEpsilon( obj2 ) ...
+    && getAlpha( obj1 ) == getAlpha( obj2 ) ...
+    && getNEigenfunction( obj1 ) == getNEigenfunction( obj2 );

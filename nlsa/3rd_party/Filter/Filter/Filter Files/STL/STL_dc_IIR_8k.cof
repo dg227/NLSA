@@ -1,0 +1,19 @@
+!IIR
+!   TSP Lab
+!   Electrical & Computer Engineering
+!   McGill University
+! File: STL_dc_IIR_8k.cof
+! See ITU-T G.191 (2000), Software Tools Library (module iir_dir.c)
+! $Id: STL_dc_IIR_8k.cof,v 1.3 2002/06/18 21:54:07 kabal Exp $
+!
+! dc removal filter
+!           h(0)*z^2 + h(1)*z + h(2)
+!    H(z) = ------------------------
+!              z^2 + h(3)*z + h(4)
+!  - 1 second-order section (really first order since h(2) = h(4) = 0)
+!  - The response is monotonic.  For 8 kHz sampling
+!      -3 dB   at   18 Hz
+!      -1 dB   at   36 Hz
+!       0 dB   at  156 Hz
+!       0.6 dB at 4000 Hz
+  1 -1  0  -0.985  0

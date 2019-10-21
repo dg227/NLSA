@@ -1,0 +1,48 @@
+!FIR
+!   MMSP Lab
+!   Electrical & Computer Engineering
+!   McGill University
+! File: TAP32C.cof
+!
+!    Linear phase QMF filter
+!    Normalized Transition Band: 0.0625
+!
+! Reference:
+!   J. D. Johnston, "A Filter Family Designed for
+!   Use in Quadrature Mirror Filter Banks", Proc. IEEE
+!   Int. Conf. Acoustics, Speech, Signal Processing
+!   (Denver, CO), pp. 291-294, April 1980.
+!
+! $Id: TAP32C.cof,v 1.1 2006/02/15 21:58:12 pkabal Exp $
+  6.910579e-004
+ -1.403793e-003
+ -1.268303e-003
+  4.234195e-003
+  1.414246e-003
+ -9.458318e-003
+ -1.303859e-004
+  1.798145e-002
+ -4.187483e-003
+ -3.123862e-002
+  1.456844e-002
+  5.294745e-002
+ -3.934878e-002
+ -9.980243e-002
+  1.285579e-001
+  4.664053e-001
+  4.664053e-001
+  1.285579e-001
+ -9.980243e-002
+ -3.934878e-002
+  5.294745e-002
+  1.456844e-002
+ -3.123862e-002
+ -4.187483e-003
+  1.798145e-002
+ -1.303859e-004
+ -9.458318e-003
+  1.414246e-003
+  4.234195e-003
+ -1.268303e-003
+ -1.403793e-003
+  6.910579e-004
