@@ -19,14 +19,14 @@
 
 %% SCRIPT PARAMETERS
 dirIn      = '../../..';
-fileIn     = [ "quad_gyre_packed.mat" "quad_gyre_packed_ocn.mat" ];  
-fld        = [ "c" "uvocn" ];  
+fileIn     = [ "quad_gyre_packed.mat" ];  
+fld        = [ "c" ];  
 experiment = 'quad_gyre_packed';
-idxTLim    = [ 1 1500 ];
+idxTLim    = [ 1501 2400 ];
 
 %% EXECUTION OPTIONS
-ifCenter    = true; % remove climatology
-ifNormalize = true; % normalize to unit L2 norm
+ifCenter    = false; % remove climatology
+ifNormalize = false; % normalize to unit L2 norm
 
 %% CREATE OUTPUT STRING AND DIRECTORY 
 nFld = numel( fld ); % number of input sources
@@ -131,7 +131,7 @@ for iFld = 1 : nFld
 end
 
 fldFile = fullfile( dataDir, 'dataX.mat' );
-varList = { 'x' 'fld' 'nDIn' };
+varList = { 'x' 'fld' 'nDIn' 'nD' };
 if ifCenter 
     varList = [ varList 'cli' ];
 end
