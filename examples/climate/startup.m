@@ -1,1 +1,0 @@
-addpath( genpath( fullfile( '../../', 'nlsa' ) ) )
