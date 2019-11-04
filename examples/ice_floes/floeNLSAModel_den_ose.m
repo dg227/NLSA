@@ -1,5 +1,5 @@
 function [ model, In, Out ] = floeNLSAModel_den_ose( experiment )
-%% CLIMATENLSAMODEL_DEN_OSE NLSA model with kernel density estimation and out-of-sample extension (OSE) for sea ice data
+%% FLOENLSAMODEL_DEN_OSE NLSA model with kernel density estimation and out-of-sample extension (OSE) for sea ice data
 % 
 %  In and Out are data structures containing the in-sample and out-of-sample model parameters, respectively
 %

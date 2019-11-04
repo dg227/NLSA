@@ -66,7 +66,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2018/07/06 
+%   Modified 2019/11/04 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -639,23 +639,23 @@ pth = strjoin_e( pth, '_' );
 pthDen = concatenateTags( propVal{ iDenEmbComponent } );
 isSet = false;
 for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'denComponentName' ) 
+    if strcmp( varargin{ i }, 'densityComponentName' ) 
         if ~isSet
             pthDen{ 1 } = varargin{ i + 1 };
             break
         else
-            error( 'denComponentName has been already set' )
+            error( 'densityComponentName has been already set' )
         end
     end  
 end
 isSet = false;
 for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'denRealizationName' )
+    if strcmp( varargin{ i }, 'densityRealizationName' )
         if ~isSet
             pthDen{ 2 } = varargin{ i + 1 };
             break
         else
-            error( 'denRealizationName has been already set' )
+            error( 'densityRealizationName has been already set' )
         end
     end  
 end
@@ -701,7 +701,6 @@ for i = 1 : 2 : nargin
 end
 pthDensity = strjoin_e( pthDensity, '_' );
 
-
 % Assign pairwise distance paths and filenames
 modelPathD = fullfile( modelPath, 'processed_data_den', pth, ...
                        pthDen, pthDist, pthDensity, ...
@@ -710,7 +709,6 @@ propVal{ iPDistance } = setPath( propVal{ iPDistance }, modelPathD );
 propVal{ iPDistance } = setDefaultSubpath( propVal{ iPDistance } ); 
 propVal{ iPDistance } = setDefaultFile( propVal{ iPDistance } );
 mkdir( propVal{ iPDistance } )
-
 
 %% SYMMETRIC DISTANCE
 % Parse symmetric distance template 

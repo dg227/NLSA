@@ -6,6 +6,7 @@
 % 'c':   sea ice concentration
 % 'uv':  sea ice velocity
 % 'uvo': ocean velocity
+% 'rhe': effective rheological forces
 %
 % fld can be either a character string set to the above values, or a string
 % array. In the latter case, the data vectors corresponding to the array 
@@ -19,14 +20,14 @@
 
 %% SCRIPT PARAMETERS
 dirIn      = '../../..';
-fileIn     = [ "quad_gyre_packed.mat" ];  
-fld        = [ "c" ];  
+fileIn     = [ "quad_gyre_packed_drag.mat" ];  
+fld        = [ "rhe" ];  
 experiment = 'quad_gyre_packed';
-idxTLim    = [ 1501 2400 ];
+idxTLim    = [ 1 1500 ];
 
 %% EXECUTION OPTIONS
 ifCenter    = false; % remove climatology
-ifNormalize = false; % normalize to unit L2 norm
+ifNormalize = true;  % normalize to unit L2 norm
 
 %% CREATE OUTPUT STRING AND DIRECTORY 
 nFld = numel( fld ); % number of input sources
@@ -90,6 +91,9 @@ for iFld = 1 : nFld
     case 'uvocn'
         idxIn = [ 1 2 ]; 
         varIn = 'EulCoarse_ocn';
+    case 'rhe'
+        idxIn = [ 1 2 ];
+        varIn = 'DiffCoarse';
     end
 
     % Read data
