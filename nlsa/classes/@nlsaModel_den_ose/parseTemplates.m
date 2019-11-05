@@ -1260,7 +1260,7 @@ for iR = 1 : nRO
         propVal{ iOseEmbComponent }( iC, iR ) = setDefaultFile( propVal{ iOseEmbComponent }( iC, iR ) );
     end
 end
-mkdir( propVal{ iOseEmbComponent } )
+%mkdir( propVal{ iOseEmbComponent } )
 
 
 %% OSE RECONSTRUCTED COMPONENTS
@@ -1345,7 +1345,8 @@ for iR = 1 : nRO
             getPath( propVal{ iOseEmbComponent }( iC, iR ) ) );
     end
 end
-mkdir( propVal{ iOseRecComponent } )
+%mkdir( propVal{ iOseRecComponent } )
+
 
 
 % COLLECT CONSTRUCTOR ARGUMENTS

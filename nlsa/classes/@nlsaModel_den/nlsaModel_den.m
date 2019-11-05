@@ -152,7 +152,7 @@ classdef nlsaModel_den < nlsaModel
 %
 %   Contact: dimitris@cims.nyu.edu
 %      
-%   Modified 2018/07/06
+%   Modified 2019/11/05
 
     %% PROPERTIES
     properties
@@ -266,11 +266,11 @@ classdef nlsaModel_den < nlsaModel
                               'The density pairwise distance property must be an nlsaPairwiseDistance object' )
                 end
                 if ~( isscalar( varargin{ iDenPDistance } ) ...
-                      || numel( varargin{ iDenPDistance } ) == nC )
+                      || numel( varargin{ iDenPDistance } ) == size( obj.denComponent, 1 ) )
                       error( 'The density pairwise distance property must be scalar or a vector of size equal to the number of source components' )
                 end
-                if getNNeighbors( varargin{ iDenPDistance } ) ...
-                  > getNTotalSample( varargin{ iDenPDistance } ) 
+                if any ( getNNeighbors( varargin{ iDenPDistance } ) ...
+                  > getNTotalSample( varargin{ iDenPDistance } ) ) 
                     error( 'The number of nearest neighbors cannot exceed the number of density samples' )
                 end
                 obj.denPDistance = varargin{ iDenPDistance };

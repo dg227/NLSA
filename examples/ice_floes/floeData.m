@@ -20,14 +20,16 @@
 
 %% SCRIPT PARAMETERS
 dirIn      = '../../..';
-fileIn     = [ "quad_gyre_packed_drag.mat" ];  
-fld        = [ "rhe" ];  
+%fileIn     = [ "quad_gyre_packed_drag.mat" ];  
+%fld        = [ "rhe" ];  
+fileIn     = [ "quad_gyre_packed.mat" ];  
+fld        = [ "uv" ];
 experiment = 'quad_gyre_packed';
-idxTLim    = [ 1 1500 ];
+idxTLim    = [ 1501 2400 ];
 
 %% EXECUTION OPTIONS
 ifCenter    = false; % remove climatology
-ifNormalize = true;  % normalize to unit L2 norm
+ifNormalize = false;  % normalize to unit L2 norm
 
 %% CREATE OUTPUT STRING AND DIRECTORY 
 nFld = numel( fld ); % number of input sources

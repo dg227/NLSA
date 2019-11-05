@@ -1,6 +1,10 @@
 function nS = getNTotalSample( obj )
-% GETNTOTALSAMPLE  Get total number of samples in nlsaPairwiseDistance object
+% GETNTOTALSAMPLE  Get total number of samples in an array of 
+% nlsaPairwiseDistance objects
 %
-% Modified  2015/12/08
+% Modified 2019/11/05
 
-nS = getNTotalSample( obj.partition );
+nS = zeros( size( obj ) );
+for iObj = 1 : numel( obj )
+    nS( iObj ) = getNTotalSample( obj( iObj ).partition );
+end
