@@ -73,12 +73,9 @@ function constrArgs = parseTemplates( varargin )
 %      'sourceComponentName' and 'sourceRealizationName', respectively, but
 %      for the target data. 
 %
-%   'projectionRealizationName': Similar to 'targetRealizationName', but used to
-%      compress the realization-dependent part of the projected data directory.
-%
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2017/02/09 
+%   Modified 2019/11/04 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -340,25 +337,43 @@ for i = 1 : 2 : nargin
 end
 
 for iC = 1 : nCT
-    if ~isSet
-        pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
-        pth = strjoin_e( pth, '_' );
-    else
-        pth = strjoin_e( { getComponentTag( parentConstrArgs{ iTrgComponent }( iC, 1 ) ) ...
-                           pthR }, '_' );
-    end  
-    propVal{ iPrjComponent }( iC ) = setPartition( propVal{ iPrjComponent }( iC ), partition );
-    propVal{ iPrjComponent }( iC ) = setPath( propVal{ iPrjComponent }( iC ), ...
-    fullfile( modelPathL, pth ) );
+    pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
+    isSet = false
+    isSet = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'targetRealizationName' )
+            if ~isSet
+                pth{ 2 } = varargin{ i + 1 };
+                isSet = true;
+                break
+            else
+                error( 'Target realization name has been already specified' )
+            end      
+        end  
+    end
+    pth = strjoin_e( pth, '_' );
+
+    propVal{ iPrjComponent }( iC ) = setPartition( ...
+        propVal{ iPrjComponent }( iC ), partition );
+    propVal{ iPrjComponent }( iC ) = setPath( ...
+        propVal{ iPrjComponent }( iC ), fullfile( modelPathL, pth ) );
     propVal{ iPrjComponent }( iC ) = setEmbeddingSpaceDimension( ...
        propVal{ iPrjComponent }( iC ), ...
-       getEmbeddingSpaceDimension( parentConstrArgs{ iTrgEmbComponent }( iC, 1 )) );
-    propVal{ iPrjComponent }( iC ) = setDefaultSubpath( propVal{ iPrjComponent }( iC ) );
-    propVal{ iPrjComponent }( iC ) = setDefaultFile( propVal{ iPrjComponent }( iC ) );
+       getEmbeddingSpaceDimension( ...
+           parentConstrArgs{ iTrgEmbComponent }( iC, 1 ) ) );
+    propVal{ iPrjComponent }( iC ) = setDefaultSubpath( ...
+        propVal{ iPrjComponent }( iC ) );
+    propVal{ iPrjComponent }( iC ) = setDefaultFile( ...
+        propVal{ iPrjComponent }( iC ) );
     mkdir( propVal{ iPrjComponent }( iC ) )
 end
-
-
+if ~isCompatible( propVal{ iPrjComponent } )
+    error( 'Incompatible projection components' )
+end
+if ~isCompatible( propVal{ iPrjComponent }, propVal{ iDiffOp } )
+    error( 'Incompatible projection components and diffusion operator' )
+end
+mkdir( propVal{ iPrjComponent } )
 
 %% RECONSTRUCTED COMPONENTS
 

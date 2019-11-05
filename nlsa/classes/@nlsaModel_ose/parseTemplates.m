@@ -58,8 +58,8 @@ function constrArgs = parseTemplates( varargin )
 %       specifying the OSE operator in the data analysis model.
 %
 %   'oseEmbeddingTemplate': An array of nlsaEmbeddedComponent objects 
-%      specifying templates for the out-of-sample extension of the target data. 
-%      'oseEmbeddingTemplate' must be either a scalar or a vector of size
+%      specifying templates for the out-of-sample extension of the target 
+%      data. 'oseEmbeddingTemplate' must be either a scalar or a vector of size
 %      [ nCT 1 ]. In the former case, it is assumed that every component in
 %      the dataset should be out-of-sample extended using the same template.
 %      If 'oseEmbeddingTemplate' is not assigned by the caller, it is set to
@@ -88,7 +88,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2018/07/07    
+%   Modified 2019/11/04    
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -533,9 +533,17 @@ for i = 1 : 2 : nargin
             error( 'OSE templates have been already specified' )
         end
         if ~isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent_ose_n' ) ...
-           || ( ~isscalar( varargin{ i + 1 } ) ...
-               && ~( isvector( varargin{ i + 1 } ) ...
-               && numel( varargin{ i + 1 } == nCT ) ) )
+               && isscalar( varargin{ i + 1 } )
+            propVal{ iOseEmbComponent } = repmat( ...
+                varargin{ i + 1 }, [ nCT 1 ] );
+        elseif isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent' ) ...
+               && isvector( varargin{ i + 1 } ) ...
+               && numel( varargin{ i + 1 } ) == nCT
+            propVal{ iOseEmbComponent } = varargin{ i + 1 };
+            if size( propVal{ iOseEmbComponent }, 2 ) > 1 
+                propVal{ iOseEmbComponent } = propVal{ iOseEmbComponent }';
+            end
+        else
             error( 'The OSE templates must be specified as a scalar nlsaEmbeddedComponent_ose_n object or a vector of nlsaEmbeddedComponent_ose_n objects with number of elements equal to the number of test components' )
         end
         if any( getMaxEigenfunctionIndex( varargin{ i + 1 } ) ...

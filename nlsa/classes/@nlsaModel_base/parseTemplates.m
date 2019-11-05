@@ -369,8 +369,9 @@ for i = 1 : 2 : nargin
         end
         if  isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent' ) ...
             && isscalar( varargin{ i + 1 } )
-            propVal{ iTrgEmbComponent } = repmat( varargin{ i + 1 }, [ nCT 1 ] );
-        elseif    isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent' ) ...
+            propVal{ iTrgEmbComponent } = repmat( ...
+                varargin{ i + 1 }, [ nCT 1 ] );
+        elseif isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent' ) ...
                && isvector( varargin{ i + 1 } ) ...
                && numel( varargin{ i + 1 } ) == nCT
             propVal{ iTrgEmbComponent } = varargin{ i + 1 };
@@ -387,66 +388,66 @@ if isempty( propVal{ iTrgEmbComponent } )
     propVal{ iTrgEmbComponent } = propVal{ iEmbComponent };
     ifProp( iTrgEmbComponent )  = true;
 end
+
+for iC = 1 : nCT
+    propVal{ iTrgEmbComponent }( iC ) = setDimension( propVal{ iTrgEmbComponent }( iC ), ...
+                                        getDimension( propVal{ iTrgComponent }( iC ) ) );
+end
+
+% Determine time limits for embedding origin 
+minEmbeddingOrigin = getMinOrigin( propVal{ iTrgEmbComponent } );
+
+% Replicate template to form target embedded component array
+propVal{ iTrgEmbComponent } = repmat( propVal{ iTrgEmbComponent }, [ 1 nR ] );             
+% Parse embedding origin templates
+isSet = false;
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'targetEmbeddingOrigin' )
+        if isSet
+            error( 'Time-lagged embedding origins for the target data have been already specified' )
+        end
+        if ispsi( varargin{ i + 1 } )
+            embeddingOrigin = repmat( varargin{ i + 1 }, [ 1 nR ] );
+        elseif isvector( varargin{ i + 1 } ) && numel( varargin{ i + 1 } ) == nR 
+            embeddingOrigin = varargin{ i + 1 };
+        end
+        isSet = true;
+    end
+end
+if ~isSet
+    embeddingOrigin = max( minEmbeddingOrigin, ...
+                           getOrigin( propVal{ iEmbComponent }( 1, 1 ) ) ) ...
+                    * ones( 1, nR );
+end
+for iR = 1 : nR
+    if embeddingOrigin( iR ) < minEmbeddingOrigin
+        error( 'Time-lagged embedding origin is below minimum value' )
+    end
     for iC = 1 : nCT
-        propVal{ iTrgEmbComponent }( iC ) = setDimension( propVal{ iTrgEmbComponent }( iC ), ...
-                                            getDimension( propVal{ iTrgComponent }( iC ) ) );
+        propVal{ iTrgEmbComponent }( iC, iR ) = setOrigin( propVal{ iTrgEmbComponent }( iC, iR ), embeddingOrigin( iR ) );
     end
-    
-    % Determine time limits for embedding origin 
-    minEmbeddingOrigin = getMinOrigin( propVal{ iTrgEmbComponent } );
+end
 
-    % Replicate template to form target embedded component array
-    propVal{ iTrgEmbComponent } = repmat( propVal{ iTrgEmbComponent }, [ 1 nR ] );             
-    
-    % Parse embedding origin templates
-    isSet = false;
-    for i = 1 : 2 : nargin
-        if strcmp( varargin{ i }, 'targetEmbeddingOrigin' )
-            if isSet
-                error( 'Time-lagged embedding origins for the target data have been already specified' )
-            end
-            if ispsi( varargin{ i + 1 } )
-                embeddingOrigin = repmat( varargin{ i + 1 }, [ 1 nR ] );
-            elseif isvector( varargin{ i + 1 } ) && numel( varargin{ i + 1 } ) == nR 
-                embeddingOrigin = varargin{ i + 1 };
-            end
-            isSet = true;
-        end
-    end
-    if ~isSet
-        embeddingOrigin = max( minEmbeddingOrigin, ...
-                               getOrigin( propVal{ iEmbComponent }( 1, 1 ) ) ) ...
-                        * ones( 1, nR );
-    end
-    for iR = 1 : nR
-        if embeddingOrigin( iR ) < minEmbeddingOrigin
-            error( 'Time-lagged embedding origin is below minimum value' )
-        end
-        for iC = 1 : nCT
-            propVal{ iTrgEmbComponent }( iC, iR ) = setOrigin( propVal{ iTrgEmbComponent }( iC, iR ), embeddingOrigin( iR ) );
-        end
-    end
+% Determine maximum number of samples in each embedded component
+maxNSRET = zeros( 1, nR );
+for iR = 1 : nR
+    maxNSRET( iR ) = getMaxNSample( propVal{ iTrgEmbComponent }( :, iR ), ...
+                                    getNSample( propVal{ iTrgComponent }( :, iR ) ) );
+end
 
-    % Determine maximum number of samples in each embedded component
-    maxNSRET = zeros( 1, nR );
-    for iR = 1 : nR
-        maxNSRET( iR ) = getMaxNSample( propVal{ iTrgEmbComponent }( :, iR ), ...
-                                        getNSample( propVal{ iTrgComponent }( :, iR ) ) );
+% Check number of samples in target embedded data
+for iR = 1 : nR
+    if getNSample( partition( iR ) ) > maxNSRET( iR )
+         msgStr = [ 'Number of time-lagged embedded samples ', ...
+                    int2str( getNSample( partition( iR ) ) ), ...
+                    ' is above maximum value ', ...
+                    int2str( maxNSRET( iR ) ) ];
+        error( msgStr ) 
     end
-
-    % Check number of samples in target embedded data
-    for iR = 1 : nR
-        if getNSample( partition( iR ) ) > maxNSRET( iR )
-             msgStr = [ 'Number of time-lagged embedded samples ', ...
-                        int2str( getNSample( partition( iR ) ) ), ...
-                        ' is above maximum value ', ...
-                        int2str( maxNSRET( iR ) ) ];
-            error( msgStr ) 
-        end
-        for iC = 1 : nCT
-            propVal{ iTrgEmbComponent }( iC, iR ) = setPartition( propVal{ iTrgEmbComponent }( iC, iR ), partition( iR ) );
-        end 
-    end
+    for iC = 1 : nCT
+        propVal{ iTrgEmbComponent }( iC, iR ) = setPartition( propVal{ iTrgEmbComponent }( iC, iR ), partition( iR ) );
+    end 
+end
 
 % Setup target embedded component tags, directories, and filenames
 for iR = 1 : nR

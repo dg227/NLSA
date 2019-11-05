@@ -82,15 +82,15 @@ function constrArgs = parseTemplates( varargin )
 %      L2 (Euclidean) norm, and the number of nearest neighnors nN to 1/100 of 
 %      number of samples in lagged embedding space.
 %
-%   'oseDenComponentName': A string which, if defined, is used to replace the
-%      default directory name of the pairwise distances for the OSE density
+%   'outDensityComponentName': A string which, if defined, is used to replace 
+%      the default directory name of the pairwise distances for the OSE density
 %      data. This option is useful to avoid long directory names in datasets
 %      with several components, but may lead to non-uniqueness of the filename
 %      structure and overwriting of results. 
 %   
-%   'oseDenRealizationName': Similar to 'oseDenComponentName', but used to
-%      compress the realization-dependent part of the pairwise distance
-%      for the OSE density data.
+%   'outDensityRealizationName': Similar to 'outDensityComponentName', 
+%      but used to compress the realization-dependent part of the pairwise 
+%      distancefor the OSE density data.
 %
 %   'oseKernelDensityTemplate': An nlsaKernelDensity object specifying the 
 %      kernel density estimation in the model.
@@ -113,8 +113,8 @@ function constrArgs = parseTemplates( varargin )
 %       specifying the OSE operator in the data analysis model.
 %
 %   'oseEmbeddingTemplate': An array of nlsaEmbeddedComponent objects 
-%      specifying templates for the out-of-sample extension of the target data. 
-%      'oseEmbeddingTemplate' must be either a scalar or a vector of size
+%      specifying templates for the out-of-sample extension of the target 
+%      data. 'oseEmbeddingTemplate' must be either a scalar or a vector of size
 %      [ nCT 1 ]. In the former case, it is assumed that every component in
 %      the dataset should be out-of-sample extended using the same template.
 %      If 'oseEmbeddingTemplate' is not assigned by the caller, it is set to
@@ -143,7 +143,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/08/20    
+%   Modified 2019/11/04    
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -1059,23 +1059,23 @@ pthParent = strjoin_e( pthParent, '_' );
 pthParentDen = concatenateTags( parentConstrArgs{ iDenEmbComponent } );
 isSet = false;
 for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'denComponentName' ) 
+    if strcmp( varargin{ i }, 'densityComponentName' ) 
         if ~isSet
             pthParentDen{ 1 } = varargin{ i + 1 };
             break
         else
-            error( 'denComponentName has been already set' )
+            error( 'densityComponentName has been already set' )
         end
     end  
 end
 isSet = false;
 for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'denRealizationName' )
+    if strcmp( varargin{ i }, 'densityRealizationName' )
         if ~isSet
             pthParentDen{ 2 } = varargin{ i + 1 };
             break
         else
-            error( 'denRealizationName has been already set' )
+            error( 'densityRealizationName has been already set' )
         end
     end  
 end
@@ -1115,12 +1115,11 @@ for i = 1 : 2 : nargin
             pthParentDensity{ 2 } = varargin{ i + 1 };
             break
         else
-            error( 'embDensityRealizationName has been already set' )
+            error( 'emmbDensityRealizationName has been already set' )
         end
     end  
 end
 pthParentDensity = strjoin_e( pthParentDensity, '_' );
-
 
 % Assign pairwise distance paths and filenames
 modelPathDO = fullfile( modelPath, 'processed_data_den', ...
@@ -1194,9 +1193,17 @@ for i = 1 : 2 : nargin
             error( 'OSE templates have been already specified' )
         end
         if ~isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent_ose_n' ) ...
-           || ( ~isscalar( varargin{ i + 1 } ) ...
-               && ~( isvector( varargin{ i + 1 } ) ...
-               && numel( varargin{ i + 1 } == nCT ) ) )
+               && isscalar( varargin{ i + 1 } )
+            propVal{ iOseEmbComponent } = repmat( ...
+                varargin{ i + 1 }, [ nCT 1 ] );
+        elseif isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent' ) ...
+               && isvector( varargin{ i + 1 } ) ...
+               && numel( varargin{ i + 1 } ) == nCT
+            propVal{ iOseEmbComponent } = varargin{ i + 1 };
+            if size( propVal{ iOseEmbComponent }, 2 ) > 1 
+                propVal{ iOseEmbComponent } = propVal{ iOseEmbComponent }';
+            end
+        else
             error( 'The OSE templates must be specified as a scalar nlsaEmbeddedComponent_ose_n object or a vector of nlsaEmbeddedComponent_ose_n objects with number of elements equal to the number of test components' )
         end
         if any( getMaxEigenfunctionIndex( varargin{ i + 1 } ) ...
@@ -1225,6 +1232,7 @@ if isempty( propVal{ iOseEmbComponent } )
     end
     ifProp( iOseEmbComponent ) = true;
 end
+propVal{ iOseEmbComponent } = repmat( propVal{ iOseEmbComponent }, [ 1 nRO ] );
 
 for iR = 1 : nRO
     for iC = 1 : nCT

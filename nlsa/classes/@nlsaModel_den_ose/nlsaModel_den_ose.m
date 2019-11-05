@@ -164,7 +164,7 @@ classdef nlsaModel_den_ose < nlsaModel_den
 %
 %  Contact: dimitris@cims.nyu.edu
 % 
-%  Modified 2019/07/09
+%  Modified 2019/11/04
 
     %% PROPERTIES
     properties

@@ -44,14 +44,14 @@ function constrArgs = parseTemplates( varargin )
 %      (Euclidean) norm, and the number of nearest neighnors nN to 1/100 of 
 %      standard L2 number of samples in lagged embedding space.
 %
-%   'denComponentName': A string which, if defined, is used to replace the
+%   'densityComponentName': A string which, if defined, is used to replace the
 %      default directory name of the pairwise distances for the density data.
 %      This option is useful to avoid long directory names in datasets with
 %      several components, but may lead to non-uniqueness of the filename
 %      structure and overwriting of results. 
 %   
-%   'denRealizationName': Similar to 'srcComponentName', but used to compress
-%      the realization-dependent part of the pairwise distance directory.
+%   'densityRealizationName': Similar to 'srcComponentName', but used to 
+%      compress the realization-dependent part of the pairwise distance directory.
 %
 %   'kernelDensityTemplate': An nlsaKernelDensity object specifying the 
 %      kernel density estimation in the model.
@@ -845,30 +845,31 @@ end
 
 % Setup collective tags, dimension, and partition for projected data
 for iC = 1 : nCT
+    pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
     isSet = false;
     for i = 1 : 2 : nargin
-        if strcmp( varargin{ i }, 'projectionComponentName' )
+        if strcmp( varargin{ i }, 'targetRealizationName' )
             if ~isSet
-                pth = varargin{ i + 1 };
+                pth{ 2 } = varargin{ i + 1 };
                 isSet = true;
                 break
             else
-                error( 'Projection component name has been already specified' )
+                error( 'Target realization name has been already specified' )
             end      
         end  
     end
-    if ~isSet
-        pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
-        pth = strjoin_e( pth, '_' );
-    end
+    pth = strjoin_e( pth, '_' );
 
-    propVal{ iPrjComponent }( iC ) = setPartition( propVal{ iPrjComponent }( iC ), partition );
-    propVal{ iPrjComponent }( iC ) = setPath( propVal{ iPrjComponent }( iC ), ...
-    fullfile( modelPathL, pth ) );
+    propVal{ iPrjComponent }( iC ) = setPartition( ...
+        propVal{ iPrjComponent }( iC ), partition );
+    propVal{ iPrjComponent }( iC ) = setPath( ...
+        propVal{ iPrjComponent }( iC ), fullfile( modelPathL, pth ) );
     propVal{ iPrjComponent }( iC ) = setEmbeddingSpaceDimension( ...
        propVal{ iPrjComponent }( iC ), ...
-       getEmbeddingSpaceDimension( parentConstrArgs{ iTrgEmbComponent }( iC, 1 )) );
-    propVal{ iPrjComponent }( iC ) = setDefaultSubpath( propVal{ iPrjComponent }( iC ) );
+       getEmbeddingSpaceDimension( ...
+           parentConstrArgs{ iTrgEmbComponent }( iC, 1 ) ) );
+    propVal{ iPrjComponent }( iC ) = setDefaultSubpath( ...
+        propVal{ iPrjComponent }( iC ) );
     propVal{ iPrjComponent }( iC ) = setDefaultFile( propVal{ iPrjComponent }( iC ) );
 end
 if ~isCompatible( propVal{ iPrjComponent } )
@@ -878,7 +879,6 @@ if ~isCompatible( propVal{ iPrjComponent }, propVal{ iDiffOp } )
     error( 'Incompatible projection components and diffusion operator' )
 end
 mkdir( propVal{ iPrjComponent } )
-
 
 %% RECONSTRUCTED COMPONENTS
 
