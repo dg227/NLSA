@@ -51,7 +51,8 @@ function constrArgs = parseTemplates( varargin )
 %      structure and overwriting of results. 
 %   
 %   'densityRealizationName': Similar to 'srcComponentName', but used to 
-%      compress the realization-dependent part of the pairwise distance directory.
+%      compress the realization-dependent part of the pairwise distance 
+%      directory.
 %
 %   'kernelDensityTemplate': An nlsaKernelDensity object specifying the 
 %      kernel density estimation in the model.

@@ -218,7 +218,7 @@ end
 % Determine minimum embedding origin from template
 minEmbeddingOrigin = getMinOrigin( propVal{ iEmbComponent } );
 
-% Replicate template to form embeedded component array
+% Replicate template to form embedded component array
 propVal{ iEmbComponent } = repmat( propVal{ iEmbComponent }, [ 1 nR ] );             
 
 
