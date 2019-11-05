@@ -1,5 +1,5 @@
 function tag = concatenateEmbeddingTags( obj )
-% CONCATENATEEMBEDDINGTAGS Concatenate component tags of a matrix of 
+% CONCATENATEEMBEDDINGTAGS Concatenate embedding tags of a matrix of 
 % nlsaEmbeddedComponent objects
 %
 % Modified 2019/11/05
