@@ -23,9 +23,10 @@ dirIn      = '../../..';
 %fileIn     = [ "quad_gyre_packed_drag.mat" ];  
 %fld        = [ "rhe" ];  
 fileIn     = [ "quad_gyre_packed.mat" ];  
-fld        = [ "uv" ];
+fld        = [ "c" ];
 experiment = 'quad_gyre_packed';
-idxTLim    = [ 1501 2400 ];
+%idxTLim    = [ 1501 2400 ];
+idxTLim    = [ 1 21 ];
 
 %% EXECUTION OPTIONS
 ifCenter    = false; % remove climatology

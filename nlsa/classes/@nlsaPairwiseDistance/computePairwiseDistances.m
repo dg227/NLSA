@@ -2,7 +2,7 @@ function [ yVal, yInd ] = computePairwiseDistances( obj, qry, varargin )
 % COMPUTEPAIRWISEDISTANCES Compute pairwise distance from array of query 
 % data and test data
 % 
-% Modified 2019/10/20
+% Modified 2019/11/06
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments, set test data
@@ -120,7 +120,7 @@ for iB = Opt.batch
     fprintf( logId, '------------------------------------ \n' );
     fprintf( logId, 'Global query batch      %i/%i \n', iB, nBQ );
     fprintf( logId, 'Realization       %i/%i \n', iR, nRQ );
-    fprintf( logId, 'Local batch       %i/%i \n', iBR, nBR );
+    fprintf( logId, 'Local batch       %i/%i \n', iBR, nBR( iR ) );
     fprintf( logId, 'Number of samples %i \n', nSI );
     
     % Allocate distance arrays
@@ -199,7 +199,7 @@ for iB = Opt.batch
         setDistances( obj, yVal, yInd, iBR, iR, '-v7.3' )
         tWall = toc( tWall );
         fprintf( logId, 'WRITEDIST realization %i/%i, local batch %i/%i, global batch %i/%i  %2.4f \n', ...
-            iR, nRQ, iBR, nBR, iB, nBQ, tWall ); 
+            iR, nRQ, iBR, nBR( iR ), iB, nBQ, tWall ); 
     end
 end
 

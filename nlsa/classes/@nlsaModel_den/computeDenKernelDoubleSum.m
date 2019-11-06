@@ -3,7 +3,7 @@ function computeDenKernelDoubleSum( obj, iProc, nProc, ...
 % COMPUTEDENKERNELDOUBLESUM Compute kernel double sum for the density
 % data of nlsaModel_den objects  
 % 
-% Modified 2016/02/01
+% Modified 2019/11/05
 
 if nargin == 1
     iProc = 1;
@@ -34,8 +34,8 @@ iDLim = getBatchLimit( dPartition, iDProc );
 logFile = sprintf( 'dataRho_%i-%i.log', iBLim( 1 ), iBLim( 2 ) );
 
 for iD = iDLim( 1 ) : iDLim( 2 )
-    computeDoubleSum( den, pDistance, ...
-                      'logPath', getDensityPath( den ), ...
+    computeDoubleSum( den( iD ), pDistance( iD ), ...
+                      'logPath', getDensityPath( den( iD ) ), ...
                       'logFile', logFile, ...
                       varargin{ : } );
 end

@@ -678,29 +678,31 @@ if ~isSet
 end
 
 pthDensity = concatenateTags( propVal{ iEmbDensity } );
-isSet = false;
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'embDensityComponentName' ) 
-        if ~isSet
-            pthDensity{ 1 } = varargin{ i + 1 };
-            break
-        else
-            error( 'embDensityComponentName has been already set' )
-        end
-    end  
-end
-isSet = false;
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'embDensityRealizationName' )
-        if ~isSet
-            pthDensity{ 2 } = varargin{ i + 1 };
-            break
-        else
-            error( 'embDensityRealizationName has been already set' )
-        end
-    end  
-end
-pthDensity = strjoin_e( pthDensity, '_' );
+%isSet = false;
+%for i = 1 : 2 : nargin
+%    if strcmp( varargin{ i }, 'embDensityComponentName' ) 
+%        if ~isSet
+%            pthDensity{ 1 } = varargin{ i + 1 };
+%            break
+%        else
+%            error( 'embDensityComponentName has been already set' )
+%        end
+%    end  
+%end
+%isSet = false;
+%for i = 1 : 2 : nargin
+%    if strcmp( varargin{ i }, 'embDensityRealizationName' )
+%        if ~isSet
+%            pthDensity{ 2 } = varargin{ i + 1 };
+%            break
+%        else
+%            error( 'embDensityRealizationName has been already set' )
+%        end
+%    end  
+%end
+
+% We only keep component- and embedding-specific tags at this level
+pthDensity = strjoin_e( pthDensity( [ 1 3 ] ), '_' );
 
 % Assign pairwise distance paths and filenames
 modelPathD = fullfile( modelPath, 'processed_data_den', pth, ...

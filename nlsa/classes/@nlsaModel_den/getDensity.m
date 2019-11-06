@@ -1,6 +1,10 @@
-function den = getDensity( obj )
+function den = getDensity( obj, iCD )
 % GETDENSITY Get density of an  nlsaModel_den object
 %
-% Modified 2015/12/17
+% Modified 2019/11/06
 
-den = getDensity( getDensityKernel( obj ) );
+if nargin == 1
+    iCD = 1;
+end
+
+den = getDensity( getDensityKernel( obj, 1 ) );

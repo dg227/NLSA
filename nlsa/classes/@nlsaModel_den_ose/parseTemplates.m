@@ -143,7 +143,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/04    
+%   Modified 2019/11/05    
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -1005,29 +1005,31 @@ if ~isSet
 end
 
 pthDensity = concatenateTags( propVal{ iOseEmbDensity } );
-isSet = false;
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'oseEmbDensityComponentName' ) 
-        if ~isSet
-            pthDensity{ 1 } = varargin{ i + 1 };
-            break
-        else
-            error( 'oseEmbDensityComponentName has been already set' )
-        end
-    end  
-end
-isSet = false;
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'oseEmbDensityRealizationName' )
-        if ~isSet
-            pthDensity{ 2 } = varargin{ i + 1 };
-            break
-        else
-            error( 'oseEmbDensityRealizationName has been already set' )
-        end
-    end  
-end
-pthDensity = strjoin_e( pthDensity, '_' );
+%isSet = false;
+%for i = 1 : 2 : nargin
+%    if strcmp( varargin{ i }, 'oseEmbDensityComponentName' ) 
+%        if ~isSet
+%            pthDensity{ 1 } = varargin{ i + 1 };
+%            break
+%        else
+%            error( 'oseEmbDensityComponentName has been already set' )
+%        end
+%    end  
+%end
+%isSet = false;
+%for i = 1 : 2 : nargin
+%    if strcmp( varargin{ i }, 'oseEmbDensityRealizationName' )
+%        if ~isSet
+%            pthDensity{ 2 } = varargin{ i + 1 };
+%            break
+%        else
+%            error( 'oseEmbDensityRealizationName has been already set' )
+%        end
+%    end  
+%end
+
+% We only keep component- and embedding-specific tags at this level
+pthDensity = strjoin_e( pthDensity( [ 1 3 ] ), '_' );
 
 % Determine path prefix for OSE pairwise distance from parent class
 
@@ -1097,29 +1099,31 @@ if ~isSet
 end
 
 pthParentDensity = concatenateTags( parentConstrArgs{ iEmbDensity } );
-isSet = false;
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'embDensityComponentName' ) 
-        if ~isSet
-            pthParentDensity{ 1 } = varargin{ i + 1 };
-            break
-        else
-            error( 'embDensityComponentName has been already set' )
-        end
-    end  
-end
-isSet = false;
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'embDensityRealizationName' )
-        if ~isSet
-            pthParentDensity{ 2 } = varargin{ i + 1 };
-            break
-        else
-            error( 'emmbDensityRealizationName has been already set' )
-        end
-    end  
-end
-pthParentDensity = strjoin_e( pthParentDensity, '_' );
+%isSet = false;
+%for i = 1 : 2 : nargin
+%    if strcmp( varargin{ i }, 'embDensityComponentName' ) 
+%        if ~isSet
+%            pthParentDensity{ 1 } = varargin{ i + 1 };
+%            break
+%        else
+%            error( 'embDensityComponentName has been already set' )
+%        end
+%    end  
+%end
+%isSet = false;
+%for i = 1 : 2 : nargin
+%    if strcmp( varargin{ i }, 'embDensityRealizationName' )
+%        if ~isSet
+%            pthParentDensity{ 2 } = varargin{ i + 1 };
+%            break
+%        else
+%            error( 'emmbDensityRealizationName has been already set' )
+%        end
+%    end  
+%end
+
+% We only keep component- and embedding-specific tags at this level
+pthParentDensity = strjoin_e( pthParentDensity( [ 1 3 ] ), '_' );
 
 % Assign pairwise distance paths and filenames
 modelPathDO = fullfile( modelPath, 'processed_data_den', ...
@@ -1260,7 +1264,7 @@ for iR = 1 : nRO
         propVal{ iOseEmbComponent }( iC, iR ) = setDefaultFile( propVal{ iOseEmbComponent }( iC, iR ) );
     end
 end
-%mkdir( propVal{ iOseEmbComponent } )
+mkdir( propVal{ iOseEmbComponent } )
 
 
 %% OSE RECONSTRUCTED COMPONENTS
@@ -1345,8 +1349,7 @@ for iR = 1 : nRO
             getPath( propVal{ iOseEmbComponent }( iC, iR ) ) );
     end
 end
-%mkdir( propVal{ iOseRecComponent } )
-
+mkdir( propVal{ iOseRecComponent } )
 
 
 % COLLECT CONSTRUCTOR ARGUMENTS

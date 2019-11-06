@@ -23,15 +23,15 @@ dirIn      = '../../..';
 fileIn     = [ "quad_gyre_packed.mat" ];  
 fld        = [ "c" ];  
 experiment = 'quad_gyre_packed';
-idxTLim    = [ 1 1500 ];
+%idxTLim    = [ 1 1500 ];
+idxTLim    = [ 1 23 ];
 
 %% EXECUTION OPTIONS
 ifCenter    = false; % remove climatology
-ifNormalize = true;  % normalize to unit L2 norm
+ifNormalize = false;  % normalize to unit L2 norm
 
 %% CREATE OUTPUT STRING AND DIRECTORY 
 nFld = numel( fld ); % number of input sources
-nS   = idxTLim( 2 ) - idxTLim( 1 ) + 1; % number of samples
 
 % Check and concatenate input data sources
 if ischar( fld )
@@ -74,8 +74,11 @@ if ~isdir( dataDir )
 end
 
 %% READ DATA
-dataIn  = cell( 1, nFld );
-nDIn    = zeros( 2, nFld ); %data space dimension for individual sources
+dataIn = cell( 1, nFld );
+nD     = zeros( 1, nFld );                % dimension for individual sources
+nG     = [];                              % number of gridpoints 
+nS     = idxTLim( 2 ) - idxTLim( 1 ) + 1; % number of samples
+
 nDInTot = zeros( 1, nFld ); 
 for iFld = 1 : nFld
 
@@ -100,18 +103,23 @@ for iFld = 1 : nFld
     Dat = load( fullfile( dirIn, fileIn( iFld ) ), varIn );
     Dat = getfield( Dat, varIn );
     Dat = Dat( idxIn, :, idxTLim( 1 ) : idxTLim( 2 ) );
-    nDat = size( Dat );
-    nDIn( 1 : 2, iFld ) = nDat( 1 : 2 );
-    nDInTot( iFld ) = nDat( 1 ) * nDat( 2 );
-    dataIn{ iFld } = reshape( Dat, nDInTot( iFld ), nS ); 
+    
+    % Assign dimension and number of gridpoints
+    nD( iFld ) = size( Dat, 1 );
+    if iFld == 1
+        nG = size( Dat, 2 );
+    elseif nG ~= size( Dat, 2 )
+        error( 'Incompatible number of gridpoints for input source %i', iFld )
+    end
+    dataIn{ iFld } = reshape( Dat, nD( iFld ), nG * nS ); 
 end
 
 %% SUBTRACT TIME MEAN
 if ifCenter
-    cli = cell( 1, nFld ); % climatology
+    cliIn = cell( 1, nFld ); % climatology
     for iFld = 1 : nFld
-        cli{ iFld } = mean( dataIn{ iFld }, 2 );
-        dataIn{ iFld } = bsxfun( @minus, dataIn{ iFld }, cli{ iFld } );
+        cliIn{ iFld } = mean( dataIn{ iFld }, 2 );
+        dataIn{ iFld } = bsxfun( @minus, dataIn{ iFld }, cliIn{ iFld } );
     end
 end
 
@@ -119,8 +127,7 @@ end
 if ifNormalize
     l2Norm = zeros( 1, nFld ); 
     for iFld = 1 : nFld
-        l2Norm( iFld ) = sqrt( sum( dataIn{ iFld }( : ) .^ 2 ) ...
-            / ( nDIn( 2, iFld ) * nS ) );
+        l2Norm( iFld ) = sqrt( mean( dataIn{ iFld }.^ 2, 2 ) ); 
         dataIn{ iFld } = dataIn{ iFld } / l2Norm( iFld ); 
     end
 end
@@ -128,26 +135,28 @@ end
 %% CONCATENATE AND SAVE DATA, ATTRIBUTES
 % xAll contains the full spatiotemporal data
 % x contains gridpoint values
-nD = sum( nDInTot );
-xAll = zeros( nD, nS ); 
+nDTot = sum( nD );
+xAll = zeros( nDTot, nG * nS ); 
 idxX1 = 1;
 for iFld = 1 : nFld
-    idxX2 = idxX1 + nDInTot( iFld ) - 1;
+    idxX2 = idxX1 + nD( iFld ) - 1;
     xAll( idxX1 : idxX2, : ) = dataIn{ iFld };
 end
-varList = { 'x' 'fld' 'nDIn' 'nD' };
+xAll = reshape( xAll, [ nDTot nG nS ] );
+varList = { 'x' 'fld' 'nD' 'nDTot' 'nG' 'iG' };
 if ifCenter 
-    varList = [ varList 'cliX' ];
+    varList = [ varList 'cli' ];
 end
 if ifNormalize
     varList = [ varList 'l2Norm' ];
 end
-for iD = 1 : nD
-    x = xAll( iD, : );
+for iG = 1 : nG
+    % reshaping to ensure that we output a row vector if nDTot == 1
+    x = reshape( squeeze( xAll( :, iG, : ) ), [ nDTot nS ] );
     if ifCenter
-        cliX = cli( iD );
+        cli = cliIn{ iG };
     end
-    fldFile = fullfile( dataDir, sprintf( 'dataX_%i.mat', iD ) );
+    fldFile = fullfile( dataDir, sprintf( 'dataX_%i.mat', iG ) );
     save( fldFile, varList{ : },  '-v7.3' )  
 end
 
