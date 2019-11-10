@@ -60,6 +60,12 @@ classdef nlsaModel_base
 %      from nlsaEmbaddedComponent_e and nlsaEmbeddedComponent_o. These classes
 %      provide storage for the system's phase space velocity estimated 
 %      through finite differences.    
+%  
+%   'embComponentT': An [ nC nRT ]-sized array of nlsaEmbeddedComponent 
+%      objects, nRT <= nR, storing a coarsened partition of the embedded 
+%      data. embComponenT can be used to accelerate the batchwise pairwise
+%      distance calculation. If not set by the user, embComponentT is set by
+%      default to embComponent.
 %      
 %   'trgComponent': An [ nCT nR ]-sized array of nlsaComponent objects 
 %      specifying the target data. nCT is the number of target components. 
@@ -112,7 +118,7 @@ classdef nlsaModel_base
 %       
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2018/07/06
+%   Modified 2019/11/10
 
     properties
         srcTime         = { 1 };
@@ -120,6 +126,7 @@ classdef nlsaModel_base
         tFormat         = '';
         srcComponent    = nlsaComponent();
         embComponent    = nlsaEmbeddedComponent_e();
+        embComponenT    = nlsaEmbeddedCOmponent_e();
         trgComponent    = nlsaComponent();
         trgEmbComponent = nlsaEmbeddedComponent_e();
     end
@@ -142,9 +149,10 @@ classdef nlsaModel_base
             % Parse input arguments
             iSrcTime         = [];
             iTrgTime         = [];
-            iTFormat      = [];
+            iTFormat         = [];
             iSrcComponent    = [];
             iEmbComponent    = [];
+            iEmbComponentT   = [];
             iTrgComponent    = [];
             iTrgEmbComponent = [];
             iTag             = [];
@@ -161,6 +169,8 @@ classdef nlsaModel_base
                         iSrcComponent = i + 1;
                     case 'embComponent'
                         iEmbComponent = i + 1;
+                    case 'embComponentT'
+                        iEmbComponentT = i + 1;
                     case 'trgComponent'
                         iTrgComponent = i + 1;
                     case 'trgEmbComponent'
@@ -255,9 +265,10 @@ classdef nlsaModel_base
             % Embedded components
             % Check input array class and size
             if ~isempty( iEmbComponent )
-                if ~isa( varargin{ iEmbComponent }, 'nlsaEmbeddedComponent' )
+                if ~isa( varargin{ iEmbComponent }, 'nlsaEmbeddedComponent' ) ...
+                    || ismatrix( varargin{ iEmbComponent } )
                     error( [ msgId 'invalidEmb' ], ...
-                           'Embedded data must be specified as an array of nlsaEmbeddedComponent objects.' )
+                           'Embedded data must be specified as a matrix of nlsaEmbeddedComponent objects.' )
                 end
                 [ nCE, nRE ] = size( varargin{ iEmbComponent } ); 
                 if nCE ~= nC || nRE ~= nR 
@@ -268,9 +279,11 @@ classdef nlsaModel_base
                     error( [ msgId 'invalidEmb' ], msgStr )
                 end
                 obj.embComponent = varargin{ iEmbComponent };
+            else
+                obj.embComponent = obj.srcComponent;
             end
-            % Check constistency of physical space dimension, embedding indices dimension, and 
-            % number of samples
+            % Check constistency of physical space dimension, ...
+            % embedding indices dimension, and number of samples
             nSRE = getNSample( obj.embComponent( 1, : ) );
             [ ifC, Test1 ] = isCompatible( obj.embComponent );
             if ~ifC
@@ -279,6 +292,30 @@ classdef nlsaModel_base
                 error( [ msgId 'incompatibleEmb' ], msgStr )
             end
                         
+            % Embedded components (test data)
+            if ~isempty( iEmbComponentT )
+                if ~isa( varargin{ iEmbComponentT }, 'nlsaEmbeddedComponent' ) ...
+                    || ismatrix( varargin{ iEmbComponentT } )
+                    error( [ msgId 'invalidEmbT' ], ...
+                           'Embedded test data must be specified as a matrix of nlsaEmbeddedComponent objects.' )
+                end
+                [ nCET, nRET ] = size( varargin{ iEmbComponentT } ); 
+                if nCE ~= nC || nRET > nR 
+                    msgStr = sprintf( [ 'Invalid dimension of embedded component array: \n' ...
+                                        'Expecting [%i, <=%i] \n' ...
+                                        'Received  [%i, %i]' ], ...
+                                      nC, nR, nCET, nRET );
+                    error( [ msgId 'invalidEmbT' ], msgStr )
+                end
+                obj.embComponentT = varargin{ iEmbComponentT };
+            else
+                onj.embComponentT = obj.embComponent;
+            end
+            nSRET = getNSample( obj.embComponentT( 1, : ) );
+            if sum( nSRE ) ~= sum( nSRET )
+                error( 'Inconsistent number of test embedded samples' )
+            end
+
             % Target components 
             if ~isempty( iTrgComponent )
                 if ~isa( varargin{ iTrgComponent }, 'nlsaComponent' )
