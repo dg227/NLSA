@@ -2,7 +2,7 @@ function computeOseDensityDelayEmbedding( obj, iProcCD, nProcCD, iProcR, nProcR 
 % COMPUTEOSEDENSITYDELAYEMBEDDING Lag-embed the OSE density in an 
 % nlsaModel_den_ose object
 %
-% Modified 2018/07/04
+% Modified 2019/11/10
 
 if nargin == 1
     iProcCD = 1;
@@ -22,6 +22,6 @@ iRLim = getBatchLimit( pPartitionR, iProcR );
 
 for iR = iRLim( 1 ) : iRLim( 2 )
     for iC = iCDLim( 1 ) : iCDLim( 2 )
-        computeData( emb( iC, iR ), cmp( iC ) )
+        computeData( emb( iC, iR ), cmp( iC ), iR )
     end
 end
