@@ -1,10 +1,11 @@
 function nSB = getBatchSize( obj, iB, iR )
 % GETBATCHSIZE  Get batch sizes of nlsaPartition object 
 %
-% Modified 2017/07/20
+% Modified 2019/11/10
 
 if nargin == 3
     nSB = getBatchSize( obj( iR ), iB );
+    return
 end
 
 if numel( obj ) > 1
