@@ -36,6 +36,6 @@ iBG = 1;
 for iB = 1 : nB
     nSB = getNSample( partition, iB );
     idxBG = find( idxMerge == iB );
-    x = getVelocityData( src( idxR ), idxBG ); 
-    setData( obj, x, iB, '-v7.3' )
+    [ xiNorm2, x ] = getVelocityData( src( idxR ), idxBG ); 
+    setData( obj, xiNorm2, x, iB, '-v7.3' )
 end
