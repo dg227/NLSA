@@ -1,7 +1,7 @@
-classdef nlsaComponent
+classdef nlsaComponent < nlsaRoot
 %NLSACOMPONENT  Class definition and constructor of NLSA component
 %
-% Modified 2015/08/31    
+% Modified 2019/11/13    
 
     properties
         nD        = 1;                         % dimension

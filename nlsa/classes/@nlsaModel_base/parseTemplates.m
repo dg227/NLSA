@@ -19,7 +19,7 @@ function constrArgs = parseTemplates( varargin )
 %   'sourceTime': An [ 1 nR ]-sized cell array of vectors specifying the time
 %      stamps of each sample in the dataset. The number of elements in 
 %      sourceTime{ iR } must be equal to the number of samples in 
-%      srcComponent( :, iR ). If 'time' is not specified it is set to the
+%      srcComponent( :, iR ). If 'sourceTime' is not specified it is set to the
 %      default values time{ iR } = 1 : nS( iR ), where nS( iR ) is the 
 %      number of samples in the iR-th realization.
 % 
@@ -47,7 +47,12 @@ function constrArgs = parseTemplates( varargin )
 %      partitioned. That is, in the resulting nlsaModel_base object, the
 %      properties embComponent( iC, iR ).partition and 
 %      trgEmbComponent( iC, iR ).partition are both set to partition( iR ) 
-%      for all iC and iCT. The number of samples in partition( iR ) corresponds %      the number of samples in the iR-th realization after delay embedding. 
+%      for all iC and iCT. The number of samples in partition( iR ) corresponds
+%      the number of samples in the iR-th realization after delay embedding. 
+%
+%   'embeddingPartitionT': As in 'embeddingPartition', but allows for a
+%      different "test" partition to accelerate batch-wise pairwise distance
+%      calculation.
 %
 %   'targetComponent': An [ nCT nR ]-sized array of nlsaComponent objects 
 %      specifying the target data. nCT is the number of target components. 
@@ -60,7 +65,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/07/13
+%   Modified 2019/11/13
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -323,7 +328,64 @@ for iR = 1 : nR
 end
 mkdir( propVal{ iEmbComponent } )
           
-           
+% Create "test" embedded components
+for iProp = 1 : nProp
+    if strcmp( propName{ iProp }, 'embComponentT' )
+        iEmbComponentT = iProp;
+        break
+    end
+end
+
+ % Parse "test" partition templates
+ % Test partition is allowed to be a coarsening of the original partition 
+ % (to accelerate batchwise pairwise distance calculation)
+isSet = false;
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'embeddingPartitionT' )
+        if isSet
+            error( 'The test partition for the embedded data has been already specified' )
+        end
+        if ~(    isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
+              && isscalar( varargin{ i + 1 } ) ...
+              && isFiner( partition, varargin{ i + 1 } ) ) 
+           error( 'Test embedded data partition must be specified as a scalar or vector nlsaPartition object, which is a coarseing of the embedded data partition.' )
+        end
+        partitionT = varargin{ i + 1 };
+        isSet = true;
+    end
+end 
+
+% If test partition was provided create an upated embComponentT object; 
+% otherwise set to original embComponent
+HERE
+if isSet
+    if isa( propVal{ iEmbComponent }, 'nlsaEmbeddedComponent_xi')
+        for iC = nC : -1 : 1
+            propVal{ iEmbComponentT }( iC, 1 ) = ...
+                nlsaEmbeddedComponent_xi_e( 
+    nRT = numel( partitionT );
+
+else
+    if any( getNSample
+    for iR = nR : -1 : 1
+        partition( iR ) = nlsaPartition( 'nSample', maxNSRE( iR ) );
+    end
+end
+for iR = 1 : nR
+    if getNSample( partition( iR ) ) > maxNSRE( iR )
+        error( 'Number of time-lagged embedded samples is above maximum value' )
+    end
+    for iC = 1 : nC
+        propVal{ iEmbComponent }( iC, iR ) = setPartition( propVal{ iEmbComponent }( iC, iR ), partition( iR ) );
+    end 
+else
+    propVal{ iEmbComponentT } = propVal{ iEmbComponent };
+end
+          
+
+
+
+
 %% TARGET DATA
 
 % Import target data and determine the number of samples and dimension 
