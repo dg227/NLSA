@@ -1,4 +1,4 @@
-function obj2 = construct( obj1 )
+function obj2 = construct( obj1, src, varargin )
 %% CONSTRUCT Generic constructor for NLSA objects
 %
 % Modified 2019/11/13
@@ -7,12 +7,8 @@ switch nargin
 case 0
     obj2 = nlsaRoot();
 case 1
-    if isa( obj1, 'nlsaRoot' )
-        obj2 = obj1;
-    else
-        error( 'Invalid input argument' )
-    end
+    obj2 = obj1;
 otherwise
-    error( 'Invalid number of input arguments' );
+    obj2 = duplicate( obj1, src, varargin{ : } );
 end
 

@@ -63,6 +63,12 @@ function constrArgs = parseTemplates( varargin )
 %   'targetEmbeddingOrigin', 'targetEmbeddingTemplate': Same as 
 %   'embeddingTemplate' and 'embeddingOrigin', respectively, but for the target%    data.
 %
+%   'sourceRealizationName': A string which, if defined, is used to replace the
+%      default directory name of the embeddingPartitionT data. This option is
+%      useful to avoid long directory names in datasets with several
+%      realizations, but may lead to non-uniqueness of the filename structure
+%      and overwriting of results. 
+%
 %   Contact: dimitris@cims.nyu.edu
 %
 %   Modified 2019/11/13
@@ -357,34 +363,42 @@ end
 
 % If test partition was provided create an upated embComponentT object; 
 % otherwise set to original embComponent
-HERE
 if isSet
-    if isa( propVal{ iEmbComponent }, 'nlsaEmbeddedComponent_xi')
-        for iC = nC : -1 : 1
-            propVal{ iEmbComponentT }( iC, 1 ) = ...
-                nlsaEmbeddedComponent_xi_e( 
-    nRT = numel( partitionT );
-
-else
-    if any( getNSample
-    for iR = nR : -1 : 1
-        partition( iR ) = nlsaPartition( 'nSample', maxNSRE( iR ) );
+    if isa( propVal{ iEmbComponent }, 'nlsaEmbeddedComponent_xi' )
+        propVal{ iEmbComponentT }( nC, 1 ) = nlsaEmbeddedComponent_xi_e();
+    else
+        propVal{ iEmbComponentT }( nC, 1 ) = nlsaEmbeddedComponent_e();
     end
-end
-for iR = 1 : nR
-    if getNSample( partition( iR ) ) > maxNSRE( iR )
-        error( 'Number of time-lagged embedded samples is above maximum value' )
+    propVal{ iEmbComponentT } = mergeCol( propVal{ iEmbComponentT }, ...
+                                          propVal{ iEmbComponent }, ...
+                                          'partition', partitionT ); 
+    ifProp( iEmbComponentT ) = true;
+    % Check if we should compress realization tags
+    isSet2 = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'sourceRealizationName' )
+            if ~isSet2
+                propVal{ iEmbComponentT } = setRealizationTag( ...
+                    propVal{ iEmbComponentT }, varargin{ i + 1 } );
+                isSet2 = true;
+                break
+            else
+                error( 'sourceRealizationName has been already set' )
+            end
+        end
+    end  
+    for iC = 1 : nC 
+        tag  = getTag( propVal{ iEmbComponentT }( iC ) );
+        pth  = fullfile( modelPath, 'embedded_data', ...
+                         strjoin_e( tag, '_' ) );
+        propVal{ iEmbComponentT }( iC ) = ...        
+            setPath( propVal{ iEmbComponentT }( iC ), pth );
     end
-    for iC = 1 : nC
-        propVal{ iEmbComponent }( iC, iR ) = setPartition( propVal{ iEmbComponent }( iC, iR ), partition( iR ) );
-    end 
+    mkdir( propVal{ iEmbComponentT } )
 else
     propVal{ iEmbComponentT } = propVal{ iEmbComponent };
+    partitionT = partition;
 end
-          
-
-
-
 
 %% TARGET DATA
 

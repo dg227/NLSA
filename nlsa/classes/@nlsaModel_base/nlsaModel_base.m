@@ -118,7 +118,7 @@ classdef nlsaModel_base
 %       
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/10
+%   Modified 2019/11/17
 
     properties
         srcTime         = { 1 };
@@ -126,7 +126,7 @@ classdef nlsaModel_base
         tFormat         = '';
         srcComponent    = nlsaComponent();
         embComponent    = nlsaEmbeddedComponent_e();
-        embComponenT    = nlsaEmbeddedCOmponent_e();
+        embComponentT   = nlsaEmbeddedComponent_e();
         trgComponent    = nlsaComponent();
         trgEmbComponent = nlsaEmbeddedComponent_e();
     end
@@ -158,7 +158,7 @@ classdef nlsaModel_base
             iTag             = [];
 
             for i = 1 : 2 : nargin
-                switch varargin{ i }
+               switch varargin{ i }
                     case 'srcTime'
                         iSrcTime = i + 1;
                     case 'trgTime'
@@ -265,8 +265,10 @@ classdef nlsaModel_base
             % Embedded components
             % Check input array class and size
             if ~isempty( iEmbComponent )
-                if ~isa( varargin{ iEmbComponent }, 'nlsaEmbeddedComponent' ) ...
-                    || ismatrix( varargin{ iEmbComponent } )
+                if ~isa( varargin{ iEmbComponent }, ... 
+                         'nlsaEmbeddedComponent' ) ...
+                    || ~ismatrix( varargin{ iEmbComponent } )
+
                     error( [ msgId 'invalidEmb' ], ...
                            'Embedded data must be specified as a matrix of nlsaEmbeddedComponent objects.' )
                 end
@@ -295,9 +297,10 @@ classdef nlsaModel_base
             % Embedded components (test data)
             if ~isempty( iEmbComponentT )
                 if ~isa( varargin{ iEmbComponentT }, 'nlsaEmbeddedComponent' ) ...
-                    || ismatrix( varargin{ iEmbComponentT } )
+                    || ~iscolumn( varargin{ iEmbComponentT } )
+
                     error( [ msgId 'invalidEmbT' ], ...
-                           'Embedded test data must be specified as a matrix of nlsaEmbeddedComponent objects.' )
+                           'Embedded test data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
                 end
                 [ nCET, nRET ] = size( varargin{ iEmbComponentT } ); 
                 if nCE ~= nC || nRET > nR 
@@ -309,10 +312,12 @@ classdef nlsaModel_base
                 end
                 obj.embComponentT = varargin{ iEmbComponentT };
             else
-                onj.embComponentT = obj.embComponent;
+                obj.embComponentT = obj.embComponent;
             end
             nSRET = getNSample( obj.embComponentT( 1, : ) );
             if sum( nSRE ) ~= sum( nSRET )
+                sum( nSRE )
+                sum( nSRET )
                 error( 'Inconsistent number of test embedded samples' )
             end
 
@@ -425,6 +430,7 @@ classdef nlsaModel_base
                        'srcTime' ...
                        'tFormat' ...
                        'embComponent' ...
+                       'embComponentT' ...
                        'trgComponent' ...
                        'trgTime' ...
                        'trgEmbComponent' };

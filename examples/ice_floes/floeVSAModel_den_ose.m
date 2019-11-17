@@ -74,6 +74,7 @@ switch experiment
         In.Trg( 1 ).embFormat = 'overlap'; % storage format for delay embedding
         In.Res( 1 ).nB        = 1;   % partition batches
         In.Res( 1 ).nBRec     = 1; % batches for reconstructed data
+        In.nBT        = 1;   % number of batches for test partition 
         In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
         In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
         In.lDist      = 'l2';   % local distance
@@ -297,7 +298,7 @@ for iRG = 1 : In.nRG
                           tStr{ iR } );
                                                
         tagC = In.Src( iC ).field;
-    
+
         srcComponent( iC, iRG ) = nlsaComponent( ...
             'partition',      partitionR( iR ), ...
             'dimension',      In.Src( iC ).nD, ...
@@ -325,6 +326,14 @@ for iRG = 1 : In.nRG
             'componentTag',   tagC, ...
             'realizationTag', tagRG  );
     end
+end
+
+% Create test partition
+if In.nBT > 0
+    embPartitionT = coarsenPartition( mergePartitions( embPartition ), In.nBT );
+    embeddingPartitionT = { 'embeddingPartitionT', embPartitionT };
+else
+    embeddingPartitionT = {};
 end
 
 %% EMBEDDING TEMPLATES FOR IN-SAMPLE DATA
@@ -825,6 +834,7 @@ model = nlsaModel_den_ose( ...
    'embeddingTemplate',               embComponent, ...
    'targetEmbeddingTemplate',         trgEmbComponent, ...
    'embeddingPartition',              embPartition, ...
+   embeddingPartitionT{ : }, ...
    'denPairwiseDistanceTemplate',     denPDist, ...
    'kernelDensityTemplate',           den, ...
    'pairwiseDistanceTemplate',        pDist, ...
