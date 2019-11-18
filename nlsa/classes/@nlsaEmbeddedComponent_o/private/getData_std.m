@@ -1,14 +1,15 @@
-function x = getData( obj, iB, iR, iC, iA )
-% GETDATA  Read data from an nlsaComponent object
+function x = getData_std( obj, iB, iR, iC, iA )
+% GETDATA_STD  Read data from an array of nlsaEmbeddedComponent_o objects 
+% using the standard calling syntax
 %
 % Modified 2019/11/17
 
 % Validate input arguments, assign default values
-
 siz = size( obj );
 if ~isCompatible( obj ) || numel( siz ) > 3 
     error( 'First argument must be an array of compatible nlsaEmbeddedComponent objects of at most rank 3' )
 end
+
 
 partition  = getPartition( obj );
 nBTot      = getNTotalBatch( partition( 1, : ) );
@@ -56,15 +57,16 @@ if ~ispi( iB ) || any( iB > getNBatch( partition( iR ) ) )
     error( 'Batch index argument iB must be a vector of positive integers less than or equal to the batch number for the corresponding realization index argument iR.' )
 end
 
-varNames = { 'x' };
 if isscalar( iB ) && isscalar( iC )
+    idxE = getEmbeddingIndices( obj );
     file = fullfile( getDataPath( obj( iC, iR ) ), ...
                      getDataFile( obj( iC, iR ), iB ) ) ;
-    load( file, varNames{ : } )
+    load( file, 'x' )
+    x = lembed( x, [ idxE( end ) size( x, 2 ) ], idxE );
 else
     partitionG = mergePartitions( partition );
     nS = sum( getBatchSize( partitionG, iBG ) );
-    nD = getDimension( obj( iC, 1 ) );
+    nD = getDataSpaceDimension( obj( iC, 1 ) );
     nDTot = sum( nD );
     x = zeros( nDTot, nS );
     iS1 = 1;
@@ -73,9 +75,11 @@ else
         iD1 = 1;
         for i = 1 : numel( iC )
             iD2 = iD1 + nD( iC ) - 1;
+            idxE = getEmbeddingIndices( obj( iC( i ) ) );
             file = fullfile( getDataPath( obj( iC( i ), iR( j ) ) ), ...
                              getDataFile( obj( iC( i ), iR( j ) ), iB( j ) ) );
-            B = load( file, varNames{ : } );
+            B = load( file, 'x' );
+            B.x = lembed( B.x, [ idxE( end ) size( B.x, 2 ) ], idxE );
             x( iD1 : iD2, iS1 : iS2 ) = B.x;
             iD1 = iD2 + 1;
         end

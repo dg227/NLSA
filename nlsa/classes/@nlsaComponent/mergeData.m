@@ -5,26 +5,27 @@ function mergeData( obj, src, idxR )
 % src. idxR is an optional input argument specifying the realizations in src
 % to be merged. 
 %
-% Modified 2019/11/12
+% Modified 2019/11/17
 
 %% VALIDATE INPUT ARGUMENTS
-if ~isa( src, 'nlsaComponent' ) || isrow( src )
+if ~isa( src, 'nlsaComponent' ) || ~isrow( src )
     error( 'Second argument must be a row vector of nlsaComponent objects.' )
 end
 nD = getDimension( obj );    
+nR = size( src, 2 );
 if nargin == 2
-    idxR = 1;
+    idxR = 1 : nR;
 end
 if nD ~= getDimension( src( 1 ) )
     error( 'Invalid source data dimension' )
 end
 partition  = getPartition( obj );
-partitionS = getPartition( src( idxR ) ) );
+partitionS = getPartition( src( idxR ) );
 partitionG = mergePartitions( partitionS );
-end
-[ tst, idxMerge ] = isfiner( partition, partitionG );
+
+[ tst, idxMerge ] = isFiner( partitionG, partition );
 if ~tst 
-    error( 'IncompatiblePartitions' )
+    error( 'Incompatible partitions' )
 end
 nB = getNBatch( partition );
 
