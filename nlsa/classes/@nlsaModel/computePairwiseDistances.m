@@ -1,14 +1,14 @@
 function computePairwiseDistances( obj, iProc, nProc, varargin )
 % COMPUTEPAIRWISEDISTANCES Compute pairwise distances of nlsaModel
 % 
-% Modified 2015/11/17
+% Modified 2019/11/17
 
 if nargin == 1
     iProc = 1;
     nProc = 1;
 end
 
-dData     = nlsaLocalDistanceData( 'component', getEmbComponent( obj ) ); 
+dData     = nlsaLocalDistanceData( 'component', getEmbComponentT( obj ) ); 
 pDistance = getPairwiseDistance( obj );
 nB = getNTotalBatch( pDistance );
 

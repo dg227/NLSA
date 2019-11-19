@@ -61,11 +61,11 @@ classdef nlsaModel_base
 %      provide storage for the system's phase space velocity estimated 
 %      through finite differences.    
 %  
-%   'embComponentT': An [ nC nRT ]-sized array of nlsaEmbeddedComponent 
-%      objects, nRT <= nR, storing a coarsened partition of the embedded 
-%      data. embComponenT can be used to accelerate the batchwise pairwise
-%      distance calculation. If not set by the user, embComponentT is set by
-%      default to embComponent.
+%   'embComponentT': An [ nC 1 ]-sized array (column vector)  of 
+%      nlsaEmbeddedComponent_e  objects, storing a coarsened partition of the 
+%      embedded data. embComponenT can be used to accelerate the batchwise 
+%      pairwise distance calculation. If not set by the user, embComponentT 
+%      is set by default to embComponent.
 %      
 %   'trgComponent': An [ nCT nR ]-sized array of nlsaComponent objects 
 %      specifying the target data. nCT is the number of target components. 
@@ -207,12 +207,14 @@ classdef nlsaModel_base
            
             % Time for source data
             if ~isempty( iSrcTime )
-                if isvector( varargin{ iSrcTime } ) && ~iscell( varargin{ iSrcTime } )
+                if isvector( varargin{ iSrcTime } ) ...
+                      && ~iscell( varargin{ iSrcTime } )
                     obj.srcTime = cell( 1, nR );
                     for iR = 1 : nR
                         obj.srcTime{ iR } = varargin{ iSrcTime };
                     end
-                elseif   isvector( varargin{ iSrcTime } ) && iscell( varargin{ iSrcTime } ) ...
+                elseif isvector( varargin{ iSrcTime } ) ...
+                      && iscell( varargin{ iSrcTime } ) ...
                       && numel( varargin{ iSrcTime } ) == nR
                     obj.srcTime = varargin{ iSrcTime };
                 else
@@ -294,30 +296,29 @@ classdef nlsaModel_base
                 error( [ msgId 'incompatibleEmb' ], msgStr )
             end
                         
-            % Embedded components (test data)
+            % Embedded components (test)
             if ~isempty( iEmbComponentT )
-                if ~isa( varargin{ iEmbComponentT }, 'nlsaEmbeddedComponent' ) ...
+                if ~isa( varargin{ iEmbComponentT }, ...
+                         'nlsaEmbeddedComponent' ) ...
                     || ~iscolumn( varargin{ iEmbComponentT } )
 
                     error( [ msgId 'invalidEmbT' ], ...
                            'Embedded test data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
                 end
-                [ nCET, nRET ] = size( varargin{ iEmbComponentT } ); 
-                if nCE ~= nC || nRET > nR 
-                    msgStr = sprintf( [ 'Invalid dimension of embedded component array: \n' ...
-                                        'Expecting [%i, <=%i] \n' ...
-                                        'Received  [%i, %i]' ], ...
-                                      nC, nR, nCET, nRET );
+                nCET = size( varargin{ iEmbComponentT }, 1 ); 
+                if nCET ~= nC 
+                    msgStr = sprintf( [ 'Invalid row dimension of embedded component array: \n' ...
+                                        'Expecting [%i] \n' ...
+                                        'Received  [%i]' ], ...
+                                      nC, nCET );
                     error( [ msgId 'invalidEmbT' ], msgStr )
                 end
                 obj.embComponentT = varargin{ iEmbComponentT };
             else
                 obj.embComponentT = obj.embComponent;
             end
-            nSRET = getNSample( obj.embComponentT( 1, : ) );
+            nSRET = getNSample( obj.embComponentT( 1 ) );
             if sum( nSRE ) ~= sum( nSRET )
-                sum( nSRE )
-                sum( nSRET )
                 error( 'Inconsistent number of test embedded samples' )
             end
 
@@ -327,10 +328,11 @@ classdef nlsaModel_base
                     error( [ msgId 'invalidTrg' ], ...
                            'Target data must be specified as an array of nlsaComponent objects.' )
                 end
-                [ ifC, Test1, Test2 ] = isCompatible( varargin{ iTrgComponent }, ...
-                                                      varargin{ iSrcComponent }, ...
-                                                      'testComponents', false, ...
-                                                      'testSamples', true );
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                    varargin{ iTrgComponent }, ...
+                    varargin{ iSrcComponent }, ...
+                    'testComponents', false, ...
+                    'testSamples', true );
                 if ~ifC
                     disp( Test1 )
                     disp( Test2 )

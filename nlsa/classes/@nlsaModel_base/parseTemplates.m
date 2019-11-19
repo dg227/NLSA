@@ -42,16 +42,17 @@ function constrArgs = parseTemplates( varargin )
 %      specified, the time origin for each realization is set to the 
 %      minimum possible value consistent with the embedding templates.
 %
-%   'embeddingPartition': An [ 1 nR ]-sized vector of nlsaPartition objects
-%      specifying how each realization of the delay-embedded data is to be 
-%      partitioned. That is, in the resulting nlsaModel_base object, the
+%   'embeddingPartition': An [ 1 nR ]-sized vector, partition, of nlsaPartition
+%      objects specifying how each realization of the delay-embedded data is to
+%      be partitioned. That is, in the resulting nlsaModel_base object, the
 %      properties embComponent( iC, iR ).partition and 
 %      trgEmbComponent( iC, iR ).partition are both set to partition( iR ) 
 %      for all iC and iCT. The number of samples in partition( iR ) corresponds
 %      the number of samples in the iR-th realization after delay embedding. 
 %
 %   'embeddingPartitionT': As in 'embeddingPartition', but allows for a
-%      different "test" partition to accelerate batch-wise pairwise distance
+%      different "test" partition, operating along the column dimension of the
+%      pairwise distance matrix, to accelerate batch-wise pairwise distance
 %      calculation.
 %
 %   'targetComponent': An [ nCT nR ]-sized array of nlsaComponent objects 

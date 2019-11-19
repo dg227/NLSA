@@ -31,11 +31,21 @@ function constrArgs = parseTemplates( varargin )
 %      specified, the time origin for each realization is set to the minimum
 %      possible value consistent with the embedding templates.
 %
-%   'denEmbeddingPartition': An [ 1 nR ]-sized vector of nlsaPartition objects
-%      specifying how each realization in the density data is to be partitioned.
-%      The number of samples in partition( iR ) must be equal to nSOE( iR ),
-%      where nSOE( iR ) is the number of samples in the iR-th realization
-%      of the out-of-sample data after time lagged embedding. 
+%   'denEmbeddingPartition': An [ 1 nR ]-sized vector, partition, of 
+%      nlsaPartition objects specifying how each realization in the density 
+%      data is to be partitioned. The number of samples in partition( iR ) 
+%      must be equal to nSDE( iR ), where nSDE( iR ) is the number of samples 
+%      in the iR-th realization of the density data after time-lagged 
+%      embedding. 
+%
+%   'denEmbeddingPartitionT': As in 'denEmbeddingPartition', but allows for a
+%      different "test" partition, operating along the column dimension of the
+%      pairwise distance matrix, to accelerate batch-wise pairwise distance
+%      calculation for the density data.
+%
+%   'denEmbeddingPartitionQ': As in 'denEmbeddingPartitionQ', but for a 
+%      "query" partition, operating along the row dimension of the pairwise
+%      distance matrix. 
 %
 %   'denPairwiseDistanceTemplate': An nlsaPairwiseDistance object specifying
 %      the method and parameters (e.g., number of nearest neighbors) used 
@@ -67,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/04 
+%   Modified 2019/11/18 
 
 
 %% CONSTRUCTOR PROPERTY LIST

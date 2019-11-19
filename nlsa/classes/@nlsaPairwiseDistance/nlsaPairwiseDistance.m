@@ -2,7 +2,7 @@ classdef nlsaPairwiseDistance
 %NLSAPAIRWISEDISTANCE  Class definition and constructor of nlsaPairwiseDistance
 % objects
 %
-% Modified 2016/01/25   
+% Modified 2019/11/18  
 
    %% PROPERTIES
     properties
@@ -10,7 +10,7 @@ classdef nlsaPairwiseDistance
         dFunc         = nlsaLocalDistanceFunction();
         nN            = 2;
         partition     = nlsaPartition();  
-        partitionT    = []; % reverts to partition if empty
+        partitionT    = nlsaPartition.empty(); % reverts to partition if empty
         path          = pwd;
         pathY         = 'dataY';
         tag           = '';

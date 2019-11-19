@@ -35,12 +35,23 @@ classdef nlsaModel_den < nlsaModel
 %     nlsaModel_base class. If 'denComponent' is not specified it is set equal
 %     to srcComponent.
 %
-%  'denEmbComponent': An [ nC nR ]-sized array of nlsaEmbeddedComponent objects 
-%     storing Takens delay-embedded data associacted with 'denComponent'. See
-%     the documentation of the nlsaModel_base class for additional information
-%     on the nlsaEmbeddedComponent class. If 'denEmbComponent' is not specified
+%  'denEmbComponent': An [ nC nR ]-sized array of nlsaEmbeddedComponent 
+%     objects storing Takens delay-embedded data associacted with 
+%     'denComponent'. See the documentation of the nlsaModel_base class for 
+%     additional information. If 'denEmbComponent' is not specified
 %     it is set equal to property embComponent of the nlsaModel_base parent 
 %     class. The latter is the most usual case in practice. 
+%
+%   'denEmbComponentT': An [ nC 1 ]-sized array (column vector) of 
+%      nlsaEmbeddedComponent_e  objects, storing a coarsened partition of the 
+%      embedded data for density estimation. denEmbComponentT can be used to 
+%      accelerate the batchwise pairwise distance calculation in the column 
+%      (test) dimension. If not set by the user, denEmbComponentT is set by 
+%      default to denEmbComponent.
+%
+%   'denEmbComponentQ': As in 'denEmbComponentT', but an [ nC 1 ]-sized array
+%      of nlsaEmbeddedComponent_e objects to accelerate the pairwise distance
+%      calculation in the row (query) dimension.
 %
 %   'denPairwiseDistance': An nlsaPairwiseDistance object specifying
 %      the method and parameters (e.g., number of nearest neighbors) used 
@@ -152,12 +163,14 @@ classdef nlsaModel_den < nlsaModel
 %
 %   Contact: dimitris@cims.nyu.edu
 %      
-%   Modified 2019/11/05
+%   Modified 2019/11/18
 
     %% PROPERTIES
     properties
         denComponent       = nlsaComponent();
         denEmbComponent    = nlsaEmbeddedComponent_e();
+        denEmbComponentT   = nlsaEmbeddedComponent_e();
+        denEmbComponentQ   = nlsaEmbeddedComponent_e();
         denPDistance       = nlsaPairwiseDistance();
         density            = nlsaKernelDensity_fb();
         embDensity         = nlsaEmbeddedComponent_e(); 
@@ -181,6 +194,8 @@ classdef nlsaModel_den < nlsaModel
             % Parse input arguments 
             iDenComponent     = [];
             iDenEmbComponent  = [];
+            iDenEmbComponentT = [];
+            iDenEmbComponentQ = [];
             iDenPDistance     = [];
             iDensity          = [];
             iEmbDensity       = [];
@@ -192,6 +207,12 @@ classdef nlsaModel_den < nlsaModel
                         ifParentArg( [ i i + 1 ] )  = false;
                     case 'denEmbComponent'
                         iDenEmbComponent = i + 1;                        
+                        ifParentArg( [ i i + 1 ] )  = false;
+                    case 'denEmbComponentT'
+                        iDenEmbComponentT = i + 1;                        
+                        ifParentArg( [ i i + 1 ] )  = false;
+                    case 'denEmbComponentQ'
+                        iDenEmbComponentQ = i + 1;                        
                         ifParentArg( [ i i + 1 ] )  = false;
                     case 'denPairwiseDistance'
                         iDenPDistance = i + 1;
@@ -234,18 +255,19 @@ classdef nlsaModel_den < nlsaModel
             % Check input array class and size
             
             if ~isempty( iDenEmbComponent )
-                if ~isa( varargin{ iDenEmbComponent }, 'nlsaEmbeddedComponent' )
+                if ~isa( varargin{ iDenEmbComponent }, ...
+                         'nlsaEmbeddedComponent' )
                     error( [ msgId 'invalidDensityEmb' ], ...
                            'Embedded density data must be specified as an array of nlsaEmbeddedComponent objects.' )
                 end
 
-           
                 % Check constistency of data space dimension, embedding indices, and 
                 % number of samples
-                [ ifC, Test1, Test2 ] = isCompatible( varargin{ iDenEmbComponent }, ...
-                                                      obj.denComponent, ...
-                                                      'testComponents', true, ...
-                                                      'testSamples', true );
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                  varargin{ iDenEmbComponent }, ...
+                  obj.denComponent, ...
+                  'testComponents', true, ...
+                  'testSamples', true );
                 if ~ifC
                     msgStr = 'Incompatible Density embedded component array';
                     disp( Test1 )
@@ -254,10 +276,66 @@ classdef nlsaModel_den < nlsaModel
                 end
                 obj.denEmbComponent = varargin{ iDenEmbComponent };
             else
-                obj.denEmbComponent = nlsaEmbeddedComponent_e( obj.denComponent );
+                obj.denEmbComponent = nlsaEmbeddedComponent_e( ...
+                  obj.denComponent );
             end
             nSETot = getNEmbSample( obj );                    
             partition = getEmbPartition( obj ); 
+
+            % Embedded density components (test)
+            if ~isempty( iDenEmbComponentT )
+                if ~isa( varargin{ iDenEmbComponentT }, ...
+                         'nlsaEmbeddedComponent' ) ...
+                    || ~iscolumn( varargin{ iDenEmbComponentT } )
+
+                    error( [ msgId 'invalidEmbT' ], ...
+                           'Embedded test data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
+                end
+                nCET = size( varargin{ iDenEmbComponentT }, 1 ); 
+                if nCET ~= nC 
+                    msgStr = sprintf( [ 'Invalid row dimension of embedded component array: \n' ...
+                                        'Expecting [%i] \n' ...
+                                        'Received  [%i]' ], ...
+                                      nC, nCET );
+                    error( [ msgId 'invalidEmbT' ], msgStr )
+                end
+                obj.denEmbComponentT = varargin{ iDenEmbComponentT };
+                partitionT = getPartition( obj.denEmbComponenT( 1 ) );
+                if ~isFiner( partitionT, partition )
+                    error( 'Test partition for the embedded density data must be a refinement of the partition for the embedded density data' )
+                end
+
+            else
+                obj.denEmbComponentT = obj.denEmbComponent;
+                partitionT = getPartition( obj.denEmbComponentQ( 1 ) );
+            end
+
+            % Embedded density components (query)
+            if ~isempty( iDenEmbComponentQ )
+                if ~isa( varargin{ iDenEmbComponentQ }, ...
+                         'nlsaEmbeddedComponent' ) ...
+                    || ~iscolumn( varargin{ iDenEmbComponentQ } )
+
+                    error( [ msgId 'invalidEmbQ' ], ...
+                           'Embedded query data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
+                end
+                nCEQ = size( varargin{ iDenEmbComponentQ }, 1 ); 
+                if nCEQ ~= nC 
+                    msgStr = sprintf( [ 'Invalid row dimension of embedded component array: \n' ...
+                                        'Expecting [%i] \n' ...
+                                        'Received  [%i]' ], ...
+                                      nC, nCEQ );
+                    error( [ msgId 'invalidEmbQ' ], msgStr )
+                end
+                obj.denEmbComponentQ = varargin{ iDenEmbComponentQ };
+                partitionQ = getPartition( obj.denEmbComponentQ( 1 ) );
+                if ~isFiner( partitionQ, partition )
+                    error( 'Query partition for the embedded density data must be a refinement of the partition for the embedded density data' )
+                end
+            else
+                obj.denEmbComponentQ = nlsaPartition.empty();
+                partitionQ = getPartition( obj.denEmbComponent( 1, : ) );
+            end
 
             % Density pairwise distance
             if ~isempty( iDenPDistance )
@@ -266,7 +344,8 @@ classdef nlsaModel_den < nlsaModel
                               'The density pairwise distance property must be an nlsaPairwiseDistance object' )
                 end
                 if ~( isscalar( varargin{ iDenPDistance } ) ...
-                      || numel( varargin{ iDenPDistance } ) == size( obj.denComponent, 1 ) )
+                      || numel( varargin{ iDenPDistance } ) == ...
+                        size( obj.denComponent, 1 ) )
                       error( 'The density pairwise distance property must be scalar or a vector of size equal to the number of source components' )
                 end
                 if any ( getNNeighbors( varargin{ iDenPDistance } ) ...
@@ -275,8 +354,14 @@ classdef nlsaModel_den < nlsaModel
                 end
                 obj.denPDistance = varargin{ iDenPDistance };
             else
-                obj.denPDistance = nlsaPairwiseDistance( ...
-                                    'partition', partition, ...
+                if ~isempty( obj.denEmbComponentT )
+                    obj.denPDistance = nlsaPairwiseDistance( ...
+                                    'partition', partitionQ, ...
+                                    'partitionT', partitionT, ...
+                                    'nearestNeighbors', round( nSETot / 10 ) );
+                else
+                    obj.denPDistance = nlsaPairwiseDistance( ...
+                                    'partition', partitionQ, ...
                                     'nearestNeighbors', round( nSETot / 10 ) ); 
             end
 
@@ -290,7 +375,7 @@ classdef nlsaModel_den < nlsaModel
                 obj.density = varargin{ iDensity };
             else
                 obj.density = nlsaKernelDensity_fb( ...
-                                 'partition', partition );
+                                 'partition', partitionQ );
             end
             
             % Delay-embedded kernel density
@@ -324,6 +409,8 @@ classdef nlsaModel_den < nlsaModel
                        { 'denComponent' ...
                          'denEmbComponent' ...
                          'denPairwiseDistance' ...
+                         'denPairwiseDistanceT' ...
+                         'denPairwiseDistanceQ' ...
                          'kernelDensity' ...
                          'embKernelDensity' } ];
         end
