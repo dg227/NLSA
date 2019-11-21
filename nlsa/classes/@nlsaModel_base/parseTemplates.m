@@ -55,6 +55,10 @@ function constrArgs = parseTemplates( varargin )
 %      pairwise distance matrix, to accelerate batch-wise pairwise distance
 %      calculation.
 %
+%   'embeddingPartitionQ': As in 'denEmbeddingPartitionQ', but for a "query" 
+%      partition, operating along the row dimension of the pairwise distance 
+%      matrix. 
+%
 %   'targetComponent': An [ nCT nR ]-sized array of nlsaComponent objects 
 %      specifying the target data. nCT is the number of target components. 
 %      the number of realizations nR must be equal to the number of
@@ -72,7 +76,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/13
+%   Modified 2019/11/20
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -343,9 +347,9 @@ for iProp = 1 : nProp
     end
 end
 
- % Parse "test" partition templates
- % Test partition is allowed to be a coarsening of the original partition 
- % (to accelerate batchwise pairwise distance calculation)
+% Parse "test" partition templates
+% Test partition is required to be a coarsening of the original partition 
+% (to accelerate batchwise pairwise distance calculation)
 isSet = false;
 for i = 1 : 2 : nargin
     if strcmp( varargin{ i }, 'embeddingPartitionT' )
@@ -355,7 +359,7 @@ for i = 1 : 2 : nargin
         if ~(    isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
               && isscalar( varargin{ i + 1 } ) ...
               && isFiner( partition, varargin{ i + 1 } ) ) 
-           error( 'Test embedded data partition must be specified as a scalar or vector nlsaPartition object, which is a coarseing of the embedded data partition.' )
+           error( 'Test embedded data partition must be specified as a scalar nlsaPartition object, which is a coarseing of the embedded data partition.' )
         end
         partitionT = varargin{ i + 1 };
         isSet = true;
@@ -396,10 +400,73 @@ if isSet
             setPath( propVal{ iEmbComponentT }( iC ), pth );
     end
     mkdir( propVal{ iEmbComponentT } )
-else
-    propVal{ iEmbComponentT } = propVal{ iEmbComponent };
-    partitionT = partition;
 end
+
+% Create "query" embedded components
+for iProp = 1 : nProp
+    if strcmp( propName{ iProp }, 'embComponentQ' )
+        iEmbComponentQ = iProp;
+        break
+    end
+end
+
+% Parse "query" partition templates
+% Query partition is required to be a coarsening of the original partition 
+% (to accelerate batchwise pairwise distance calculation)
+isSet = false;
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'embeddingPartitionQ' )
+        if isSet
+            error( 'The query partition for the embedded data has been already specified' )
+        end
+        if ~(    isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
+              && isscalar( varargin{ i + 1 } ) ...
+              && isFiner( partition, varargin{ i + 1 } ) ) 
+           error( 'Query embedded data partition must be specified as a scalar nlsaPartition object, which is a coarseing of the embedded data partition.' )
+        end
+        partitionQ = varargin{ i + 1 };
+        isSet = true;
+    end
+end 
+
+% If query partition was provided create an upated embComponentQ object; 
+% otherwise set to original embComponent
+if isSet
+    if isa( propVal{ iEmbComponent }, 'nlsaEmbeddedComponent_xi' )
+        propVal{ iEmbComponentQ }( nC, 1 ) = nlsaEmbeddedComponent_xi_e();
+    else
+        propVal{ iEmbComponentQ }( nC, 1 ) = nlsaEmbeddedComponent_e();
+    end
+    propVal{ iEmbComponentQ } = mergeCol( propVal{ iEmbComponentQ }, ...
+                                          propVal{ iEmbComponent }, ...
+                                          'partition', partitionQ ); 
+    ifProp( iEmbComponentQ ) = true;
+    % Check if we should compress realization tags
+    isSet2 = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'sourceRealizationName' )
+            if ~isSet2
+                propVal{ iEmbComponentQ } = setRealizationTag( ...
+                    propVal{ iEmbComponentQ }, varargin{ i + 1 } );
+                isSet2 = true;
+                break
+            else
+                error( 'sourceRealizationName has been already set' )
+            end
+        end
+    end  
+    for iC = 1 : nC 
+        tag  = getTag( propVal{ iEmbComponentQ }( iC ) );
+        pth  = fullfile( modelPath, 'embedded_data', ...
+                         strjoin_e( tag, '_' ) );
+        propVal{ iEmbComponentQ }( iC ) = ...        
+            setPath( propVal{ iEmbComponentQ }( iC ), pth );
+    end
+    mkdir( propVal{ iEmbComponentQ } )
+end
+
+
+
 
 %% TARGET DATA
 

@@ -118,7 +118,7 @@ classdef nlsaModel_base
 %       
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/17
+%   Modified 2019/11/20
 
     properties
         srcTime         = { 1 };
@@ -126,7 +126,8 @@ classdef nlsaModel_base
         tFormat         = '';
         srcComponent    = nlsaComponent();
         embComponent    = nlsaEmbeddedComponent_e();
-        embComponentT   = nlsaEmbeddedComponent_e();
+        embComponentT   = nlsaEmbeddedComponent_e.empty;
+        embComponentQ   = nlsaEmbeddedComponent_e.empty;
         trgComponent    = nlsaComponent();
         trgEmbComponent = nlsaEmbeddedComponent_e();
     end
@@ -153,6 +154,7 @@ classdef nlsaModel_base
             iSrcComponent    = [];
             iEmbComponent    = [];
             iEmbComponentT   = [];
+            iEmbComponentQ   = [];
             iTrgComponent    = [];
             iTrgEmbComponent = [];
             iTag             = [];
@@ -171,6 +173,8 @@ classdef nlsaModel_base
                         iEmbComponent = i + 1;
                     case 'embComponentT'
                         iEmbComponentT = i + 1;
+                    case 'embComponentQ'
+                        iEmbComponentQ = i + 1;
                     case 'trgComponent'
                         iTrgComponent = i + 1;
                     case 'trgEmbComponent'
@@ -314,14 +318,43 @@ classdef nlsaModel_base
                     error( [ msgId 'invalidEmbT' ], msgStr )
                 end
                 obj.embComponentT = varargin{ iEmbComponentT };
-            else
-                obj.embComponentT = obj.embComponent;
             end
             nSRET = getNSample( obj.embComponentT( 1 ) );
             if sum( nSRE ) ~= sum( nSRET )
                 error( 'Inconsistent number of test embedded samples' )
             end
 
+            % Embedded density components (query)
+            if ~isempty( iEmbComponentQ )
+                if ~isa( varargin{ iEmbComponentQ }, ...
+                         'nlsaEmbeddedComponent' ) ...
+                    || ~iscolumn( varargin{ iEmbComponentQ } )
+
+                    error( [ msgId 'invalidEmbQ' ], ...
+                           'Embedded query data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
+                end
+                nCEQ = size( varargin{ iEmbComponentQ }, 1 ); 
+                if nCEQ ~= nC 
+                    msgStr = sprintf( [ 'Invalid row dimension of embedded component array: \n' ...
+                                        'Expecting [%i] \n' ...
+                                        'Received  [%i]' ], ...
+                                      nC, nCEQ );
+                    error( [ msgId 'invalidEmbQ' ], msgStr )
+                end
+                obj.embComponentQ = varargin{ iEmbComponentQ };
+                partitionQ = getPartition( obj.embComponentQ( 1 ) );
+                if ~isFiner( partitionQ, partition )
+                    error( 'Query partition for the embedded density data must be a refinement of the partition for the embedded density data' )
+                end
+            else
+                % If obj.embComponentQ is empty, set partitionQ to the
+                % partition in obj.embComponent; this will be used later on 
+                % to construuct obj.denPairwiseDistance
+                partitionQ = getPartition( obj.embComponent( 1, : ) );
+            end
+
+
+            
             % Target components 
             if ~isempty( iTrgComponent )
                 if ~isa( varargin{ iTrgComponent }, 'nlsaComponent' )
@@ -433,6 +466,7 @@ classdef nlsaModel_base
                        'tFormat' ...
                        'embComponent' ...
                        'embComponentT' ...
+                       'embComponentQ' ...
                        'trgComponent' ...
                        'trgTime' ...
                        'trgEmbComponent' };

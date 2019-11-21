@@ -163,14 +163,14 @@ classdef nlsaModel_den < nlsaModel
 %
 %   Contact: dimitris@cims.nyu.edu
 %      
-%   Modified 2019/11/18
+%   Modified 2019/11/20
 
     %% PROPERTIES
     properties
         denComponent       = nlsaComponent();
         denEmbComponent    = nlsaEmbeddedComponent_e();
-        denEmbComponentT   = nlsaEmbeddedComponent_e();
-        denEmbComponentQ   = nlsaEmbeddedComponent_e();
+        denEmbComponentT   = nlsaEmbeddedComponent_e.empty;
+        denEmbComponentQ   = nlsaEmbeddedComponent_e.empty;
         denPDistance       = nlsaPairwiseDistance();
         density            = nlsaKernelDensity_fb();
         embDensity         = nlsaEmbeddedComponent_e(); 
@@ -304,10 +304,11 @@ classdef nlsaModel_den < nlsaModel
                 if ~isFiner( partitionT, partition )
                     error( 'Test partition for the embedded density data must be a refinement of the partition for the embedded density data' )
                 end
-
             else
-                obj.denEmbComponentT = obj.denEmbComponent;
-                partitionT = getPartition( obj.denEmbComponentQ( 1 ) );
+                % If obj.denEmbComponentT is empty, set partitionT to empty;
+                % this will be used later on to construuct 
+                % obj.denPairwiseDistance
+                partitionT = nlsaPartition.empty;
             end
 
             % Embedded density components (query)
@@ -333,7 +334,9 @@ classdef nlsaModel_den < nlsaModel
                     error( 'Query partition for the embedded density data must be a refinement of the partition for the embedded density data' )
                 end
             else
-                obj.denEmbComponentQ = nlsaPartition.empty();
+                % If obj.denEmbComponentQ is empty, set partitionQ to the
+                % partition in obj.denEmbComponent; this will be used later on 
+                % to construuct obj.denPairwiseDistance
                 partitionQ = getPartition( obj.denEmbComponent( 1, : ) );
             end
 
@@ -354,15 +357,10 @@ classdef nlsaModel_den < nlsaModel
                 end
                 obj.denPDistance = varargin{ iDenPDistance };
             else
-                if ~isempty( obj.denEmbComponentT )
-                    obj.denPDistance = nlsaPairwiseDistance( ...
-                                    'partition', partitionQ, ...
-                                    'partitionT', partitionT, ...
-                                    'nearestNeighbors', round( nSETot / 10 ) );
-                else
-                    obj.denPDistance = nlsaPairwiseDistance( ...
-                                    'partition', partitionQ, ...
-                                    'nearestNeighbors', round( nSETot / 10 ) ); 
+                obj.denPDistance = nlsaPairwiseDistance( ...
+                                'partition', partitionQ, ...
+                                'partitionT', partitionT, ...
+                                'nearestNeighbors', round( nSETot / 10 ) );
             end
 
             % Kernel density
