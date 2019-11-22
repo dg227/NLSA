@@ -74,6 +74,7 @@ switch experiment
         In.Trg( 1 ).embFormat = 'overlap'; % storage format for delay embedding
         In.Res( 1 ).nB        = 1;   % partition batches
         In.Res( 1 ).nBRec     = 1; % batches for reconstructed data
+        In.nBQ        = 13;   % number of batches for query partition 
         In.nBT        = 1;   % number of batches for test partition 
         In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
         In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
@@ -331,11 +332,20 @@ end
 % Create test partition
 if In.nBT > 0
     embPartitionT = coarsenPartition( mergePartitions( embPartition ), In.nBT );
-    embeddingPartitionT = { 'embeddingPartitionT', embPartitionT };
+    embeddingPartitionT = { 'embeddingPartitionT', embPartitionT, ...
+                            'denEmbeddingPartitionT', embPartitionT };
 else
     embeddingPartitionT = {};
 end
 
+% Create query partition
+if In.nBQ > 0
+    embPartitionQ = coarsenPartition( mergePartitions( embPartition ), In.nBQ );
+    embeddingPartitionQ = { 'embeddingPartitionQ', embPartitionQ, ...
+                            'denEmbeddingPartitionQ', embPartitionQ };
+else
+    embeddingPartitionQ = {};
+end
 %% EMBEDDING TEMPLATES FOR IN-SAMPLE DATA
 % Source components
 for iC = In.nC : -1 : 1
@@ -835,6 +845,7 @@ model = nlsaModel_den_ose( ...
    'targetEmbeddingTemplate',         trgEmbComponent, ...
    'embeddingPartition',              embPartition, ...
    embeddingPartitionT{ : }, ...
+   embeddingPartitionQ{ : }, ...
    'denPairwiseDistanceTemplate',     denPDist, ...
    'kernelDensityTemplate',           den, ...
    'pairwiseDistanceTemplate',        pDist, ...

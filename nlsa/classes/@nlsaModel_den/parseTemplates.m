@@ -356,9 +356,9 @@ end
 % otherwise set to original embComponent
 if isSet
     if isa( propVal{ iDenEmbComponent }, 'nlsaEmbeddedComponent_xi' )
-        propVal{ iDenEmbComponentT }( nC, 1 ) = nlsaEmbeddedComponent_xi_e();
+        propVal{ iDenEmbComponentT }( nCD, 1 ) = nlsaEmbeddedComponent_xi_e();
     else
-        propVal{ iDenEmbComponentT }( nC, 1 ) = nlsaEmbeddedComponent_e();
+        propVal{ iDenEmbComponentT }( nCD, 1 ) = nlsaEmbeddedComponent_e();
     end
     propVal{ iDenEmbComponentT } = mergeCol( propVal{ iDenEmbComponentT }, ...
                                           propVal{ iDenEmbComponent }, ...
@@ -378,7 +378,7 @@ if isSet
             end
         end
     end  
-    for iC = 1 : nC 
+    for iC = 1 : nCD
         tag  = getTag( propVal{ iDenEmbComponentT }( iC ) );
         pth  = fullfile( modelPath, 'embedded_data', ...
                          strjoin_e( tag, '_' ) );
@@ -424,9 +424,9 @@ end
 % otherwise set to original embComponent
 if isSet
     if isa( propVal{ iDenEmbComponent }, 'nlsaEmbeddedComponent_xi' )
-        propVal{ iDenEmbComponentQ }( nC, 1 ) = nlsaEmbeddedComponent_xi_e();
+        propVal{ iDenEmbComponentQ }( nCD, 1 ) = nlsaEmbeddedComponent_xi_e();
     else
-        propVal{ iDenEmbComponentQ }( nC, 1 ) = nlsaEmbeddedComponent_e();
+        propVal{ iDenEmbComponentQ }( nCD, 1 ) = nlsaEmbeddedComponent_e();
     end
     propVal{ iDenEmbComponentQ } = mergeCol( propVal{ iDenEmbComponentQ }, ...
                                           propVal{ iDenEmbComponent }, ...
@@ -446,7 +446,7 @@ if isSet
             end
         end
     end  
-    for iC = 1 : nC 
+    for iC = 1 : nCD 
         tag  = getTag( propVal{ iDenEmbComponentQ }( iC ) );
         pth  = fullfile( modelPath, 'embedded_data', ...
                          strjoin_e( tag, '_' ) );
