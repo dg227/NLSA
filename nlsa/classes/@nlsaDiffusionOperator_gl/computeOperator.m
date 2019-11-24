@@ -1,14 +1,17 @@
 function [ l, q, d ] = computeOperator( obj, dist, varargin )
 % COMPUTETEOPERATOR Compute heat kernel from symmetrized distance data dist
 % 
-% Modified 2018/06/18
+% Modified 2019/11/21
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
 if ~isa( dist, 'nlsaSymmetricDistance_gl' )
     error( 'Distance data must be specified as an nlsaSymmetricDistance_gl object' )
 end
-partition = getPartition( obj );
+partition = getPartitionTest( obj );
+if isempty( partition )
+    partition = getPartition( obj );
+end
 if any( ~isequal( partition, getPartition( dist ) ) )
     error( 'Incompatible distance data partition' )
 end

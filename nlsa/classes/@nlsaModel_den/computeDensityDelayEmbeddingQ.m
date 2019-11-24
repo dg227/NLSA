@@ -1,11 +1,11 @@
-function computeDelayEmbeddingT( obj, iProcC, nProcC )
-% COMPUTEDELAYEMBEDDINGT Lag-embed the source data in an nlsaModel_base object
-% using the test partition
+function computeDensityDelayEmbeddingQ( obj, iProcC, nProcC )
+% COMPUTEDENSITYDELAYEMBEDDINGQ Lag-embed the kernel density data in an 
+% nlsaModel_den object using the query partition
 %
 % Modified 2019/11/24
 
-% Quick return if embComponentT is empty
-if isempty( obj.embComponentT )
+% Quick return if denEmbComponentQ is empty
+if isempty( obj.embDensityQ )
     return
 end
 
@@ -14,8 +14,8 @@ if nargin == 1
     nProcC = 1;
 end
 
-cmp = obj.embComponent;
-emb = obj.embComponentT;
+cmp = obj.embDensity;
+emb = obj.embDensityQ;
 nC  = size( emb, 1 );
 
 % Validate input arguments

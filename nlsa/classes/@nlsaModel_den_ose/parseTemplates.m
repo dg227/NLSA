@@ -143,7 +143,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/05    
+%   Modified 2019/11/21    
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -826,14 +826,16 @@ for iR = 1 : nRO
     end
 end
 
-if ~isSet
-    embeddingOrigin = minEmbeddingOrigin * ones( 1, nRO );
-end
-for iR = 1 : nRO
-    for iD = 1 : nDen
-        propVal{ iEmbDensity }( iD, iR ) = setOrigin( propVal{ iEmbDensity }( iD, iR ), embeddingOrigin( iR ) );
-    end
-end
+% I think this was left here by mistake, commenting out for now before
+% permanent deletion.
+%if ~isSet
+%    embeddingOrigin = minEmbeddingOrigin * ones( 1, nRO );
+%end
+%for iR = 1 : nRO
+%    for iD = 1 : nDen
+%        propVal{ iEmbDensity }( iD, iR ) = setOrigin( propVal{ iEmbDensity }( iD, iR ), embeddingOrigin( iR ) );
+%    end
+%end
 
 % Determine maximum number of samples in each realization after embedding
 maxNSRE = zeros( 1, nRO );

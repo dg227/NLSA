@@ -75,7 +75,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/04 
+%   Modified 2019/11/21 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -86,10 +86,15 @@ idxProp  = zeros( size( propName ) );
 nProp    = numel( idxProp );
 %% SUPERCLASS CONSTRUCTOR ARGUMENTS
 parentConstrArgs = nlsaModel_base.parseTemplates( varargin{ : } );
+iEmbComponentQ = [];
 for iProp = 1 : 2 : numel( parentConstrArgs )
     switch parentConstrArgs{ iProp }
         case 'embComponent'
             iEmbComponent = iProp + 1;
+        case 'embComponentQ'
+            iEmbComponentQ = iProp + 1;
+        case 'embComponentT'
+            iEmbComponentT = iProp + 1;
         case 'trgComponent'
             iTrgComponent = iProp + 1;
         case 'trgEmbComponent'
@@ -97,6 +102,8 @@ for iProp = 1 : 2 : numel( parentConstrArgs )
     end
 end
 partition = getPartition( parentConstrArgs{ iEmbComponent }( 1, : ) );
+partitionT = getPartition( parentConstrArgs{ iEmbComponentT }( 1 ) );
+partitionQ = getPartition( parentConstrArgs{ iEmbComponentQ }( 1 ) );
 nCT = size( parentConstrArgs{ iTrgEmbComponent }, 1 );
 nR  = size( parentConstrArgs{ iEmbComponent }, 2 );
 
@@ -148,7 +155,8 @@ if isempty( propVal{ iPDistance } )
 end
 nN = getNNeighbors( propVal{ iPDistance } );
 
-propVal{ iPDistance } = setPartition( propVal{ iPDistance }, partition );
+propVal{ iPDistance } = setPartition( propVal{ iPDistance }, partitionQ );
+propVal{ iPDistance } = setPartitionT( propVal{ iPDistance }, partitionT );
 tag = getTag( propVal{ iPDistance } );
 if ~isempty( tag )
     tag = [ tag '_' ];
@@ -221,7 +229,7 @@ end
 if getNNeighbors( propVal{ iSDistance } ) > nN
     error( 'The number of nearest neighbors in the symmetric distance matrix cannot exceed the number of neareast neighbors in the pairwise (non-symmetric) distance matrix' )
 end
-propVal{ iSDistance } = setPartition( propVal{ iSDistance }, partition );
+propVal{ iSDistance } = setPartition( propVal{ iSDistance }, partitionQ );
 tag = getTag( propVal{ iSDistance } );
 if ~isempty( tag )
     tag = [ tag '_' ];
@@ -265,6 +273,7 @@ if isempty( propVal{ iDiffOp } )
     ifProp( iDiffOp ) = true;
 end
 propVal{ iDiffOp } = setPartition( propVal{ iDiffOp }, partition );
+propVal{ iDiffOp } = setPartitionTest( propVal{ iDiffOp }, partitionQ );
 if isa( propVal{ iDiffOp }, 'nlsaDiffusionOperator_batch' )
     propVal{ iDiffOp } = setNNeighbors( propVal{ iDiffOp }, ...
                                         getNNeighborsMax( propVal{ iSDistance } ) );

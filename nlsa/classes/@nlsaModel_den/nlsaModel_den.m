@@ -60,10 +60,11 @@ classdef nlsaModel_den < nlsaModel
 %      partition which must be set to a vector of nlsaPartition objects of size
 %      [ 1 nR ], where nR is the number of realizations. These 
 %      partitions must conform with the corresponding partitions in the 
-%      embedded densitye data in the sense that pairwiseDistance.partition( iR )
-%      must be identical to denEmbComponent( iC, iR ).partition for all 
-%      components iC. Pairwise distances are computed in a block fashion for
-%      the elements of the partition. 
+%      embedded densitye data in the sense that 
+%      pairwiseDistance.partition( iR ) must be identical to 
+%      denEmbComponent( iC, iR ).partition for all components iC. Pairwise 
+%      distances are computed in a block fashion for the elements of the 
+%      partition. 
 %
 %   'kernelDensity': An nlsaKernelDensity object specifying the method and
 %      parameters for kernel density estimation. nlsaKernelDensity objects
@@ -104,6 +105,15 @@ classdef nlsaModel_den < nlsaModel
 %      snapshots comprising the delay-embedded source data. In the latter case,
 %      the snapshots within the embedding window are scaled individually by
 %      the delay-embedded densities.
+
+%   'embKernelDensityT': Similar to property 'embComponentT' of the
+%      nlsaModel_base paernt class, but for the embKernelDensity data.
+%      'embKernelDensityT' must be an [ nC 1 ]-sized array of 
+%      nlsaEmbeddedComponent_e objects with the same partition as 
+%      'embComponentT'. 
+%
+%   'embKernelDensityQ': As in 'embKernelDensityT', but for the 'embComponentQ'
+%      property of the nlsaModel_base parent class.
 %
 %   Alternatively, the constructor can be called in "template" mode, where 
 %   instead of the fully defined objects listed above the arguments supplied
@@ -163,7 +173,7 @@ classdef nlsaModel_den < nlsaModel
 %
 %   Contact: dimitris@cims.nyu.edu
 %      
-%   Modified 2019/11/21
+%   Modified 2019/11/23
 
     %% PROPERTIES
     properties
@@ -174,6 +184,8 @@ classdef nlsaModel_den < nlsaModel
         denPDistance       = nlsaPairwiseDistance();
         density            = nlsaKernelDensity_fb();
         embDensity         = nlsaEmbeddedComponent_e(); 
+        embDensityT        = nlsaEmbeddedComponent_e.empty;
+        embDensityQ        = nlsaEmbeddedComponent_e.empty;
     end
     
     methods
@@ -199,6 +211,8 @@ classdef nlsaModel_den < nlsaModel
             iDenPDistance     = [];
             iDensity          = [];
             iEmbDensity       = [];
+            iEmbDensityT      = [];
+            iEmbDensityQ      = [];
             
             for i = 1 : 2 : nargin
                 switch varargin{ i }                    
@@ -222,6 +236,12 @@ classdef nlsaModel_den < nlsaModel
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'embKernelDensity'
                         iEmbDensity = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'embKernelDensityQ'
+                        iEmbDensityQ = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'embKernelDensityT'
+                        iEmbDensityT = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                 end
             end
@@ -250,6 +270,7 @@ classdef nlsaModel_den < nlsaModel
             else
                 obj.denComponent = obj.srcComponent;
             end
+            nCD = size( obj.denComponent, 1 );
 
             % Density embedded components
             % Check input array class and size
@@ -292,16 +313,16 @@ classdef nlsaModel_den < nlsaModel
                            'Embedded test data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
                 end
                 nCET = size( varargin{ iDenEmbComponentT }, 1 ); 
-                if nCET ~= nC 
+                if nCET ~= nCD 
                     msgStr = sprintf( [ 'Invalid row dimension of embedded component array: \n' ...
                                         'Expecting [%i] \n' ...
                                         'Received  [%i]' ], ...
-                                      nC, nCET );
+                                      nCD, nCET );
                     error( [ msgId 'invalidEmbT' ], msgStr )
                 end
                 obj.denEmbComponentT = varargin{ iDenEmbComponentT };
-                partitionT = getPartition( obj.denEmbComponenT( 1 ) );
-                if ~isFiner( partitionT, partition )
+                partitionT = getPartition( obj.denEmbComponentT( 1 ) );
+                if ~isFiner( partition, partitionT )
                     error( 'Test partition for the embedded density data must be a refinement of the partition for the embedded density data' )
                 end
             else
@@ -321,16 +342,16 @@ classdef nlsaModel_den < nlsaModel
                            'Embedded query data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
                 end
                 nCEQ = size( varargin{ iDenEmbComponentQ }, 1 ); 
-                if nCEQ ~= nC 
+                if nCEQ ~= nCD 
                     msgStr = sprintf( [ 'Invalid row dimension of embedded component array: \n' ...
                                         'Expecting [%i] \n' ...
                                         'Received  [%i]' ], ...
-                                      nC, nCEQ );
+                                      nCD, nCEQ );
                     error( [ msgId 'invalidEmbQ' ], msgStr )
                 end
                 obj.denEmbComponentQ = varargin{ iDenEmbComponentQ };
                 partitionQ = getPartition( obj.denEmbComponentQ( 1 ) );
-                if ~isFiner( partitionQ, partition )
+                if ~isFiner( partition, partitionQ )
                     error( 'Query partition for the embedded density data must be a refinement of the partition for the embedded density data' )
                 end
             else
@@ -395,6 +416,52 @@ classdef nlsaModel_den < nlsaModel
             else
                 obj.embDensity = nlsaEmbeddedComponent_e();
             end
+            
+            % Embedded density (test)
+            if ~isempty( iEmbDensityT )
+                if ~isa( varargin{ iEmbDensityT }, ...
+                         'nlsaEmbeddedComponent_e' ) ...
+                    || ~iscolumn( varargin{ iEmbDensityT } ) 
+                    error( [ msgId 'invalidEmbT' ], ...
+                           'Embedded density data (test) must be specified as a column vector of nlsaEmbeddedComponent_e objects.' )
+                end
+                nCET = size( varargin{ iEmbDensityT }, 1 ); 
+                if nCET ~= nCD 
+                    msgStr = sprintf( [ 'Invalid row dimension of embedded density component array: \n' ...
+                                        'Expecting [%i] \n' ...
+                                        'Received  [%i]' ], ...
+                                      nC, nCET );
+                    error( [ msgId 'invalidEmbT' ], msgStr )
+                end
+                obj.embDensityT = varargin{ iEmbDensityT };
+                if ~isequal( obj.embComponentT( 1 ).partition, ...
+                             obj.embDensityT( 1 ).partition )
+                    error( 'Test partition for the embedded density data must be equal to the source partition of the embedded data' )
+                end
+            end
+
+            % Embedded density (query)
+            if ~isempty( iEmbDensityQ )
+                if ~isa( varargin{ iEmbDensityQ }, ...
+                         'nlsaEmbeddedComponent_e' ) ...
+                    || ~iscolumn( varargin{ iEmbDensityQ } ) 
+                    error( [ msgId 'invalidEmbQ' ], ...
+                           'Embedded density data (test) must be specified as a column vector of nlsaEmbeddedComponent_e objects.' )
+                end
+                nCEQ = size( varargin{ iEmbDensityQ }, 1 ); 
+                if nCEQ ~= nCD 
+                    msgStr = sprintf( [ 'Invalid row dimension of embedded density component array: \n' ...
+                                        'Expecting [%i] \n' ...
+                                        'Received  [%i]' ], ...
+                                      nC, nCEQ );
+                    error( [ msgId 'invalidEmbQ' ], msgStr )
+                end
+                obj.embDensityQ = varargin{ iEmbDensityQ };
+                if ~isequal( obj.embComponentQ( 1 ).partition, ...
+                             obj.embDensityQ( 1 ).partition )
+                    error( 'Query partition for the embedded density data must be equal to the source partition of the embedded data' )
+                end
+            end
         end
     end
          
@@ -410,7 +477,9 @@ classdef nlsaModel_den < nlsaModel
                          'denEmbComponentQ' ...
                          'denPairwiseDistance' ...
                          'kernelDensity' ...
-                         'embKernelDensity' } ];
+                         'embKernelDensity' ...
+                         'embKernelDensityT' ...
+                         'embKernelDensityQ' } ];
         end
 
         %% LISTPARSERPROPERTIES List property names for class constructor parser

@@ -1,11 +1,11 @@
-function computeDelayEmbeddingT( obj, iProcC, nProcC )
-% COMPUTEDELAYEMBEDDINGT Lag-embed the source data in an nlsaModel_base object
-% using the test partition
+function computeDelayEmbeddingQ( obj, iProcC, nProcC )
+% COMPUTEDELAYEMBEDDINGQ Lag-embed the source data in an nlsaModel_base object
+% using the query partition
 %
 % Modified 2019/11/24
 
-% Quick return if embComponentT is empty
-if isempty( obj.embComponentT )
+% Quick return if embComponentQ is empty
+if isempty( obj.embComponentQ )
     return
 end
 
@@ -15,7 +15,7 @@ if nargin == 1
 end
 
 cmp = obj.embComponent;
-emb = obj.embComponentT;
+emb = obj.embComponentQ;
 nC  = size( emb, 1 );
 
 % Validate input arguments

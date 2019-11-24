@@ -2,7 +2,7 @@ classdef nlsaLocalDistanceData_scl < nlsaLocalDistanceData
 %NLSALOCALDISTANCEDATA_SCL  Class definition and constructor of distance data 
 % with scaling factors
 %
-% Modified 2015/10/28    
+% Modified 2019/11/24    
 
     %% PROPERTIES
     properties
@@ -35,6 +35,13 @@ classdef nlsaLocalDistanceData_scl < nlsaLocalDistanceData
 
             obj = obj@nlsaLocalDistanceData( varargin{ ifParentArg } );
            
+            if isempty( obj )
+                if ~isempty( iSclComponent )
+                    error( 'Attempted to initialize an empty nlsaLocalDistanceDta_scl object with non-empty scaling data' )
+                end
+                return
+            end
+
             % Set caller-defined values
             if ~isempty( iSclComponent )
                 if ~isa( varargin{ iSclComponent }, 'nlsaComponent' )

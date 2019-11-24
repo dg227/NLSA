@@ -76,7 +76,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/20
+%   Modified 2019/11/23
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -339,17 +339,11 @@ for iR = 1 : nR
 end
 mkdir( propVal{ iEmbComponent } )
           
-% Create "test" embedded components
-for iProp = 1 : nProp
-    if strcmp( propName{ iProp }, 'embComponentT' )
-        iEmbComponentT = iProp;
-        break
-    end
-end
+% If requested, create "test" embedded components
 
-% Parse "test" partition templates
-% Test partition is required to be a coarsening of the original partition 
-% (to accelerate batchwise pairwise distance calculation)
+% Parse "test" partition templates.
+% Test partition must be a coarsening of the partition in the embComponent 
+% property.
 isSet = false;
 for i = 1 : 2 : nargin
     if strcmp( varargin{ i }, 'embeddingPartitionT' )
@@ -366,9 +360,16 @@ for i = 1 : 2 : nargin
     end
 end 
 
-% If test partition was provided create an upated embComponentT object; 
-% otherwise set to original embComponent
+% If test partition was provided, create an embComponentT property; otherwise
+% it will be set it to empty by the class constructor.
 if isSet
+    for iProp = 1 : nProp
+        if strcmp( propName{ iProp }, 'embComponentT' )
+            iEmbComponentT = iProp;
+            break
+        end
+    end
+
     if isa( propVal{ iEmbComponent }, 'nlsaEmbeddedComponent_xi' )
         propVal{ iEmbComponentT }( nC, 1 ) = nlsaEmbeddedComponent_xi_e();
     else
@@ -402,17 +403,10 @@ if isSet
     mkdir( propVal{ iEmbComponentT } )
 end
 
-% Create "query" embedded components
-for iProp = 1 : nProp
-    if strcmp( propName{ iProp }, 'embComponentQ' )
-        iEmbComponentQ = iProp;
-        break
-    end
-end
+% If requested, create "query" embedded components
 
-% Parse "query" partition templates
-% Query partition is required to be a coarsening of the original partition 
-% (to accelerate batchwise pairwise distance calculation)
+% Parse "query" partition templates.
+% Query partition must be a coarsening of the partition in embComponent. 
 isSet = false;
 for i = 1 : 2 : nargin
     if strcmp( varargin{ i }, 'embeddingPartitionQ' )
@@ -429,9 +423,16 @@ for i = 1 : 2 : nargin
     end
 end 
 
-% If query partition was provided create an upated embComponentQ object; 
-% otherwise set to original embComponent
+% If query partition was provided create an embComponentQ property; otherwise 
+% it will be set to empty by the class constructor. 
 if isSet
+    for iProp = 1 : nProp
+        if strcmp( propName{ iProp }, 'embComponentQ' )
+            iEmbComponentQ = iProp;
+            break
+        end
+    end
+
     if isa( propVal{ iEmbComponent }, 'nlsaEmbeddedComponent_xi' )
         propVal{ iEmbComponentQ }( nC, 1 ) = nlsaEmbeddedComponent_xi_e();
     else
@@ -464,8 +465,6 @@ if isSet
     end
     mkdir( propVal{ iEmbComponentQ } )
 end
-
-
 
 
 %% TARGET DATA

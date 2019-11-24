@@ -253,7 +253,7 @@ classdef nlsaModel < nlsaModel_base
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/20
+%   Modified 2019/11/22
 
     %% PROPERTIES
     properties
@@ -374,6 +374,7 @@ classdef nlsaModel < nlsaModel_base
             else
                 obj.diffOp = nlsaDiffusionOperator_gl( ...
                     'partition', partition, ...
+                    'partitionT', partitionQ, ...
                     'nEigenfunction', min( 10, nSETot ) ); 
             end
 

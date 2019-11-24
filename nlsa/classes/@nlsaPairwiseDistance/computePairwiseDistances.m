@@ -2,7 +2,7 @@ function [ yVal, yInd ] = computePairwiseDistances( obj, qry, varargin )
 % COMPUTEPAIRWISEDISTANCES Compute pairwise distance from array of query 
 % data and test data
 % 
-% Modified 2019/11/06
+% Modified 2019/11/21
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments, set test data
@@ -15,7 +15,7 @@ dFunc = getLocalDistanceFunction( obj );
 %    error( 'Incompatible query data' )
 %end
 
-if ~ischar( varargin{ 1 } )
+if ~ischar( varargin{ 1 } ) && ~isempty( varargin{ 1 } )
     ifTst    = true;
     tst      = varargin{ 1 };
     varargin = varargin( 2 : end );
