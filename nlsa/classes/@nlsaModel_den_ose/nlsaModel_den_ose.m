@@ -164,7 +164,7 @@ classdef nlsaModel_den_ose < nlsaModel_den
 %
 %  Contact: dimitris@cims.nyu.edu
 % 
-%  Modified 2019/11/24
+%  Modified 2020/01/25
 
     %% PROPERTIES
     properties
@@ -439,8 +439,8 @@ classdef nlsaModel_den_ose < nlsaModel_den
             else
                 obj.outDenEmbComponent = nlsaEmbeddedComponent_e( obj.denComponent );
             end
-            nSEDTot = getNOutDenSample( obj );                    
-            partitionD = getOutDenPartition( obj ); 
+            nSEDTot = getNOutDenEmbSample( obj );                    
+            partitionD = getOutDenEmbPartition( obj ); 
 
             % Density OSE pairwise distance
             if ~isempty( iOseDenPDistance )

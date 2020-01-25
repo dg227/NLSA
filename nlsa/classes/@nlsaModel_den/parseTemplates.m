@@ -77,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/22 
+%   Modified 2020/01/25 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -390,6 +390,8 @@ if isSet
             setPath( propVal{ iDenEmbComponentT }( iC ), pth );
     end
     mkdir( propVal{ iDenEmbComponentT } )
+else
+    denPartitionT = nlsaPartition.empty;
 end
 
 % If requested, create "query" embedded components for the density data
@@ -780,6 +782,8 @@ if isSet
             setPath( propVal{ iEmbDensityT }( iD ), pth );
     end
     mkdir( propVal{ iEmbDensityT } )
+else
+    partitionT = nlsaPartition.empty;
 end
 
 % If requested, create "query" embedded density
@@ -841,6 +845,8 @@ if isSet
             setPath( propVal{ iEmbDensityQ }( iD ), pth );
     end
     mkdir( propVal{ iEmbDensityQ } )
+else
+    partitionQ = partition;
 end
 
 

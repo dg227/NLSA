@@ -1,4 +1,4 @@
-function [ model, In, Out ] = floeNLSAModel_den_ose( experiment )
+function [ model, In, Out ] = floeVSAModel_den_ose( experiment )
 %% FLOEVSAMODEL_DEN_OSE NLSA model with kernel density estimation and out-of-sample extension (OSE) for sea ice data
 % 
 %  In and Out are data structures containing the in-sample and out-of-sample model parameters, respectively
@@ -74,9 +74,8 @@ switch experiment
         In.Trg( 1 ).embFormat = 'overlap'; % storage format for delay embedding
         In.Res( 1 ).nB        = 1;   % partition batches
         In.Res( 1 ).nBRec     = 1; % batches for reconstructed data
-        In.nBQ        = 13;   % number of batches for query partition 
-        In.nBT        = 1;   % number of batches for test partition 
-        In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
+        In.nBQ        = 3;   % number of batches for query partition 
+        In.nBT        = 7;   % number of batches for test partition 
         In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
         In.lDist      = 'l2';   % local distance
         In.tol        = 0;      % 0 distance threshold (for cone kernel)

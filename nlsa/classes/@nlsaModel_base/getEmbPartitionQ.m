@@ -5,4 +5,5 @@ function partition = getEmbPartitionQ( obj )
 % Modified 2019/11/24
 
 component = getEmbComponentQ( obj );
+
 partition = getPartition( component( 1, : ) ); 

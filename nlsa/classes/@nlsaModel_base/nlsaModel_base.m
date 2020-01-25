@@ -142,7 +142,7 @@ classdef nlsaModel_base
 %       
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/23
+%   Modified 2020/01/25
 
     properties
         srcTime         = { 1 };
@@ -347,10 +347,10 @@ classdef nlsaModel_base
                 if ~isFiner( partition, partitionT )
                     error( 'Test partition for the embedded data must be a refinement of the partition for the embedded density data' )
                 end
-            end
-            nSRET = getNSample( obj.embComponentT( 1 ) );
-            if sum( nSRE ) ~= sum( nSRET )
-                error( 'Inconsistent number of test embedded samples' )
+                nSRET = getNSample( obj.embComponentT( 1 ) );
+                if sum( nSRE ) ~= sum( nSRET )
+                    error( 'Inconsistent number of test embedded samples' )
+                end
             end
 
             % Embedded components (query)
@@ -375,11 +375,6 @@ classdef nlsaModel_base
                 if ~isFiner( partition, partitionQ )
                     error( 'Query partition for the embedded data must be a refinement of the partition for the embedded density data' )
                 end
-            else
-                % If obj.embComponentQ is empty, set partitionQ to the
-                % partition in obj.embComponent; this will be used later on 
-                % to construuct obj.denPairwiseDistance
-                partitionQ = getPartition( obj.embComponent( 1, : ) );
             end
 
 

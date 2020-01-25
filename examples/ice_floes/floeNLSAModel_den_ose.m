@@ -64,7 +64,6 @@ switch experiment
         In.Res( 1 ).nB        = 1;   % partition batches
         In.Res( 1 ).nBRec     = 1; % batches for reconstructed data
         In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
-        In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
         In.lDist      = 'l2';   % local distance
         In.tol        = 0;      % 0 distance threshold (for cone kernel)
         In.zeta       = 0.995;  % cone kernel parameter 

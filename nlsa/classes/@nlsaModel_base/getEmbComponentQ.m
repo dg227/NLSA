@@ -4,10 +4,10 @@ function comp = getEmbComponentQ( obj )
 %
 %  If embComponentQ is empty, getEmbComponentQ returns embComponent. 
 %
-% Modified 2019/11/24
+% Modified 2020/01/25
 
 if isempty( obj.embComponentQ )
-    comp = obj.embComponentQ; 
+    comp = obj.embComponent; 
 else
-    comp = obj.embComponent;
+    comp = obj.embComponentQ;
 end
