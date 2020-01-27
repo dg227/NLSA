@@ -388,6 +388,12 @@ if isSet
                          strjoin_e( tag, '_' ) );
         propVal{ iDenEmbComponentT }( iC ) = ...        
             setPath( propVal{ iDenEmbComponentT }( iC ), pth );
+
+        propVal{ iDenEmbComponentT }( iC ) = ...
+            setDefaultSubpath( propVal{ iDenEmbComponentT }( iC ) );
+
+        propVal{ iDenEmbComponentT }( iC ) = ...
+            setDefaultFile( propVal{ iDenEmbComponentT }( iC ) );
     end
     mkdir( propVal{ iDenEmbComponentT } )
 else
@@ -456,6 +462,12 @@ if isSet
                          strjoin_e( tag, '_' ) );
         propVal{ iDenEmbComponentQ }( iC ) = ...        
             setPath( propVal{ iDenEmbComponentQ }( iC ), pth );
+
+        propVal{ iDenEmbComponentQ }( iC ) = ...
+            setDefaultSubpath( propVal{ iDenEmbComponentQ }( iC ) );
+
+        propVal{ iDenEmbComponentQ }( iC ) = ...
+            setDefaultFile( propVal{ iDenEmbComponentQ }( iC ) );
     end
     mkdir( propVal{ iDenEmbComponentQ } )
 else

@@ -2,14 +2,14 @@ function x = getData_fmt( obj, iB, outFormat )
 %% GETDATA_FMT Read data from an nlsaEmbeddedComponent_o object in overlap 
 %% format
 %
-% Modified 2019/11/17
+% Modified 2020/01/25
 
 if ~isscalar( obj )
     error( 'First input argument must be a scalar nlsaEmbeddedComponent_o object' )
 end
 
-if ~ispsi( iB ) || iB > getNBatch( obj )
-    error( 'Second input argument must be a positive integer less than or equal to the number of samples in the partition of the first argument.' )
+if ~isnnsi( iB ) || iB > getNBatch( obj ) + 1
+    error( 'Second input argument must be a non-negative integer less than or equal to 1 plus the number of samples in the partition of the first argument.' )
 end
 
 if nargin == 2

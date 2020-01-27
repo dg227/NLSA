@@ -331,7 +331,6 @@ for iR = 1 : nR
         propVal{ iEmbComponent }( iC, iR ) = ...
             setDefaultSubpath( propVal{ iEmbComponent }( iC, iR ) );
 
-
         propVal{ iEmbComponent }( iC, iR ) = ...
             setDefaultFile( propVal{ iEmbComponent }( iC, iR ) );
 
@@ -399,6 +398,12 @@ if isSet
                          strjoin_e( tag, '_' ) );
         propVal{ iEmbComponentT }( iC ) = ...        
             setPath( propVal{ iEmbComponentT }( iC ), pth );
+
+        propVal{ iEmbComponentT }( iC ) = ...
+            setDefaultSubpath( propVal{ iEmbComponentT }( iC ) );
+
+        propVal{ iEmbComponentT }( iC ) = ...
+            setDefaultFile( propVal{ iEmbComponentT }( iC ) );
     end
     mkdir( propVal{ iEmbComponentT } )
 end
@@ -462,6 +467,13 @@ if isSet
                          strjoin_e( tag, '_' ) );
         propVal{ iEmbComponentQ }( iC ) = ...        
             setPath( propVal{ iEmbComponentQ }( iC ), pth );
+            
+        propVal{ iEmbComponentQ }( iC ) = ...
+            setDefaultSubpath( propVal{ iEmbComponentQ }( iC ) );
+
+        propVal{ iEmbComponentQ }( iC ) = ...
+            setDefaultFile( propVal{ iEmbComponentQ }( iC ) );
+
     end
     mkdir( propVal{ iEmbComponentQ } )
 end

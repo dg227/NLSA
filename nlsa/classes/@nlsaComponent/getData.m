@@ -1,7 +1,7 @@
 function x = getData( obj, iB, iR, iC, iA )
 % GETDATA  Read data from an nlsaComponent object
 %
-% Modified 2019/11/17
+% Modified 2020/01/25
 
 % Validate input arguments, assign default values
 
@@ -64,7 +64,7 @@ if isscalar( iB ) && isscalar( iC )
 else
     partitionG = mergePartitions( partition );
     nS = sum( getBatchSize( partitionG, iBG ) );
-    nD = getDimension( obj( iC, 1 ) );
+    nD = getDataSpaceDimension( obj( iC, 1 ) );
     nDTot = sum( nD );
     x = zeros( nDTot, nS );
     iS1 = 1;

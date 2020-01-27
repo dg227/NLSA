@@ -55,23 +55,23 @@ switch experiment
         % Source data
         In.Src( 1 ).idxE      = 1 : 12; % delay embedding indices 
         In.Src( 1 ).nXB       = 1;  % samples to leave out before main interval
-        In.Src( 1 ).nXA       = 0;  % samples to leave out after main interval
-        In.Src( 1 ).fdOrder   = 1;         % finite-difference order 
-        In.Src( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Src( 1 ).embFormat = 'overlap'; % storage format for delay embedding
+        In.Src( 1 ).nXA       = 1;  % samples to leave out after main interval
+        In.Src( 1 ).fdOrder   = 2;        % finite-difference order 
+        In.Src( 1 ).fdType    = 'central'; % finite-difference type
+        In.Src( 1 ).embFormat = 'evector'; % storage format for delay embedding
         In.Src( 2 ).idxE      = 1 : 12; % delay embedding indices 
         In.Src( 2 ).nXB       = 1;  % samples to leave out before main interval
-        In.Src( 2 ).nXA       = 0;  % samples to leave out after main interval
-        In.Src( 2 ).fdOrder   = 1;         % finite-difference order 
-        In.Src( 2 ).fdType    = 'backward'; % finite-difference type
-        In.Src( 2 ).embFormat = 'overlap'; % storage format for delay embedding
+        In.Src( 2 ).nXA       = 1;  % samples to leave out after main interval
+        In.Src( 2 ).fdOrder   = 2;         % finite-difference order 
+        In.Src( 2 ).fdType    = 'central'; % finite-difference type
+        In.Src( 2 ).embFormat = 'evector'; % storage format for delay embedding
         % Target data
         In.Trg( 1 ).idxE      = 1 : 1;     % delay embedding indices 
         In.Trg( 1 ).nXB       = 1;  % samples to leave out before main interval
         In.Trg( 1 ).nXA       = 0;  % samples to leave out after main interval
         In.Trg( 1 ).fdOrder   = 1;         % finite-difference order 
         In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Trg( 1 ).embFormat = 'overlap'; % storage format for delay embedding
+        In.Trg( 1 ).embFormat = 'evector'; % storage format for delay embedding
         In.Res( 1 ).nB        = 1;   % partition batches
         In.Res( 1 ).nBRec     = 1; % batches for reconstructed data
         In.nBQ        = 3;   % number of batches for query partition 
@@ -351,7 +351,7 @@ for iC = In.nC : -1 : 1
     switch In.Src( iC ).embFormat
         case 'evector'
             if In.Src( iC ).fdOrder <= 0
-                embComponent( iC, 1 ) = nlsaEmbeddedComponent( ...
+                embComponent( iC, 1 ) = nlsaEmbeddedComponent_e( ...
                                     'idxE',    In.Src( iC ).idxE, ... 
                                     'nXB',     In.Src( iC ).nXB, ...
                                     'nXA',     In.Src( iC ).nXA );
