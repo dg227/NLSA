@@ -1,15 +1,17 @@
 function mergeData( obj, src, idxR )
 % MERGEDATA Merge data from a vector of nlsaComponent objects src to 
-% a scalar nlsaComponent object obj. obj and src must have the same dimension,
-% and the partition of obj must be a coarsening of the merged partitions of 
-% src. idxR is an optional input argument specifying the realizations in src
-% to be merged. 
+% a scalar nlsaRoot object obj with dimension and partition properties. 
+% obj and src must have the same dimension, and the partition of obj must be a 
+% coarsening of the merged partitions of src. idxR is an optional input 
+% argument specifying the realizations in src to be merged. 
 %
-% Modified 2020/01/25
+% Note: We need to implement an NLSA class to ensure compatibility of src. 
+%
+% Modified 2020/01/27
 
 %% VALIDATE INPUT ARGUMENTS
-if ~isa( src, 'nlsaComponent' ) || ~isrow( src )
-    error( 'Second argument must be a row vector of nlsaComponent objects.' )
+if ~isrow( src )
+    error( 'Second argument must be a row vector.' )
 end
 nD = getDataSpaceDimension( obj );    
 nR = size( src, 2 );

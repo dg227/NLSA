@@ -1,7 +1,7 @@
 function computeDensityDelayEmbedding( obj, iProcCD, nProcCD, iProcR, nProcR )
 % COMPUTEDENSITYDELAYEMBEDDING Lag-embed the density in an nlsaModel_den object
 %
-% Modified 2019/11/10
+% Modified 2020/01/28
 
 if nargin == 1
     iProcCD = 1;
@@ -10,7 +10,10 @@ if nargin == 1
     nProcR = 1;
 end
 
-cmp = getDensityKernel( obj );
+cmp = getDensityKernelQ( obj );
+if isempty( cmp )
+    cmp = getDensityKernel( obj );
+end
 emb = getEmbDensity( obj );
 [ nCD, nR ] = size( emb );
 
@@ -21,6 +24,6 @@ iRLim = getBatchLimit( pPartitionR, iProcR );
 
 for iR = iRLim( 1 ) : iRLim( 2 )
     for iC = iCDLim( 1 ) : iCDLim( 2 )
-        computeData( emb( iC, iR ), cmp( iC ), iR )
+        computeData( emb( iC, iR ), cmp( iC, : ), iR )
     end
 end

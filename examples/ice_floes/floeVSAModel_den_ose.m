@@ -74,8 +74,8 @@ switch experiment
         In.Trg( 1 ).embFormat = 'evector'; % storage format for delay embedding
         In.Res( 1 ).nB        = 1;   % partition batches
         In.Res( 1 ).nBRec     = 1; % batches for reconstructed data
-        In.nBQ        = 3;   % number of batches for query partition 
-        In.nBT        = 7;   % number of batches for test partition 
+        In.nBQ        = 0;   % number of batches for query partition 
+        In.nBT        = 0;   % number of batches for test partition 
         In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
         In.lDist      = 'l2';   % local distance
         In.tol        = 0;      % 0 distance threshold (for cone kernel)
@@ -99,7 +99,7 @@ switch experiment
         In.denND       = 5;             % manifold dimension 
         In.denLDist    = 'l2';          % local distance function 
         In.denBeta     = -1 / In.denND; % density exponent 
-        In.denNN       = 100;            % nearest neighbors 
+        In.denNN       = 500;            % nearest neighbors 
         In.denZeta     = 0;             % cone kernel parameter 
         In.denConeAlpha= 0;             % cone kernel velocity exponent 
         In.denEpsilon  = 1;             % kernel bandwidth

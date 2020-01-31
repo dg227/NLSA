@@ -106,6 +106,10 @@ disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
 
 disp( 'Density' ); computeDensity( model );
 
+% THe next step is only needed if a query partition was used for the density 
+% data.
+disp( 'Density splitting' ); computeDensitySplitting( model );
+
 disp( 'Density delay embedding' ); computeDensityDelayEmbedding( model );
 
 fprintf( 'Pairwise distances, %i/%i\n', iProc, nProc ); 

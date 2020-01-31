@@ -3,7 +3,7 @@ function computeDenPairwiseDistances( obj, iProc, nProc, ...
 % COMPUTEDENPAIRWISEDISTANCES Compute pairwise distances for the density data
 % of nlsaModel_den objects
 % 
-% Modified 2019/11/24
+% Modified 2020/01/29
 
 if nargin == 1
     iProc = 1;
@@ -40,7 +40,11 @@ for iD = iDLim( 1 ) : iDLim( 2 )
         iC = iD;
     end
     dDataQ = nlsaLocalDistanceData( 'component', embComponentQ( iC, : ) );
-    dDataT = nlsaLocalDistanceData( 'component', embComponentT( iC, : ) );
+    if ~isempty( embComponentT )
+        dDataT = nlsaLocalDistanceData( 'component', embComponentT( iC, : ) );
+    else
+        dDataT = nlsaLocalDistanceData.empty;
+    end
     computePairwiseDistances( pDistance( iD ), dDataQ, dDataT, ...
                               'batch',   iBLim( 1 ) : iBLim( 2 ), ...
                               'logPath', getDistancePath( pDistance( iD ) ), ...

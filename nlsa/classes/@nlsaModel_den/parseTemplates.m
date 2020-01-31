@@ -77,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/01/25 
+%   Modified 2020/01/28 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -421,17 +421,18 @@ for i = 1 : 2 : nargin
     end
 end 
 
+for iProp = 1 : nProp
+    if strcmp( propName{ iProp }, 'denEmbComponentQ' )
+        iDenEmbComponentQ = iProp;
+        break
+    end
+end
+
 % If query partition was provided create an upated denEmbComponentQ object; 
 % otherwise set to original embComponent
-if isSet
 
+if isSet
     % Create "query" embedded components for density data
-    for iProp = 1 : nProp
-        if strcmp( propName{ iProp }, 'denEmbComponentQ' )
-            iDenEmbComponentQ = iProp;
-            break
-        end
-    end
 
     if isa( propVal{ iDenEmbComponent }, 'nlsaEmbeddedComponent_xi' )
         propVal{ iDenEmbComponentQ }( nCD, 1 ) = nlsaEmbeddedComponent_xi_e();
@@ -609,6 +610,33 @@ for iD = nDen : -1 : 1
     propVal{ iDen }( iD ) = setPath( propVal{ iDen }( iD ), modelPathDL );
     mkdir( propVal{ iDen }( iD ) )
     propVal{ iDen }( iD ) = setDefaultFile( propVal{ iDen }( iD ) );
+end
+
+%% KERNEL DENSITY ESTIMATOR -- QUERY PARTITION
+if ifProp( iDenEmbComponentQ );
+    for iProp = 1 : nProp
+        if strcmp( propName{ iProp }, 'kernelDensityQ' )
+            iDenQ = iProp;
+            break
+        end
+    end
+    for iR = nR : -1 : 1
+        for iD = nDen : -1 : 1
+            propVal{ iDenQ }( iD, iR ) = nlsaComponent( ...
+                 'partition', denPartition( iR ), ...  
+                 'componentTag', getTag( propVal{ iDen }( iD ) ), ...
+                 'realizationTag', getRealizationTag( propVal{ iDenEmbComponent }( 1, iR ) ) );
+            tag  = getTag( propVal{ iDenQ }( iD, iR ) );
+            pth  = fullfile( getPath( propVal{ iDen }( iD ) ), ...
+                             strjoin_e( tag, '_' ) );
+            propVal{ iDenQ }( iD, iR ) = setPath( propVal{ iDenQ }( iD, iR ), ...
+                                                  pth );
+            propVal{ iDenQ }( iD, iR ) = setDefaultFile( propVal{ iDenQ }( iD, iR ) ); 
+            propVal{ iDenQ }( iD, iR ) = setDefaultSubpath( propVal{ iDenQ }( iD, iR ) ); 
+            mkdir( propVal{ iDenQ }( iD, iR ) )
+        end
+    end
+    ifProp( iDenQ ) = true;
 end
 
 %% DELAY-EMBEDDED DENSITY DATA
@@ -792,6 +820,10 @@ if isSet
                          strjoin_e( tag, '_' ) );
         propVal{ iEmbDensityT }( iD ) = ...        
             setPath( propVal{ iEmbDensityT }( iD ), pth );
+        propVal{ iEmbDensityT }( iD ) = setDefaultSubpath( ...
+            propVal{ iEmbDensityT }( iD ) ); 
+        propVal{ iEmbDensityT }( iD ) = setDefaultFile( ...
+            propVal{ iEmbDensityT }( iD ) );
     end
     mkdir( propVal{ iEmbDensityT } )
 else
@@ -855,6 +887,10 @@ if isSet
                          strjoin_e( tag, '_' ) );
         propVal{ iEmbDensityQ }( iD ) = ...        
             setPath( propVal{ iEmbDensityQ }( iD ), pth );
+        propVal{ iEmbDensityQ }( iD ) = setDefaultSubpath( ...
+            propVal{ iEmbDensityQ }( iD ) ); 
+        propVal{ iEmbDensityQ }( iD ) = setDefaultFile( ...
+            propVal{ iEmbDensityQ }( iD ) );
     end
     mkdir( propVal{ iEmbDensityQ } )
 else

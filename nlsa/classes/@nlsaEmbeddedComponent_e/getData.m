@@ -1,4 +1,4 @@
-function x = getData( obj, iB, varargin )
+function x = getData( obj, varargin )
 % GETDATA  Read data from nlsaEmbeddedComponent_e objects.
 %
 % This function can be called using either of the following formats:
@@ -15,12 +15,12 @@ function x = getData( obj, iB, varargin )
 %    string outFormat. outFormat can take the velues 'evector' or 'native'. 
 %    'overlap' is not currently supported. 
 %
-% Modified 2020/01/25
+% Modified 2020/01/29
 
-if nargin == 3 && ischar( varargin{ 1 } )
+if nargin == 3 && ispsi( varargin{ 1 } ) && ischar( varargin{ 2 } )
     % Call method with specified output format
-    x = getData_fmt( obj, iB, varargin{ 1 } );
+    x = getData_fmt( obj, varargin{ 1 }, varargin{ 2 } );
 else
     % Call method with standard calling syntax
-    x = getData@nlsaComponent( obj, iB, varargin{ : } );
+    x = getData@nlsaComponent( obj, varargin{ : } );
 end 

@@ -91,6 +91,9 @@ classdef nlsaModel_den < nlsaModel
 %      additionally have a property kNN specifying the number of nearest
 %      neighbors used to compute the variable bandwidth function.   
 %  
+%   'kernelDensityQ': An array of nlsaComponent objets storing the density data
+%      in the original partition if embComponentQ is non-empty. 
+%   
 %   'embKernelDensity': An [ nC nR ]-sized array of nlsaEmbeddedComponent
 %      objects storing the density estimates partioned across the batches
 %      of the source data, and (potentially) delay embedded. In particular,
@@ -173,9 +176,10 @@ classdef nlsaModel_den < nlsaModel
 %
 %   Contact: dimitris@cims.nyu.edu
 %      
-%   Modified 2019/11/23
+%   Modified 2019/11/28
 
     %% PROPERTIES
+
     properties
         denComponent       = nlsaComponent();
         denEmbComponent    = nlsaEmbeddedComponent_e();
@@ -183,6 +187,7 @@ classdef nlsaModel_den < nlsaModel
         denEmbComponentQ   = nlsaEmbeddedComponent_e.empty;
         denPDistance       = nlsaPairwiseDistance();
         density            = nlsaKernelDensity_fb();
+        densityQ           = nlsaComponent.empty; 
         embDensity         = nlsaEmbeddedComponent_e(); 
         embDensityT        = nlsaEmbeddedComponent_e.empty;
         embDensityQ        = nlsaEmbeddedComponent_e.empty;
@@ -210,6 +215,7 @@ classdef nlsaModel_den < nlsaModel
             iDenEmbComponentQ = [];
             iDenPDistance     = [];
             iDensity          = [];
+            iDensityQ         = [];
             iEmbDensity       = [];
             iEmbDensityT      = [];
             iEmbDensityQ      = [];
@@ -233,6 +239,9 @@ classdef nlsaModel_den < nlsaModel
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'kernelDensity'
                         iDensity = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'kernelDensityQ'
+                        iDensityQ = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'embKernelDensity'
                         iEmbDensity = i + 1;
@@ -396,6 +405,27 @@ classdef nlsaModel_den < nlsaModel
                 obj.density = nlsaKernelDensity_fb( ...
                                  'partition', partitionQ );
             end
+
+            % Kernel density (query)
+            if ~isempty( iDensityQ )
+                if isempty( obj.denEmbComponentQ )
+                    error( 'densityQ property can only be set if denEmbComponentQ is set.' )
+                end
+                if size( varargin{ iDensityQ }, 1 ) ~= size( obj.denPDistance )
+                   error( 'Incompatible number of components in densityQ property' )
+               end 
+                if any( getDataSpaceDimension( varargin{ iDensityQ }( :, 1 ) ) ~= 1 ) 
+                    error( 'Data space dimension of densityQ property must be equal to 1.' )
+                end
+                if any( ~isequal( partition, getPartition( ...
+                    varargin{ iDensityQ }( 1, : ) ) ) )
+                   error( 'Incompatible partition for densityQ property.' )
+               end
+               obj.densityQ = varargin{ iDensityQ };
+            elseif ~isempty( obj.denEmbComponentQ )
+               % This case needs implementation
+               obj.densityQ = nlsaComponent();
+            end
             
             % Delay-embedded kernel density
             if ~isempty( iEmbDensity )
@@ -477,6 +507,7 @@ classdef nlsaModel_den < nlsaModel
                          'denEmbComponentQ' ...
                          'denPairwiseDistance' ...
                          'kernelDensity' ...
+                         'kernelDensityQ' ...
                          'embKernelDensity' ...
                          'embKernelDensityT' ...
                          'embKernelDensityQ' } ];
