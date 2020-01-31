@@ -1,4 +1,4 @@
-function [ model, In, Out ] = floeNLSAModel_den_ose( experiment )
+function [ model, In, Out ] = floeVSAModel_den_ose( experiment )
 %% FLOEVSAMODEL_DEN_OSE NLSA model with kernel density estimation and out-of-sample extension (OSE) for sea ice data
 % 
 %  In and Out are data structures containing the in-sample and out-of-sample model parameters, respectively
@@ -55,26 +55,27 @@ switch experiment
         % Source data
         In.Src( 1 ).idxE      = 1 : 12; % delay embedding indices 
         In.Src( 1 ).nXB       = 1;  % samples to leave out before main interval
-        In.Src( 1 ).nXA       = 0;  % samples to leave out after main interval
-        In.Src( 1 ).fdOrder   = 1;         % finite-difference order 
-        In.Src( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Src( 1 ).embFormat = 'overlap'; % storage format for delay embedding
+        In.Src( 1 ).nXA       = 1;  % samples to leave out after main interval
+        In.Src( 1 ).fdOrder   = 2;        % finite-difference order 
+        In.Src( 1 ).fdType    = 'central'; % finite-difference type
+        In.Src( 1 ).embFormat = 'evector'; % storage format for delay embedding
         In.Src( 2 ).idxE      = 1 : 12; % delay embedding indices 
         In.Src( 2 ).nXB       = 1;  % samples to leave out before main interval
-        In.Src( 2 ).nXA       = 0;  % samples to leave out after main interval
-        In.Src( 2 ).fdOrder   = 1;         % finite-difference order 
-        In.Src( 2 ).fdType    = 'backward'; % finite-difference type
-        In.Src( 2 ).embFormat = 'overlap'; % storage format for delay embedding
+        In.Src( 2 ).nXA       = 1;  % samples to leave out after main interval
+        In.Src( 2 ).fdOrder   = 2;         % finite-difference order 
+        In.Src( 2 ).fdType    = 'central'; % finite-difference type
+        In.Src( 2 ).embFormat = 'evector'; % storage format for delay embedding
         % Target data
         In.Trg( 1 ).idxE      = 1 : 1;     % delay embedding indices 
         In.Trg( 1 ).nXB       = 1;  % samples to leave out before main interval
         In.Trg( 1 ).nXA       = 0;  % samples to leave out after main interval
         In.Trg( 1 ).fdOrder   = 1;         % finite-difference order 
         In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Trg( 1 ).embFormat = 'overlap'; % storage format for delay embedding
+        In.Trg( 1 ).embFormat = 'evector'; % storage format for delay embedding
         In.Res( 1 ).nB        = 1;   % partition batches
         In.Res( 1 ).nBRec     = 1; % batches for reconstructed data
-        In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
+        In.nBQ        = 0;   % number of batches for query partition 
+        In.nBT        = 0;   % number of batches for test partition 
         In.nN         = 0;   % nearest neighbors; defaults to max. value if 0
         In.lDist      = 'l2';   % local distance
         In.tol        = 0;      % 0 distance threshold (for cone kernel)
@@ -98,7 +99,7 @@ switch experiment
         In.denND       = 5;             % manifold dimension 
         In.denLDist    = 'l2';          % local distance function 
         In.denBeta     = -1 / In.denND; % density exponent 
-        In.denNN       = 100;            % nearest neighbors 
+        In.denNN       = 500;            % nearest neighbors 
         In.denZeta     = 0;             % cone kernel parameter 
         In.denConeAlpha= 0;             % cone kernel velocity exponent 
         In.denEpsilon  = 1;             % kernel bandwidth
@@ -297,7 +298,7 @@ for iRG = 1 : In.nRG
                           tStr{ iR } );
                                                
         tagC = In.Src( iC ).field;
-    
+
         srcComponent( iC, iRG ) = nlsaComponent( ...
             'partition',      partitionR( iR ), ...
             'dimension',      In.Src( iC ).nD, ...
@@ -327,13 +328,30 @@ for iRG = 1 : In.nRG
     end
 end
 
+% Create test partition
+if In.nBT > 0
+    embPartitionT = coarsenPartition( mergePartitions( embPartition ), In.nBT );
+    embeddingPartitionT = { 'embeddingPartitionT', embPartitionT, ...
+                            'denEmbeddingPartitionT', embPartitionT };
+else
+    embeddingPartitionT = {};
+end
+
+% Create query partition
+if In.nBQ > 0
+    embPartitionQ = coarsenPartition( mergePartitions( embPartition ), In.nBQ );
+    embeddingPartitionQ = { 'embeddingPartitionQ', embPartitionQ, ...
+                            'denEmbeddingPartitionQ', embPartitionQ };
+else
+    embeddingPartitionQ = {};
+end
 %% EMBEDDING TEMPLATES FOR IN-SAMPLE DATA
 % Source components
 for iC = In.nC : -1 : 1
     switch In.Src( iC ).embFormat
         case 'evector'
             if In.Src( iC ).fdOrder <= 0
-                embComponent( iC, 1 ) = nlsaEmbeddedComponent( ...
+                embComponent( iC, 1 ) = nlsaEmbeddedComponent_e( ...
                                     'idxE',    In.Src( iC ).idxE, ... 
                                     'nXB',     In.Src( iC ).nXB, ...
                                     'nXA',     In.Src( iC ).nXA );
@@ -825,6 +843,8 @@ model = nlsaModel_den_ose( ...
    'embeddingTemplate',               embComponent, ...
    'targetEmbeddingTemplate',         trgEmbComponent, ...
    'embeddingPartition',              embPartition, ...
+   embeddingPartitionT{ : }, ...
+   embeddingPartitionQ{ : }, ...
    'denPairwiseDistanceTemplate',     denPDist, ...
    'kernelDensityTemplate',           den, ...
    'pairwiseDistanceTemplate',        pDist, ...

@@ -1,5 +1,5 @@
 function partition = getOutEmbPartition( obj )
-% GETOSEEMBPARTITION Get partition of the embedded OS data of an 
+% GETOUTEMBPARTITION Get partition of the embedded OS data of an 
 % nlsaModel_ose object
 %
 % Modified 2014/05/21

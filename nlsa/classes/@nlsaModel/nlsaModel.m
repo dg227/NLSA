@@ -253,7 +253,7 @@ classdef nlsaModel < nlsaModel_base
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2015/12/08 
+%   Modified 2019/11/22
 
     %% PROPERTIES
     properties
@@ -320,8 +320,10 @@ classdef nlsaModel < nlsaModel_base
 
             obj = obj@nlsaModel_base( varargin{ ifParentArg } );
 
-            partition    = getEmbPartition( obj ); 
-            nSETot       = getNEmbSample( obj ); % total no. of samples in embedding space
+            partition       = getEmbPartition( obj ); 
+            partitionT      = getEmbPartitionT( obj );
+            partitionQ      = getEmbPartitionQ( obj );
+            nSETot          = getNEmbSample( obj ); 
             trgEmbComponent = getTrgEmbComponent( obj ); 
 
             % Pairwise distance
@@ -337,8 +339,10 @@ classdef nlsaModel < nlsaModel_base
                 end
                 obj.pDistance = varargin{ iPDistance };
             else
-                obj.pDistance = nlsaPairwiseDistance_gl( 'partition', partition, ...
-                                                      'nearestNeighbors', round( nSETot / 10 ) ); 
+                obj.pDistance = nlsaPairwiseDistance_gl( ...
+                    'partition',        partitionQ, ...
+                    'partitionT',       partitionT, ...
+                    'nearestNeighbors', round( nSETot / 10 ) ); 
             end
 
             % Symmetric distance
@@ -354,8 +358,9 @@ classdef nlsaModel < nlsaModel_base
                 end
                 obj.sDistance = varargin{ iSDistance };
             else
-                obj.sDistance = nlsaSymmetricDistance_gl( 'partition', partition, ...
-                                                      'nearestNeighbors', getNNeighbors( obj.pDistance ) ); 
+                obj.sDistance = nlsaSymmetricDistance_gl( ...
+                    'partition', partitionQ, ...
+                    'nearestNeighbors', getNNeighbors( obj.pDistance ) ); 
             end
 
             % Diffusion operator
@@ -367,8 +372,10 @@ classdef nlsaModel < nlsaModel_base
                 end
                 obj.diffOp = varargin{ iDiffOp };
             else
-                obj.diffOp = nlsaDiffusionOperator_gl( 'partition', partition, ...
-                                                    'nEigenfunction', min( 10, nSETot ) ); 
+                obj.diffOp = nlsaDiffusionOperator_gl( ...
+                    'partition', partition, ...
+                    'partitionT', partitionQ, ...
+                    'nEigenfunction', min( 10, nSETot ) ); 
             end
 
             % Projected component

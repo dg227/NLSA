@@ -1,7 +1,7 @@
-classdef nlsaComponent
-%NLSACOMPONENT  Class definition and constructor of NLSA component
+classdef nlsaComponent < nlsaRoot
+%%NLSACOMPONENT  Class definition and constructor of NLSA data component
 %
-% Modified 2015/08/31    
+% Modified 2019/11/13    
 
     properties
         nD        = 1;                         % dimension
@@ -15,6 +15,8 @@ classdef nlsaComponent
 
     methods
 
+
+        %%CLASS CONSTRUCTOR
         function obj = nlsaComponent( varargin )
             % Return default object if no arguments
             if nargin == 0
@@ -102,5 +104,26 @@ classdef nlsaComponent
                 end
             end
         end
+    
+        %% SET/GET METHODS THAT REQUIRE SPECIFIC IMPLEMENTATION
+        function obj = set.partition( obj, partition )
+            % Validate input arguments
+            if ~isa( partition, 'nlsaPartition' ) || ~isscalar( partition )
+                error( 'Partition must be a scalar nlsaPartition object' )
+            end
+
+            % Quick return if the partition to be assigned is the same as the 
+            % existing partition
+            if isequal( obj.partition, partition )
+                return
+            end
+
+            obj.partition = partition;
+            % Reset fileList since partition has changed 
+            obj.file = nlsaFilelist( 'nFile', getNBatch( partition ) );
+
+            obj = setPartition( obj, partition );
+        end
+
     end
 end    

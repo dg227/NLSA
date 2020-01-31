@@ -11,6 +11,6 @@ switch getMode( obj )
     case 'implicit'
         outFormat = 'overlap';
 end
-
 D.x    = getData( comp( iC, iR ), iB, outFormat );
 D.idxE = getEmbeddingIndices( comp( iC, iR ) );
+

@@ -2,7 +2,7 @@ function phi = computeEigenfunctions( obj, diffOp, varargin )
 % COMPUTEEIGENFUNCTIONS Perform out-of-sample extension of the 
 % eigenfunctions of a diffusion operator diffOp
 % 
-% Modified 2016/01/05
+% Modified 2020/01/30
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
@@ -10,8 +10,8 @@ if ~isa( diffOp, 'nlsaDiffusionOperator' )
     error( 'Second argument must be an nlsaDiffusionOperator object' )
 end
 partition  = getPartitionTest( obj );
-if any( ~isequal( partition, getPartition( diffOp ) ) )
-    error( 'Incompatible partitions for in-sample data' )
+if getNTotalSample( partition ) ~= getNTotalSample( getPartition( diffOp ) ) 
+    error( 'Incompatible number of test samples' )
 end
 partitionO = getPartition( obj );
 nPhiO      = getNEigenfunction( obj );

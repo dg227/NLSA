@@ -161,7 +161,7 @@ classdef nlsaModel_ose < nlsaModel
 %
 %  Contact: dimitris@cims.nyu.edu
 % 
-%  Modified 2018/07/01
+%  Modified 2019/11/24
 
     %% PROPERTIES
     properties
@@ -233,7 +233,7 @@ classdef nlsaModel_ose < nlsaModel
             obj = obj@nlsaModel( varargin{ ifParentArg } ); 
 
             
-            partitionT = getEmbPartition( obj );
+            partitionT = getEmbPartitionQ( obj );
             pDistance = getPairwiseDistance( obj );
             nNT = getNNeighbors( pDistance );
 

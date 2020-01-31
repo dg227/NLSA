@@ -2,15 +2,15 @@ function computeOsePairwiseDistances( obj, iProc, nProc, varargin )
 % COMPUTEOSEPAIRWISEDISTANCES Compute OSE pairwise distances of a 
 % nlsaModel_den_ose object 
 % 
-% Modified 2018/07/08
+% Modified 2020/01/30
 
 if nargin == 1
     iProc = 1;
     nProc = 1;
 end
 
-dData  = nlsaLocalDistanceData_scl( 'component', getEmbComponent( obj ), ...
-                                    'sclComponent', getEmbDensity( obj ) ); 
+dData  = nlsaLocalDistanceData_scl( 'component', getEmbComponentQ( obj ), ...
+                                    'sclComponent', getEmbDensityQ( obj ) ); 
 dOData = nlsaLocalDistanceData_scl( 'component', getOutEmbComponent( obj ), ...
                                     'sclComponent', getOseEmbDensity( obj ) ); 
 pDistance = getOsePairwiseDistance( obj );

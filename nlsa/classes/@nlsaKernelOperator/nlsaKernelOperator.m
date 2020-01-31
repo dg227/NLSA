@@ -2,13 +2,13 @@ classdef nlsaKernelOperator
 %NLSAKERNELOPERATOR Class definition and constructor of generic kernel 
 % operators
 %  
-% Modified 2016/01/25    
+% Modified 2019/11/21
 
     %% PROPERTIES
     properties
         nEig       = 1;
-        partition  = nlsaPartition();   % query and out-of-sample data
-        partitionT = []; % test and in-sample data, reverts to partition if empty
+        partition  = nlsaPartition();     % query data
+        partitionT = nlsaPartition.empty; % test data
         path       = pwd;
         tag        = '';
     end

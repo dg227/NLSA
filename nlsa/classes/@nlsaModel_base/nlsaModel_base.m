@@ -60,7 +60,20 @@ classdef nlsaModel_base
 %      from nlsaEmbaddedComponent_e and nlsaEmbeddedComponent_o. These classes
 %      provide storage for the system's phase space velocity estimated 
 %      through finite differences.    
-%      
+%  
+%   'embComponentT': An [ nC 1 ]-sized array (column vector)  of 
+%      nlsaEmbeddedComponent_e  objects, storing a coarsened partition of the 
+%      embedded data. embComponenT can be used to accelerate the batchwise 
+%      pairwise distance calculation along the column (test) dimension. If not
+%      set by the user, embComponentT is set by default to empty, and is 
+%      ignored by methods of the nlsaModel_base class and its children.
+% 
+%   'embComponentQ': As in 'embComponentQ', but an [ nC 1 ]-sized array of
+%      nlsaEmbeddedComponent_e objects to accelerate pairwise distance 
+%      calculation along the row (query) dimemsion. If not set by the user,
+%      embComponentQ is set by default to empty, and is ignored by methods of
+%      the nlsaModel_base class and its children. 
+%
 %   'trgComponent': An [ nCT nR ]-sized array of nlsaComponent objects 
 %      specifying the target data. nCT is the number of target components. 
 %      the number of realizations nR must be equal to the number of
@@ -90,7 +103,10 @@ classdef nlsaModel_base
 %     srcComponent( iC, iR ) for fixed iR across different ( iC, iCT ).
 %
 %   Similar conditions apply for the delay-embedded data in embComponent and
-%   trgEmbeddedComponent. These partitioning requirements are enforced 
+%   trgEmbeddedComponent, as well as the "query" and "test" data in 
+%   embComponentQ and embComponentT. In addition, each partition in 
+%   embComponentQ/embComponentT must be a coarsening of the partitions in a
+%   row of embComponent. These partitioning requirements are enforced 
 %   automatically when the constructor is called in template mode. 
 %
 %   Below is a summary of selected methods implemented by this class. These
@@ -99,20 +115,34 @@ classdef nlsaModel_base
 %   - computeDelayEmbedding: Performs Takens delay embedding on the source
 %     data in srcComponent; stores the results in embComponent
 %
+%   - computeDelayEmbeddingQ: Merges the data in embComponent to produce the
+%     query data in embComponentQ.
+%
+%   - computeDelayEmbeddingT: Merges the data in embComponent to produce the
+%     test data in embComponentT.
+%
 %   - computeTrgDelayEmbedding: Performs delay embedding on the target data
 %     in trgComponent; stores the results in trgEmbComponent.
 %
 %   - computeVelocity: Computes the phase space velocity for the data in 
 %     embComponent
 %
+%   - computeVelocityQ: Merges the velocity data in embComponent to produce the
+%     query velocity data in embComponentQ.
+%
+%   - computeVelocityT: Merges the velocity data in embComponent to produce the
+%     test velocity data in embComponentT.
+%
 %   - computeTrgVelocity: Computes the phase space velocity for the data in
 %     trgEmbComponent
 %
-%   These methods can be executed in the sequence listed above. 
+%   These methods can be executed in the sequence listed above. The Velocity
+%   methods require that the embComponent or trgEmbcomponent are of 
+%   nlsaEmbeddedComponent_xi class. 
 %       
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2018/07/06
+%   Modified 2020/01/25
 
     properties
         srcTime         = { 1 };
@@ -120,6 +150,8 @@ classdef nlsaModel_base
         tFormat         = '';
         srcComponent    = nlsaComponent();
         embComponent    = nlsaEmbeddedComponent_e();
+        embComponentT   = nlsaEmbeddedComponent_e.empty;
+        embComponentQ   = nlsaEmbeddedComponent_e.empty;
         trgComponent    = nlsaComponent();
         trgEmbComponent = nlsaEmbeddedComponent_e();
     end
@@ -142,15 +174,17 @@ classdef nlsaModel_base
             % Parse input arguments
             iSrcTime         = [];
             iTrgTime         = [];
-            iTFormat      = [];
+            iTFormat         = [];
             iSrcComponent    = [];
             iEmbComponent    = [];
+            iEmbComponentT   = [];
+            iEmbComponentQ   = [];
             iTrgComponent    = [];
             iTrgEmbComponent = [];
             iTag             = [];
 
             for i = 1 : 2 : nargin
-                switch varargin{ i }
+               switch varargin{ i }
                     case 'srcTime'
                         iSrcTime = i + 1;
                     case 'trgTime'
@@ -161,6 +195,10 @@ classdef nlsaModel_base
                         iSrcComponent = i + 1;
                     case 'embComponent'
                         iEmbComponent = i + 1;
+                    case 'embComponentT'
+                        iEmbComponentT = i + 1;
+                    case 'embComponentQ'
+                        iEmbComponentQ = i + 1;
                     case 'trgComponent'
                         iTrgComponent = i + 1;
                     case 'trgEmbComponent'
@@ -197,12 +235,14 @@ classdef nlsaModel_base
            
             % Time for source data
             if ~isempty( iSrcTime )
-                if isvector( varargin{ iSrcTime } ) && ~iscell( varargin{ iSrcTime } )
+                if isvector( varargin{ iSrcTime } ) ...
+                      && ~iscell( varargin{ iSrcTime } )
                     obj.srcTime = cell( 1, nR );
                     for iR = 1 : nR
                         obj.srcTime{ iR } = varargin{ iSrcTime };
                     end
-                elseif   isvector( varargin{ iSrcTime } ) && iscell( varargin{ iSrcTime } ) ...
+                elseif isvector( varargin{ iSrcTime } ) ...
+                      && iscell( varargin{ iSrcTime } ) ...
                       && numel( varargin{ iSrcTime } ) == nR
                     obj.srcTime = varargin{ iSrcTime };
                 else
@@ -255,9 +295,12 @@ classdef nlsaModel_base
             % Embedded components
             % Check input array class and size
             if ~isempty( iEmbComponent )
-                if ~isa( varargin{ iEmbComponent }, 'nlsaEmbeddedComponent' )
+                if ~isa( varargin{ iEmbComponent }, ... 
+                         'nlsaEmbeddedComponent' ) ...
+                    || ~ismatrix( varargin{ iEmbComponent } )
+
                     error( [ msgId 'invalidEmb' ], ...
-                           'Embedded data must be specified as an array of nlsaEmbeddedComponent objects.' )
+                           'Embedded data must be specified as a matrix of nlsaEmbeddedComponent objects.' )
                 end
                 [ nCE, nRE ] = size( varargin{ iEmbComponent } ); 
                 if nCE ~= nC || nRE ~= nR 
@@ -268,9 +311,11 @@ classdef nlsaModel_base
                     error( [ msgId 'invalidEmb' ], msgStr )
                 end
                 obj.embComponent = varargin{ iEmbComponent };
+            else
+                obj.embComponent = obj.srcComponent;
             end
-            % Check constistency of physical space dimension, embedding indices dimension, and 
-            % number of samples
+            % Check constistency of physical space dimension, ...
+            % embedding indices dimension, and number of samples
             nSRE = getNSample( obj.embComponent( 1, : ) );
             [ ifC, Test1 ] = isCompatible( obj.embComponent );
             if ~ifC
@@ -278,17 +323,73 @@ classdef nlsaModel_base
                 disp( Test1 )
                 error( [ msgId 'incompatibleEmb' ], msgStr )
             end
+            partition = getPartition( obj.embComponent( 1, : ) );
                         
+            % Embedded components (test)
+            if ~isempty( iEmbComponentT )
+                if ~isa( varargin{ iEmbComponentT }, ...
+                         'nlsaEmbeddedComponent_e' ) ...
+                    || ~iscolumn( varargin{ iEmbComponentT } )
+
+                    error( [ msgId 'invalidEmbT' ], ...
+                           'Embedded test data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
+                end
+                nCET = size( varargin{ iEmbComponentT }, 1 ); 
+                if nCET ~= nC 
+                    msgStr = sprintf( [ 'Invalid row dimension of embedded component array: \n' ...
+                                        'Expecting [%i] \n' ...
+                                        'Received  [%i]' ], ...
+                                      nC, nCET );
+                    error( [ msgId 'invalidEmbT' ], msgStr )
+                end
+                obj.embComponentT = varargin{ iEmbComponentT };
+                partitionT = getPartition( obj.embComponentT( 1 ) );
+                if ~isFiner( partition, partitionT )
+                    error( 'Test partition for the embedded data must be a refinement of the partition for the embedded density data' )
+                end
+                nSRET = getNSample( obj.embComponentT( 1 ) );
+                if sum( nSRE ) ~= sum( nSRET )
+                    error( 'Inconsistent number of test embedded samples' )
+                end
+            end
+
+            % Embedded components (query)
+            if ~isempty( iEmbComponentQ )
+                if ~isa( varargin{ iEmbComponentQ }, ...
+                         'nlsaEmbeddedComponent_e' ) ...
+                    || ~iscolumn( varargin{ iEmbComponentQ } )
+
+                    error( [ msgId 'invalidEmbQ' ], ...
+                           'Embedded query data must be specified as a column vector of nlsaEmbeddedComponent objects.' )
+                end
+                nCEQ = size( varargin{ iEmbComponentQ }, 1 ); 
+                if nCEQ ~= nC 
+                    msgStr = sprintf( [ 'Invalid row dimension of embedded component array: \n' ...
+                                        'Expecting [%i] \n' ...
+                                        'Received  [%i]' ], ...
+                                      nC, nCEQ );
+                    error( [ msgId 'invalidEmbQ' ], msgStr )
+                end
+                obj.embComponentQ = varargin{ iEmbComponentQ };
+                partitionQ = getPartition( obj.embComponentQ( 1 ) );
+                if ~isFiner( partition, partitionQ )
+                    error( 'Query partition for the embedded data must be a refinement of the partition for the embedded density data' )
+                end
+            end
+
+
+            
             % Target components 
             if ~isempty( iTrgComponent )
                 if ~isa( varargin{ iTrgComponent }, 'nlsaComponent' )
                     error( [ msgId 'invalidTrg' ], ...
                            'Target data must be specified as an array of nlsaComponent objects.' )
                 end
-                [ ifC, Test1, Test2 ] = isCompatible( varargin{ iTrgComponent }, ...
-                                                      varargin{ iSrcComponent }, ...
-                                                      'testComponents', false, ...
-                                                      'testSamples', true );
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                    varargin{ iTrgComponent }, ...
+                    varargin{ iSrcComponent }, ...
+                    'testComponents', false, ...
+                    'testSamples', true );
                 if ~ifC
                     disp( Test1 )
                     disp( Test2 )
@@ -388,6 +489,8 @@ classdef nlsaModel_base
                        'srcTime' ...
                        'tFormat' ...
                        'embComponent' ...
+                       'embComponentT' ...
+                       'embComponentQ' ...
                        'trgComponent' ...
                        'trgTime' ...
                        'trgEmbComponent' };

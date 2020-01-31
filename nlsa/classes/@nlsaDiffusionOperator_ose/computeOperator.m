@@ -3,7 +3,7 @@ function [ pVal, pInd ] = computeOperator( obj, distO, diffOp, varargin )
 % query (out-of-sample) distance values. diffOp is the in-sample diffusion
 % operator.
 % 
-% Modified 2019/07/13
+% Modified 2020/01/30
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
@@ -18,8 +18,8 @@ partition  = getPartitionTest( obj ); % partition for in-sample data
 if any( ~isequal( partitionO, getPartition( distO ) ) )
     error( 'Incompatible partition of query samples' )
 end
-if any( ~isequal( partition, getPartition( diffOp ) ) )
-    error( 'Incompatible partition of test samples' )
+if getNTotalSample( partition ) ~= getNTotalSample( getPartition( diffOp ) ) 
+    error( 'Incompatible number of test samples' )
 end
 nN  = getNNeighbors( obj );
 if nN > getNNeighbors( distO )

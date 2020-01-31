@@ -1,7 +1,7 @@
 classdef nlsaEmbeddedComponent < nlsaComponent
 %NLSAEMBEDDEDCOMPONENT  Class definition and constructor of NLSA time-lagged embedded component
 %
-% Modified 2015/08/31
+% Modified 2020/01/25
 
     properties
         idxO          = 1;      % time origin
@@ -148,12 +148,6 @@ classdef nlsaEmbeddedComponent < nlsaComponent
     end
 
     methods( Abstract )
-
-        %% GETBATCHARRAYSIZE Return the size of data arrays 
-        [ nDE, nSB ] = getBatchArraySize( obj )
-    
-        %% GETDATA Read batch data
-        x = getData( obj, outFormat )
 
         %% GETEXTRABATCHSIZE Get the number of "extra" samples in the data 
         % arrays due to embedding

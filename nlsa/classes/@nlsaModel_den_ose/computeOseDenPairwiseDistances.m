@@ -3,7 +3,7 @@ function computeOseDenPairwiseDistances( obj, iProc, nProc, ...
 % COMPUTEOSEDENPAIRWISEDISTANCES Compute OSE pairwise distances for the 
 % density data of nlsaModel_den_ose objects
 % 
-% Modified 2018/07/07
+% Modified 2020/01/30
 
 if nargin == 1
     iProc = 1;
@@ -16,7 +16,7 @@ if nargin <= 3
 end
 
 outDenEmbComponent = getOutDenEmbComponent( obj ); 
-denEmbComponent = getDenEmbComponent( obj );
+denEmbComponent = getDenEmbComponentQ( obj );
 pDistance    = getOseDenPairwiseDistance( obj );
 nB = getNTotalBatch( pDistance( 1 ) );
 nD = numel( pDistance );

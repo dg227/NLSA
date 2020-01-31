@@ -164,7 +164,7 @@ classdef nlsaModel_den_ose < nlsaModel_den
 %
 %  Contact: dimitris@cims.nyu.edu
 % 
-%  Modified 2019/11/04
+%  Modified 2020/01/25
 
     %% PROPERTIES
     properties
@@ -261,7 +261,10 @@ classdef nlsaModel_den_ose < nlsaModel_den
 
             obj = obj@nlsaModel_den( varargin{ ifParentArg } ); 
 
-            partitionT = getEmbPartition( obj );
+            % Query partitions of in-sample data become test partitions for
+            % OSE
+            partitionDT = getDenEmbPartitionQ( obj );
+            partitionT  = getEmbPartitionQ( obj );
             pDistance = getPairwiseDistance( obj );
             nNT = getNNeighbors( pDistance );
 
@@ -436,6 +439,8 @@ classdef nlsaModel_den_ose < nlsaModel_den
             else
                 obj.outDenEmbComponent = nlsaEmbeddedComponent_e( obj.denComponent );
             end
+            nSEDTot = getNOutDenEmbSample( obj );                    
+            partitionD = getOutDenEmbPartition( obj ); 
 
             % Density OSE pairwise distance
             if ~isempty( iOseDenPDistance )
@@ -455,8 +460,8 @@ classdef nlsaModel_den_ose < nlsaModel_den
                 obj.oseDenPDistance = varargin{ iOseDenPDistance };
             else
                 obj.oseDenPDistance = nlsaPairwiseDistance( ...
-                                    'partition', partition, ...
-                                    'partitionT', partitionT, ...
+                                    'partition', partitionD, ...
+                                    'partitionT', partitionDT, ...
                                     'nearestNeighbors', round( nSETot / 10 ) ); 
             end
             nNO = getNNeighbors( obj.oseDenPDistance );

@@ -3,7 +3,7 @@ function computeDenPairwiseDistances( obj, iProc, nProc, ...
 % COMPUTEDENPAIRWISEDISTANCES Compute pairwise distances for the density data
 % of nlsaModel_den objects
 % 
-% Modified 2015/10/28
+% Modified 2020/01/29
 
 if nargin == 1
     iProc = 1;
@@ -15,11 +15,12 @@ if nargin <= 3
     nDProc = 1;
 end
 
-embComponent = getDenEmbComponent( obj ); 
-pDistance    = getDenPairwiseDistance( obj );
-nB = getNTotalBatch( pDistance( 1 ) );
-nD = numel( pDistance );
-nCD = size( embComponent, 1 );
+embComponentQ = getDenEmbComponentQ( obj ); 
+embComponentT = getDenEmbComponentT( obj );
+pDistance     = getDenPairwiseDistance( obj );
+nB  = getNTotalBatch( pDistance( 1 ) );
+nD  = numel( pDistance );
+nCD = size( embComponentQ, 1 );
 
 pPartition = nlsaPartition( 'nSample', nB, ...
                             'nBatch',  nProc );
@@ -38,8 +39,13 @@ for iD = iDLim( 1 ) : iDLim( 2 )
     else
         iC = iD;
     end
-    dData = nlsaLocalDistanceData( 'component', embComponent( iC, : ) );
-    computePairwiseDistances( pDistance( iD ), dData, ...
+    dDataQ = nlsaLocalDistanceData( 'component', embComponentQ( iC, : ) );
+    if ~isempty( embComponentT )
+        dDataT = nlsaLocalDistanceData( 'component', embComponentT( iC, : ) );
+    else
+        dDataT = nlsaLocalDistanceData.empty;
+    end
+    computePairwiseDistances( pDistance( iD ), dDataQ, dDataT, ...
                               'batch',   iBLim( 1 ) : iBLim( 2 ), ...
                               'logPath', getDistancePath( pDistance( iD ) ), ...
                               'logFile', logFile, ...

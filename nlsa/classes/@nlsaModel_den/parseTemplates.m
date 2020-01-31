@@ -31,11 +31,21 @@ function constrArgs = parseTemplates( varargin )
 %      specified, the time origin for each realization is set to the minimum
 %      possible value consistent with the embedding templates.
 %
-%   'denEmbeddingPartition': An [ 1 nR ]-sized vector of nlsaPartition objects
-%      specifying how each realization in the density data is to be partitioned.
-%      The number of samples in partition( iR ) must be equal to nSOE( iR ),
-%      where nSOE( iR ) is the number of samples in the iR-th realization
-%      of the out-of-sample data after time lagged embedding. 
+%   'denEmbeddingPartition': An [ 1 nR ]-sized vector, partition, of 
+%      nlsaPartition objects specifying how each realization in the density 
+%      data is to be partitioned. The number of samples in partition( iR ) 
+%      must be equal to nSDE( iR ), where nSDE( iR ) is the number of samples 
+%      in the iR-th realization of the density data after time-lagged 
+%      embedding. 
+%
+%   'denEmbeddingPartitionT': As in 'denEmbeddingPartition', but allows for a
+%      different "test" partition, operating along the column dimension of the
+%      pairwise distance matrix, to accelerate batch-wise pairwise distance
+%      calculation for the density data.
+%
+%   'denEmbeddingPartitionQ': As in 'denEmbeddingPartitionQ', but for a 
+%      "query" partition, operating along the row dimension of the pairwise
+%      distance matrix. 
 %
 %   'denPairwiseDistanceTemplate': An nlsaPairwiseDistance object specifying
 %      the method and parameters (e.g., number of nearest neighbors) used 
@@ -67,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/04 
+%   Modified 2020/01/28 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -90,6 +100,10 @@ for iProp = 1 : 2 : numel( parentConstrArgs )
             iEmbComponent = iProp + 1;
         case 'trgEmbComponent'
             iTrgEmbComponent = iProp + 1;
+        case 'embComponentQ'
+            iEmbComponentQ = iProp + 1;
+        case 'embComponentT'
+            iEmbComponentT = iProp + 1;
     end
 end
 partition = getPartition( parentConstrArgs{ iEmbComponent }( 1, : ) );
@@ -313,6 +327,155 @@ for iR = 1 : nR
 end
 mkdir( propVal{ iDenEmbComponent } )
 
+
+% If requested, create "test" embedded components for density data
+
+% Parse "test" partition templates for density data
+% Test partition must be a coarsening of the partition in the embComponent
+% property. 
+isSet = false;
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'denEmbeddingPartitionT' )
+        if isSet
+            error( 'The test partition for the embedded data has been already specified' )
+        end
+        if ~(    isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
+              && isscalar( varargin{ i + 1 } ) ...
+              && isFiner( partition, varargin{ i + 1 } ) ) 
+           error( 'Test embedded data partition must be specified as a scalar or nlsaPartition object, which is a coarseing of the embedded data partition.' )
+        end
+        denPartitionT = varargin{ i + 1 };
+        isSet = true;
+    end
+end 
+
+% If test partition was provided, create an upated denEmbComponentT property; 
+% otherwise, it will be set to empty by the class constriuctor
+if isSet
+    for iProp = 1 : nProp
+        if strcmp( propName{ iProp }, 'denEmbComponentT' )
+            iDenEmbComponentT = iProp;
+            break
+        end
+    end
+
+    if isa( propVal{ iDenEmbComponent }, 'nlsaEmbeddedComponent_xi' )
+        propVal{ iDenEmbComponentT }( nCD, 1 ) = nlsaEmbeddedComponent_xi_e();
+    else
+        propVal{ iDenEmbComponentT }( nCD, 1 ) = nlsaEmbeddedComponent_e();
+    end
+    propVal{ iDenEmbComponentT } = mergeCol( propVal{ iDenEmbComponentT }, ...
+                                          propVal{ iDenEmbComponent }, ...
+                                          'partition', denPartitionT ); 
+    ifProp( iDenEmbComponentT ) = true;
+    % Check if we should compress realization tags
+    isSet2 = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'densityRealizationName' )
+            if ~isSet2
+                propVal{ iDenEmbComponentT } = setRealizationTag( ...
+                    propVal{ iDenEmbComponentT }, varargin{ i + 1 } );
+                isSet2 = true;
+                break
+            else
+                error( 'densityRealizationName has been already set' )
+            end
+        end
+    end  
+    for iC = 1 : nCD
+        tag  = getTag( propVal{ iDenEmbComponentT }( iC ) );
+        pth  = fullfile( modelPath, 'embedded_data', ...
+                         strjoin_e( tag, '_' ) );
+        propVal{ iDenEmbComponentT }( iC ) = ...        
+            setPath( propVal{ iDenEmbComponentT }( iC ), pth );
+
+        propVal{ iDenEmbComponentT }( iC ) = ...
+            setDefaultSubpath( propVal{ iDenEmbComponentT }( iC ) );
+
+        propVal{ iDenEmbComponentT }( iC ) = ...
+            setDefaultFile( propVal{ iDenEmbComponentT }( iC ) );
+    end
+    mkdir( propVal{ iDenEmbComponentT } )
+else
+    denPartitionT = nlsaPartition.empty;
+end
+
+% If requested, create "query" embedded components for the density data
+
+% Parse "query" partition templates for density data
+% Query partition for density data must be a coarsening of the partition in 
+% denEmbComponent. 
+isSet = false;
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'denEmbeddingPartitionQ' )
+        if isSet
+            error( 'The query partition for the embedded density data has been already specified' )
+        end
+        if ~(    isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
+              && isscalar( varargin{ i + 1 } ) ...
+              && isFiner( partition, varargin{ i + 1 } ) ) 
+           error( 'Query partition for embedded density data must be specified as a scalar or nlsaPartition object, which is a coarseing of the embedded data partition.' )
+        end
+        denPartitionQ = varargin{ i + 1 };
+        isSet = true;
+    end
+end 
+
+for iProp = 1 : nProp
+    if strcmp( propName{ iProp }, 'denEmbComponentQ' )
+        iDenEmbComponentQ = iProp;
+        break
+    end
+end
+
+% If query partition was provided create an upated denEmbComponentQ object; 
+% otherwise set to original embComponent
+
+if isSet
+    % Create "query" embedded components for density data
+
+    if isa( propVal{ iDenEmbComponent }, 'nlsaEmbeddedComponent_xi' )
+        propVal{ iDenEmbComponentQ }( nCD, 1 ) = nlsaEmbeddedComponent_xi_e();
+    else
+        propVal{ iDenEmbComponentQ }( nCD, 1 ) = nlsaEmbeddedComponent_e();
+    end
+    propVal{ iDenEmbComponentQ } = mergeCol( propVal{ iDenEmbComponentQ }, ...
+                                          propVal{ iDenEmbComponent }, ...
+                                          'partition', denPartitionQ ); 
+    ifProp( iDenEmbComponentQ ) = true;
+    % Check if we should compress realization tags
+    isSet2 = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'densityRealizationName' )
+            if ~isSet2
+                propVal{ iDenEmbComponentQ } = setRealizationTag( ...
+                    propVal{ iDenEmbComponentQ }, varargin{ i + 1 } );
+                isSet2 = true;
+                break
+            else
+                error( 'densityRealizationName has been already set' )
+            end
+        end
+    end  
+    for iC = 1 : nCD 
+        tag  = getTag( propVal{ iDenEmbComponentQ }( iC ) );
+        pth  = fullfile( modelPath, 'embedded_data', ...
+                         strjoin_e( tag, '_' ) );
+        propVal{ iDenEmbComponentQ }( iC ) = ...        
+            setPath( propVal{ iDenEmbComponentQ }( iC ), pth );
+
+        propVal{ iDenEmbComponentQ }( iC ) = ...
+            setDefaultSubpath( propVal{ iDenEmbComponentQ }( iC ) );
+
+        propVal{ iDenEmbComponentQ }( iC ) = ...
+            setDefaultFile( propVal{ iDenEmbComponentQ }( iC ) );
+    end
+    mkdir( propVal{ iDenEmbComponentQ } )
+else
+    denPartitionQ = denPartition;
+end
+
+
 %% PAIRWISE DISTANCE FOR THE DENSITY DATA
 % Parse distance template and set distance partition
 for iProp = 1 : nProp 
@@ -348,8 +511,10 @@ end
 %    propVal{ iDenPDistance } = repmat( propVal{ iDenPDistance }, [ nCD 1 ] );  
 %end
 for iD = 1 : nDen
-    propVal{ iDenPDistance }( iD ) = setPartition( propVal{ iDenPDistance }( iD ), denPartition );
+    propVal{ iDenPDistance }( iD ) = setPartition( propVal{ iDenPDistance }( iD ), denPartitionQ );
+    propVal{ iDenPDistance }( iD ) = setPartitionTest( propVal{ iDenPDistance }( iD ), denPartitionT );
 end
+
 % Loop over the density distances
 % Set tags and determine distance-specific directories
 for iD = 1 : nDen
@@ -428,7 +593,7 @@ if isempty( propVal{ iDen } )
     ifProp( iDen ) = true;
 end
 for iD = nDen : -1 : 1
-    propVal{ iDen }( iD ) = setPartition( propVal{ iDen }( iD ), denPartition );
+    propVal{ iDen }( iD ) = setPartition( propVal{ iDen }( iD ), denPartitionQ );
 %propVal{ iDen } = setPartitionTest( propVal{ iDen }, partition );
     tag = getTag( propVal{ iDen }( iD ) );
     if ~isempty( tag )
@@ -445,6 +610,33 @@ for iD = nDen : -1 : 1
     propVal{ iDen }( iD ) = setPath( propVal{ iDen }( iD ), modelPathDL );
     mkdir( propVal{ iDen }( iD ) )
     propVal{ iDen }( iD ) = setDefaultFile( propVal{ iDen }( iD ) );
+end
+
+%% KERNEL DENSITY ESTIMATOR -- QUERY PARTITION
+if ifProp( iDenEmbComponentQ );
+    for iProp = 1 : nProp
+        if strcmp( propName{ iProp }, 'kernelDensityQ' )
+            iDenQ = iProp;
+            break
+        end
+    end
+    for iR = nR : -1 : 1
+        for iD = nDen : -1 : 1
+            propVal{ iDenQ }( iD, iR ) = nlsaComponent( ...
+                 'partition', denPartition( iR ), ...  
+                 'componentTag', getTag( propVal{ iDen }( iD ) ), ...
+                 'realizationTag', getRealizationTag( propVal{ iDenEmbComponent }( 1, iR ) ) );
+            tag  = getTag( propVal{ iDenQ }( iD, iR ) );
+            pth  = fullfile( getPath( propVal{ iDen }( iD ) ), ...
+                             strjoin_e( tag, '_' ) );
+            propVal{ iDenQ }( iD, iR ) = setPath( propVal{ iDenQ }( iD, iR ), ...
+                                                  pth );
+            propVal{ iDenQ }( iD, iR ) = setDefaultFile( propVal{ iDenQ }( iD, iR ) ); 
+            propVal{ iDenQ }( iD, iR ) = setDefaultSubpath( propVal{ iDenQ }( iD, iR ) ); 
+            mkdir( propVal{ iDenQ }( iD, iR ) )
+        end
+    end
+    ifProp( iDenQ ) = true;
 end
 
 %% DELAY-EMBEDDED DENSITY DATA
@@ -571,6 +763,142 @@ for iR = 1 : nR
 end
 mkdir( propVal{ iEmbDensity } )
           
+% If requested, create "test" embedded density
+
+% Parse "test" partition templates.
+% Test partition must be a coarsening of the partition in the embComponent 
+% property.
+isSet = false;
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'embeddingPartitionT' )
+        if isSet
+            error( 'The test partition for the embedded data has been already specified' )
+        end
+        if ~(    isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
+              && isscalar( varargin{ i + 1 } ) ...
+              && isFiner( partition, varargin{ i + 1 } ) ) 
+           error( 'Test embedded data partition must be specified as a scalar nlsaPartition object, which is a coarseing of the embedded data partition.' )
+        end
+        partitionT = varargin{ i + 1 };
+        isSet = true;
+    end
+end 
+
+% If test partition was provided, create an embDensityT property; otherwise,
+% it will be set it to empty by the class constructor.
+if isSet
+    for iProp = 1 : nProp
+        if strcmp( propName{ iProp }, 'embKernelDensityT' )
+            iEmbDensityT = iProp;
+            break
+        end
+    end
+
+    propVal{ iEmbDensityT }( nDen, 1 ) = nlsaEmbeddedComponent_e();
+    propVal{ iEmbDensityT } = mergeCol( propVal{ iEmbDensityT }, ...
+                                        propVal{ iEmbDensity }, ...
+                                        'partition', partitionT ); 
+    ifProp( iEmbDensityT ) = true;
+    % Check if we should compress realization tags
+    isSet2 = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'densityRealizationName' )
+            if ~isSet2
+                propVal{ iEmbDensityT } = setRealizationTag( ...
+                    propVal{ iEmbDensityT }, varargin{ i + 1 } );
+                isSet2 = true;
+                break
+            else
+                error( 'densityRealizationName has been already set' )
+            end
+        end
+    end  
+    for iD = 1 : nDen 
+        tag  = getTag( propVal{ iEmbDensityT }( iD ) );
+        pth  = fullfile( getPath( propVal{ iDen }( iD ) ), ...
+                         'embedded_density', ...
+                         strjoin_e( tag, '_' ) );
+        propVal{ iEmbDensityT }( iD ) = ...        
+            setPath( propVal{ iEmbDensityT }( iD ), pth );
+        propVal{ iEmbDensityT }( iD ) = setDefaultSubpath( ...
+            propVal{ iEmbDensityT }( iD ) ); 
+        propVal{ iEmbDensityT }( iD ) = setDefaultFile( ...
+            propVal{ iEmbDensityT }( iD ) );
+    end
+    mkdir( propVal{ iEmbDensityT } )
+else
+    partitionT = nlsaPartition.empty;
+end
+
+% If requested, create "query" embedded density
+
+% Parse "query" partition templates.
+% Query partition must be a coarsening of the partition in the embComponent 
+% property.
+isSet = false;
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'embeddingPartitionQ' )
+        if isSet
+            error( 'The query partition for the embedded data has been already specified' )
+        end
+        if ~(    isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
+              && isscalar( varargin{ i + 1 } ) ...
+              && isFiner( partition, varargin{ i + 1 } ) ) 
+           error( 'Query embedded data partition must be specified as a scalar nlsaPartition object, which is a coarseing of the embedded data partition.' )
+        end
+        partitionQ = varargin{ i + 1 };
+        isSet = true;
+    end
+end 
+
+% If query partition was provided, create an embDensityQ property; otherwise,
+% it will be set it to empty by the class constructor.
+if isSet
+    for iProp = 1 : nProp
+        if strcmp( propName{ iProp }, 'embKernelDensityQ' )
+            iEmbDensityQ = iProp;
+            break
+        end
+    end
+
+    propVal{ iEmbDensityQ }( nDen, 1 ) = nlsaEmbeddedComponent_e();
+    propVal{ iEmbDensityQ } = mergeCol( propVal{ iEmbDensityQ }, ...
+                                        propVal{ iEmbDensity }, ...
+                                        'partition', partitionQ ); 
+    ifProp( iEmbDensityQ ) = true;
+    % Check if we should compress realization tags
+    isSet2 = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'densityRealizationName' )
+            if ~isSet2
+                propVal{ iEmbDensityQ } = setRealizationTag( ...
+                    propVal{ iEmbDensityQ }, varargin{ i + 1 } );
+                isSet2 = true;
+                break
+            else
+                error( 'densityRealizationName has been already set' )
+            end
+        end
+    end  
+    for iD = 1 : nDen 
+        tag  = getTag( propVal{ iEmbDensityQ }( iD ) );
+        pth  = fullfile( getPath( propVal{ iDen }( iD ) ), ...
+                         'embedded_density', ...
+                         strjoin_e( tag, '_' ) );
+        propVal{ iEmbDensityQ }( iD ) = ...        
+            setPath( propVal{ iEmbDensityQ }( iD ), pth );
+        propVal{ iEmbDensityQ }( iD ) = setDefaultSubpath( ...
+            propVal{ iEmbDensityQ }( iD ) ); 
+        propVal{ iEmbDensityQ }( iD ) = setDefaultFile( ...
+            propVal{ iEmbDensityQ }( iD ) );
+    end
+    mkdir( propVal{ iEmbDensityQ } )
+else
+    partitionQ = partition;
+end
+
+
+
 
 %% PAIRWISE DISTANCE
 % Parse distance template and set distance partition
@@ -602,8 +930,8 @@ if isempty( propVal{ iPDistance } )
 end
 nN = getNNeighbors( propVal{ iPDistance } );
 
-propVal{ iPDistance } = setPartition( propVal{ iPDistance }, partition );
-propVal{ iPDistance } = setPartitionTest( propVal{ iPDistance }, partition );
+propVal{ iPDistance } = setPartition( propVal{ iPDistance }, partitionQ );
+propVal{ iPDistance } = setPartitionTest( propVal{ iPDistance }, partitionT );
 tag = getTag( propVal{ iPDistance } );
 if ~isempty( tag )
     tag = [ tag '_' ];

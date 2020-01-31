@@ -2,7 +2,7 @@ classdef nlsaLocalDistanceData
 %NLSALOCALDISTANCE_DATA   Data container for local distances
 %
 %
-%   Modified 2015/10/28
+%   Modified 2019/11/24
 
     properties
         component = nlsaComponent();
@@ -42,7 +42,9 @@ classdef nlsaLocalDistanceData
                            'Source data must be specified as an array of nlsaComponent objects.' )
                 end
             else
-                error( [ msgId 'emptyData' ], 'Unassigned data' )
+                % Return empty object if input data is empty
+                obj = nlsaLocalDistanceData.empty;
+                return
             end
             [ ifC, Test ] = isCompatible( varargin{ iData } ); 
             if ~ifC
