@@ -68,17 +68,17 @@ disp( 'Takens delay embedding' ); computeDelayEmbedding( model )
 
 % The next step is only needed for velocity-dependent distances such as 
 % the "at" and "cone" distances
-disp( 'Phase space velocity' ); computeVelocity( model )
+%disp( 'Phase space velocity' ); computeVelocity( model )
 
 % The next step is only needed if query partition is employed for source data.
-disp( 'Takens delay embedding - query partition' ); computeDelayEmbeddingQ( model )
+%disp( 'Takens delay embedding - query partition' ); computeDelayEmbeddingQ( model )
 
 % The next step is only needed if test partition is employed for source data.
-disp( 'Takens delay embedding - test partition' ); computeDelayEmbeddingT( model )
+%disp( 'Takens delay embedding - test partition' ); computeDelayEmbeddingT( model )
 
 % The next step is only needed if the target data are different from the 
 % source data
-disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
+%disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
 
 % The next step is only needed if the density estimation data are different
 % from the source data
@@ -91,36 +91,43 @@ disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
  
 
 % The next step is only needed if query partition is employed for density data.
-%disp( 'Takens delay embedding for density data - query partition' ); computeDelayEmbeddingQ( model )
+%disp( 'Takens delay embedding - query partition' ); computeDenDelayEmbeddingQ( model )
 
 % The next step is only needed if test partition is employed for density data.
-disp( 'Takens delay embedding for density data - test partition' ); computeDelayEmbeddingT( model )
+%disp( 'Takens delay embedding  - test partition' ); computeDenDelayEmbeddingT( model )
 
-fprintf( 'Pairwise distances for density data, %i/%i\n', iProc, nProc ); 
-computeDenPairwiseDistances( model, iProc, nProc )
+%fprintf( 'Pairwise distances for density data, %i/%i\n', iProc, nProc ); 
+%computeDenPairwiseDistances( model, iProc, nProc )
 
 % The next step is only needed if the kernel density estimation is of type "vb"
-disp( 'Density bandwidth normalization' ); computeDenBandwidthNormalization( model );
+%disp( 'Density bandwidth normalization' ); computeDenBandwidthNormalization( model );
 
-disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
+%disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
 
-disp( 'Density' ); computeDensity( model );
+%disp( 'Density' ); computeDensity( model );
 
 % THe next step is only needed if a query partition was used for the density 
 % data.
-disp( 'Density splitting' ); computeDensitySplitting( model );
+%disp( 'Density splitting' ); computeDensitySplitting( model );
 
-disp( 'Density delay embedding' ); computeDensityDelayEmbedding( model );
+%disp( 'Density delay embedding' ); computeDensityDelayEmbedding( model );
 
-fprintf( 'Pairwise distances, %i/%i\n', iProc, nProc ); 
-computePairwiseDistances( model, iProc, nProc )
+% The next step is only needed if query partition is employed for density data.
+%disp( 'Takens delay embedding for density data - query partition' ); computeDensityDelayEmbeddingQ( model )
 
-disp( 'Distance symmetrization' ); symmetrizeDistances( model )
+% The next step is only needed if test partition is employed for density data.
+%disp( 'Takens delay embedding for density data - test partition' ); computeDensityDelayEmbeddingT( model )
+
+
+%fprintf( 'Pairwise distances, %i/%i\n', iProc, nProc ); 
+%computePairwiseDistances( model, iProc, nProc )
+
+%disp( 'Distance symmetrization' ); symmetrizeDistances( model )
 
 % The next step is only needed for automatic bandwidth selection
-disp( 'Kernel sum' ); computeKernelDoubleSum( model )
+%disp( 'Kernel sum' ); computeKernelDoubleSum( model )
 
-disp( 'Diffusion eigenfunctions' ); computeDiffusionEigenfunctions( model )
+%disp( 'Diffusion eigenfunctions' ); computeDiffusionEigenfunctions( model )
 
 %disp( 'Projection of target data onto diffusion eigenfunctions' );
 %computeProjection( model );
@@ -132,8 +139,8 @@ disp( 'Takens delay embedding, out-of-sample data' )
 computeOutDelayEmbedding( model )
 
 % The next step is only needed for velocity-dependent distances
-disp( 'Phase space velocity, out-of-sample data' )
-computeOutVelocity( model )
+%disp( 'Phase space velocity, out-of-sample data' )
+%computeOutVelocity( model )
 
 % The next step is only needed if the density estimation data are different
 % from the source data

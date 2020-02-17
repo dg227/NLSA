@@ -31,6 +31,7 @@ if ~tst
 end
 nB = getNBatch( partition );
 
+
 %% LOOP OVER BATCHES OF THE COARSE PARTITION
 for iB = 1 : nB
     idxBG = find( idxMerge == iB );
