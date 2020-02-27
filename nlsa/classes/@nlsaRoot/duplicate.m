@@ -3,9 +3,9 @@ function obj2 = duplicate( obj1, src, varargin )
 %
 % varargin contains optional input arguments specifying property names/values 
 % that are not taken from src. These arguments must have the appropriate 
-% syntax for the set function of Matlab's matlab.mixin.SetGetExactNames class.
+% syntax for the set function of nlsaRoot objects.
 %
-% Modified 2019/11/16
+% Modified 2020/02/25
 
 % Check input properties
 
@@ -50,25 +50,23 @@ src2 = repmat( src, nRepSrc );
 % If no optional inputs are passed, assign the properties of obj2 by 
 % dublication of the properties of src2
 if isempty( varargin )
-    set( obj2, props, get( src2, props ) )
+    obj2 = set( obj2, props, get( src2, props ) )
     return
 end
 
 % Validate optional input arguments
 [ tst, props2 ] = isPropNameVal( varargin{ : } );
 if ~tst 
-    if iscellstr( varargin{ 1 } )
-        props2 = varargin{ 1 };
-    else
-        error( 'Optional input arguments must be passed either as property name-value pairs, or as a pair of propName and propValue cell arrays' )
-    end
+    error( 'Optional input arguments must be passed as property name-value pairs.' )
 end
 
 % Duplicate only the properties that are not in props2
 props = setdiff( props, props2 );
-set( obj2, props, get( src2, props ) )
+obj2 = set( obj2, props, get( src2, props ) );
 
 % Set the remaining properties
-set( obj2, varargin{ : } )
+for iProp = 1 : numel( props2 )
+    obj2 = set( obj2, varargin{ 2 * iProp - 1 }, varargin{ 2 * iProp } );
+end
 
 

@@ -20,11 +20,11 @@
 
 %% SCRIPT PARAMETERS
 dirIn      = '../../..';
-fileIn     = [ "EulCoarse_ocn.mat" ];  
-fld        = [ "uvocn" ];  
+fileIn     = [ "EulCoarse.mat" ];  
+fld        = [ "acc" ];  
 experiment = 'channel';
 idxTLim    = [ 1 200 ];
-idxTLim    = [ 201 250 ];
+%idxTLim    = [ 201 250 ];
 
 %% EXECUTION OPTIONS
 ifCenter    = false; % remove climatology

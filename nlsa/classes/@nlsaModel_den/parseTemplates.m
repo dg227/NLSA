@@ -603,8 +603,7 @@ for iD = nDen : -1 : 1
             [ tag getDefaultTag( propVal{ iDen }( iD ) ) ] ); 
 
     % Assign kernel density paths and filenames
-    modelPathDD = fullfile( modelPath, 'processed_data', pth, ...
-                            getTag( propVal{ iDenPDistance }( iD ) )  );
+    modelPathDD = fullfile( getPath( propVal{ iDenPDistance }( iD ) ) );
     modelPathDL = fullfile( modelPathDD, getTag( propVal{ iDen }( iD ) ) );
     propVal{ iDen }( iD ) = setDefaultSubpath( propVal{ iDen }( iD ) );
     propVal{ iDen }( iD ) = setPath( propVal{ iDen }( iD ), modelPathDL );

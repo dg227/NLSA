@@ -1,7 +1,7 @@
 function obj = mergeCol( obj, src, varargin )
 %% MERGE_COL Merge a matrix of nlsaComponent objects to a column vector 
 %
-% Modified 2019/11/16
+% Modified 2020/02/24
 
 % Check input sizes
 if ~iscolumn( obj ) 
@@ -18,32 +18,32 @@ if ~isCompatible( src )
 end
 
 % Degault partition and tags
-defPartition = mergePartitions( getPartition( src( 1, : ) ) );
+defPartition = mergePartitions( getPartition( src( 1, : ) ) ); 
 defTagR      = concatenateRealizationTags( src ); 
 
 if nargin == 2
     % Default partition and realization tags
     obj = duplicate( obj, src( :, 1 ), ...
         'partition', defPartition, 'tagR', defTagR );
- else
-     % Optional input arguments passed as property name-value pairs
-     [ tst, props ] = isPropNameVal( varargin{ : } );
-     if tst
-         if ~any( strcmp( props, 'partition' ) )
+else
+    % Optional input arguments passed as property name-value pairs
+    [ tst, props ] = isPropNameVal( varargin{ : } );
+    if tst
+        if ~any( strcmp( props, 'partition' ) )
              varargin = [ varargin 'partition' defPartition ]; 
-         else
+        else
             iPartition = find( strcmp(  props, 'partition' ) );
             if ~isFiner( defPartition, varargin{ 2 * iPartition  } )
                 error( 'Incompatible partitions' )
             end
-end
-         if ~any( strcmp( props, 'tagR' ) )
-             varargin = [ varargin { 'tagR' } { defTagR } ];
-         end
-         obj = duplicate( obj, src( :, 1 ), varargin{ : } );
+        end
+        if ~any( strcmp( props, 'tagR' ) )
+            varargin = [ varargin { 'tagR' } { defTagR } ];
+        end
+        obj = duplicate( obj, src( :, 1 ), varargin{ : } );
      else
          error( 'Optional input arguments must be entered as property name-value pairs' )
      end
- end
+end
 
 
