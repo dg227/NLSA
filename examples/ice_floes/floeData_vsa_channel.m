@@ -20,8 +20,8 @@
 
 %% SCRIPT PARAMETERS
 dirIn      = '../../..';
-fileIn     = [ "EulCoarse.mat" ];  
-fld        = [ "acc" ];  
+fileIn     = [ "EulCoarse_ocn.mat" ];  
+fld        = [ "uvocn" ];  
 experiment = 'channel';
 idxTLim    = [ 1 200 ];
 %idxTLim    = [ 201 250 ];
