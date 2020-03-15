@@ -64,21 +64,21 @@ end
 disp( experiment )
 [ model, In ] = floeVSAModel_den_ose( experiment ); 
 
-disp( 'Takens delay embedding' ); computeDelayEmbedding( model )
+%disp( 'Takens delay embedding' ); computeDelayEmbedding( model )
 
 % The next step is only needed for velocity-dependent distances such as 
 % the "at" and "cone" distances
 %disp( 'Phase space velocity' ); computeVelocity( model )
 
 % The next step is only needed if query partition is employed for source data.
-disp( 'Takens delay embedding - query partition' ); computeDelayEmbeddingQ( model )
+%disp( 'Takens delay embedding - query partition' ); computeDelayEmbeddingQ( model )
 
 % The next step is only needed if test partition is employed for source data.
-disp( 'Takens delay embedding - test partition' ); computeDelayEmbeddingT( model )
+%disp( 'Takens delay embedding - test partition' ); computeDelayEmbeddingT( model )
 
 % The next step is only needed if the target data are different from the 
 % source data
-disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
+%disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
 
 % The next step is only needed if the density estimation data are different
 % from the source data
@@ -96,14 +96,16 @@ disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
 % The next step is only needed if test partition is employed for density data.
 %disp( 'Takens delay embedding  - test partition' ); computeDenDelayEmbeddingT( model )
 
-fprintf( 'Pairwise distances for density data, %i/%i\n', iProc, nProc ); computeDenPairwiseDistances( model, iProc, nProc )
+%fprintf( 'Pairwise distances for density data, %i/%i\n', iProc, nProc ); computeDenPairwiseDistances( model, iProc, nProc )
 
 % The next step is only needed if the kernel density estimation is of type "vb"
-disp( 'Density bandwidth normalization' ); computeDenBandwidthNormalization( model );
+%disp( 'Density bandwidth normalization' ); computeDenBandwidthNormalization( model );
 
 disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
 
 disp( 'Density' ); computeDensity( model );
+
+return
 
 % THe next step is only needed if a query partition was used for the density 
 % data.
@@ -132,6 +134,8 @@ disp( 'Diffusion eigenfunctions' ); computeDiffusionEigenfunctions( model )
 
 %disp( 'Reconstruction of the projected data' )
 %computeReconstruction( model )
+
+return
 
 disp( 'Takens delay embedding, out-of-sample data' )
 computeOutDelayEmbedding( model )

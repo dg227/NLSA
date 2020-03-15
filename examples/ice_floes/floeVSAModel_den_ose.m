@@ -28,8 +28,83 @@ end
 
 switch experiment
 
-    % CHANNEL CONFIGURATION
-    case 'channel'
+    % CHANNEL CONFIGURATION -- CONCENTRATION DATA
+    case 'channel_c'
+
+        % In-sample dataset parameters 
+        % Source (covariate) data is sea ice concentration and velocity
+        % Target (response) data is sea ice concentration
+        In.Res( 1 ).tLim       = [ 1 200 ];  % floe model run  
+        In.Res( 1 ).experiment = 'channel';       
+        In.Res( 1 ).nG         = 125;     % number of spatial gridpoints
+        In.Src( 1 ).field      = 'c';     % physical field
+        In.Src( 1 ).nD         = 1;       % dimension
+        In.Trg( 1 ).field      = 'acc';   % physical field
+        In.Trg( 1 ).nD         = 2;       % dimension
+
+        % Out-of-sample dataset parameters
+        Out.Res( 1 ).tLim       = [ 201 250 ]; % time limits 
+        Out.Res( 1 ).nG         = 125; % number of spatial gridpoints 
+        Out.Res( 1 ).experiment = 'channel'; % floe model run
+
+        % NLSA parameters, in-sample data
+        % Source data
+        In.Src( 1 ).idxE      = 1 : 5; % delay embedding indices 
+        In.Src( 1 ).nXB       = 1;  % samples to leave out before main interval
+        In.Src( 1 ).nXA       = 1;  % samples to leave out after main interval
+        In.Src( 1 ).fdOrder   = 0;        % finite-difference order 
+        In.Src( 1 ).fdType    = 'central'; % finite-difference type
+        In.Src( 1 ).embFormat = 'overlap'; % storage format for delay embedding
+
+        % Target data
+        In.Trg( 1 ).idxE      = 1 : 1;     % delay embedding indices 
+        In.Trg( 1 ).nXB       = 1;  % samples to leave out before main interval
+        In.Trg( 1 ).nXA       = 0;  % samples to leave out after main interval
+        In.Trg( 1 ).fdOrder   = 1;         % finite-difference order 
+        In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 1 ).embFormat = 'overlap'; % storage format for delay embedding
+        In.Res( 1 ).nB        = 1;   % partition batches
+        In.Res( 1 ).nBRec     = 1; % batches for reconstructed data
+        In.nBQ        = 1;   % number of batches for query partition 
+        In.nBT        = 1;   % number of batches for test partition 
+        In.nN         = 10000;  % nearest neighbors; defaults to max. value if 0
+        In.lDist      = 'l2';   % local distance
+        In.tol        = 0;      % 0 distance threshold (for cone kernel)
+        In.zeta       = 0.995;  % cone kernel parameter 
+        In.coneAlpha  = 0;      % velocity exponent in cone kernel
+        In.nNS        = In.nN;  % nearest neighbors for symmetric distance
+        In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+        In.epsilon    = 1;          % kernel bandwidth parameter 
+        In.epsilonB   = 2;          % kernel bandwidth base
+        In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+        In.nEpsilon   = 200;      % number of exponents for bandwidth tuning
+        In.alpha      = 0.5;        % diffusion maps normalization 
+        In.nPhi       = 101;     % diffusion eigenfunctions to compute
+        In.nPhiPrj    = In.nPhi;  % eigenfunctions to project the data
+        In.idxPhiRec  = 1 : 1;    % eigenfunctions for reconstruction
+        In.idxPhiSVD  = 1 : 1;    % eigenfunctions for linear mapping
+        In.idxVTRec   = 1 : 1;    % SVD termporal patterns for reconstruction
+
+        % NLSA parameters, kernel density estimation (KDE)
+        In.denType     = 'vb';          % density estimation type
+        In.denND       = 5;             % manifold dimension 
+        In.denLDist    = 'l2';          % local distance function 
+        In.denBeta     = -1 / In.denND; % density exponent 
+        In.denNN       = 3000;          % nearest neighbors 
+        In.denZeta     = 0;             % cone kernel parameter 
+        In.denConeAlpha= 0;             % cone kernel velocity exponent 
+        In.denEpsilon  = 1;             % kernel bandwidth
+        In.denEpsilonB = 2;             % kernel bandwidth base 
+        In.denEpsilonE = [ -40 40 ];    % kernel bandwidth exponents 
+        In.denNEpsilon = 200;        % number of exponents for bandwidth tuning
+
+        % NLSA parameters, out-of-sample data
+        Out.Res( 1 ).nB  = 1; % batches to partition the in-sample data (realization 1)
+        Out.Res( 1 ).nBRec = 1;      % batches for reconstructed data
+
+
+    % CHANNEL CONFIGURATION -- CONCENTRATION AND ICE VELOCITY DATA
+    case 'channel_cuv'
 
         % In-sample dataset parameters 
         % Source (covariate) data is sea ice concentration and velocity
@@ -72,7 +147,6 @@ switch experiment
 %        In.Src( 3 ).fdType    = 'central'; % finite-difference type
 %        In.Src( 3 ).embFormat = 'overlap'; % storage format for delay embedding
         % Target data
-        % Target data
         In.Trg( 1 ).idxE      = 1 : 1;     % delay embedding indices 
         In.Trg( 1 ).nXB       = 1;  % samples to leave out before main interval
         In.Trg( 1 ).nXA       = 0;  % samples to leave out after main interval
@@ -102,11 +176,11 @@ switch experiment
         In.idxVTRec   = 1 : 1;    % SVD termporal patterns for reconstruction
 
         % NLSA parameters, kernel density estimation (KDE)
-        In.denType     = 'vb';          % density estimation type
+        In.denType     = 'fb';          % density estimation type
         In.denND       = 5;             % manifold dimension 
         In.denLDist    = 'l2';          % local distance function 
         In.denBeta     = -1 / In.denND; % density exponent 
-        In.denNN       = 3000;            % nearest neighbors 
+        In.denNN       = 5000;          % nearest neighbors 
         In.denZeta     = 0;             % cone kernel parameter 
         In.denConeAlpha= 0;             % cone kernel velocity exponent 
         In.denEpsilon  = 1;             % kernel bandwidth
@@ -117,7 +191,6 @@ switch experiment
         % NLSA parameters, out-of-sample data
         Out.Res( 1 ).nB  = 1; % batches to partition the in-sample data (realization 1)
         Out.Res( 1 ).nBRec = 1;      % batches for reconstructed data
-
 
 
 
