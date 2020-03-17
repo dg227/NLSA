@@ -1,7 +1,7 @@
 function q = computeDensity( obj, dist, varargin )
 % COMPUTEDENSITY Compute kernel density estimate from distance data dist 
 % 
-% Modified 2015/04/06
+% Modified 2020/03/15
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
@@ -21,6 +21,7 @@ nD      = getDimension( obj );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments 
+% WARNING: Opt.batch not used in current implementation
 Opt.batch              = 1 : getNBatch( partitionG );
 Opt.logFile            = '';
 Opt.logPath            = getDensityPath( obj );
@@ -61,20 +62,23 @@ for iBG = 1 : nBG
     fprintf( logId, 'READK %i/%i %i/%i %2.4f \n', iR, nR, iB, nBR, tWall ); 
 
     tic
-    q( iS1 : iS2 ) = exp( -y / epsilon ^ 2 );
+    q( iS( 1 ) : iS( 2 ) ) = sum( exp( -y / epsilon ^ 2 ), 2 );
     tWall = toc;
     fprintf( logId, 'EXP %i/%i %i/%i %2.4f \n', iR, nR, iB, nBR, tWall ); 
        
-    tic
-    q = q / nS / pi ^ ( nD / 2 ) / epsilon ^ nD;
-    tWall = toc;
-    fprintf( logId, 'NORMALIZE %i/%i %i/%i %2.4f \n', iR, nR, iB, nBR, tWall ); 
-
-    tic
-    setDensity( obj, q, '-v7.3' )
-    tWall = toc;
-    fprintf( logId, 'WRITEQ %i/%i %i/%i %2.4f \n', iR, nR, iB, nBR, tWall ); 
 end 
+
+% Normalize density
+tic
+q = q / nS / pi ^ ( nD / 2 ) / epsilon ^ nD;
+tWall = toc;
+fprintf( logId, 'NORMALIZE %2.4f \n', tWall ); 
+
+% Save density
+tic
+setDensity( obj, q, '-v7.3' )
+tWall = toc;
+fprintf( logId, 'WRITEQ %2.4f \n', tWall ); 
 
 clk = clock; % Exit gracefully
 fprintf( logId, 'computeDensity finished on %i/%i/%i %i:%i:%2.1f \n', ...

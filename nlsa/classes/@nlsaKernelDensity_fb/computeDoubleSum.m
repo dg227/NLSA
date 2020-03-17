@@ -1,7 +1,7 @@
 function dSum = computeDoubleSum( obj, dist, varargin )
 % COMPUTEDOUBLESUM Compute double kernel sum from candidate bandwidths 
 % 
-% Modified 2015/05/07
+% Modified 2020/03/15
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
@@ -22,6 +22,7 @@ nE      = numel( epsilon );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments 
+% WARNING: Opt.batch not used in current implementation
 Opt.batch              = 1 : getNBatch( partitionG );
 Opt.logFile            = '';
 Opt.logPath            = getDensityPath( obj );
@@ -67,11 +68,12 @@ for iBG = 1 : nBG
     tWall = toc;
     fprintf( logId, 'EXP %i/%i %i/%i %2.4f \n', iR, nR, iB, nBR, tWall ); 
        
-    tic
-    setDoubleSum( obj, dSum, '-v7.3' )
-    tWall = toc;
-    fprintf( logId, 'WRITEDSUM %i/%i %i/%i %2.4f \n', iR, nR, iB, nBR, tWall ); 
 end 
+
+tic
+setDoubleSum( obj, dSum, '-v7.3' )
+tWall = toc;
+fprintf( logId, 'WRITEDSUM %2.4f \n', tWall ); 
 
 clk = clock; % Exit gracefully
 fprintf( logId, 'computeDoubleSum finished on %i/%i/%i %i:%i:%2.1f \n', ...

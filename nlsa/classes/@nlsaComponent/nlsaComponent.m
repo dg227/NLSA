@@ -105,25 +105,5 @@ classdef nlsaComponent < nlsaRoot
             end
         end
     
-        %% SET/GET METHODS THAT REQUIRE SPECIFIC IMPLEMENTATION
-        function obj = set.partition( obj, partition )
-            % Validate input arguments
-            if ~isa( partition, 'nlsaPartition' ) || ~isscalar( partition )
-                error( 'Partition must be a scalar nlsaPartition object' )
-            end
-
-            % Quick return if the partition to be assigned is the same as the 
-            % existing partition
-            if isequal( obj.partition, partition )
-                return
-            end
-
-            obj.partition = partition;
-            % Reset fileList since partition has changed 
-            obj.file = nlsaFilelist( 'nFile', getNBatch( partition ) );
-
-            obj = setPartition( obj, partition );
-        end
-
     end
 end    

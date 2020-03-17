@@ -1,4 +1,4 @@
-function x = getData( obj, iB, varargin )
+function x = getData( obj, varargin )
 % GETDATA  Read data from nlsaEmbeddedComponent_o objects.
 %
 % This function can be called using either of the following formats:
@@ -17,11 +17,11 @@ function x = getData( obj, iB, varargin )
 %    'overlap' format, while in the later case it is returned in explicit
 %    embedding format. 
 %
-% Modified 2019/11/17
+% Modified 2020/02/17
 
-if nargin == 3 && ischar( varargin{ 1 } )
+if nargin == 3 && ischar( varargin{ 2 } )
     % Call method with specified output format
-    x = getData_fmt( obj, iB, varargin{ 1 } );
+    x = getData_fmt( obj, varargin{ : } );
 else
     % Call method with standard calling syntax
     x = getData_std( obj, varargin{ : } );

@@ -2,7 +2,7 @@ function x = getData_std( obj, iB, iR, iC, iA )
 % GETDATA_STD  Read data from an array of nlsaEmbeddedComponent_o objects 
 % using the standard calling syntax
 %
-% Modified 2019/11/17
+% Modified 2020/02/17
 
 % Validate input arguments, assign default values
 siz = size( obj );
@@ -58,7 +58,7 @@ if ~ispi( iB ) || any( iB > getNBatch( partition( iR ) ) )
 end
 
 if isscalar( iB ) && isscalar( iC )
-    idxE = getEmbeddingIndices( obj );
+    idxE = getEmbeddingIndices( obj( iC  ) );
     file = fullfile( getDataPath( obj( iC, iR ) ), ...
                      getDataFile( obj( iC, iR ), iB ) ) ;
     load( file, 'x' )

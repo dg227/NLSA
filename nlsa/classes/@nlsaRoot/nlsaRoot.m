@@ -1,6 +1,8 @@
-classdef nlsaRoot < matlab.mixin.SetGetExactNames
+classdef nlsaRoot 
 % Root parent class for NLSA classes
 %
-% nlsaRoot provides two methods -- construct and evaluate
+% nlsaRoot provides four methods -- construct, evaluate, set, and get.
+%
+% Modified 2020/02/23
 
 end

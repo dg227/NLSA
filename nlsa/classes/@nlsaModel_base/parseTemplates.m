@@ -78,7 +78,6 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Modified 2019/11/23
 
-
 %% CONSTRUCTOR PROPERTY LIST
 propName = nlsaModel_base.listConstructorProperties; 
 propVal  = cell( size( propName ) );

@@ -1,7 +1,7 @@
-function computeOseKernelDegree( obj, varargin )
+function computeOseKernelDegree( obj, iProc, nProc, varargin )
 % COMPUTEOSEKERNELDEGREE Compute OSE kernel degree of nlsaModel_ose objects  
 % 
-% Modified 2018/07/04
+% Modified 2020/02/21
 
 if nargin == 1
     iProc = 1;
