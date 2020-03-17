@@ -1,7 +1,9 @@
 %% PLOT MOVIE OF KERNEL DENSITY AND EIGENFUNCTIONS
+%
+% Input data: Sea ice concentration
 
 %% DATASET/NLSA PARAMETERS
-experiment = 'channel'; 
+experiment = 'channel_c'; 
 
 xLim =  [ -2.5E5 2.5E5 ]; 
 yLim =  [ -5E4 5E4 ]; 
@@ -32,7 +34,7 @@ Mov.gapY       = 40;
 Mov.visible    = 'on';
 Mov.fps        = 20;
 
-model = floeVSAModel_den_ose( 'channel' );
+model = floeVSAModel_den_ose( experiment );
 
 %% READ DATA
 if ifRead
@@ -181,12 +183,12 @@ for iS = 1 : nS
              'xTick', [ xLim( 1 ) : 50 : xLim( 2 ) ], ...
              'yTick', [ yLim( 1 ) : 25 : yLim( 2 ) ] ) 
         if iAx ~= 1
-            set( Mov.ax( iAx, jAx ), 'xTickLabel', '' )
-        end
-        if jAx ~= Mov.nTileY
             set( Mov.ax( iAx, jAx ), 'yTickLabel', '' )
         end
-        title( Mov.ax( iAx, jAx ), sprintf( '\\phi_%i, \\lambda_%i = %1.3f', ...
+        if jAx ~= Mov.nTileY
+            set( Mov.ax( iAx, jAx ), 'xTickLabel', '' )
+        end
+        title( Mov.ax( iAx, jAx ), sprintf( '\\phi_{%i}, \\lambda_{%i} = %1.3f', ...
                idxPhi( iPhi ) - 1, idxPhi( iPhi ) - 1, ...
                lambda( idxPhi( iPhi ) ) ) )
         set( Mov.ax( iAx, jAx ), 'tickDir', 'out' )

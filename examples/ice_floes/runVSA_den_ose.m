@@ -101,11 +101,10 @@ disp( experiment )
 % The next step is only needed if the kernel density estimation is of type "vb"
 %disp( 'Density bandwidth normalization' ); computeDenBandwidthNormalization( model );
 
-disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
+%disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
 
-disp( 'Density' ); computeDensity( model );
+%isp( 'Density' ); computeDensity( model );
 
-return
 
 % THe next step is only needed if a query partition was used for the density 
 % data.
