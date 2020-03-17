@@ -1,9 +1,9 @@
-function computeOutVelocity( obj, iProcC, nProcC, iProcR, nProcR, varargin )
-% COMPUTEOUTVELOCITY Compute phase space velocity (displacement relative to
-% temporal nearest neighbors) of the out-of-sample data in an 
+function computeOutTrgVelocity( obj, iProcC, nProcC, iProcR, nProcR, varargin )
+% COMPUTEOUTTRGVELOCITY Compute phase space velocity (displacement relative 
+% to temporal nearest neighbors) of the out-of-sample target data in an 
 % nlsaModel_den_ose object
 %
-% Modified 2018/07/04
+% Modified 2020/03/17
 
 if nargin == 1 || isempty( iProcC )
     iProcC = 1;
@@ -16,7 +16,7 @@ Opt.ifWriteXi = true;
 Opt = parseargs( Opt, varargin{ : } );
 logFile = 'dataXi.log';
 
-emb = getOutEmbComponent( obj );
+emb = getOutTrgEmbComponent( obj );
 [ nC, nR ] = size( emb );
 
 pPartitionC = nlsaPartition( 'nSample', nC, 'nBatch', nProcC );

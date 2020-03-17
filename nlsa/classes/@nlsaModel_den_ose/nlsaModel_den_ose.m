@@ -39,6 +39,12 @@ classdef nlsaModel_den_ose < nlsaModel_den
 %      number of components in the in-sample source data as specified in
 %      'srcComponent'.
 %
+%   'outTrgComponent': An [ nCT nRO ]-sized array of nlsaComponent objects
+%      specifying the out-of-sample target data. nCT is the number of target
+%      components, and must be equal to the number of target components in the
+%      in-sample target data as specified in 'trgComponent'. This property
+%      can be left empty if there are no out-of-sample target data. 
+%
 %   'outTime': An [ 1 nRO ]-sized cell array of vectors specifying the time
 %      stamps of each sample in the out-of-sample data. The number of elements
 %      in outTime{ iR } must be equal to the number of samples in 
@@ -50,6 +56,8 @@ classdef nlsaModel_den_ose < nlsaModel_den
 %      objects storing Takens delay-embedded data associacted with
 %      'outComponent'. See the documentation of the nlsaModel_base class 
 %      for additional information on nlsaEmbeddedComponent objects.
+%
+%   'outTrgEmbComponent': As in 'outEmbComponent', but for the target data.
 %
 %   'osePairwiseDistance': An nlsaPairwiseDistance object specifying
 %      the method and parameters (e.g., number of nearest neighbors) used 
@@ -164,12 +172,14 @@ classdef nlsaModel_den_ose < nlsaModel_den
 %
 %  Contact: dimitris@cims.nyu.edu
 % 
-%  Modified 2020/01/25
+%  Modified 2020/03/17
 
     %% PROPERTIES
     properties
         outComponent       = nlsaComponent();
         outEmbComponent    = nlsaEmbeddedComponent_e();
+        outTrgComponent    = nlsaComponent.empty();
+        outTrgEmbComponent = nlsaEmbeddedComponent_e.empty();
         outDenComponent    = nlsaComponent();
         outDenEmbComponent = nlsaEmbeddedComponent_e();
         outTime            = { 1 };
@@ -201,6 +211,8 @@ classdef nlsaModel_den_ose < nlsaModel_den
             % Parse input arguments 
             iOutComponent       = [];
             iOutEmbComponent    = [];
+            iOutTrgComponent    = [];
+            iOutTrgEmbComponent = [];
             iOutDenComponent    = [];
             iOutDenEmbComponent = [];
             iOutTime            = [];
@@ -222,6 +234,12 @@ classdef nlsaModel_den_ose < nlsaModel_den
                         ifParentArg( [ i i + 1 ] )  = false;
                     case 'outEmbComponent'
                         iOutEmbComponent = i + 1;                        
+                        ifParentArg( [ i i + 1 ] )  = false;
+                    case 'outTrgComponent'
+                        iOutTrgComponent = i + 1;
+                        ifParentArg( [ i i + 1 ] )  = false;
+                    case 'outTrgEmbComponent'
+                        iOutTrgEmbComponent = i + 1;                        
                         ifParentArg( [ i i + 1 ] )  = false;
                     case 'outDenComponent'
                         iOutDenComponent = i + 1;
@@ -278,10 +296,12 @@ classdef nlsaModel_den_ose < nlsaModel_den
                 error( [ msgId 'emptyOSE' ], 'Unassigned OSE components' )
             end
             
-            [ ifC, Test1, Test2 ] = isCompatible( obj.srcComponent, ...
-                                                  varargin{ iOutComponent }, ...
-                                                  'testComponents', true, ...
-                                                  'testSamples', false );
+            [ ifC, Test1, Test2 ] = isCompatible( ...
+                obj.srcComponent, ...
+                varargin{ iOutComponent }, ...
+                'testComponents', true, ...
+                'testSamples', false );
+
             if ~ifC
                 disp( Test1 )
                 disp( Test2 )
@@ -290,20 +310,45 @@ classdef nlsaModel_den_ose < nlsaModel_den
             end
             obj.outComponent = varargin{ iOutComponent };     
             [ nC, nR ] = size( obj.outComponent );
-            nD        = getDimension( obj.outComponent( :, 1 ) ); % dimension of each component
-            nSR       = getNSample( obj.outComponent( 1, : ) );   % number of samples in each realization
+            nSR        = getNSample( obj.outComponent( 1, : ) );   % number of samples in each realization
 
-            % OS components for density esetimation
+            % OS target components
+            if ~isempty( iOutTrgComponent )
+                if ~isa( varargin{ iOutTrgComponent }, 'nlsaComponent' )
+                    error( [ msgId 'invalidOSE' ], ...
+                           'OSE target data must be specified as an array of nlsaComponent objects.' )
+                end
+            
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                    obj.trgComponent, ...
+                    varargin{ iOutTrgComponent }, ...
+                    'testComponents', true, ...
+                    'testSamples', false );
+                        
+                if ~ifC
+                    disp( Test1 )
+                    disp( Test2 )
+                    error( [ msgId 'incompatibleOSE' ], ...
+                           'Incompatible OSE component array' )
+                end
+                obj.outTrgComponent = varargin{ iOutTrgComponent };     
+                nCT = size( obj.outTrgComponent, 1 );
+            end
+
+
+            % OS components for density estimation
             if ~isempty( iOutDenComponent )
                 if ~isa( varargin{ iOutDenComponent }, 'nlsaComponent' )
                     error( [ msgId 'invalidDENOSE' ], ...
                            'OSE data for density estimation must be specified as an array of nlsaComponent objects.' )
                 end
             
-                [ ifC, Test1, Test2 ] = isCompatible( obj.srcComponent, ...
-                                                      varargin{ iOutComponent }, ...
-                                                      'testComponents', false, ...
-                                                      'testSamples', true );
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                    obj.srcComponent, ...
+                    varargin{ iOutComponent }, ...
+                    'testComponents', false, ...
+                    'testSamples', true );
+
                 if ~ifC
                     disp( Test1 )
                     disp( Test2 )
@@ -374,7 +419,6 @@ classdef nlsaModel_den_ose < nlsaModel_den
                 obj.outTimeFormat = varargin{ iOutTimeFormat };
             end
 
-
             % OS embedded components
             % Check input array class and size
             
@@ -386,10 +430,11 @@ classdef nlsaModel_den_ose < nlsaModel_den
             
                 % Check constistency of data space dimension, embedding indices, and 
                 % number of samples
-                [ ifC, Test1, Test2 ] = isCompatible( varargin{ iOutEmbComponent }, ...
-                                                      obj.embComponent, ...
-                                                      'testComponents', true, ...
-                                                      'testSamples', false );
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                    varargin{ iOutEmbComponent }, ...
+                    obj.embComponent, ...
+                    'testComponents', true, ...
+                    'testSamples', false );
                 if ~ifC
                     msgStr = 'Incompatible OSE embedded component array';
                     disp( Test1 )
@@ -397,10 +442,12 @@ classdef nlsaModel_den_ose < nlsaModel_den
                     error( [ msgId 'incompatibleOutEmb' ], msgStr )
                 end
 
-                [ ifC, Test1, Test2 ] = isCompatible( varargin{ iOutEmbComponent }, ...
-                                                      obj.outComponent, ...
-                                                      'testComponents', true, ...
-                                                      'testSamples', true );
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                    varargin{ iOutEmbComponent }, ...
+                    obj.outComponent, ...
+                    'testComponents', true, ...
+                    'testSamples', true );
+
                 if ~ifC
                     msgStr = 'Incompatible OSE embedded component array';
                     disp( Test1 )
@@ -415,6 +462,50 @@ classdef nlsaModel_den_ose < nlsaModel_den
             nSETot = getNOutEmbSample( obj );                    
             partition = getOutEmbPartition( obj ); 
             
+            % OS target embedded components
+            % Check input array class and size
+            
+            if ~isempty( iOutTrgEmbComponent )
+                if isempty( iOutTrgComponent )
+                    error( 'Empty OSE target component' )
+                end
+                if ~isa( varargin{ iOutEmbComponent }, 'nlsaEmbeddedComponent' )
+                    error( [ msgId 'invalidOSEEmb' ], ...
+                           'Embedded OSE data must be specified as an array of nlsaEmbeddedComponent objects.' )
+                end
+            
+                % Check constistency of data space dimension, embedding indices, and 
+                % number of samples
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                    varargin{ iOutTrgEmbComponent }, ...
+                    obj.trgEmbComponent, ...
+                    'testComponents', true, ...
+                    'testSamples',    false );
+                if ~ifC
+                    msgStr = 'Incompatible OSE target embedded component array';
+                    disp( Test1 )
+                    disp( Test2 )
+                    error( [ msgId 'incompatibleOutTrgEmb' ], msgStr )
+                end
+
+                [ ifC, Test1, Test2 ] = isCompatible( ...
+                    varargin{ iOutTrgEmbComponent }, ...
+                    obj.outTrgComponent, ...
+                    'testComponents', true, ...
+                    'testSamples',    true );
+
+                if ~ifC
+                    msgStr = 'Incompatible OSE embedded component array';
+                    disp( Test1 )
+                    disp( Test2 )
+                    error( [ msgId 'incompatibleOutTrgEmb' ], msgStr )
+                end
+
+                obj.outTrgEmbComponent = varargin{ iOutTrgEmbComponent };
+            elseif ~isempty( iOutTrgEmbComponent )
+                error( 'Unspecified target OSE embedded components' )
+            end
+
             % OS density  embedded components
             % Check input array class and size
             
@@ -592,9 +683,10 @@ classdef nlsaModel_den_ose < nlsaModel_den
                          'outTrgComponent' ...
                          'outTime' ...
                          'outTimeFormat' ...
-                         'oseEmbComponent' ...
                          'outEmbComponent' ...
                          'outDenEmbComponent' ...
+                         'outTrgEmbComponent' ...
+                         'oseEmbComponent' ...
                          'osePairwiseDistance' ...
                          'oseDenPairwiseDistance' ...
                          'oseKernelDensity' ...

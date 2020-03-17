@@ -62,7 +62,7 @@ function constrArgs = parseTemplates( varargin )
 %   'targetComponent': An [ nCT nR ]-sized array of nlsaComponent objects 
 %      specifying the target data. nCT is the number of target components. 
 %      the number of realizations nR must be equal to the number of
-%      realizations in the source data. If 'trgComponent' is not
+%      realizations in the source data. If 'targetComponent' is not
 %      specified, it is set equal to 'srcComponent'. 
 % 
 %   'targetEmbeddingOrigin', 'targetEmbeddingTemplate': Same as 

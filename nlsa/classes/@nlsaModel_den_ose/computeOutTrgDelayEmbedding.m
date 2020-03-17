@@ -1,5 +1,5 @@
-function computeOutDelayEmbedding( obj, iProcC, nProcC, iProcR, nProcR )
-% COMPUTEOUTDELAYEMBEDDING Lag-embed the out-of-sample data in an 
+function computeOutTrgDelayEmbedding( obj, iProcC, nProcC, iProcR, nProcR )
+% COMPUTEOUTTRGDELAYEMBEDDING Lag-embed the out-of-sample target data in an 
 % nlsaModel_den_ose object
 %
 % Modified 2020/03/17
@@ -12,8 +12,8 @@ if nargin == 1
     nProcR = 1;
 end
 
-cmp = getOutComponent( obj );
-emb = getOutEmbComponent( obj );
+cmp = getOutTrgComponent( obj );
+emb = getOutTrgEmbComponent( obj );
 [ nC, nR ] = size( emb );
 
 pPartitionC = nlsaPartition( 'nSample', nC, 'nBatch', nProcC );
