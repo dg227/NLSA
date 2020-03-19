@@ -103,38 +103,36 @@ disp( experiment )
 
 %disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
 
-%isp( 'Density' ); computeDensity( model );
+%disp( 'Density' ); computeDensity( model );
 
 
 % THe next step is only needed if a query partition was used for the density 
 % data.
-disp( 'Density splitting' ); computeDensitySplitting( model );
+%disp( 'Density splitting' ); computeDensitySplitting( model );
 
-disp( 'Density delay embedding' ); computeDensityDelayEmbedding( model );
+%disp( 'Density delay embedding' ); computeDensityDelayEmbedding( model );
 
 % The next step is only needed if query partition is employed for density data.
-disp( 'Takens delay embedding for density data - query partition' ); computeDensityDelayEmbeddingQ( model )
+%disp( 'Takens delay embedding for density data - query partition' ); computeDensityDelayEmbeddingQ( model )
 
 % The next step is only needed if test partition is employed for density data.
-disp( 'Takens delay embedding for density data - test partition' ); computeDensityDelayEmbeddingT( model )
+%disp( 'Takens delay embedding for density data - test partition' ); computeDensityDelayEmbeddingT( model )
 
 
-fprintf( 'Pairwise distances, %i/%i\n', iProc, nProc ); computePairwiseDistances( model, iProc, nProc )
+%fprintf( 'Pairwise distances, %i/%i\n', iProc, nProc ); computePairwiseDistances( model, iProc, nProc )
 
-disp( 'Distance symmetrization' ); symmetrizeDistances( model )
+%disp( 'Distance symmetrization' ); symmetrizeDistances( model )
 
 % The next step is only needed for automatic bandwidth selection
-disp( 'Kernel sum' ); computeKernelDoubleSum( model )
+%disp( 'Kernel sum' ); computeKernelDoubleSum( model )
 
-disp( 'Diffusion eigenfunctions' ); computeDiffusionEigenfunctions( model )
+%disp( 'Diffusion eigenfunctions' ); computeDiffusionEigenfunctions( model )
 
 %disp( 'Projection of target data onto diffusion eigenfunctions' );
 %computeProjection( model );
 
 %disp( 'Reconstruction of the projected data' )
 %computeReconstruction( model )
-
-return
 
 disp( 'Takens delay embedding, out-of-sample data' )
 computeOutDelayEmbedding( model )

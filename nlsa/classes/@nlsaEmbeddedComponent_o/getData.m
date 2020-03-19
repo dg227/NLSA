@@ -5,7 +5,7 @@ function x = getData( obj, varargin )
 %
 % 1) x = getData( obj, iB, iR, iC, iA ), where obj is a scalar, vector, or 
 %    matrix of nlsaEmbeddedComponent_o objects, returns the data stored in 
-%    in batches iB, realizations iR, components iC, and "pages" iA in explicit
+%    in batches iB, realizations iR, components iC, and pages iA in explicit
 %    embedding format, using the same calling convention as the getData method
 %    of the nlsaComponent class. 
 %
@@ -13,8 +13,8 @@ function x = getData( obj, varargin )
 %    nlsaEmbeddedComponent_o object, and iB a positive scalar integer, 
 %    returns the data from batch iB in the output format specified in the
 %    string outFormat. outFormat can take the velues 'overlap', 'native', and
-%    'evector', where in the following two cases the data is returned in 
-%    'overlap' format, while in the later case it is returned in explicit
+%    'evector', where in the former two cases the data is returned in 
+%    'overlap' format, while in the latter case it is returned in explicit
 %    embedding format. 
 %
 % Modified 2020/02/17

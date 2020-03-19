@@ -3,9 +3,9 @@ function x = getData( obj, varargin )
 %
 % This function can be called using either of the following formats:
 %
-% 1) x = getData( obj, iB, iR, iC, iA ), where obj is a scalar, vector, or 
-%    matrix of nlsaEmbeddedComponent_o objects, returns the data stored in 
-%    in batches iB, realizations iR, components iC, and "pages" iA in explicit
+% 1) x = getData( obj, iB, iR, iC, iA ), where obj is a scalar, vector, matrix, 
+%    or 3D array of nlsaEmbeddedComponent_e objects, returns the data stored in 
+%    in batches iB, realizations iR, components iC, and pages iA in explicit
 %    embedding format, using the same calling convention as the getData method
 %    of the nlsaComponent class. 
 %
