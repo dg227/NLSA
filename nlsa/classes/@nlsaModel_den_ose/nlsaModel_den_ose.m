@@ -172,7 +172,7 @@ classdef nlsaModel_den_ose < nlsaModel_den
 %
 %  Contact: dimitris@cims.nyu.edu
 % 
-%  Modified 2020/03/17
+%  Modified 2020/03/19
 
     %% PROPERTIES
     properties
@@ -428,8 +428,8 @@ classdef nlsaModel_den_ose < nlsaModel_den
                            'Embedded OSE data must be specified as an array of nlsaEmbeddedComponent objects.' )
                 end
             
-                % Check constistency of data space dimension, embedding indices, and 
-                % number of samples
+                % Check constistency of data space dimension, embedding 
+                % indices, and number of samples
                 [ ifC, Test1, Test2 ] = isCompatible( ...
                     varargin{ iOutEmbComponent }, ...
                     obj.embComponent, ...
@@ -446,7 +446,7 @@ classdef nlsaModel_den_ose < nlsaModel_den
                     varargin{ iOutEmbComponent }, ...
                     obj.outComponent, ...
                     'testComponents', true, ...
-                    'testSamples', true );
+                    'testSamples', false );
 
                 if ~ifC
                     msgStr = 'Incompatible OSE embedded component array';
@@ -492,7 +492,7 @@ classdef nlsaModel_den_ose < nlsaModel_den
                     varargin{ iOutTrgEmbComponent }, ...
                     obj.outTrgComponent, ...
                     'testComponents', true, ...
-                    'testSamples',    true );
+                    'testSamples',    false );
 
                 if ~ifC
                     msgStr = 'Incompatible OSE embedded component array';

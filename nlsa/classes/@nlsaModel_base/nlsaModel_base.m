@@ -314,7 +314,7 @@ classdef nlsaModel_base
             else
                 obj.embComponent = obj.srcComponent;
             end
-            % Check constistency of physical space dimension, ...
+            % Check constistency of physical space dimension, 
             % embedding indices dimension, and number of samples
             nSRE = getNSample( obj.embComponent( 1, : ) );
             [ ifC, Test1 ] = isCompatible( obj.embComponent );

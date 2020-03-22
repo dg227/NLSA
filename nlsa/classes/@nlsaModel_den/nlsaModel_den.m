@@ -176,7 +176,7 @@ classdef nlsaModel_den < nlsaModel
 %
 %   Contact: dimitris@cims.nyu.edu
 %      
-%   Modified 2019/11/28
+%   Modified 2020/03/19
 
     %% PROPERTIES
 
@@ -291,13 +291,13 @@ classdef nlsaModel_den < nlsaModel
                            'Embedded density data must be specified as an array of nlsaEmbeddedComponent objects.' )
                 end
 
-                % Check constistency of data space dimension, embedding indices, and 
-                % number of samples
+                % Check constistency of data space dimension, embedding indices
+                %, and number of samples
                 [ ifC, Test1, Test2 ] = isCompatible( ...
                   varargin{ iDenEmbComponent }, ...
                   obj.denComponent, ...
                   'testComponents', true, ...
-                  'testSamples', true );
+                  'testSamples', false );
                 if ~ifC
                     msgStr = 'Incompatible Density embedded component array';
                     disp( Test1 )
