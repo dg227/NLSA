@@ -207,8 +207,10 @@ switch experiment
         In.Src( 2 ).nD         = 2;       % dimension
         %In.Src( 3 ).field      = 'uvocn'; % physical field
         %In.Src( 3 ).nD         = 2;       % dimension
-        In.Trg( 1 ).field      = 'acc';   % physical field
-        In.Trg( 1 ).nD         = 2;       % dimension
+        %In.Trg( 1 ).field      = 'acc';   % physical field
+        %In.Trg( 1 ).nD         = 2;       % dimension
+        In.Trg( 1 ).field      = 'c';   % physical field
+        In.Trg( 1 ).nD         = 1;       % dimension
 
         % Out-of-sample dataset parameters
         Out.Res( 1 ).tLim       = [ 201 250 ]; % time limits 
