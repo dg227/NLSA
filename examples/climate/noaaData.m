@@ -1,132 +1,107 @@
-% READ NOAA REANALYSIS DATA AND OUUTPUT IN .MAT FORMAT AS APPROPRIATE FOR NLSA
-% CODE
+function Data = noaaData( DataSpecs )
+% NOAADATA Read NOAA 20th Century Reanalysis data and output in format 
+% appropriate for NLSA code.
+% 
+% DataSpecs is a data structure containing the specifications of the data to
+% be read. It has the following fields:
+%
+% In.dir:             Input directory name
+% In.file:            Input filename
+% In.var:             Variable to be read
+% Out.dir:            Output directory name
+% Out.fld:            Output label 
+% Time.tFormat:       Format of serial date numbers (e.g, 'yyyymm')
+% Time.tLim:          Cell array of strings with time limits 
+% Time.tClim:         Cell array of strings with time limits for climatology 
+% Domain.xLim:        Longitude limits
+% Domain.yLim:        Latitude limits
+% Opts.ifCenter:      Remove global climatology if true 
+% Opts.ifWeight:      Perform area weighting if true 
+% Opts.ifCenterMonth: Remove monthly climatology if true 
+% Opts.ifNormalize:   Standardize data to unit L2 norm if true
+% Opts.ifWrite:       Write data to disk
 %
 % Longitude range is [ 0 359 ] at 1 degree increments
 % Latitude range is [ -89 89 ] at 1 degree increments
 % Date range is January 18854 to June 2019 at 1 month increements
 %
-% Modified 2020/03/27
+% Outpur argument Data contains the data read and associated attributes.
+%
+% Modified 2020/03/28
 
-%% FILE AND VARIABLE NAMES
-dataDirIn  = '/Volumes/TooMuch/physics/climate/data/noaa'; % input data dir.
-filenameIn = 'sst.mnmean.v4-4.nc';    % filename base for input data
-fldIn      = 'sst';                   % field name in NetCDF file 
-experiment = 'noaa';                  % label for data analysis experiment 
-fld        = 'sst';                   % output label for field 
-
-%% REGIONS
-% Indo-Pacific domain
-%xLim = [ 28 290 ]; % longitude limits
-%yLim = [ -60 20 ]; % latitude limits
-
-% Nino 3.4 region
-xLim = [ 190 240 ]; % longitude limits 
-yLim = [ -5 5 ];    % latitude limits
-
-% Nino 1+2 region
-%xLim = [ 270 280 ]; % longitude limits 
-%yLim = [ -10 0 ];   % latitude limits
-
-% Nino 3 region
-%xLim = [ 210 270 ]; % longitude limits 
-%yLim = [ -5 5 ];    % latitude limits
-
-% Nino 4 region
-%xLim = [ 160 210 ]; % longitude limits 
-%yLim = [ -5 5 ];    % latitude limits
-
-%% TIME INTERVALS
-% ENSO lifecycle
-tLim = { '187001' '201906' }; % training time limits
-
-% Hindcast
-%tLim = { '187001' '200712' }; % training time limits 
-%tLim = { '200801' '201906' }; % verification time limits 
-
-% "Operational" forecast
-%tLim = { '187001' '201906' }; % training time limits 
-%tLim = { '201705' '201906' }; % initialization time limits
-
-tClim   = { '198101' '201012' }; % time limits for climatology removal
-tStart  = '185401';              % start time in nc file 
-tFormat = 'yyyymm';              % time format
-
-%% SCRIPT EXECUTION OPTIONS
-ifCenter      = false;  % remove global climatology
-ifWeight      = true;   % perform area weighting
-ifCenterMonth = true;   % remove monthly climatology 
-ifAverage     = true;   % perform area averaging
-ifNormalize   = false;  % normalize to unit L2 norm
-
+%% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
+In     = DataSpecs.In;
+Out    = DataSpecs.Out; 
+Time   = DataSpecs.Time;
+Domain = DataSpecs.Domain;
+Opts   = DataSpecs.Opts;
 
 %% READ DATA
 % Check for consistency of climatological averaging
-if ifCenter & ifCenterMonth
+if Opts.ifCenter && Opts.ifCenterMonth
     error( [ 'Global and monthly climatology removal cannot be ' ...
              'simultaneously selected' ] )
 end
 
 % Append 'a' to field string if outputting anomalies
-if ifCenter
-    fldStr = [ fld 'a' ];
+if Opts.ifCenter
+    fldStr = [ Out.fld 'a' ];
 else
-    fldStr = fld;
+    fldStr = Out.fld;
 end
 
 % Append 'ma' to field string if outputting monthly anomalies
-if ifCenterMonth
-    fldStr = [ fld 'ma' ];
+if Opts.ifCenterMonth
+    fldStr = [ Out.fld 'ma' ];
 else
-    fldStr = fld;
+    fldStr = Out.fld;
 end
 
 % Append 'w' if performing area weighting
-if ifWeight
+if Opts.ifWeight
     fldStr = [ fldStr 'w' ];
 end
 
 % Append 'av' if outputting area average
-if ifAverage
+if Opts.ifAverage
     fldStr = [ fldStr 'av' ];
 end
 
 % Append 'n' if normalizing
-if ifNormalize
+if Opts.ifNormalize
     fldStr = [ fldStr 'n' ];
 end
 
 % Append time limits for climatology 
-if ifCenter | ifCenterMonth 
-    fldStr = [ fldStr '_' tClim{ 1 } '-' tClim{ 2 } ];
+if Opts.ifCenter || Opts.ifCenterMonth 
+    fldStr = [ fldStr '_' Time.tClim{ 1 } '-' Time.tClim{ 2 } ];
 end 
 
 % Output directory
-dataDir = fullfile( pwd, ...
-                    'data/raw', ...
-                    experiment, ...
+dataDir = fullfile( Out.dir, ...
                     fldStr, ...
-                    [ sprintf( 'x%i-%i', xLim ) ...
-                      sprintf( '_y%i-%i', yLim ) ...
-                      '_' tLim{ 1 } '-' tLim{ 2 } ] );
-if ~isdir( dataDir )
+                    [ sprintf( 'x%i-%i',  Domain.xLim ) ...
+                      sprintf( '_y%i-%i', Domain.yLim ) ...
+                      '_' Time.tLim{ 1 } '-' Time.tLim{ 2 } ] );
+if Opts.ifWrite && ~isdir( dataDir )
     mkdir( dataDir )
 end
 
 % Number of samples and starting time index
 % Indices are based at 0 to conform with NetCDF library
-limNum = datenum( tLim, tFormat );
-climNum = datenum( tClim, tFormat );
-startNum = datenum( tStart, tFormat );
+limNum = datenum( Time.tLim, Time.tFormat );
+climNum = datenum( Time.tClim, Time.tFormat );
+startNum = datenum( Time.tStart, Time.tFormat );
 nT    = months( limNum( 1 ), limNum( 2 ) ) + 1;
 nTClim = months( climNum( 1 ), climNum( 2 ) ) + 1;
 idxT0 = months( startNum, limNum( 1 ) );  
 idxTClim0 = months( startNum, climNum( 1 ) ); 
 
 % Open netCDF file, find variable IDs
-ncId   = netcdf.open( fullfile( dataDirIn, filenameIn ) );
+ncId   = netcdf.open( fullfile( In.dir, In.file ) );
 idLon  = netcdf.inqVarID( ncId, 'lon' );
 idLat  = netcdf.inqVarID( ncId, 'lat' );
-idFld  = netcdf.inqVarID( ncId, fld );
+idFld  = netcdf.inqVarID( ncId, In.var );
 
 % Create region mask
 lon = netcdf.getVar( ncId, idLon );
@@ -136,8 +111,8 @@ nY  = length( lat );
 [ X, Y ] = ndgrid( lon, lat );
 rng = netcdf.getAtt( ncId, idFld, 'valid_range' );
 fldRef = netcdf.getVar( ncId, idFld, [ 0 0 0 ], [ nX nY 1 ] ); 
-ifXY = X >= xLim( 1 ) & X <= xLim( 2 ) ...
-     & Y >= yLim( 1 ) & Y <= yLim( 2 ) ...
+ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
+     & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 ) ...
      & fldRef >= rng( 1 ) & fldRef <= rng( 2 );
 iXY = find( ifXY( : ) );
 nXY = length( iXY );
@@ -149,7 +124,7 @@ fld = fld( iXY, : );
 
 % If requested, weigh the data by the (normalized) grid cell surface areas. 
 % Surface area calculation is approximate as it treats Earth as spherical
-if ifWeight
+if Opts.ifWeight
 
     % Convert to radians and augment grid periodically 
     dLon = [ -2; lon; 360 ] * pi / 180; 
@@ -163,33 +138,33 @@ if ifWeight
     dLat = abs( dLat ) .* cos( dLat );
 
     % Compute surface area weights
-    w = bsxfun( @times, dLon, dLat' );
+    w = dLon .* dLat';
     w = w( ifXY );
     w = sqrt( w / sum( w ) * nXY );
       
     % Weigh the data
-    fld = bsxfun( @times, fld, w );
+    fld = fld .* w;
 end
 
 % If requested, subtract climatology
-if ifCenter
+if Opts.ifCenter
     cli = netcdf.getVar( ncId, idFld, [ 0 0 idxTClim0 ], [ nX nY nTClim ] );
     cli = reshape( cli, [ nX * nY nTClim ] );
     cli = cli( iXY, : );
-    if ifWeight
-        cli = bsxfun( @times, cli, w );
+    if Opts.ifWeight
+        cli = cli .* w;
     end
     cli = mean( cli, 2 );
-    fld = bsxfun( @minus, fld, cli );
+    fld = fld - cli;
 end
 
 % If requested, subtract mnthly climatology
-if ifCenterMonth
+if Opts.ifCenterMonth
     cliData = netcdf.getVar( ncId, idFld, [ 0 0 idxTClim0 ], [ nX nY nTClim ] );
     cliData = reshape( cliData, [ nX * nY nTClim ] );
     cliData = cliData( iXY, : );
-    if ifWeight
-        cliData = bsxfun( @times, cliData, w );
+    if Opts.ifWeight
+        cliData = cliData .* w;
     end
     cli = zeros( nXY, 12 );
     for iM = 1 : 12
@@ -198,8 +173,7 @@ if ifCenterMonth
     idxM0 = month( limNum( 1 ) ); 
     for iM = 1 : 12
         idxM = mod( idxM0 + iM - 2, 12 ) + 1; 
-        fld( :, iM : 12 : end ) = bsxfun( @minus, fld( :,  iM : 12 : end ), ...
-                                                  cli( :, idxM ) ); 
+        fld( :, iM : 12 : end ) = fld( :,  iM : 12 : end ) - cli( :, idxM ); 
     end  
 end
 
@@ -207,9 +181,9 @@ end
 netcdf.close( ncId );
 
 % If requested, perform area averaging
-if ifAverage
+if Opts.ifAverage
     fld = mean( fld, 1 );
-    if ifCenter || ifCenterMonth
+    if Opts.ifCenter || Opts.ifCenterMonth
         cli = mean( cli, 1 );
     end
 end
@@ -218,27 +192,44 @@ end
 nD = size( fld, 1 );
 
 % If requested, normalize by RMS climatology norm
-if ifNormalize
+if Opts.ifNormalize
     l2Norm = norm( cli( : ), 2 ) / sqrt( nTClim );
     fld = fld / l2Norm;
 end
 
-% Save grid coordinates and area mask
-gridFile = fullfile( dataDir, 'dataGrid.mat' );
-save( gridFile, 'lat', 'lon', 'ifXY', 'fldStr', 'nD', '-v7.3' )  
+%% RETURN AND WRITE DATA
+% Coordinates and area mask
+gridVarList = { 'lat', 'lon', 'ifXY', 'fldStr', 'nD' };
+if Opts.ifWrite
+    gridFile = fullfile( dataDir, 'dataGrid.mat' );
+    save( gridFile, gridVarList{ : }, '-v7.3' )  
+end
 
-% Save output data and attributes
-fldFile = fullfile( dataDir, 'dataX.mat' );
+% Output data and attributes
 x = double( fld ); % for compatibility with NLSA code
 varList = { 'x' 'idxT0' };
-if ifCenter || ifCenterMonth
+if Opts.ifCenter || Opts.ifCenterMonth
     varList = [ varList 'cli' 'idxTClim0' 'nTClim' ];
 end
-if ifWeight
+if Opts.ifWeight
     varList = [ varList 'w' ];
 end
-if ifNormalize
+if Opts.ifNormalize
     varList = [ varList 'l2Norm' ];
 end
-save( fldFile, varList{ : },  '-v7.3' )  
 
+if Opts.ifWrite
+    fldFile = fullfile( dataDir, 'dataX.mat' );
+    save( fldFile, varList{ : },  '-v7.3' )  
+end
+
+% If needed, assemble data and attributes into data structure and return
+if nargout > 0
+    varList = [ varList gridVarList ];
+    nVar = numel( varList );
+    vars = cell( 1, nVar );
+    for iVar = 1 : nVar
+       vars{ iVar } = eval( varList{ iVar } );
+    end
+    Data = cell2struct( vars, varList, 2 );
+end

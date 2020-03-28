@@ -1,6 +1,6 @@
 function [ model, In, Out ] = climateNLSAModel( dataset, experiment )
 %
-% Construct NLSA model for climate data.
+% CLIMATENLSAMODEL Construct NLSA model for climate data.
 %
 % Input arguments:
 %

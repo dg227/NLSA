@@ -2,7 +2,7 @@ function [ phi, lambda, mu ] = computeEigenfunctions( obj, varargin )
 % COMPUTEEIGENFUNCTIONS Compute diffusion eigenfunctions and Riemannian 
 % measure 
 %
-% Modified 2018/06/18
+% Modified 2020/03/28
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -19,6 +19,7 @@ Opt.logFile             = '';
 Opt.logPath             = getOperatorPath( obj );
 Opt.logFilePermissions  = 'w';
 Opt.ifWriteOperator     = false;
+Opt.eigsDisp            = 0;
 
 Opt = parseargs( Opt, varargin{ : } );
 if isempty( Opt.logFile )
@@ -62,7 +63,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Solve the sparse eigenvalue problem
 tic
-opts.disp      = 1;
+opts.disp      = Opt.eigsDisp;
 [ v, lambda ]  = eigs( p, getNEigenfunction( obj ), 'lm', opts );
 lambda         = diag( lambda );
 [ lambda, ix ] = sort( lambda, 'descend' );

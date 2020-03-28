@@ -1,7 +1,7 @@
 function [ u, lambda, mu, v ] = computeEigenfunctions( obj, varargin )
 % COMPUTEEIGENFUNCTIONS Compute SVD and  Riemannian measure 
 %
-% Modified 2018/06/14
+% Modified 2020/03/28
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -18,6 +18,7 @@ Opt.logFile             = '';
 Opt.logPath             = getOperatorPath( obj );
 Opt.logFilePermissions  = 'w';
 Opt.ifWriteOperator     = false;
+Opt.eigsDisp            = 0;
 
 Opt = parseargs( Opt, varargin{ : } );
 if isempty( Opt.logFile )
@@ -62,7 +63,7 @@ end
 % Solve the sparse SVD problem
 nSE = getNTotalSample( obj );
 tic
-opts.disp        = 1;
+opts.disp        = Opt.eigsDisp;
 [ u, lambda, v ] = svds( p, getNEigenfunction( obj ), 'largest', opts );
 lambda           = diag( lambda ) .^ 2;
 [ lambda, ix ]   = sort( lambda, 'descend' );
@@ -75,8 +76,6 @@ if u( 1, 1 ) < 0
 end
 tWall            = toc;
 fprintf( logId, 'SVDP %2.4f \n', tWall );
-toc
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
