@@ -1,59 +1,69 @@
-%% READ NOAA REANALYSIS DATA AND OUUTPUT IN .MAT FORMAT APPROPRIATE FOR NLSA
-%% CODE
+% READ NOAA REANALYSIS DATA AND OUUTPUT IN .MAT FORMAT AS APPROPRIATE FOR NLSA
+% CODE
 %
 % Longitude range is [ 0 359 ] at 1 degree increments
 % Latitude range is [ -89 89 ] at 1 degree increments
+% Date range is January 18854 to June 2019 at 1 month increements
 %
-% Modified 2019/08/27
+% Modified 2020/03/27
 
-dataDirIn  = '/Volumes/TooMuch/physics/climate/data/noaa'; % directory name for input data
+%% FILE AND VARIABLE NAMES
+dataDirIn  = '/Volumes/TooMuch/physics/climate/data/noaa'; % input data dir.
 filenameIn = 'sst.mnmean.v4-4.nc';    % filename base for input data
-fldIn      = 'sst';                 
-experiment = 'noaa';                % label for data analysis experiment 
-fld        = 'sst';                 % label for field 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+fldIn      = 'sst';                   % field name in NetCDF file 
+experiment = 'noaa';                  % label for data analysis experiment 
+fld        = 'sst';                   % output label for field 
+
+%% REGIONS
 % Indo-Pacific domain
-%xLim       = [ 28 290 ];            % longitude limits
-%yLim       = [ -60  20  ];          % latitude limits
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%xLim = [ 28 290 ]; % longitude limits
+%yLim = [ -60 20 ]; % latitude limits
+
 % Nino 3.4 region
-xLim = [ 190 240 ];                 % longitude limits 
-yLim = [ -5 5 ];                    % latitude limits
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+xLim = [ 190 240 ]; % longitude limits 
+yLim = [ -5 5 ];    % latitude limits
+
 % Nino 1+2 region
-%xLim = [ 270 280 ];                 % longitude limits 
-%yLim = [ -10 0 ];                    % latitude limits
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%xLim = [ 270 280 ]; % longitude limits 
+%yLim = [ -10 0 ];   % latitude limits
+
 % Nino 3 region
-%xLim = [ 210 270 ];                 % longitude limits 
-%yLim = [ -5 5 ];                    % latitude limits
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%xLim = [ 210 270 ]; % longitude limits 
+%yLim = [ -5 5 ];    % latitude limits
+
 % Nino 4 region
-%xLim = [ 160 210 ];                 % longitude limits 
-%yLim = [ -5 5 ];                    % latitude limits
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%xLim = [ 160 210 ]; % longitude limits 
+%yLim = [ -5 5 ];    % latitude limits
+
+%% TIME INTERVALS
+% ENSO lifecycle
+tLim = { '187001' '201906' }; % training time limits
+
 % Hindcast
-%tLim       = { '187001' '200712' }; % training time limits 
-tLim       = { '200801' '201906' }; % verification time limits 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%tLim = { '187001' '200712' }; % training time limits 
+%tLim = { '200801' '201906' }; % verification time limits 
+
 % "Operational" forecast
-%tLim       = { '187001' '201906' }; % training time limits 
-%tLim       = { '201705' '201906' }; % initialization time limits
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-tClim      = { '198101' '201012' }; % time limits for climatology removal
-tStart     = '185401';              % start time in nc file 
-tFormat    = 'yyyymm';              % time format
+%tLim = { '187001' '201906' }; % training time limits 
+%tLim = { '201705' '201906' }; % initialization time limits
+
+tClim   = { '198101' '201012' }; % time limits for climatology removal
+tStart  = '185401';              % start time in nc file 
+tFormat = 'yyyymm';              % time format
+
+%% SCRIPT EXECUTION OPTIONS
+ifCenter      = false;  % remove global climatology
+ifWeight      = true;   % perform area weighting
+ifCenterMonth = true;   % remove monthly climatology 
+ifAverage     = true;   % perform area averaging
+ifNormalize   = false;  % normalize to unit L2 norm
 
 
-ifCenter      = false;                 % remove climatology
-ifWeight      = true;                 % perform area weighting
-ifCenterMonth = true;                 % remove monthly climatology 
-ifAverage     = true;                % perform area averaging
-ifNormalize   = false;                 % normalize to unit L2 norm
-
+%% READ DATA
 % Check for consistency of climatological averaging
 if ifCenter & ifCenterMonth
-    error( 'Global and monthly climatology removal cannot be simultaneously selected' )
+    error( [ 'Global and monthly climatology removal cannot be ' ...
+             'simultaneously selected' ] )
 end
 
 % Append 'a' to field string if outputting anomalies
