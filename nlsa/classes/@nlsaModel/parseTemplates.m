@@ -75,7 +75,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/21 
+%   Modified 2020/03/28 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -87,6 +87,7 @@ nProp    = numel( idxProp );
 %% SUPERCLASS CONSTRUCTOR ARGUMENTS
 parentConstrArgs = nlsaModel_base.parseTemplates( varargin{ : } );
 iEmbComponentQ = [];
+iEmbComponentT = [];
 for iProp = 1 : 2 : numel( parentConstrArgs )
     switch parentConstrArgs{ iProp }
         case 'embComponent'
@@ -102,8 +103,16 @@ for iProp = 1 : 2 : numel( parentConstrArgs )
     end
 end
 partition = getPartition( parentConstrArgs{ iEmbComponent }( 1, : ) );
-partitionT = getPartition( parentConstrArgs{ iEmbComponentT }( 1 ) );
-partitionQ = getPartition( parentConstrArgs{ iEmbComponentQ }( 1 ) );
+if ~isempty( iEmbComponentT )
+    partitionT = getPartition( parentConstrArgs{ iEmbComponentT }( 1 ) );
+else
+    partitionT = partition;
+end
+if ~isempty( iEmbComponentQ )
+    partitionQ = getPartition( parentConstrArgs{ iEmbComponentQ }( 1 ) );
+else
+    partitionQ = partition;
+end
 nCT = size( parentConstrArgs{ iTrgEmbComponent }, 1 );
 nR  = size( parentConstrArgs{ iEmbComponent }, 2 );
 
@@ -156,7 +165,7 @@ end
 nN = getNNeighbors( propVal{ iPDistance } );
 
 propVal{ iPDistance } = setPartition( propVal{ iPDistance }, partitionQ );
-propVal{ iPDistance } = setPartitionT( propVal{ iPDistance }, partitionT );
+propVal{ iPDistance } = setPartitionTest( propVal{ iPDistance }, partitionT );
 tag = getTag( propVal{ iPDistance } );
 if ~isempty( tag )
     tag = [ tag '_' ];
@@ -275,8 +284,9 @@ end
 propVal{ iDiffOp } = setPartition( propVal{ iDiffOp }, partition );
 propVal{ iDiffOp } = setPartitionTest( propVal{ iDiffOp }, partitionQ );
 if isa( propVal{ iDiffOp }, 'nlsaDiffusionOperator_batch' )
-    propVal{ iDiffOp } = setNNeighbors( propVal{ iDiffOp }, ...
-                                        getNNeighborsMax( propVal{ iSDistance } ) );
+    propVal{ iDiffOp } = setNNeighbors( ...
+                            propVal{ iDiffOp }, ...
+                            getNNeighborsMax( propVal{ iSDistance } ) );
 end
 nPhi   = getNEigenfunction( propVal{ iDiffOp } );
 tag = getTag( propVal{ iDiffOp } );
@@ -347,7 +357,7 @@ end
 
 for iC = 1 : nCT
     pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
-    isSet = false
+    isSet = false;
     isSet = false;
     for i = 1 : 2 : nargin
         if strcmp( varargin{ i }, 'targetRealizationName' )

@@ -189,8 +189,9 @@ if isempty( propVal{ iDenEmbComponent } )
     ifProp( iDenEmbComponent )  = true;
 else
     for iC = 1 : nCD
-        propVal{ iDenEmbComponent }( iC ) = setDimension( propVal{ iDenEmbComponent }( iC ), ...
-                                                          getDimension( propVal{ iDenComponent }( iC ) ) );
+        propVal{ iDenEmbComponent }( iC ) = ...
+            setDimension( propVal{ iDenEmbComponent }( iC ), ...
+                          getDimension( propVal{ iDenComponent }( iC ) ) );
     end
 end
 
