@@ -1,21 +1,15 @@
-function [ model, In, Out ] = climateNLSAModel_base( In, Out )
-% CLIMATENLSAMODEL_BASE Low-level function to build NLSA models for climate 
-%  datasets
+function [ model, In, Out ] = l63NLSAModel( experiment )
+% L63NLSAModel Build NLSA model for Lorenz 63 system
 %
-%  [ model, In ] = climateNLSAModel_base( In ) builds an NLSA model based on 
-%  the model parameters specified in the structure In. 
+%  [ model, In, Out ] = l63NLSAModel( experiment ) builds an NLSA model based 
+%  on the string identifier experiment.  
 %
-%  [ model, In, Out ] = climateNLSAModel_base( In, Out ) builds an NLSA model
-%  with support for out-of-sample (test) data. The model parameters for the
-%  in-sample (training) and out-of-sample (test) data are specified in the 
-%  structures In and Out, respectively. 
+%  The model parameters for the in-sample (training) and, optionally, 
+%  out-of-sample (test) data are specified in the structures In and Out. 
 %
-%  climateNLSAModel_base converts the parameter values in In and Out into 
-%  appropriate arguments for the nlsaModel class constructors, and then calls
-%  the constructors to build the model.
-%
-%  climateNLSAModel_base is meant to be called by higher-level functions 
-%  tailored to specific climate datasets. 
+%  l63NLSAModel converts the parameter values in In and Out into appropriate 
+%  arguments for the nlsaModel class constructors, and then calls the 
+%  constructors to build the model.
 %
 %  For additional information on the class constructors see 
 %
@@ -24,22 +18,104 @@ function [ model, In, Out ] = climateNLSAModel_base( In, Out )
 %      /nlsa/classes/nlsaModel_den/nlsaModel_den.m
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
-%  Structure field Src represents different physical variables (e.g., SST) 
-%  employed in the kernel definition
-%
-%  Structure field Res represents different realizations (ensemble members)
-%
-% Modified 2020/03/26
+% Modified 2020/03/30
  
+if nargin == 0
+    experiment = '6.4k';
+end
+
+switch experiment
+
+    % 6400 samples, standard L63 parameters
+    case '6.4k'
+        % In-sample dataset parameters
+        In.dt         = 0.01;  % sampling interval
+        In.Res.beta   = 8/3;   % L63 parameter beta
+        In.Res.rho    = 28;    % L63 parameter rho
+        In.Res.sigma  = 10;    % L63 parameter sigma
+        In.Res.nSProd = 6400;  % number of "production samples
+        In.Res.nSSpin = 64000; % spinup samples
+        In.Res.x0     = [ 0 1 1.05 ]; % initial conditions
+        In.Res.relTol = 1E-8;  % relative tolerance for ODE solver 
+        In.Res.ifCent = false; % data centering
+
+        % Source data
+        In.Src.idxX    = 1 : 3;       % observed state vector components 
+        In.Src.idxE    = 1 : 1;       % delay embedding indices
+        In.Src.nXB     = 1;           % additional samples before main interval
+        In.Src.nXA     = 500;         % additional samples after main interval
+        In.Src.fdOrder = 2;           % finite-difference order 
+        In.Src.fdType    = 'central'; % finite-difference type
+        In.Src.embFormat = 'overlap'; % storage format for delay embedding
+
+        % Target data
+        In.Trg.idxX      = 1 : 3;     % observed state vector components 
+        In.Trg.nEL       = 1 : 1;     % delay-embedding indices
+        In.Trg.nXB       = 1;         % additional samples before main interval
+        In.Trg.nXA       = 500;       % additional samples after main interval
+        In.Trg.fdOrder   = 2;         % finite-difference order 
+        In.Trg.fdType    = 'central'; % finite-difference type
+        In.Trg.embFormat = 'overlap'; % storage format for delay embedding
+
+        % Out-of-sample dataset parameters
+        Out.Res.beta   = 8/3;   % L63 parameter beta
+        Out.Res.rho    = 28;    % L63 parameter rho
+        Out.Res.sigma  = 10;    % L63 parameter sigma
+        Out.Res.nSprod = 6400;  % number of "production samples
+        Out.Res.nSSpin = 128000; % spinup samples
+        Out.Res.relTol = 1E-8;  % relative tolerance for ODE solver 
+        Out.Res.ifCent = false; % data centering
+        Out. nS     =   Out.Res.nSprod + Out.nEL + Out.nXB + Out.nXA; % sample number
+
+        % NLSA parameters
+        In.nB         = 1;          % batches to partition the in-sample data
+        In.nBRec      = In.nB;      % batches for reconstructed data
+        In.nN         = 5000;       % nearest neighbors for pairwise distances
+        In.lDist      = 'l2';       % local distance
+        In.tol        = 0;          % 0 distance threshold (for cone kernel)
+        In.zeta       = 0;          % cone kernel parameter 
+        In.coneAlpha  = 0;          % velocity exponent in cone kernel
+        In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+        In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+        In.epsilon     = 1;         % kernel bandwidth parameter 
+        In.epsilonB    = 2;         % kernel bandwidth base
+        In.epsilonE    = [ -20 20 ];% kernel bandwidth exponents 
+        In.nEpsilon    = 200;       % number of exponents for bandwidth tuning
+        In.alpha       = .5;        % diffusion maps normalization 
+        In.nPhi        = 2001;      % diffusion eigenfunctions to compute
+        In.nPhiPrj     = In.nPhi;   % eigenfunctions to project the data
+        In.idxPhiRec   = 1 : 1;     % eigenfunctions for reconstruction
+        In.idxPhiSVD   = 1 : 1;     % eigenfunctions for linear mapping
+        In.idxVTRec    = 1 : 5;     % SVD termporal patterns for reconstruction
+
+        % NLSA parameters, kernel density estimation (KDE)
+        In.denType     = 'vb';          % density estimation type
+        In.denND       = 2;             % manifold dimension for 
+        In.denLDist    = 'l2';          % local distance function 
+        In.denBeta     = -1 / In.denND; % density exponent 
+        In.denNN       = 8;             % nearest neighbors 
+        In.denZeta     = 0;             % cone kernel parameter 
+        In.denAlpha    = 0;             % cone kernel velocity exponent 
+        In.denEpsilonB = 2;             % kernel bandwidth base 
+        In.denEpsilonE = [ -20 20 ];    % kernel bandwidth exponents 
+        In.denNEpsilon = 200;        % number of exponents for bandwidth tuning
+
+        % NLSA parameters, out-of-sample data
+        Out.nB    = 1;         % bathches to partition the in-sample data
+        Out.nBRec = Out.nB;    % batches for reconstructed data
+
+    otherwise
+        error( 'Invalid experiment' )
+end
+
+
 %% PRELIMINARY CHECKS
-% Check number of input arguments, and if we are doing out-of-sample extension
-if nargin == 1
+% Check if we are doing out-of-sample extension
+if ~exist( Out, 'var' )
     Out   = [];
     ifOse = false; 
-elseif nargin == 2
+else
     ifOse = true;
-else 
-    error( 'Invalid number of input arguments.' )
 end
 
 % Check if we are using kernel density estimation
@@ -63,7 +139,6 @@ end
 
 
 %% ROOT DIRECTORY NAMES
-
 % In-sample data
 if isfield( In, 'dataPath' )
     inPath = In.dataPath;
@@ -99,13 +174,14 @@ if isfield( In, 'targetComponentName' )
                        'targetComponentName' In.targetComponentName ];
 end
 
+
 %% DELAY-EMBEDDING ORIGINGS
 In.nC  = numel( In.Src ); % number of source components
 In.nCT = numel( In.Trg ); % number of target compoents
 
 % Maximum number of delay embedding lags, sample left out in the 
 % beginning/end of the analysis interval for source data
-In.nE = In.Src( 1 ).idxE( end ); 
+In.nE  = In.Src( 1 ).idxE( end ); 
 In.nXB = In.Src( 1 ).nXB; 
 In.nXA = In.Src( 1 ).nXA;
 for iC = 2 : In.nC
@@ -135,20 +211,17 @@ In.nR  = numel( In.Res ); % number of realizations, in-sample data
 % Determine number of samples for in-sample data.
 nSETot = 0;
 idxT1 = zeros( 1, In.nR );
-tNum  = cell( 1, In.nR );
 for iR = In.nR : -1 : 1
-    % In.Res( iR ).tNum:      timestemps (e.g., Matlab serial date numbers)
     % In.Res( iR ).nS:    number of samples
     % In.Res( iR ).idxT1: time origin for delay embedding
     % In.Res( iR ).nSE:   number of samples after delay embedding
     % In.Res( iR ).nSRec: number of samples for reconstruction
-    In.Res( iR ).nS = numel( In.Res( iR ).tNum ); 
+    In.Res( iR ).nS = In.Res( iR ).nSProd + nEXMax - 1 + nXBMax + nXAMax; 
     In.Res( iR ).idxT1 = nEMax + nXBMax;      
     In.Res( iR ).nSE = In.Res( iR ).nS - In.Res( iR ).idxT1 + 1 - nXAMax; 
     nSETot = nSETot + In.Res( iR ).nSE;
     In.Res( iR ).nSRec = In.Res( iR ).nSE + nETMin - 1; 
     idxT1( iR ) = In.Res( iR ).idxT1;
-    tNum{ iR } = In.Res( iR ).tNum;
 end
 if In.nN == 0
    In.nN = nSETot;
@@ -159,7 +232,6 @@ end
 
 %% OUT-OF-SAMPLE PARAMETER VALUES INHERITED FROM IN-SAMPLE DATA
 if ifOse
-    Out.tFormat      = In.tFormat; 
     Out.nC           = In.nC;  % number of source components
     Out.nCT          = In.nCT; % number of target components
     Out.Src          = In.Src; % source component specification
@@ -196,35 +268,42 @@ end
 
 
 %% NUMBER OF SAMPLES AND TIMESTAMPS FOR OUT-OF-SAMPLE DATA
-if ifOse
     Out.nR  = numel( Out.Res ); % number of realizations, out-of-sample data
     idxT1O = zeros( 1, Out.nR );
-    tNumO  = cell( 1, Out.nR );
     % Determine number of samples for out-of-sample data.
     for iR = Out.nR : -1 : 1
-        % Out.Res( iR ).tNum:  timestemps (e.g., Matlab serial date numbers)
         % Out.Res( iR ).nS:    number of samples
         % Out.Res( iR ).idxT1: time origin for delay embedding
         % Out.Res( iR ).nSE:   number of samples after delay embedding
         % Out.Res( iR ).nSRec: number of samples for reconstruction
-        Out.Res( iR ).nS = numel( Out.Res( iR ).tNum );
+        Out.Res( iR ).nS = Out.Res( iR ).nSProd + nEXMax - 1 + nXBMax + nXAMax; 
         Out.Res( iR ).idxT1 = nEMax + nXBMax; 
         Out.Res( iR ).nSE = Out.Res( iR ).nS - Out.Res( iR ).idxT1 + 1-nXAMax; 
         Out.Res( iR ).nSERec = Out.Res( iR ).nSE + nETMin - 1; 
         idxT1O( iR ) = Out.Res( iR ).idxT1;
-        tNumO{ iR } = Out.Res( iR ).tNum;
     end
 end
 
 %% IN-SAMPLE DATA COMPONENTS
-fList = nlsaFilelist( 'file', 'dataX.mat' ); % filename for source data
 
 % Loop over realizations for in-sample data
 for iR = In.nR : -1 : 1
+    
+    % Realization tag                                
+    tagR = [ 'beta'    num2str( In.Res( iR ).beta, '%1.3g' ) ...
+             '_rho'    num2str( In.Res( iR ).rho, '%1.3g' ) ...
+             '_sigma'  num2str( In.Res( iR ).sigma, '%1.3g' ) ...
+             '_dt'     num2str( In.dt, '%1.3g' ) ...
+             '_x0'     sprintf( '_%1.3g', In.Res( iR ).x0 ) ...
+             '_nS'     int2str( In.Res( iR ).nS ) ...
+             '_nSSpin' int2str( In.Res( iR ).nSSpin ) ...
+             '_relTol' num2str( In.Res( iR ).relTol, '%1.3g' ) ...
+             '_ifCent' int2str( In.Res( iR ).ifCent ) ];
 
-    tStr = [ In.Res( iR ).tLim{ 1 } '-' In.Res( iR ).tLim{ 2 } ]; 
-    tagR = [ In.Res( iR ).experiment '_' tStr ];
-                                    
+
+    % Path to current realization
+    pathR = fullfile( inPath,  tagR );
+
     % Source data assumed to be stored in a single batch
     partition = nlsaPartition( 'nSample', In.Res( iR ).nS ); 
     embPartition( iR ) = nlsaPartition( 'nSample', In.Res( iR ).nSE, ...
@@ -234,25 +313,28 @@ for iR = In.nR : -1 : 1
 
     % Loop over source components
     for iC = In.nC : -1 : 1
+   
+        % Component tag
+        tagC = [ 'idxX' sprintf( '_%i', In.Src( iC ).idxX ) ];
 
-        xyStr = sprintf( 'x%i-%i_y%i-%i', In.Src( iC ).xLim( 1 ), ...
-                                          In.Src( iC ).xLim( 2 ), ...
-                                          In.Src( iC ).yLim( 1 ), ...
-                                          In.Src( iC ).yLim( 2 ) );
+        % Component dimension
+        nD = numel( In.Src( iC ).idxX );
 
-        pathC = fullfile( inPath,  ...
-                          In.Res( iR ).experiment, ...
-                          In.Src( iC ).field,  ...
-                          [ xyStr '_' tStr ] );
-                                                   
-        tagC = [ In.Src( iC ).field '_' xyStr ];
+        % Input file
+        if nD == 3 && all( In.Src( iC ).idxX == [ 1 2 3 ] )
+            fileName = 'dataX.mat';
+        else
+            fileName = [ 'dataX_' tagC '.mat' ];
+        end
 
-        load( fullfile( pathC, 'dataGrid.mat' ), 'nD' )
-        
+        % Filename for source data
+        fList = nlsaFilelist( 'file', fileName ); 
+
+        % Create source component                                           
         srcComponent( iC, iR ) = nlsaComponent( ...
                                     'partition',      partition, ...
                                     'dimension',      nD, ...
-                                    'path',           pathC, ...
+                                    'path',           pathR, ...
                                     'file',           fList, ...
                                     'componentTag',   tagC, ...
                                     'realizationTag', tagR  );
@@ -262,21 +344,23 @@ for iR = In.nR : -1 : 1
     % Loop over target components 
     for iC = In.nCT : -1 : 1
 
-        xyStr = sprintf( 'x%i-%i_y%i-%i', In.Trg( iC ).xLim( 1 ), ...
-                                          In.Trg( iC ).xLim( 2 ), ...
-                                          In.Trg( iC ).yLim( 1 ), ...
-                                          In.Trg( iC ).yLim( 2 ) );
+        % Component tag
+        tagC = [ 'idxX' sprintf( '_%i', In.Trg( iC ).idxX ) ];
 
-        pathC = fullfile( inPath,  ...
-                          In.Res( iR ).experiment, ...
-                          In.Trg( iC ).field,  ...
-                          [ xyStr '_' tStr ] );
-                                                   
-        tagC = [ In.Trg( iC ).field '_' tStr ];
+        % Component dimension
+        nD = numel( In.Trg( iC ).idxX );
 
+        % Input file
+        if nD == 3 && all( In.Trg( iC ).idxX == [ 1 2 3 ] )
+            fileName = 'dataX.mat';
+        else
+            fileName = [ 'dataX_' tagC '.mat' ];
+        end
 
-        load( fullfile( pathC, 'dataGrid.mat' ), 'nD'  )
+        % Filename for target data
+        fList = nlsaFilelist( 'file', fileName ); 
 
+        % Create target component
         trgComponent( iC, iR ) = nlsaComponent( ...
                                     'partition',      partition, ...
                                     'dimension',      nD, ...
@@ -370,11 +454,21 @@ end
 
 %% OUT-OF-SAMPLE DATA COMPONENTS 
 if ifOse
-    fList = nlsaFilelist( 'file', 'dataX.mat' ); % filename for source data
     for iR = Out.nR : -1 : 1
 
-        tStr = [ Out.Res( iR ).tLim{ 1 } '-' Out.Res( iR ).tLim{ 2 } ];
-        tagR = [ Out.Res( 1 ).experiment '_' tStr ];
+        % Realization tag                                
+        tagR = [ 'beta'    num2str( Out.Res( iR ).beta, '%1.3g' ) ...
+                 '_rho'    num2str( Out.Res( iR ).rho, '%1.3g' ) ...
+                 '_sigma'  num2str( Out.Res( iR ).sigma, '%1.3g' ) ...
+                 '_dt'     num2str( Out.dt, '%1.3g' ) ...
+                 '_x0'     sprintf( '_%1.3g', Out.Res( iR ).x0 ) ...
+                 '_nS'     int2str( Out.Res( iR ).nS ) ...
+                 '_nSSpin' int2str( Out.Res( iR ).nSSpin ) ...
+                 '_relTol' num2str( Out.Res( iR ).relTol, '%1.3g' ) ...
+                 '_ifCent' int2str( Out.Res( iR ).ifCent ) ];
+
+        % Path to current realization
+        pathR = fullfile( outPath,  tagR );
 
         % Source data assumed to be stored in a single batch
         partition = nlsaPartition( 'nSample', Out.Res( iR ).nS ); 
@@ -388,25 +482,26 @@ if ifOse
         % Loop over out-of-sample source components
         for iC = Out.nC : -1 : 1
 
-            xyStr = sprintf( 'x%i-%i_y%i-%i', Out.Src( iC ).xLim( 1 ), ...
-                                              Out.Src( iC ).xLim( 2 ), ...
-                                              Out.Src( iC ).yLim( 1 ), ...
-                                              Out.Src( iC ).yLim( 2 ) );
+            % Component tag
+            tagC = [ 'idxX' sprintf( '_%i', Out.Src( iC ).idxX ) ];
 
-            pathC = fullfile( outPath,  ...
-                              Out.Res( iR ).experiment, ...
-                              Out.Src( iC ).field,  ...
-                              [ xyStr '_' tStr ] );
+            % Component dimension
+            nD = numel( Out.Src( iC ).idxX );
 
-            tagC = [ Out.Src( iC ).field '_' xyStr ];
+            % Input file
+            if nD == 3 && all( Out.Src( iC ).idxX == [ 1 2 3 ] )
+                fileName = 'dataX.mat';
+            else
+                fileName = [ 'dataX_' tagC '.mat' ];
+            end
 
-            % number of gridpoints
-            load( fullfile( pathC, 'dataGrid.mat' ), 'nD' ) 
+            % Filename for out-of-sample data
+            fList = nlsaFilelist( 'file', fileName ); 
 
             outComponent( iC, iR ) = nlsaComponent( ...
                                         'partition',      partition, ...
                                         'dimension',      nD, ...
-                                        'path',           pathC, ...
+                                        'path',           pathR, ...
                                         'file',           fList, ...
                                         'componentTag',   tagC, ...
                                         'realizationTag', tagR  );
@@ -415,25 +510,27 @@ if ifOse
         % Loop over out-of-sample target components
         for iC = Out.nCT : -1 : 1
 
-            xyStr = sprintf( 'x%i-%i_y%i-%i', Out.Trg( iC ).xLim( 1 ), ...
-                                              Out.Trg( iC ).xLim( 2 ), ...
-                                              Out.Trg( iC ).yLim( 1 ), ...
-                                              Out.Trg( iC ).yLim( 2 ) );
+            % Component tag
+            tagC = [ 'idxX' sprintf( '_%i', Out.Trg( iC ).idxX ) ];
 
-            pathC = fullfile( outPath,  ...
-                              Out.Res( iR ).experiment, ...
-                              Out.Trg( iC ).field,  ...
-                              [ xyStr '_' tStr ] );
+            % Component dimension
+            nD = numel( Out.Trg( iC ).idxX );
 
-            tagC = [ Out.Trg( iC ).field '_' xyStr ];
+            % Input file
+            if nD == 3 && all( Out.Trg( iC ).idxX == [ 1 2 3 ] )
+                fileName = 'dataX.mat';
+            else
+                fileName = [ 'dataX_' tagC '.mat' ];
+            end
 
-            % number of gridpoints
-            load( fullfile( pathC, 'dataGrid.mat' ), 'nD' ) 
+            % Filename for out-of-sample target data
+            fList = nlsaFilelist( 'file', fileName ); 
 
+            % Creat out-of-sample target component 
             outTrgComponent( iC, iR ) = nlsaComponent( ...
                                             'partition',      partition, ...
                                             'dimension',      nD, ...
-                                            'path',           pathC, ...
+                                            'path',           pathR, ...
                                             'file',           fList, ...
                                             'componentTag',   tagC, ...
                                             'realizationTag', tagR  );
@@ -519,7 +616,6 @@ if all( strcmp( { In.Src.embFormat }, 'overlap' ) )
 else
     modeStr = 'explicit';
 end
-
 
 %% PAIRWISE DISTANCE FOR DENSITY ESTIMATION FOR IN-SAMPLE DATA
 if ifDen
@@ -763,8 +859,6 @@ if ifOse
                    'sourceComponent',                 srcComponent, ...
                    'targetComponent',                 trgComponent, ...
                    componentNames{ : }, ...
-                   'timeFormat',                      In.tFormat, ...
-                   'srcTime',                         tNum, ...
                    'embeddingOrigin',                 idxT1, ...
                    'embeddingTemplate',               embComponent, ...
                    'targetEmbeddingTemplate',         trgEmbComponent, ...
@@ -781,8 +875,6 @@ if ifOse
                    'svdReconstructionTemplate',       svdRecComponent, ...
                    'outComponent',                    outComponent, ...
                    'outTargetComponent',              outTrgComponent, ...
-                   'outTimeFormat',                   Out.tFormat, ...
-                   'outTime',                         tNumO, ...
                    'outEmbeddingOrigin',              idxT1O, ...
                    'outEmbeddingTemplate',            outEmbComponent, ...
                    'outEmbeddingPartition',           outEmbPartition, ... 
@@ -800,8 +892,6 @@ if ifOse
                    'sourceComponent',                 srcComponent, ...
                    'targetComponent',                 trgComponent, ...
                    componentNames{ : }, ...
-                   'timeFormat',                      In.tFormat, ...
-                   'srcTime',                         tNum, ...
                    'embeddingOrigin',                 idxT1, ...
                    'embeddingTemplate',               embComponent, ...
                    'targetEmbeddingTemplate',         trgEmbComponent, ...
@@ -816,8 +906,6 @@ if ifOse
                    'svdReconstructionTemplate',       svdRecComponent, ...
                    'outComponent',                    outComponent, ...
                    'outTargetComponent',              outTrgComponent, ...
-                   'outTimeFormat',                   Out.tFormat, ...
-                   'outTime',                         tNumO, ...
                    'outEmbeddingOrigin',              idxT1O, ...
                    'outEmbeddingTemplate',            outEmbComponent, ...
                    'outEmbeddingPartition',           outEmbPartition, ... 
@@ -836,8 +924,6 @@ else
                    'sourceComponent',                 srcComponent, ...
                    'targetComponent',                 trgComponent, ...
                    componentNames{ : }, ...
-                   'timeFormat',                      In.tFormat, ...
-                   'srcTime',                         tNum, ...
                    'embeddingOrigin',                 idxT1, ...
                    'embeddingTemplate',               embComponent, ...
                    'targetEmbeddingTemplate',         trgEmbComponent, ...
@@ -860,8 +946,6 @@ else
                    'sourceComponent',                 srcComponent, ...
                    'targetComponent',                 trgComponent, ...
                    componentNames{ : }, ...
-                   'timeFormat',                      In.tFormat, ...
-                   'srcTime',                         tNum, ...
                    'embeddingOrigin',                 idxT1, ...
                    'embeddingTemplate',               embComponent, ...
                    'targetEmbeddingTemplate',         trgEmbComponent, ...

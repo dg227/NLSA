@@ -68,6 +68,7 @@ switch experiment
         In.nBQ        = 1;   % number of batches for query partition 
         In.nBT        = 1;   % number of batches for test partition 
         In.nN         = 10000;  % nearest neighbors; defaults to max. value if 0
+        % NLSA parameters
         In.lDist      = 'l2';   % local distance
         In.tol        = 0;      % 0 distance threshold (for cone kernel)
         In.zeta       = 0.995;  % cone kernel parameter 
