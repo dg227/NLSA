@@ -1,5 +1,8 @@
 function obj = mergeCol( obj, src, varargin )
-%% MERGECOL Merge a matrix of nlsaComponent objects to a column vector 
+%% MERGECOL Merge a matrix of nlsaComponent_xi objects to a column vector 
+% 
+% This method differs from the corresponding method of the nlsaComponent class
+% in that it updates the fileXi property. 
 %
 % Modified 2020/04/03
 
@@ -26,7 +29,7 @@ if nargin == 2
     % Default partition and realization tags
     obj = duplicate( obj, src( :, 1 ), ...
         'partition', defPartition, 'file', defFilelist, ...
-        'tagR', defTagR );
+        'fileXi', defFilelist, 'tagR', defTagR );
 else
     % Optional input arguments passed as property name-value pairs
     [ tst, props ] = isPropNameVal( varargin{ : } );
@@ -34,7 +37,8 @@ else
         if ~any( strcmp( props, 'partition' ) )
              varargin = [ varargin { 'partition' defPartition } ]; 
              if ~any( strcmp( props, 'file' ) )
-                 varargin = [ varargin { 'file' defFilelist } ];
+                 varargin = [ varargin { 'file' defFilelist ...
+                     'fileXi', defFilelist } ];
              end
         else
             iPartition = find( strcmp( props, 'partition' ) );
@@ -44,7 +48,8 @@ else
             if ~any( strcmp( props, 'file' ) )
                 filelist = nlsaFilelist( ...
                     'nFile', getNBatch( varargin{ 2 * iPartition } ) );
-                varargin = [ varargin { 'file' filelist } ];
+                varargin = [ varargin { 'file' filelist, ...
+                            'fileXi' filelist } ];
             else 
                 iFile = find( strcmp( props, 'file' ) );
                 if getNFile( varargin{ 2 * iFile } ) ~= ...
