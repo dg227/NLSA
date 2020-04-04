@@ -4,35 +4,42 @@
 % Modified 2017/02/23
 
 %% MAIN CALCULATION PARAMETERS AND OPTIONS
-experiment = '64k'; 
+experiment = '6.4k'; 
 
 % for forecasting
-idxPhi     = 1 : 2001;  % NLSA eigenfunctions 
-idxZeta    = 1 : 1024;  % generator eigenfunctions for quantum system
+idxPhi     = 1 : 201;   % NLSA eigenfunctions 
+idxZeta    = 1 : 101;   % generator eigenfunctions for quantum system
 tau        = 1E-5;      % RKHS regularization parameter
 tauRef     = 1E-4;      % diffusion regularization parameter
 idxX       = [ 1 : 3 ]; % state vector components to predict
 nP         = 500 + 1;   % prediction timesteps (including 0)
 nPar       = 4;         % number of parallel workers
+nProcX     = 1;         % number of batch processes for verification data
+nProcT     = 250;       % number of processes for forecast times
 
 idxT0 = 101; % forecast initialization time to plot
 
 %% SCRIPT EXCECUTION OPTIONS
-ifRead            = false; % read data and eigenfunctions
+ifRead            = true;  % read data and eigenfunctions
 ifCalcGenerator   = true;  % compute Koopman eigenvalues and eigenfunctions
-ifCalcObservables = false; % compute quantum observable operators
-ifPred            = true;  % perform prediction
-ifErr             = true;  % compute prediction errors 
+ifCalcObservables = true;  % compute quantum observable operators
+ifPred            = false;  % perform prediction
+ifErr             = false;  % compute prediction errors 
 
 %% BUILD NLSA MODEL, DETERMINE BASIC ARRAY SIZES
-[ model, Pars ] = l63NLSAModel_den_ose( experiment );
+[ model, Pars ] = l63NLSAModel( experiment );
 nX    = numel( idxX );    % dimension of prediction observable
 nPhi  = numel( idxPhi );  % number of NLSA eigenfunctions
 nZeta = numel( idxZeta ); % number of generator eigenfunctions
-nT    = getNTotalSample( model.embComponent( 1, : ) );    % training samples
-nTO   = getNTotalSample( model.outEmbComponent( 1, : ) ); % test samples  
-nTA   = sum( getNXA( model.trgEmbComponent( 1, : ) ) );   % extra samples
+nR    = size( model.embComponent, 2 );    % training realizations
+nS    = getNTotalSample( model.embComponent( 1, : ) );    % training samples
+nSA   = sum( getNXA( model.trgEmbComponent( 1, : ) ) );   % extra samples
+nT    = nS / nR; % temporal training samples
 nD    = sum( getDataSpaceDimension( model.trgEmbComponent( :, 1 ) ) ); 
+nRO   = size( model.outEmbComponent, 2 ); % verification realizations
+nSO   = getNTotalSample( model.outEmbComponent( 1, : ) ); % test samples  
+nBO   = getNTotalBatch( model.outEmbComponent( 1, : ) ); % test batches
+nTO   = nSO / nRO; % temporal test samples
 
 %% READ DATA FROM MODEL
 if ifRead
@@ -44,18 +51,21 @@ if ifRead
     % Out-of-samplel eigenfunctions
     phiO = getOseDiffusionEigenfunctions( model );
 
-    % Training data, arranged into array of size [ nT nD ]
+    % Training data, arranged into array of size [ nS nD ]
     f = getData( model.trgEmbComponent )';
 
     % Compute mean and standard deviation
     fMean = mean( f, 1 );   
     fStd  = std( f, 0, 1 );
 
-    % Verification data, arranged into array of size [ nD, nTO + nTA ] 
+    % Verification data, arranged into array of size [ nD, nSO + nSA ] 
     % Append data after main time interval to compute forecast error
-    fOut = zeros( nD, nTO + nTA ); 
-    fOut( :, 1 : nTO )       = getData( model.outTrgEmbComponent );
-    fOut( :, nTO + 1 : end ) = getData_after( model.outTrgEmbComponent );
+    fOut = zeros( nD, nTO + nTA, nRO ); 
+    fOut( :, 1 : nTO, : )  = reshape( ...
+        getData( model.outTrgEmbComponent, [ nD nTO nRO ] ) );
+    fOut( :, nTO + 1 : end, : ) = reshape( ...
+        getData_after( model.outTrgEmbComponent, [ nD nTA nRO ] );
+    fOut = reshape( fOut, [ nD nSO ] );
     toc
 end
 
@@ -73,25 +83,28 @@ sqrtLambda = exp( - tau * eta( idxPhi ) / 2 );
 if ifCalcGenerator
     disp( 'Computing generator matrix...' )
     tic
-    dphi  = 0.5 * ( phi( 3 : end, idxPhi ) - phi( 1 : end - 2, idxPhi ) ); 
-    phiMu = phi( :, idxPhi ) .* mu;
-    W = phiMu( 2 : end - 1, : )' * dphi / Pars.dt;
+    dphi  = 0.5 * ( reshape( phi( 3 : end, idxPhi ), [ nT - 2, nR, nPhi ] ) ...
+              - reshape( phi( 1 : end - 2, idxPhi ), [ nT - 2, nR, nPhi ] ) ); 
+    dPhi = reshape( dPhi, [ nS - 2, nPhi ] );
+    phiMu = phi( 2 : end - 1, idxPhi ) .* mu( 2 : end - 1 );
+    W = phiMu' * dphi / Pars.dt;
     W = sqrtLambda .* W .* sqrtLambda'; 
     W = .5 * ( W - W' );
     toc
     
     disp( 'Computing generator eigenfunctions...' )
-
+    tic
     % Solve eigenvalue problem for generator matrix
     [ c, omega ] = eig( W );
     omega = imag( diag( omega ) ).'; % row vector
     
     % Compute Dirichlet energies and sort in increasing order 
-    l2SqNorm = sum( abs( c *. sqrtLambda ) .^ 2, 1 );
+    l2SqNorm = sum( abs( c .* sqrtLambda ) .^ 2, 1 );
     E = ( 1 ./ l2SqNorm - 1 ) ./ ( 1 - omega .^ 2 .* Pars.dt .^ 2 );
     [ E, idxE ] = sort( E, 'ascend' );
     c = c( :, idxE );
     l2SqNorm = l2SqNorm( idxE );
+    toc
     
 end
 
@@ -104,7 +117,8 @@ if ifCalcObservables
     Tf = cell( 1, nD ); % compactified multiplication operators
     cL = c( :, idxZeta ) .* sqrtLambda;   
     for iD = 1 : nD
-        Tf{ iD } = phi( :, idxPhi )' * f( :, iD ) .* phi( :, idxPhi ) .* mu;
+        Tf{ iD } =  phi( :, idxPhi )' ...
+                  * ( f( :, iD ) .* phi( :, idxPhi ) .* mu );
         Tf{ iD } = cL' * Tf{ iD } * cL;
     end
     toc
@@ -116,7 +130,10 @@ end
 %
 % Forecast is output in an array fPred of size [ nTO nP nD ].
 if ifPred
-    disp( 'Forming forecast operators' )
+    
+    % Partition the forecast interval into batches
+
+    disp( 'Forming forecast operators...' )
     tic
 
     % Eigenfunction values at verification dataset 
@@ -128,12 +145,12 @@ if ifPred
 
     % Heisenberg operator
     Ut = omega - omega';
-    Ut = exp( i * ( omega - omega' ) .* reshape( t, [ 1 1 1 nP ] );
+    Ut = exp( i * ( omega - omega' ) .* reshape( t, [ 1 1 1 nP ] ) );
 
     % K is a [ nZeta nZeta nSO ] array containing the summands (features) 
     % in the Mercer sum of the kernel at the verification points. 
-    K = reshape( conj( zetaO ), [ nZeta 1 nTO ] ) ...
-      .* reshape( zetaO, [ 1 nZeta nTO ] ); 
+    K = reshape( conj( zetaO ), [ nZeta 1 nSO ] ) ...
+      .* reshape( zetaO, [ 1 nZeta nSO ] ); 
 
     % Product of Heisenberg operator and Mercer  
     KUt = Ut .* K;
@@ -176,60 +193,7 @@ if ifErr
     toc
 end
 
-
-if ifPlotXShift
-    x = getData( model.outComponent );
-    x = x( :, 1 + Pars.nXB : end - Pars.nXA );
-    nSX = size( x, 2 );
-    nTShift = numel( idxTShift );
-    for iT = 1 : nTShift
-       fig = figure;
-       figPaperPositionMode = 'auto';
-       idxTXPlt = idxTShift( iT ) + 1 : nSX; 
-       scatter3( x( 1, idxTXPlt ), x( 2, idxTXPlt ), x( 3, idxTXPlt ), 2, ...
-            x( idxXPlt, 1 : nSX - idxTShift( iT ) ), 'filled' )
-       %title( sprintf( 't = %1.2g', Pars.dt * idxTShift( iT ) ) )
-       xlabel( 'F_1' )
-       ylabel( 'F_2' )
-       zlabel( 'F_3' )
-       view( 45, 15 )
-       fName = sprintf( 'figL63_x%i_t%i.png', idxXPlt, idxTShift( iT ) );
-       print( '-dpng', '-r150', fName ) 
-   end
-end
-
-if ifPlotZetaShift
-    x = getData( model.outComponent );
-    x = x( :, 1 + Pars.nXB : end - Pars.nXA );
-    nSX = size( x, 2 );
-    nTShift = numel( idxTShift );
-    for iT = 1 : nTShift
-       fig = figure;
-       figPaperPositionMode = 'auto';
-       idxTXPlt = idxTShift( iT ) + 1 : nSX; 
-       scatter3( x( 1, idxTXPlt ), x( 2, idxTXPlt ), x( 3, idxTXPlt ), 2, ...
-            real( zeta( 1 : nSX - idxTShift( iT ), idxZetaPlt ) ), 'filled' )
-       %title( sprintf( 't = %1.2g', Pars.dt * idxTShift( iT ) ) )
-       xlabel( 'x_1' )
-       ylabel( 'x_2' )
-       zlabel( 'x_3' )
-       view( 45, 15 )
-       fName = sprintf( 'figL63_zeta%i_t%i.png', idxZetaPlt, idxTShift( iT ) );
-       print( '-dpng', '-r150', fName ) 
-   end
-end
-
-if ifPlotZetaTS
-    nSZ = numel( idxTPlt );
-    fig = figure; 
-    tVals = ( idxTPlt - 1 ) * Pars.dt;
-    plot( tVals,  real( zeta( idxTPlt, idxZetaPlt ) ) )
-    xlabel( 't' )
-    ylabel( [ 'Re(\zeta_' int2str( idxZetaPlt - 1 ) ')' ] )
-    set( gca, 'xLim', [ tVals( 1 ) tVals( end ) ] )
-    fName = sprintf( 'figL63_zetaTS%i_t%i.png', idxZetaPlt, idxTShift( iT ) );
-    print( '-dpng', '-r150', fName )
-end
+return
 
 if ifPlotZetaJoint
     Mov.figWidth   = 8;    % in inches

@@ -29,15 +29,15 @@ switch experiment
     % 6400 samples, standard L63 parameters
     case '6.4k'
         % In-sample dataset parameters
-        In.dt         = 0.01;  % sampling interval
-        In.Res.beta   = 8/3;   % L63 parameter beta
-        In.Res.rho    = 28;    % L63 parameter rho
-        In.Res.sigma  = 10;    % L63 parameter sigma
-        In.Res.nSProd = 6400;  % number of "production samples
-        In.Res.nSSpin = 64000; % spinup samples
+        In.dt         = 0.01;         % sampling interval
+        In.Res.beta   = 8/3;          % L63 parameter beta
+        In.Res.rho    = 28;           % L63 parameter rho
+        In.Res.sigma  = 10;           % L63 parameter sigma
+        In.Res.nSProd = 6400;         % number of "production" samples
+        In.Res.nSSpin = 64000;        % spinup samples
         In.Res.x0     = [ 0 1 1.05 ]; % initial conditions
-        In.Res.relTol = 1E-8;  % relative tolerance for ODE solver 
-        In.Res.ifCent = false; % data centering
+        In.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
+        In.Res.ifCent = false;        % data centering
 
         % Source data
         In.Src.idxX    = 1 : 3;       % observed state vector components 
@@ -50,7 +50,7 @@ switch experiment
 
         % Target data
         In.Trg.idxX      = 1 : 3;     % observed state vector components 
-        In.Trg.nEL       = 1 : 1;     % delay-embedding indices
+        In.Trg.idxE      = 1 : 1;     % delay-embedding indices
         In.Trg.nXB       = 1;         % additional samples before main interval
         In.Trg.nXA       = 500;       % additional samples after main interval
         In.Trg.fdOrder   = 2;         % finite-difference order 
@@ -58,18 +58,18 @@ switch experiment
         In.Trg.embFormat = 'overlap'; % storage format for delay embedding
 
         % Out-of-sample dataset parameters
-        Out.Res.beta   = 8/3;   % L63 parameter beta
-        Out.Res.rho    = 28;    % L63 parameter rho
-        Out.Res.sigma  = 10;    % L63 parameter sigma
-        Out.Res.nSprod = 6400;  % number of "production samples
-        Out.Res.nSSpin = 128000; % spinup samples
-        Out.Res.relTol = 1E-8;  % relative tolerance for ODE solver 
-        Out.Res.ifCent = false; % data centering
-        Out. nS     =   Out.Res.nSprod + Out.nEL + Out.nXB + Out.nXA; % sample number
+        Out.Res.beta   = 8/3;          % L63 parameter beta
+        Out.Res.rho    = 28;           % L63 parameter rho
+        Out.Res.sigma  = 10;           % L63 parameter sigma
+        Out.Res.nSProd = 6400;         % number of "production samples
+        Out.Res.nSSpin = 128000;       % spinup samples
+        Out.Res.x0     = [ 0 1 1.05 ]; % initial conditions
+        Out.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
+        Out.Res.ifCent = false;        % data centering
 
         % NLSA parameters
-        In.nB         = 1;          % batches to partition the in-sample data
-        In.nBRec      = In.nB;      % batches for reconstructed data
+        In.Res.nB     = 1;          % batches to partition the in-sample data
+        In.Res.nBRec  = 1;          % batches for reconstructed data
         In.nN         = 5000;       % nearest neighbors for pairwise distances
         In.lDist      = 'l2';       % local distance
         In.tol        = 0;          % 0 distance threshold (for cone kernel)
@@ -89,20 +89,101 @@ switch experiment
         In.idxVTRec    = 1 : 5;     % SVD termporal patterns for reconstruction
 
         % NLSA parameters, kernel density estimation (KDE)
-        In.denType     = 'vb';          % density estimation type
-        In.denND       = 2;             % manifold dimension for 
-        In.denLDist    = 'l2';          % local distance function 
-        In.denBeta     = -1 / In.denND; % density exponent 
-        In.denNN       = 8;             % nearest neighbors 
-        In.denZeta     = 0;             % cone kernel parameter 
-        In.denAlpha    = 0;             % cone kernel velocity exponent 
-        In.denEpsilonB = 2;             % kernel bandwidth base 
-        In.denEpsilonE = [ -20 20 ];    % kernel bandwidth exponents 
-        In.denNEpsilon = 200;        % number of exponents for bandwidth tuning
+        In.denType      = 'vb';          % density estimation type
+        In.denND        = 2;             % manifold dimension for 
+        In.denLDist     = 'l2';          % local distance function 
+        In.denBeta      = -1 / In.denND; % density exponent 
+        In.denNN        = 8;             % nearest neighbors 
+        In.denZeta      = 0;             % cone kernel parameter 
+        In.denConeAlpha = 0;             % cone kernel velocity exponent 
+        In.denEpsilon   = 1;             % kernel bandwidth
+        In.denEpsilonB  = 2;             % kernel bandwidth base 
+        In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
+        In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
 
         % NLSA parameters, out-of-sample data
-        Out.nB    = 1;         % bathches to partition the in-sample data
-        Out.nBRec = Out.nB;    % batches for reconstructed data
+        Out.Res.nB    = 1; % bathches to partition the in-sample data
+        Out.Res.nBRec = 1; % batches for reconstructed data
+
+    % 64000 samples, standard L63 parameters
+    case '64k'
+        % In-sample dataset parameters
+        In.dt         = 0.01;         % sampling interval
+        In.Res.beta   = 8/3;          % L63 parameter beta
+        In.Res.rho    = 28;           % L63 parameter rho
+        In.Res.sigma  = 10;           % L63 parameter sigma
+        In.Res.nSProd = 64000;        % number of "production" samples
+        In.Res.nSSpin = 64000;        % spinup samples
+        In.Res.x0     = [ 0 1 1.05 ]; % initial conditions
+        In.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
+        In.Res.ifCent = false;        % data centering
+
+        % Source data
+        In.Src.idxX    = 1 : 3;       % observed state vector components 
+        In.Src.idxE    = 1 : 1;       % delay embedding indices
+        In.Src.nXB     = 1;           % additional samples before main interval
+        In.Src.nXA     = 500;         % additional samples after main interval
+        In.Src.fdOrder = 2;           % finite-difference order 
+        In.Src.fdType    = 'central'; % finite-difference type
+        In.Src.embFormat = 'overlap'; % storage format for delay embedding
+
+        % Target data
+        In.Trg.idxX      = 1 : 3;     % observed state vector components 
+        In.Trg.idxE      = 1 : 1;     % delay-embedding indices
+        In.Trg.nXB       = 1;         % additional samples before main interval
+        In.Trg.nXA       = 500;       % additional samples after main interval
+        In.Trg.fdOrder   = 2;         % finite-difference order 
+        In.Trg.fdType    = 'central'; % finite-difference type
+        In.Trg.embFormat = 'overlap'; % storage format for delay embedding
+
+        % Out-of-sample dataset parameters
+        Out.Res.beta   = 8/3;          % L63 parameter beta
+        Out.Res.rho    = 28;           % L63 parameter rho
+        Out.Res.sigma  = 10;           % L63 parameter sigma
+        Out.Res.nSProd = 64000;        % number of "production samples
+        Out.Res.nSSpin = 128000;       % spinup samples
+        Out.Res.x0     = [ 0 1 1.05 ]; % initial conditions
+        Out.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
+        Out.Res.ifCent = false;        % data centering
+
+        % NLSA parameters
+        In.Res.nB     = 4;          % batches to partition the in-sample data
+        In.Res.nBRec  = 4;          % batches for reconstructed data
+        In.nN         = 5000;       % nearest neighbors for pairwise distances
+        In.lDist      = 'l2';       % local distance
+        In.tol        = 0;          % 0 distance threshold (for cone kernel)
+        In.zeta       = 0;          % cone kernel parameter 
+        In.coneAlpha  = 0;          % velocity exponent in cone kernel
+        In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+        In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+        In.epsilon     = 1;         % kernel bandwidth parameter 
+        In.epsilonB    = 2;         % kernel bandwidth base
+        In.epsilonE    = [ -20 20 ];% kernel bandwidth exponents 
+        In.nEpsilon    = 200;       % number of exponents for bandwidth tuning
+        In.alpha       = .5;        % diffusion maps normalization 
+        In.nPhi        = 3001;      % diffusion eigenfunctions to compute
+        In.nPhiPrj     = In.nPhi;   % eigenfunctions to project the data
+        In.idxPhiRec   = 1 : 1;     % eigenfunctions for reconstruction
+        In.idxPhiSVD   = 1 : 1;     % eigenfunctions for linear mapping
+        In.idxVTRec    = 1 : 5;     % SVD termporal patterns for reconstruction
+
+        % NLSA parameters, kernel density estimation (KDE)
+        In.denType      = 'vb';          % density estimation type
+        In.denND        = 2;             % manifold dimension for 
+        In.denLDist     = 'l2';          % local distance function 
+        In.denBeta      = -1 / In.denND; % density exponent 
+        In.denNN        = 8;             % nearest neighbors 
+        In.denZeta      = 0;             % cone kernel parameter 
+        In.denConeAlpha = 0;             % cone kernel velocity exponent 
+        In.denEpsilon   = 1;             % kernel bandwidth
+        In.denEpsilonB  = 2;             % kernel bandwidth base 
+        In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
+        In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
+
+        % NLSA parameters, out-of-sample data
+        Out.Res.nB    = 4; % bathches to partition the in-sample data
+        Out.Res.nBRec = 4; % batches for reconstructed data
+
 
     otherwise
         error( 'Invalid experiment' )
@@ -111,7 +192,7 @@ end
 
 %% PRELIMINARY CHECKS
 % Check if we are doing out-of-sample extension
-if ~exist( Out, 'var' )
+if ~exist( 'Out', 'var' )
     Out   = [];
     ifOse = false; 
 else
@@ -216,7 +297,7 @@ for iR = In.nR : -1 : 1
     % In.Res( iR ).idxT1: time origin for delay embedding
     % In.Res( iR ).nSE:   number of samples after delay embedding
     % In.Res( iR ).nSRec: number of samples for reconstruction
-    In.Res( iR ).nS = In.Res( iR ).nSProd + nEXMax - 1 + nXBMax + nXAMax; 
+    In.Res( iR ).nS = In.Res( iR ).nSProd + nEMax - 1 + nXBMax + nXAMax; 
     In.Res( iR ).idxT1 = nEMax + nXBMax;      
     In.Res( iR ).nSE = In.Res( iR ).nS - In.Res( iR ).idxT1 + 1 - nXAMax; 
     nSETot = nSETot + In.Res( iR ).nSE;
@@ -232,6 +313,7 @@ end
 
 %% OUT-OF-SAMPLE PARAMETER VALUES INHERITED FROM IN-SAMPLE DATA
 if ifOse
+    Out.dt           = In.dt;  % sampling interval
     Out.nC           = In.nC;  % number of source components
     Out.nCT          = In.nCT; % number of target components
     Out.Src          = In.Src; % source component specification
@@ -268,6 +350,7 @@ end
 
 
 %% NUMBER OF SAMPLES AND TIMESTAMPS FOR OUT-OF-SAMPLE DATA
+if ifOse
     Out.nR  = numel( Out.Res ); % number of realizations, out-of-sample data
     idxT1O = zeros( 1, Out.nR );
     % Determine number of samples for out-of-sample data.
@@ -276,7 +359,7 @@ end
         % Out.Res( iR ).idxT1: time origin for delay embedding
         % Out.Res( iR ).nSE:   number of samples after delay embedding
         % Out.Res( iR ).nSRec: number of samples for reconstruction
-        Out.Res( iR ).nS = Out.Res( iR ).nSProd + nEXMax - 1 + nXBMax + nXAMax; 
+        Out.Res( iR ).nS = Out.Res( iR ).nSProd + nEMax - 1 + nXBMax + nXAMax; 
         Out.Res( iR ).idxT1 = nEMax + nXBMax; 
         Out.Res( iR ).nSE = Out.Res( iR ).nS - Out.Res( iR ).idxT1 + 1-nXAMax; 
         Out.Res( iR ).nSERec = Out.Res( iR ).nSE + nETMin - 1; 
@@ -364,7 +447,7 @@ for iR = In.nR : -1 : 1
         trgComponent( iC, iR ) = nlsaComponent( ...
                                     'partition',      partition, ...
                                     'dimension',      nD, ...
-                                    'path',           pathC, ...
+                                    'path',           pathR, ...
                                     'file',           fList, ...
                                     'componentTag',   tagC, ...
                                     'realizationTag', tagR  );

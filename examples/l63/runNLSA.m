@@ -1,27 +1,19 @@
-function [ model, In, Out ] = runNLSA( dataset, experiment, iProc, nProc )
+function [ model, In, Out ] = runNLSA( experiment, iProc, nProc )
 %
 % This function creates an NLSA model, and executes the various NLSA steps for 
-% climate datasets.
+% Lorenz 63 datasets.
 %
 % Each step saves the results on disk, so a partially completed calculation can
 % be resumed by commenting out the steps in this function which have been 
 % already executed. 
 %
 % Similarly, if the NLSA model parameters specified in the function 
-% climateNLSAModel are changed, it is only necessary to repeat the steps 
+% l63NLSAModel are changed, it is only necessary to repeat the steps 
 % affected by the parameter changes. (E.g., if the diffusion maps bandwidth 
 % parameter is changed, the steps up to the distance symmetrization can be
 % skipped.)
 %
 % Input arguments:
-%
-% dataset:      a string identifier for the dataset. Possible options are:
-%
-%               - noaa    (NOAA 20th century reanalysis)
-%               - hadisst (HadISST dataset) 
-%               - ccsm4   (CCSM4 model)
-%               - claus   (CLAUS brightness temperature dataset)
-%               - gpcp    (GPCP griddded precipitation dataset)
 %
 % experiment:   a string identifier for the data analysis experiment within
 %               the specified dataset
@@ -57,24 +49,20 @@ function [ model, In, Out ] = runNLSA( dataset, experiment, iProc, nProc )
 % Reconstructed data: 
 % x = getReconstructedData( model );
 %  
-% Modified 2020/03/27
+% Modified 2020/03/30
 
 % Default input arguments
 if nargin == 0
-    experiment = 'enso_lifecycle';   
+    experiment = '6.4k';   
 end
-if nargin <= 1
-    dataset = 'noaa';
-end
-if nargin <= 2 
+if nargin <= 1 
     iProc = 1;
     nProc = 1;
 end
 
-disp( dataset ) 
 disp( experiment )
 
-[ model, In, Out ] = climateNLSAModel( dataset, experiment );
+[ model, In, Out ] = l63NLSAModel( experiment );
 
 disp( 'Takens delay embedding' ); computeDelayEmbedding( model )
 
@@ -95,17 +83,18 @@ disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
 % density estimation
 %disp( 'Phase space velocity for density data' ); computeDenVelocity( model );
  
-%fprintf( 'Pairwise distances for density data, %i/%i\n', iProc, nProc ); 
-%computeDenPairwiseDistances( model, iProc, nProc )
+fprintf( 'Pairwise distances for density data, %i/%i\n', iProc, nProc ); 
+computeDenPairwiseDistances( model, iProc, nProc )
 
 % The next step is only needed if the kernel density estimation is of type "vb"
-%disp( 'Density bandwidth normalization' ); computeDenBandwidthNormalization( model );
+disp( 'Density bandwidth normalization' ); 
+computeDenBandwidthNormalization( model );
 
-%disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
+disp( 'Density kernel sum' ); computeDenKernelDoubleSum( model );
 
-%disp( 'Density' ); computeDensity( model );
+disp( 'Density' ); computeDensity( model );
 
-%disp( 'Density delay embedding' ); computeDensityDelayEmbedding( model );
+disp( 'Density delay embedding' ); computeDensityDelayEmbedding( model );
 
 fprintf( 'Pairwise distances, %i/%i\n', iProc, nProc ); 
 computePairwiseDistances( model, iProc, nProc )
@@ -123,8 +112,8 @@ disp( 'Diffusion eigenfunctions' ); computeDiffusionEigenfunctions( model )
 %disp( 'Reconstruction of the projected data' )
 %computeReconstruction( model )
 
-%disp( 'Takens delay embedding, out-of-sample data' )
-%computeOutDelayEmbedding( model )
+disp( 'Takens delay embedding, out-of-sample data' )
+computeOutDelayEmbedding( model )
 
 % The next step is only needed for velocity-dependent distances
 %disp( 'Phase space velocity, out-of-sample data' )
@@ -139,26 +128,28 @@ disp( 'Diffusion eigenfunctions' ); computeDiffusionEigenfunctions( model )
 % density estimation
 %disp( 'Phase space velocity for OS density data' ); computeOutDenVelocity( model );
  
-%fprintf( 'OSE pairwise distances for density data, %i/%i\n', iProc, nProc ); 
-%computeOseDenPairwiseDistances( model, iProc, nProc )
+fprintf( 'OSE pairwise distances for density data, %i/%i\n', iProc, nProc ); 
+computeOseDenPairwiseDistances( model, iProc, nProc )
 
 % The next step is only needed if the kernel density estimation is of type "vb"
-%disp( 'OSE density bandwidth normalization' ); computeOseDenBandwidthNormalization( model );
+disp( 'OSE density bandwidth normalization' ); 
+computeOseDenBandwidthNormalization( model );
 
-%disp( 'OSE density' ); computeOseDensity( model );
+disp( 'OSE density' ); computeOseDensity( model );
 
-%disp( 'OSE density delay embedding' ); computeOseDensityDelayEmbedding( model );
+disp( 'OSE density delay embedding' ); 
+computeOseDensityDelayEmbedding( model );
 
-%fprintf( 'OSE pairwise distances, %i/%i\n', iProc, nProc ); 
-%computeOsePairwiseDistances( model, iProc, nProc )
+fprintf( 'OSE pairwise distances, %i/%i\n', iProc, nProc ); 
+computeOsePairwiseDistances( model, iProc, nProc )
 
-%disp( 'OSE kernel normalization' ); computeOseKernelNormalization( model );
-%
-%disp( 'OSE kernel degree' ); computeOseKernelDegree( model );
+disp( 'OSE kernel normalization' ); computeOseKernelNormalization( model );
 
-%disp( 'OSE operator' ); computeOseDiffusionOperator( model );
+disp( 'OSE kernel degree' ); computeOseKernelDegree( model );
 
-%disp( 'OSE eigenfunctions' ); computeOseDiffusionEigenfunctions( model );
+disp( 'OSE operator' ); computeOseDiffusionOperator( model );
+
+disp( 'OSE eigenfunctions' ); computeOseDiffusionEigenfunctions( model );
 
 %disp( 'Reconstruction of out-of-sample data in Takens delay-coordinate space' )
 %computeOseEmbData( model )

@@ -1,7 +1,7 @@
 function q = getDensity( obj, iB, iR )
 % GETDENSITY Read density data of an nlsaKernelDensity_fb object
 %
-% Modified 2015/10/28
+% Modified 2020/04/04
 
 partition  = getPartition( obj );
 
@@ -21,11 +21,12 @@ elseif nargin == 3
     iBG = loc2gl( partition, iB, iR );
 end
 
-if isscalar( iB )
-    iS = getBatchLimit( partition( iR ), iB );
+partitionG = mergePartitions( partition );
+
+if isscalar( iBG )
+    iS = getBatchLimit( partitionG, iBG );
     q = q( iS( 1 ) : iS( 2 ) );
 else
-    partitionG = mergePartitions( partition );
     isContiguous = all( iBG( 2 : end ) - iBG( 1 : end - 1 ) == 1 );
     if isContiguous
         iSB1 = getBatchLimit( partitionG, iBG( 1 ) );

@@ -4,7 +4,7 @@ function splitData( obj, src )
 % and the partition of src must be a coarsening of the merged partitions of 
 % obj. 
 %
-% Modified 2020/01/28
+% Modified 2020/04/04
 
 %% VALIDATE INPUT ARGUMENTS
 if ~isrow( obj )
@@ -18,6 +18,11 @@ nR = size( obj, 1 );
 if nD ~= getDataSpaceDimension( src )
     error( 'Invalid source data dimension' )
 end
+
+%% VALIDATE INPUT PARTITIONS AND EXTRACT BATCH INDICES
+% idxMerge is a row vector of size equal to the total batches in the output obj. 
+% idxMerge( i ) indicates the batch index of the source partition from witch batch i of the 
+% global output partition receives data.  
 partition            = getPartition( obj );
 [ partitionG, idxG ] = mergePartitions( partition );
 partitionS           = getPartition( src );
@@ -27,14 +32,15 @@ if ~tst
 end
 
 %% LOOP OVER BATCHES OF THE COARSE PARTITION
-nBS = numel( partitionS );
+nBS = getNBatch( partitionS );
 for iBS = 1 : nBS
+    % Batch iBS of the coarse partition will be split into batches idxBG of the fine partition
     x = getData( src, iBS );
     idxBG = find( idxMerge == iBS );  
     nBG = numel( idxBG );
     iS1 = 1;
     for iBG = 1 : nBG 
-        iS2 = iS1 + getBatchSize( partitionG, iBG ) - 1;
+        iS2 = iS1 + getBatchSize( partitionG, idxBG( iBG ) ) - 1;
         setData( obj( idxG( 1, idxBG( iBG ) ) ), x( :, iS1 : iS2 ), ...
             idxG( 2, idxBG( iBG ) ), '-v7.3' )
         iS1 = iS2 + 1;

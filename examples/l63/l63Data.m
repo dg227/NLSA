@@ -8,19 +8,19 @@
 % Modified 2018-11-03
 
 %% DATASET PARAMETERS
-beta   = 8/3;          % L63 parameter beta
-rho    = 28;           % L63 paramater rho
-sigma  = 10;           % L63 parameter sigma 
+beta   = 8/3;           % L63 parameter beta
+rho    = 28;            % L63 paramater rho
+sigma  = 10;            % L63 parameter sigma 
 nSProd = 64000;         % number of production samples
 nSSpin = 128000;        % spinup samples
-nEL    = 0;            % embedding window length (additional samples)
-nXB    = 1;            % additional samples before production interval 
-nXA    = 50;           % additional samples after production interval 
-dt     = 0.1;          % sampling interval
-x0     = [ 0 1 1.05 ]; % initial conditions
-relTol = 1E-8;         % relative tolerance for ODE solver
-ifCent = false;        % data centering
-idxX   = { 1 [ 1 2 ] };    % state vector components for partial obs
+nEL    = 0;             % embedding window length (additional samples)
+nXB    = 1;             % additional samples before production interval 
+nXA    = 500;           % additional samples after production interval 
+dt     = 0.01;          % sampling interval
+x0     = [ 0 1 1.05 ];  % initial conditions
+relTol = 1E-8;          % relative tolerance for ODE solver
+ifCent = false;         % data centering
+idxX   = { 1 [ 1 2 ] }; % state vector components for partial obs
 
 %% SCRIPT EXECUTION OPTIONS
 ifIntegrate = true;
