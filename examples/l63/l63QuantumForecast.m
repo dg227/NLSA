@@ -6,7 +6,6 @@
 %% MAIN CALCULATION PARAMETERS AND OPTIONS
 experiment = '6.4k'; 
 
-% for forecasting
 idxPhi     = 1 : 201;   % NLSA eigenfunctions 
 idxZeta    = 1 : 101;   % generator eigenfunctions for quantum system
 tau        = 1E-5;      % RKHS regularization parameter
@@ -14,8 +13,8 @@ tauRef     = 1E-4;      % diffusion regularization parameter
 idxX       = [ 1 : 3 ]; % state vector components to predict
 nP         = 500 + 1;   % prediction timesteps (including 0)
 nPar       = 4;         % number of parallel workers
-nProcX     = 1;         % number of batch processes for verification data
-nProcT     = 250;       % number of processes for forecast times
+nBS        = 1;         % number of batches for verification data
+nBP        = 250;       % number of batches for forecast times
 
 idxT0 = 101; % forecast initialization time to plot
 
@@ -132,25 +131,43 @@ end
 if ifPred
     
     % Partition the forecast interval into batches
+    partitionP = nlsaPartition( 'nSample', nP, 'nBatch', nBatchP ); 
 
-    disp( 'Forming forecast operators...' )
-    tic
+    % Partition the verification data into batches
+    partitionS = nlsaPartition( 'nSample', nSO, 'nBatch', nBatchS );  
 
-    % Eigenfunction values at verification dataset 
-    zetaO = phiO( :, idxPhi  ) .* sqrtLambda' * c;
-    zetaO = zetaO.'; % size [ nZeta nSO ]
+    % Eigenfrequencies
+    Omega = omega - omega';
 
-    % Forecast times
-    t = ( 0 : nP - 1 ) * Pars.dt; 
+    % Loop over forecast intervals
+    for iBP = 1 : nBP
+        disp( sprintf( 'Forecast interval %i/%i...', iBP, nBP ) )
+        tWallP = tic;
 
-    % Heisenberg operator
-    Ut = omega - omega';
-    Ut = exp( i * ( omega - omega' ) .* reshape( t, [ 1 1 1 nP ] ) );
+        % Forecast times
+        pLim = getBatchLimit( partitionP, iBP ); 
+        t = ( ( pLim( 1 ) : pLim( 2 ) ) - 1 ) * Pars.dt; 
+        t = reshape( t, [ 1 1 1 nP ] );
 
-    % K is a [ nZeta nZeta nSO ] array containing the summands (features) 
-    % in the Mercer sum of the kernel at the verification points. 
-    K = reshape( conj( zetaO ), [ nZeta 1 nSO ] ) ...
-      .* reshape( zetaO, [ 1 nZeta nSO ] ); 
+        % Heisenberg operator
+        Ut = exp( i * Omega .* t ) );
+
+        % Loop over verification batches
+        for iBS = 1 : nBS
+            
+            % Indices  for current verification batch
+            idxS = getBatchLimit( partitionS, iBS );
+            nSB  = getBatch
+
+            % Eigenfunction values at verification batch 
+            zetaO = phiO( idxS( 1 ) : idxS( 2 ), idxPhi  ) .* sqrtLambda' * c;
+            zetaO = zetaO.'; % size [ nZeta nSO ]
+
+            % K is a [ nZeta nZeta nSO ] array containing the summands 
+            % (features) in the Mercer sum of the kernel at the verification 
+            % points. 
+            K = reshape( conj( zetaO ), [ nZeta 1 nSO ] ) ...
+              .* reshape( zetaO, [ 1 nZeta nSO ] ); 
 
     % Product of Heisenberg operator and Mercer  
     KUt = Ut .* K;
