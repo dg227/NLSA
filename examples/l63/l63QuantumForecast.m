@@ -4,25 +4,24 @@
 % Modified 2017/02/23
 
 %% MAIN CALCULATION PARAMETERS AND OPTIONS
-experiment = '6.4k'; 
+experiment = '64k'; 
 
-idxPhi     = 2 : 201;   % NLSA eigenfunctions 
-idxZeta    = 1 : 101;   % generator eigenfunctions for quantum system
-tau        = 1E-5;      % RKHS regularization parameter
-tauRef     = 1E-4;      % diffusion regularization parameter
+idxPhi     = 2 : 2001;  % NLSA eigenfunctions 
+idxZeta    = 1 : 1000;   % generator eigenfunctions for quantum system
+tau        = 1E-4;      % RKHS regularization parameter
 nP         = 50 + 1;    % prediction timesteps (including 0)
 nPar       = 4;         % number of parallel workers
-nBS        = 10;        % number of batches for verification data
-nBP        = 1;         % number of batches for forecast times
+nBS        = 1000;      % number of batches for verification data
+nBP        = 5;         % number of batches for forecast times
 
 % Plot parameters
-Plt.idxT0 = 101;       % forecast initialization time to plot
+Plt.idxT0 = 30;        % forecast initialization time to plot
 Plt.idxR  = 1;         % forecast realization to plot
 Plt.idxD  = [ 1 : 3 ]; % state vector components to plot
 
 
 %% SCRIPT EXCECUTION OPTIONS
-ifRead            = true;  % read data and eigenfunctions
+ifRead            = false;  % read data and eigenfunctions
 ifCalcGenerator   = true;  % compute Koopman eigenvalues and eigenfunctions
 ifCalcObservables = true;  % compute quantum observable operators
 ifPred            = true;  % perform prediction
@@ -109,6 +108,7 @@ if ifCalcGenerator
     c = c( :, idxE );
     l2SqNorm = l2SqNorm( idxE );
     cL = c( :, idxZeta ) .* sqrtLambda; % for later use   
+    cLInv = c( :, idxZeta ) ./ sqrtLambda; 
     toc
     
 end
@@ -122,8 +122,10 @@ if ifCalcObservables
     Tf = cell( 1, nD ); % compactified multiplication operators
     for iD = 1 : nD
         Tf{ iD } =  phi( :, idxPhi )' ...
-                  * ( f( :, iD ) .* phi( :, idxPhi ) .* mu );
-        Tf{ iD } = c( :, idxZeta )' * Tf{ iD } * c( :, idxZeta );
+                  * ( ( f( :, iD ) - fMean( iD ) ) .* phi( :, idxPhi ) .* mu );
+        %Tf{ iD } = c( :, idxZeta )' * Tf{ iD } * c( :, idxZeta );
+        Tf{ iD } = cLInv( :, idxZeta )' * Tf{ iD } * cLInv( :, idxZeta );
+        %Tf{ iD } = cL( :, idxZeta )' * Tf{ iD } * cL( :, idxZeta );
     end
     toc
 end
@@ -142,7 +144,7 @@ if ifPred
     partitionS = nlsaPartition( 'nSample', nSO, 'nBatch', nBS );  
 
     % Eigenfrequencies
-    Omega = omega( idxZeta ) - omega( idxZeta )';
+    Omega = omega( idxZeta )' - omega( idxZeta );
 
     % Predicted values
     fPred = zeros( nSO, nP, nD );
@@ -154,15 +156,16 @@ if ifPred
 
         % Forecast times
         idxP = getBatchIndices( partitionP, iBP ); 
+        nPB = numel( idxP );
         t = ( idxP - 1 ) * Pars.dt; 
-        t = reshape( t, [ 1 1 1 nP ] );
+        t = reshape( t, [ 1 1 1 nPB ] );
 
         % Heisenberg operator
         Ut = exp( i * Omega .* t );
 
         % Loop over verification batches
-        for iBS = 1 : nBS
-            
+        for iBS = 1; 1 : nBS;
+           
             disp( sprintf( 'Verification batch %i/%i...', iBS, nBS ) )
             tWallS = tic;
 
@@ -174,23 +177,24 @@ if ifPred
             zetaO = phiO( idxS, idxPhi  ) * cL;
             zetaO = zetaO.'; % size [ nZeta nSB ]
 
+
             % K is a [ nZeta nZeta nSB ] array containing the summands 
             % (features) in the Mercer sum of the kernel at the verification 
             % points. 
-            K = reshape( conj( zetaO ), [ nZeta 1 nSB ] ) ...
-              .* reshape( zetaO, [ 1 nZeta nSB ] ); 
+            K = reshape( zetaO, [ nZeta 1 nSB ] ) ...
+              .* reshape( conj( zetaO ), [ 1 nZeta nSB ] ); 
 
             % Product of Heisenberg operator and Mercer  
             KUt = Ut .* K;
-    
-            % Kernel values on diagonal (normalization factor)
-            Z = squeeze( sum( K, [ 1 2 ] ) );  
 
-            % Evaluate prediction
+            % Kernel values on diagonal (normalization factor)
+            Z = sum( abs( zetaO ) .^ 2, 1 )';
+
+            % Evaluate prediction, retaining real part
             for iD = 1 : nD
                 fPred( idxS, idxP, iD ) = sum( Tf{ iD } .* KUt, [ 1 2 ] ); 
             end
-            fPred( idxS, idxP, : ) = fPred( idxS, idxP, : ) ./ Z;
+            fPred( idxS, idxP, : ) = real( fPred( idxS, idxP, : ) ) ./ Z;
 
             toc( tWallS )
         end
@@ -244,11 +248,11 @@ if ifPlotPred
  
     % Set up figure and axes 
     Fig.units      = 'inches';
-    Fig.figWidth   = 6; 
+    Fig.figWidth   = 8; 
     Fig.deltaX     = .57;
     Fig.deltaX2    = .1;
     Fig.deltaY     = .48;
-    Fig.deltaY2    = .12;
+    Fig.deltaY2    = .3;
     Fig.gapX       = .35;
     Fig.gapY       = .3;
     Fig.gapT       = 0; 
@@ -256,7 +260,7 @@ if ifPlotPred
     Fig.nTileY     = 2;
     Fig.aspectR    = 9 / 16;
     Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 12;
+    Fig.fontSize   = 8;
     Fig.tickLength = [ 0.02 0 ];
     Fig.visible    = 'on';
     Fig.nextPlot   = 'add'; 
@@ -271,23 +275,28 @@ if ifPlotPred
 
         % plot forecast trajectories
         set( gcf, 'currentAxes', ax( iD, 1 ) )
-        plot( t, fTrue( :, iD ), 'k-' )
-        plot( t, fPred( :, iD ), 'b-' )
+        plot( t, fTruePlt( :, iD ), 'k-' )
+        plot( t, fPredPlt( :, iD ), 'b-' )
 
         if iD == 1
             legend( 'true', 'forecast', 'location', 'southEast' )
         end
-        if iD ~= 1
-            set( gca, 'yTickLabel', [] )
-        end
         title( sprintf( 'x_{%i}', Plt.idxD( iD ) ) )
+        set( gca, 'xLimSpec', 'tight' )
 
         % plot normalized RMSE error
         set( gcf, 'currentAxes', ax( iD, 2 ) )
-        plot( t, fErr( :, iD ) / fStd( iD ), 'b-' ) 
+        plot( t, fRmse( :, iD ), 'b-' ) 
         grid on
         xlabel( 'lead time t' )
-        ylabel( 'normalized RMSE' )
+        if iD == 1
+            ylabel( 'normalized RMSE' )
+        else
+            set( gca, 'yTickLabel', [] )
+        end
+        set( gca, 'xLimSpec', 'tight', 'yLim', [ 0 1.2 ], ...
+            'yTick', [ 0 : .2 : 1.2 ]  )
+
     end
 
     print( '-dpng', '-r300', [ 'figErr_' experiment '.png' ] )
