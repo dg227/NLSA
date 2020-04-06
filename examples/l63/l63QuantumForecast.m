@@ -6,34 +6,39 @@
 %% MAIN CALCULATION PARAMETERS AND OPTIONS
 experiment = '6.4k'; 
 
-idxPhi     = 1 : 201;   % NLSA eigenfunctions 
+idxPhi     = 2 : 201;   % NLSA eigenfunctions 
 idxZeta    = 1 : 101;   % generator eigenfunctions for quantum system
 tau        = 1E-5;      % RKHS regularization parameter
 tauRef     = 1E-4;      % diffusion regularization parameter
-idxX       = [ 1 : 3 ]; % state vector components to predict
-nP         = 500 + 1;   % prediction timesteps (including 0)
+nP         = 50 + 1;    % prediction timesteps (including 0)
 nPar       = 4;         % number of parallel workers
-nBS        = 1;         % number of batches for verification data
-nBP        = 250;       % number of batches for forecast times
+nBS        = 10;        % number of batches for verification data
+nBP        = 1;         % number of batches for forecast times
 
-idxT0 = 101; % forecast initialization time to plot
+% Plot parameters
+Plt.idxT0 = 101;       % forecast initialization time to plot
+Plt.idxR  = 1;         % forecast realization to plot
+Plt.idxD  = [ 1 : 3 ]; % state vector components to plot
+
 
 %% SCRIPT EXCECUTION OPTIONS
 ifRead            = true;  % read data and eigenfunctions
 ifCalcGenerator   = true;  % compute Koopman eigenvalues and eigenfunctions
 ifCalcObservables = true;  % compute quantum observable operators
-ifPred            = false;  % perform prediction
-ifErr             = false;  % compute prediction errors 
+ifPred            = true;  % perform prediction
+ifErr             = true;   % compute prediction errors 
+
+ifPlotPred = true; 
 
 %% BUILD NLSA MODEL, DETERMINE BASIC ARRAY SIZES
 [ model, Pars ] = l63NLSAModel( experiment );
-nX    = numel( idxX );    % dimension of prediction observable
 nPhi  = numel( idxPhi );  % number of NLSA eigenfunctions
 nZeta = numel( idxZeta ); % number of generator eigenfunctions
 nR    = size( model.embComponent, 2 );    % training realizations
 nS    = getNTotalSample( model.embComponent( 1, : ) );    % training samples
 nSA   = sum( getNXA( model.trgEmbComponent( 1, : ) ) );   % extra samples
 nT    = nS / nR; % temporal training samples
+nTA   = nSA / nR; % extra training samples
 nD    = sum( getDataSpaceDimension( model.trgEmbComponent( :, 1 ) ) ); 
 nRO   = size( model.outEmbComponent, 2 ); % verification realizations
 nSO   = getNTotalSample( model.outEmbComponent( 1, : ) ); % test samples  
@@ -61,10 +66,9 @@ if ifRead
     % Append data after main time interval to compute forecast error
     fOut = zeros( nD, nTO + nTA, nRO ); 
     fOut( :, 1 : nTO, : )  = reshape( ...
-        getData( model.outTrgEmbComponent, [ nD nTO nRO ] ) );
+        getData( model.outTrgEmbComponent ), [ nD nTO nRO ] );
     fOut( :, nTO + 1 : end, : ) = reshape( ...
-        getData_after( model.outTrgEmbComponent, [ nD nTA nRO ] );
-    fOut = reshape( fOut, [ nD nSO ] );
+        getData_after( model.outTrgEmbComponent ), [ nD nTA nRO ] );
     toc
 end
 
@@ -82,11 +86,11 @@ sqrtLambda = exp( - tau * eta( idxPhi ) / 2 );
 if ifCalcGenerator
     disp( 'Computing generator matrix...' )
     tic
-    dphi  = 0.5 * ( reshape( phi( 3 : end, idxPhi ), [ nT - 2, nR, nPhi ] ) ...
+    dPhi  = 0.5 * ( reshape( phi( 3 : end, idxPhi ), [ nT - 2, nR, nPhi ] ) ...
               - reshape( phi( 1 : end - 2, idxPhi ), [ nT - 2, nR, nPhi ] ) ); 
     dPhi = reshape( dPhi, [ nS - 2, nPhi ] );
     phiMu = phi( 2 : end - 1, idxPhi ) .* mu( 2 : end - 1 );
-    W = phiMu' * dphi / Pars.dt;
+    W = phiMu' * dPhi / Pars.dt;
     W = sqrtLambda .* W .* sqrtLambda'; 
     W = .5 * ( W - W' );
     toc
@@ -101,8 +105,10 @@ if ifCalcGenerator
     l2SqNorm = sum( abs( c .* sqrtLambda ) .^ 2, 1 );
     E = ( 1 ./ l2SqNorm - 1 ) ./ ( 1 - omega .^ 2 .* Pars.dt .^ 2 );
     [ E, idxE ] = sort( E, 'ascend' );
+    omega = omega( idxE );
     c = c( :, idxE );
     l2SqNorm = l2SqNorm( idxE );
+    cL = c( :, idxZeta ) .* sqrtLambda; % for later use   
     toc
     
 end
@@ -114,30 +120,32 @@ if ifCalcObservables
     disp( 'Computing quantum mechanical observables...' )
     tic
     Tf = cell( 1, nD ); % compactified multiplication operators
-    cL = c( :, idxZeta ) .* sqrtLambda;   
     for iD = 1 : nD
         Tf{ iD } =  phi( :, idxPhi )' ...
                   * ( f( :, iD ) .* phi( :, idxPhi ) .* mu );
-        Tf{ iD } = cL' * Tf{ iD } * cL;
+        Tf{ iD } = c( :, idxZeta )' * Tf{ iD } * c( :, idxZeta );
     end
     toc
 end
 
 %% PERFORM PREDICTION
 % We use up to rank-4 arrays for numerical efficiency (at the expense of 
-% memory use). The size convention is [ nZeta nZeta nTO nP ]. 
+% memory use). The size convention is [ nZeta nZeta nSO nP ]. 
 %
-% Forecast is output in an array fPred of size [ nTO nP nD ].
+% Forecast is output in an array fPred of size [ nTO nRO nP nD ].
 if ifPred
     
     % Partition the forecast interval into batches
-    partitionP = nlsaPartition( 'nSample', nP, 'nBatch', nBatchP ); 
+    partitionP = nlsaPartition( 'nSample', nP, 'nBatch', nBP ); 
 
     % Partition the verification data into batches
-    partitionS = nlsaPartition( 'nSample', nSO, 'nBatch', nBatchS );  
+    partitionS = nlsaPartition( 'nSample', nSO, 'nBatch', nBS );  
 
     % Eigenfrequencies
-    Omega = omega - omega';
+    Omega = omega( idxZeta ) - omega( idxZeta )';
+
+    % Predicted values
+    fPred = zeros( nSO, nP, nD );
 
     % Loop over forecast intervals
     for iBP = 1 : nBP
@@ -145,49 +153,56 @@ if ifPred
         tWallP = tic;
 
         % Forecast times
-        pLim = getBatchLimit( partitionP, iBP ); 
-        t = ( ( pLim( 1 ) : pLim( 2 ) ) - 1 ) * Pars.dt; 
+        idxP = getBatchIndices( partitionP, iBP ); 
+        t = ( idxP - 1 ) * Pars.dt; 
         t = reshape( t, [ 1 1 1 nP ] );
 
         % Heisenberg operator
-        Ut = exp( i * Omega .* t ) );
+        Ut = exp( i * Omega .* t );
 
         % Loop over verification batches
         for iBS = 1 : nBS
             
+            disp( sprintf( 'Verification batch %i/%i...', iBS, nBS ) )
+            tWallS = tic;
+
             % Indices  for current verification batch
-            idxS = getBatchLimit( partitionS, iBS );
-            nSB  = getBatch
+            idxS = getBatchIndices( partitionS, iBS );
+            nSB = numel( idxS );
 
             % Eigenfunction values at verification batch 
-            zetaO = phiO( idxS( 1 ) : idxS( 2 ), idxPhi  ) .* sqrtLambda' * c;
-            zetaO = zetaO.'; % size [ nZeta nSO ]
+            zetaO = phiO( idxS, idxPhi  ) * cL;
+            zetaO = zetaO.'; % size [ nZeta nSB ]
 
-            % K is a [ nZeta nZeta nSO ] array containing the summands 
+            % K is a [ nZeta nZeta nSB ] array containing the summands 
             % (features) in the Mercer sum of the kernel at the verification 
             % points. 
-            K = reshape( conj( zetaO ), [ nZeta 1 nSO ] ) ...
-              .* reshape( zetaO, [ 1 nZeta nSO ] ); 
+            K = reshape( conj( zetaO ), [ nZeta 1 nSB ] ) ...
+              .* reshape( zetaO, [ 1 nZeta nSB ] ); 
 
-    % Product of Heisenberg operator and Mercer  
-    KUt = Ut .* K;
-    clear omega2 Ut
+            % Product of Heisenberg operator and Mercer  
+            KUt = Ut .* K;
     
-    % Kernel values
-    K = sum( K, [ 1 2 ] );  
+            % Kernel values on diagonal (normalization factor)
+            Z = squeeze( sum( K, [ 1 2 ] ) );  
 
-    % Predicted values
-    fPred = zeros( nTO, nP, nD );
-    toc
+            % Evaluate prediction
+            for iD = 1 : nD
+                fPred( idxS, idxP, iD ) = sum( Tf{ iD } .* KUt, [ 1 2 ] ); 
+            end
+            fPred( idxS, idxP, : ) = fPred( idxS, idxP, : ) ./ Z;
 
-    % Evaluate prediction
-    disp( 'Performing prediction...' )
-    tic
-    for iD = 1 : nD
-       fPred( :, :, iD ) = sum( Tf{ iD } .* KUt, [ 1 2 ] ); 
+            toc( tWallS )
+        end
+
+        toc( tWallP )
     end
-    fPred = fPred ./ K;
-    toc
+
+    % Add mean to prediction
+    fPred = fPred + reshape( fMean, [ 1 1 nD ] );
+
+    % Reshape to desired output format
+    fPred = reshape( fPred, [ nTO nRO nP nD ] );
 end
 
 %% COMPUTE PREDICTION ERROR
@@ -195,20 +210,91 @@ if ifErr
     disp( 'Prediction error' )
 
     tic
+
+    % fOut has size [ nD, nTO + nTA, nRO ]
+    % Put test data in appropriate form for time shift (temporal index is
+    % last) 
+    fT = permute( fOut, [ 1 3 2 ] );
+    fT = reshape( fT, [ nD * nRO, nTO + nTA ] );
+
     % create true signal by time-shifting out-of-sample data
     fTrue = lembed( fOut, [ nP, nP + nTO - 1 ], 1 : nP );
     
-    % Put in appropriate form for comparison with fPred 
-    fTrue = reshape( fTrue, [ nD nP nTO ] );
-    fTrue = permute( fTrue, [ 3 2 1 ] );
+    % fPred has size [ nTO nRO nP nD ]
+    % Put fTrue in appropriate form for comparison with fPred 
+    fTrue = reshape( fTrue, [ nD nRO nP nTO ] );
+    fTrue = permute( fTrue, [ 4 2 3 1 ] );
 
     % Compute normalized RMSE 
-    predErr = fPred - fTrue;
-    fRmse = vecnorm( predErr, 2, 1 ) / sqrt( nSO );
-    fRmse = fRmse ./ fStd; 
+    predErr = reshape( fPred - fTrue, [ nSO nP nD ] );
+    fRmse   = squeeze( vecnorm( predErr, 2, 1 ) / sqrt( nSO ) );
+    fRmse   = fRmse ./ fStd; 
 
     toc
 end
+
+
+if ifPlotPred
+
+    % Prepare variabes to plot
+    nDPlt = numel( Plt.idxD );
+    t = Pars.dt * ( 0 : nP - 1 );
+    fTruePlt = squeeze( fTrue( Plt.idxT0, Plt.idxR, :, Plt.idxD ) ); 
+    fPredPlt = squeeze( fPred( Plt.idxT0, Plt.idxR, :, Plt.idxD ) );     
+ 
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 6; 
+    Fig.deltaX     = .57;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .12;
+    Fig.gapX       = .35;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0; 
+    Fig.nTileX     = nDPlt;
+    Fig.nTileY     = 2;
+    Fig.aspectR    = 9 / 16;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 12;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+
+    % Loop over the response variables
+    set( 0, 'currentFigure',fig )
+
+    for iD = 1 : nDPlt
+
+        % plot forecast trajectories
+        set( gcf, 'currentAxes', ax( iD, 1 ) )
+        plot( t, fTrue( :, iD ), 'k-' )
+        plot( t, fPred( :, iD ), 'b-' )
+
+        if iD == 1
+            legend( 'true', 'forecast', 'location', 'southEast' )
+        end
+        if iD ~= 1
+            set( gca, 'yTickLabel', [] )
+        end
+        title( sprintf( 'x_{%i}', Plt.idxD( iD ) ) )
+
+        % plot normalized RMSE error
+        set( gcf, 'currentAxes', ax( iD, 2 ) )
+        plot( t, fErr( :, iD ) / fStd( iD ), 'b-' ) 
+        grid on
+        xlabel( 'lead time t' )
+        ylabel( 'normalized RMSE' )
+    end
+
+    print( '-dpng', '-r300', [ 'figErr_' experiment '.png' ] )
+end
+
+
+
 
 return
 

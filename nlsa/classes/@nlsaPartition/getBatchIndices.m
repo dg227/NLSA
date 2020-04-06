@@ -5,11 +5,11 @@ function idx = getBatchIndices( obj, varargin )
 
 lim = getBatchLimit( obj, varargin{ : } );
 
-nB = size( lim, 2 );
+nB = size( lim, 1 );
 if nB == 1
     idx = lim( 1 ) : lim( 2 );
 else
-    idx = cell( 1, nB );
+    idx = cell( nB, 1 );
     for iB = 1 : nB
         idx{ iB } = lim( 1, iB ) : lim( 2, iB );
     end

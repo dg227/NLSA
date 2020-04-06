@@ -115,7 +115,7 @@ if ifErr
     tic
     disp( 'Prediction error' )
 
-    % put training data in appropriate form for time shift (temporal index is
+    % put test data in appropriate form for time shift (temporal index is
     % last) 
     fT = permute( fOut, [ 1 3 2 ] );
     fT = reshape( fT, [ nD * nG, nTO + nTA ] );
@@ -269,12 +269,13 @@ if ifPlotPred
     Fig.aspectR  = 9 / 16;
 
     % Loop over the response variables
-    nDPlt = numel( Plt.nD );
+    nDPlt = numel( Plt.idxD );
     fig = zeros( 1, nDPlt );
-    for iD = 1 : nD
-        fig( iD ) = plotPred( squeeze( fTruePlt( iD, :, :, :, : ) ), ...
-                              squeeze( fPredPlt( iD, :, :, : : ) ), ...
-                              squeeze( fPredErrPlt( iD, :, :, :, : ) ), ...
+    for iD = 1 : nDPlt
+        iDPlt = Plt.idxD( iD );
+        fig( iD ) = plotPred( squeeze( fTruePlt( iDPlt, :, :, :, : ) ), ...
+                              squeeze( fPredPlt( iDPlt, :, :, : : ) ), ...
+                              squeeze( fPredErrPlt( iDPlt, :, :, :, : ) ), ...
                               Plt, Fig, x, y, dt, varStr{ iD } );
 
 
