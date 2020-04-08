@@ -67,6 +67,8 @@ if ifOse && ~isfield( Out, 'Res' )
 end
 if ifOse && isfield( Out, 'Trg' )
     ifOutTrg = true; % Include out-of-sample target data
+else
+    ifOutTrg = false;
 end
 
 %% ROOT DIRECTORY NAMES
@@ -339,6 +341,8 @@ if ifOutTrg
     Data.outTrg = outTrgComponent;
 end
 Pars.In = In;
-Pars.Out = Out;
+if ifOse
+    Pars.Out = Out;
+end
 
 model = nlsaModelFromPars( Data, Pars );

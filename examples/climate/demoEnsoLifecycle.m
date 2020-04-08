@@ -15,7 +15,7 @@ iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
 
 %% SCRIPT EXECUTION OPTIONS
-ifData    = true; % extract data from NetCDF source files
+ifData    = false; % extract data from NetCDF source files
 ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
 ifKoopman = true; % compute Koopman eigenfunctions
 
