@@ -2,7 +2,7 @@ classdef nlsaEmbeddedComponent_xi < nlsaEmbeddedComponent
 %NLSAEMBEDDEDCOMPONENT_XI  Class definition and constructor of NLSA 
 % time-lagged embedded component with phase space velocity data
 %
-% Modified 2019/07/13    
+% Modified 2020/04/09    
 
     properties
         fdOrd         = 1;          % finite-difference order
@@ -53,13 +53,16 @@ classdef nlsaEmbeddedComponent_xi < nlsaEmbeddedComponent
             % Set caller-defined values
             if ~isempty( iFdOrd )
                 if ~ispsi( varargin{ iFdOrd } )
-                    error( 'Finite-difference order must be a positive scalar integer' )
+                    msgStr = [ 'Finite-difference order must be a ' ... 
+                               'positive scalar integer' ] 
+                    error( msgStr )
                 end
                 obj.fdOrd = varargin{ iFdOrd };
             end
             if ~isempty( iFdType )
                 if ischar( varargin{ iFdType } )
-                    if any( strcmp( varargin{ iFdType }, { 'forward' 'backward' 'central' } ) )  
+                    if any( strcmp( varargin{ iFdType }, ...
+                        { 'forward' 'backward' 'central' } ) )  
                         ifErr      = false;
                         obj.fdType = varargin{ iFdType };
                     else
@@ -74,11 +77,15 @@ classdef nlsaEmbeddedComponent_xi < nlsaEmbeddedComponent
                 switch obj.fdType
                 case 'central'
                     if ~iseven( obj.fdOrd )
-                        error( 'Central finite-difference schemes must be of even order' )
+                        msgStr = [ 'Central finite-difference schemes ' ...
+                                   'must be of even order' ]; 
+                        error( msgStr )
                     end
                 otherwise
                     if ~isodd( obj.fdOrd )
-                        error( 'Forward and backward finite-difference schemes must be of odd order' )
+                        msgStr = [ 'Forward and backward finite-difference '...
+                                   'schemes must be of odd order' ];
+                        error( msgStr )
                     end
                 end
             end
@@ -91,12 +98,17 @@ classdef nlsaEmbeddedComponent_xi < nlsaEmbeddedComponent
             if ~isempty( iFileXi )
                  if ~isa( varargin{ iFileXi }, 'nlsaFilelist' ) ...
                    || ~isscalar( varargin{ iFileXi } ) ...
-                   || getNFile( varargin{ iFileXi } ) ~= getNBatch( obj.partition )
-                     error( 'FileXi property must be set to an nlsaFilelist object with number of files equal to the number of batches' )
+                   || getNFile( varargin{ iFileXi } ) ~= ...
+                       getNBatch( obj.partition )
+                     msgStr = [ 'FileXi property must be set to an ' ...
+                                'nlsaFilelist object with number of files ' ...
+                                'equal to the number of batches' ];
+                     error( msgStr )
                  end
                  obj.fileXi = varargin{ iFileXi };
             else
-                obj.fileXi = nlsaFilelist( 'nFile', getNBatch( obj.partition ) );
+                obj.fileXi = nlsaFilelist( ...
+                    'nFile', getNBatch( obj.partition ) );
             end
             if ~isempty( iTagXi )
                 if ~isrowstr( varargin{ iTagXi } ) 
@@ -113,10 +125,5 @@ classdef nlsaEmbeddedComponent_xi < nlsaEmbeddedComponent
 
         %% GETVELOCITYNORM Returns the phase space velocity norm
         xiNorm = getVelocityNorm( obj, outFormat )
-    end
-
-    methods( Static )
-        %% FDWEIGHTS Finite difference weights
-        w = fdWeights( nOrd, fdType );
     end
 end    

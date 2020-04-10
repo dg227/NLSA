@@ -1,0 +1,9 @@
+function tag = getDefaultTag( obj )
+% GETDEFAULTTAG  Get default tag of nlsaKoopmanOperator objects
+%
+% Modified 2020/04/09
+
+tag = sprintf( '%s_fdOrd%i_dt%1.3g_nPhi%i', getFDType( obj ), ...
+                                            getFDOrder( obj ), ...
+                                            getSamplingInterval( obj ), ...
+                                            getNEigenfunction( obj ) );

@@ -1,8 +1,8 @@
 function res = getFDOrder( obj )
-% GEFDORDER  Returns finite-difference order of an array of ...
-% nlsaEmbeddedComponent_xi objects.
+% GEFDORDER  Returns finite-differnce order of an array of nlsaKoopmanOperator
+% objects.
 %
-% Modified 2013/12/19
+% Modified 2020/04/09
 
 res = zeros( size( obj ) );
 for iObj = 1 : numel( obj )

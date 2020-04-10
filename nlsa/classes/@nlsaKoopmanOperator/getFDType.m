@@ -1,6 +1,6 @@
 function res = getFDType( obj )
-% GETFDTYPE  Returns finite-differnce type of an array of 
-% nlsaEmbeddedComponent_xi objects
+% GETFDTYPE  Returns finite-differnce type of an array of nlsaKoopmanOperator
+% objects
 %
 % Modified 2013/12/19
 
