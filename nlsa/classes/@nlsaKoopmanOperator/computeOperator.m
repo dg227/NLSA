@@ -2,26 +2,27 @@ function V = computeOperator( obj, diffOp, varargin )
 % COMPUTEOPERATOR Compute Koopman generator in an eigenbasis of a kernel
 % integral operator.
 % 
-% Modified 2020/04/09
+% Modified 2020/04/11
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments and determine array sizes
-if ~isa( diffOp, 'nlsaKernelOperator' )
-    error( 'Third input argument must be an nlsaKernelOperator object' )
+if ~isa( diffOp, 'nlsaKernelOperator' ) || ~isscalar( diffOp )
+    error( 'Third input argument must be a scalar nlsaKernelOperator object' )
 end
 partition  = getPartition( obj ); % partition for in-sample data
-if any( ~isequal( partition, getPartition( diffOp ) ) )
+nR  = numel( partition );      % number of realization
+if nR ~= numel( getPartition( diffOp ) ) ...
+   ||  any( ~isequal( partition, getPartition( diffOp ) ) )
     error( 'Incompatible partition of kernel operator' )
 end
 [ partitionG, idxG ] = mergePartitions( partition ); % global partition
-nR  = numel( partition );      % number of realization
 nSR = getNSample( partition ); % number of samples in each realization
 nS  = sum( nSR );              % total number of samples
 nT  = nS / nR;                 % number of temporal samples
 if any( nSR ~= nT )   
     error( 'Non-equal number of samples per realization not supported.' )
 end
-idxPhi = getEigenfunctionIndices( obj ); 
+idxPhi = getBasisFunctionIndices( obj ); 
 if idxPhi( end ) > getNEigenfunction( diffOp )
     msgStr = [ 'Requested basis functions exceed those available from ' ...
                'the kernel integral operator.' ]; 
@@ -35,7 +36,7 @@ nFD          = getFDOrder( obj );   % finite-difference order
 nTFD         = nT - nTB - nTA;      % temporal samples after finite difference
 nSFD         = nTFD * nR;           % total samples after finite difference
 fdT          = getFDType( obj );    % finite difference type
-ifAntisym    = getAntisym( obj );   % explict antisymmetrization
+ifAntisym    = getAntisym( obj );   % enforce antisymmetric metric
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments
@@ -59,13 +60,15 @@ clk = clock;
 fprintf( logId, 'computeOperator starting on %i/%i/%i %i:%i:%2.1f \n', ...
     clk( 1 ), clk( 2 ), clk( 3 ), clk( 4 ), clk( 5 ), clk( 6 ) );
 fprintf( logId, 'Hostname %s \n', hostname );
+fprintf( logId, 'Path %s \n', obj.path );
 fprintf( logId, 'Number of samples               = %i, \n', nS );
 fprintf( logId, 'Number of realizations          = %i, \n', nR );
 fprintf( logId, 'Number of temporal samples      = %i, \n', nT );
 fprintf( logId, 'Finite-difference order         = %i', \n, nFD );
 fprintf( logId, 'Finite-difference type          = %s', \n, fdT );
-fprintf( logId, 'Number of kernel eigenfuncions  = %i', \n, nPhi );
-fprintf( logId, 'Kernel eigenfunctions incices   = %s \n', idx2str( idxPhi ) );
+fprintf( logId, 'Antisymmetrization              = %i', \n, antiSym );
+fprintf( logId, 'Number of basis functions       = %i', \n, nPhi );
+fprintf( logId, 'Basis function incices          = %s \n', idx2str( idxPhi ) );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Read the basis functions and inner product weights
@@ -93,6 +96,15 @@ phiMu = phi( nTB + 1 : end - nTA, :, : ) .* mu( nTB + 1 : end - nTA, : );
 phiMu = reshape( phiMu, [ nSFD nPhi ] );
 V     = phiMu' * dPhi; 
 tWall = toc( tWall0 );
+fprintf( logId, 'GEN %2.4f \n', tWall );
+
+% Antisymmetrize if requested
+if ifAntisym
+    tWall0 = tic;
+    V = ( V - V' ) / 2;
+    tWall = toc( tWall0 );
+    fprint( logId, 'ANTISYM %2.4f \n', tWall );
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if Opt.ifWriteOperator

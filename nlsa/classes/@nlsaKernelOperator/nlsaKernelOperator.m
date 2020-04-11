@@ -2,7 +2,7 @@ classdef nlsaKernelOperator
 %NLSAKERNELOPERATOR Class definition and constructor of generic kernel 
 % operators
 %  
-% Modified 2019/11/21
+% Modified 2020/04/10
 
     %% PROPERTIES
     properties
@@ -93,5 +93,28 @@ classdef nlsaKernelOperator
 
         %% GETEIGENFUNCTIONS Get eigenfunctions
         phi = getEigenfunctions( obj )
+    end
+
+
+    methods( Static )
+
+        %% ISVALIDIDX Helper function to validate basis function indices 
+        function ifV = isValidIdx( idx )
+            ifV = true;
+
+            if ~isvector( idx )
+                ifV = false;
+                return
+            end
+
+            idx  = sort( idx, 'ascend' );
+            if ~ispsi( idx( 1 ) )
+                ifV = false;
+                return
+            end
+            if ~ispi( idx( 2 : end ) - idx( 1 : end - 1 ) )
+                ifV = false;
+            end
+        end
     end
 end    

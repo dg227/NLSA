@@ -1,7 +1,7 @@
 classdef nlsaLinearMap < nlsaCovarianceOperator_gl
 %NLSALINEARMAP Class definition and constructor of linear map
 %
-% Modified 2015/10/19  
+% Modified 2020/04/10  
 
     properties
         idxPhi = 1;         % eigenfunction indices
@@ -62,25 +62,5 @@ classdef nlsaLinearMap < nlsaCovarianceOperator_gl
             mId = 'nlsa:nlsaLinearMap';
         end
 
-        %% ISVALIDIDX Helper function to validate basis function indices 
-        function ifV = isValidIdx( idx )
-            ifV = true;
-
-            if ~isvector( idx )
-                ifV = false;
-                return
-            end
-
-            idx  = sort( idx, 'ascend' );
-            nPhi = numel( idx );
-            idxRef = -1; 
-            for iPhi = 1 : nPhi
-                if ~ispsi( idx( iPhi ) - idxRef )
-                    ifV = false;
-                    return
-                end
-                idxRef = idx( iPhi );
-            end
-        end
     end
 end    

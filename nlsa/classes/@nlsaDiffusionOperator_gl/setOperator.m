@@ -1,5 +1,5 @@
 function setOperator( obj, l, d, q, varargin )
-% SETOPERATOR  Set batch data of an nlsaDiffusionOperator_gl object 
+% SETOPERATOR  Set operator data of an nlsaDiffusionOperator_gl object 
 %
 % Modified 2018/06/17
 

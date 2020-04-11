@@ -2,7 +2,7 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
 %NLSAKOOPMANOPERATOR Class definition and constructor of Koopman/Perron-
 % Frobenius generators based on temporal finite differences.
 % 
-% Modified 2020/04/09    
+% Modified 2020/04/11    
 
     %% PROPERTIES
     properties
@@ -11,6 +11,8 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
         fdType     = 'central'; % finite-difference type: backward 
                                 %                         forward  
                                 %                         central  
+        antisym    = false;            % forces antisymmetric matrix if true
+        idxPhi     = 1;                % basis function indices
         fileLambda = 'dataLambda.mat'; % eigenvalues
         pathV      = 'dataV';          % path for operator storage
         pathPhi    = 'dataPhi';        % path for eigenvalues/eigenfunctions 
@@ -27,6 +29,8 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
             iDt            = [];
             iFdOrd         = [];
             iFdType        = [];
+            iIdxPhi        = [];
+            iAntisym         = [];
             iFileLambda    = [];
             iPathP         = [];
             iPathPhi       = [];
@@ -41,6 +45,12 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'fdType'
                         iFdType = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'iAntisym'
+                        iAntisym = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'basisFunctionIdx'
+                        iIdxPhi = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'eigenvalueFile'
                         iFileLambda = i + 1;
@@ -105,6 +115,30 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                         error( msgStr )
                     end
                 end
+            end
+            if ~isempty( iAntisym )
+                if ~isscalar( varargin{ iAntisym } ) ...
+                    || ~islogical( varargin{ iAntisym } )
+                    msgStr = [ 'Antisymmetrization property must be ' ...
+                               'specified as a logical scalar' ];
+                    error( msgStr )
+                end
+                obj.antisym = varargin{ iAntisym };
+            end 
+            if ~isempty( iIdxPhi ) 
+                if ~isempty( iNeig )
+                    msgStr = [ 'Eigenfunction indices and number of ' ...
+                               'eigenfunctions cannot be specified ' ...
+                               'simultaneously' ];
+                    error( msgStr  )
+                end
+                if ~obj.isValidIdx( varargin{ iIdxPhi } ) 
+                    error( 'Invalid basis function index specification' )
+                end
+                obj.idxPhi = varargin{ iIdxPhi };
+                obj = setNEigenfunction( obj, numel( varargin{ iIdxPhi } ) );
+            else 
+                obj.idxPhi = 1 : getNEigenfunction( obj );
             end
             if ~isempty( iFileLambda )
                 if ~isrowstr( varargin{ iFileLambda } )

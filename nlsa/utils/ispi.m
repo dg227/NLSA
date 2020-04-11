@@ -1,7 +1,7 @@
-function i = ispvi( x )
+function i = ispi( x )
 % ISPI Returns true if is an array of positive integers and false otherwise
 %
-% Modified 2014/04/07
+% Modified 2020/04/10
 
 if x <= 0
     i = false;
