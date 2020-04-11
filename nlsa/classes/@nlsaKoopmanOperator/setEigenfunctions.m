@@ -1,17 +1,17 @@
-function setEigenfunctions( obj, v, mu, varargin )
-% SETEIGENFUNCTIONS  Set eigenfunction data of an nlsaDiffusionOperator_gl
+function setEigenfunctions( obj, zeta, mu, varargin )
+% SETEIGENFUNCTIONS  Set eigenfunction data of an nlsaKoopmanOperator
 % object
 %
 % Modified 2020/04/11
 
-if ~isnumeric( v ) || ~ismatrix( v )
+if ~isnumeric( zeta ) || ~ismatrix( zeta )
     error( 'Eigenfunctions must be specified as a numeric matrix' )
 end
 
-if size( v, 1 ) ~= getNTotalSample( obj  )
-    error( 'Incompatible number of samples' )
+if size( zeta, 1 ) ~= getNTotalSample( obj  )
+    error( 'Incompatible number of samples in eigenfunction array' )
 end
-if size( v, 2 ) ~= getNEigenfunction( obj )
+if size( zeta, 2 ) ~= getNEigenfunction( obj )
     error( 'Incompatible number of eigenfunctions' )
 end
 
@@ -26,5 +26,5 @@ end
 
 file = fullfile( getEigenfunctionPath( obj ), ... 
                  getEigenfunctionFile( obj ) );
-save( file, 'v', 'mu', varargin{ : } )
+save( file, 'zeta', 'mu', varargin{ : } )
 

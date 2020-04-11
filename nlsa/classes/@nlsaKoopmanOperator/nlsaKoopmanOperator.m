@@ -12,10 +12,13 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                                 %                         forward  
                                 %                         central  
         antisym    = false;            % forces antisymmetric matrix if true
-        idxPhi     = 1;                % basis function indices
-        fileLambda = 'dataLambda.mat'; % eigenvalues
-        pathV      = 'dataV';          % path for operator storage
-        pathPhi    = 'dataPhi';        % path for eigenvalues/eigenfunctions 
+        idxBasis   = 1;                % basis function indices
+        fileEVal   = 'dataGamma.mat';  % eigenvalues
+        fileEFunc  = 'dataZeta.mat';   % eigenfunctions
+        fileCoeff  = 'dataC.mat';      % eigenfunction expansion coefficients 
+        fileOp     = 'dataV.mat';      % operator file
+        pathOp     = 'dataV';          % path for operator storage
+        pathEig    = 'dataPhi';        % path for eigenvalues/eigenfunctions 
     end
 
     methods
@@ -30,10 +33,13 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
             iFdOrd         = [];
             iFdType        = [];
             iIdxPhi        = [];
-            iAntisym         = [];
-            iFileLambda    = [];
-            iPathP         = [];
-            iPathPhi       = [];
+            iAntisym       = [];
+            iFileEVal      = [];
+            iFileEFunc     = [];
+            iFileCoeff     = [];
+            iFileOp        = [];
+            iPathOp        = [];
+            iPathEig       = [];
 
             for i = 1 : 2 : nargin
                 switch varargin{ i }
@@ -53,13 +59,25 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                         iIdxPhi = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'eigenvalueFile'
-                        iFileLambda = i + 1;
+                        iFileEVal = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'eigenvalueFile'
+                        iFileEVal = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'eigenfunctionFile'
+                        iFileEFunc = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'coefficientFile'
+                        iFileCoeff = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'operatorFile'
+                        iFileOp = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'operatorSubpath'
-                        iPathP = i + 1;
+                        iPathOp = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'eigenfunctionSubpath'
-                        iPathPhi = i + 1;
+                        iPathEig = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'tag'
                         iTag = i + 1;
@@ -135,34 +153,46 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                 if ~obj.isValidIdx( varargin{ iIdxPhi } ) 
                     error( 'Invalid basis function index specification' )
                 end
-                obj.idxPhi = varargin{ iIdxPhi };
+                obj.idxBasis = varargin{ iIdxPhi };
                 obj = setNEigenfunction( obj, numel( varargin{ iIdxPhi } ) );
             else 
-                obj.idxPhi = 1 : getNEigenfunction( obj );
+                obj.idxBasis = 1 : getNEigenfunction( obj );
             end
-            if ~isempty( iFileLambda )
-                if ~isrowstr( varargin{ iFileLambda } )
+            if ~isempty( iFileEVal )
+                if ~isrowstr( varargin{ iFileEVal } )
                     error( 'Invalid eigenvalue file specification' )
                 end
-                obj.fileLambda = varargin{ iFileLambda };
+                obj.fileEVal = varargin{ iFileEVal };
             end
-            if ~isempty( iFilewEambda )
-                if ~isrowstr( varargin{ iFileE } )
-                    error( 'Invalid energy file specification' )
+            if ~isempty( iFileEFunc )
+                if ~isrowstr( varargin{ iFileEFunc } )
+                    error( 'Invalid coefficient file specification' )
                 end
-                obj.fileE = varargin{ iFileE };
+                obj.fileEFunc = varargin{ iFileEFunc };
             end
-            if ~isempty( iPathP )
-                if ~isrowstr( varargin{ iPathP } )
+            if ~isempty( iFileCoeff )
+                if ~isrowstr( varargin{ iFileCoeff } )
+                    error( 'Invalid coefficient file specification' )
+                end
+                obj.fileCoeff = varargin{ iFileCoeff };
+            end
+            if ~isempty( iFileOp )
+                if ~isrowstr( varargin{ iFileOp } )
+                    error( 'Invalid operator file specification' )
+                end
+                obj.fileOp = varargin{ iFileOp };
+            end
+            if ~isempty( iPathOp )
+                if ~isrowstr( varargin{ iPathOp } )
                     error( 'Invalid operator subpath specification' )
                 end
-                obj.pathV = varargin{ iPathP };
+                obj.pathOp = varargin{ iPathOp };
             end
-            if ~isempty( iPathPhi )
-                if ~isrowstr( varargin{ iPathPhi } )
+            if ~isempty( iPathEig )
+                if ~isrowstr( varargin{ iPathEig } )
                     error( 'Invalid eigenfunction subpath specification' )
                 end
-                obj.pathPhi = varargin{ iPathPhi };
+                obj.pathEig = varargin{ iPathEig };
             end
         end
     end

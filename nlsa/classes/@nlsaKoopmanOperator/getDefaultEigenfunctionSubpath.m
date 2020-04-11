@@ -4,4 +4,4 @@ function pth = getDefaultEigenfunctionSubpath( obj )
 %
 % Modified 2020/04/08
 
-pth = 'dataPhi';
+pth = 'dataEig';

@@ -1,7 +1,7 @@
-function idxPhi = getBasisFunctionIndices( obj )
+function idx = getBasisFunctionIndices( obj )
 % GETBASISFUNCTIONINDICES Returns the basis function indices of an 
 % nlsaKoopmanOperator object
 %
-% Modified 2020/04/10
+% Modified 2020/04/11
 
-idxPhi = obj.idxPhi;
+idx = obj.idxBasis;
