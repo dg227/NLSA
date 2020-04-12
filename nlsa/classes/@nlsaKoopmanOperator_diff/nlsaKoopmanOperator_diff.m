@@ -1,61 +1,40 @@
-classdef nlsaKoopmanOperator < nlsaKernelOperator
-%NLSAKOOPMANOPERATOR Class definition and constructor of regularized Koopman 
-% operators 
+classdef nlsaKoopmanOperator_diff < nlsaKoopmanOperator
+%NLSAKOOPMANOPERATOR_DIFF Class definition and constructor of Koopman generator
+% with diffusion regularization.
 % 
 % Modified 2020/04/08    
 
     %% PROPERTIES
     properties
-        epsilon    = 1;                % regularization parameter 
-        dt         = 1;                % sampling interval
-        fileLambda = 'dataLambda.mat'; % eigenvalues
-        fileE      = 'dataE.mat';      % Dirichlet energies
-        pathV      = 'dataV';          % path for operator storage
-        pathPhi    = 'dataPhi';        % path for eigenvalues/eigenfunctions 
+        epsilon = 1;     % regularization parameter 
+        regType = 'lin'; % regularization type: lin (linear)  
+                         %                      log (logarithmic)
+                         %                      inv (inverse)
     end
 
     methods
 
         %% CLASS CONSTRUCTOR
-        function obj = nlsaKoopmanOperator( varargin )
+        function obj = nlsaKoopmanOperator_diff( varargin )
 
             ifParentArg = true( 1, nargin );
  
             % Parse input arguments
             iEpsilon       = [];
-            iDt            = [];
-            iFileLambda    = [];
-            ifileE         = [];
-            iPathP         = [];
-            iPathPhi       = [];
+            iRegType       = [];
 
             for i = 1 : 2 : nargin
                 switch varargin{ i }
-                    case 'epsilon'
+                    case 'regularizationParameter'
                         iEpsilon = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
-                    case 'samplingInterval'
-                        iDt = i + 1;
-                        ifParentArg( [ i i + 1 ] ) = false;
-                    case 'eigenvalueFile'
-                        iFileLambda = i + 1;
-                        ifParentArg( [ i i + 1 ] ) = false;
-                    case 'energyFile'
-                        iFileE = i + 1;
-                        ifParentArg( [ i i + 1 ] ) = false;
-                    case 'operatorSubpath'
-                        iPathP = i + 1;
-                        ifParentArg( [ i i + 1 ] ) = false;
-                    case 'eigenfunctionSubpath'
-                        iPathPhi = i + 1;
-                        ifParentArg( [ i i + 1 ] ) = false;
-                    case 'tag'
-                        iTag = i + 1;
+                    case 'regularizationType'
+                        iRegType = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                 end
             end
 
-            obj = obj@nlsaKernelOperator( varargin{ ifParentArg } );
+            obj = obj@nlsaKoopmanOperator( varargin{ ifParentArg } );
 
             % Set caller-defined values
             if ~isempty( iEpsilon )
@@ -66,37 +45,11 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                 end
                 obj.epsilon = varargin{ iEpsilon };
             end
-            if ~isempty( iDt )
-                if ~isps( varargin{ iDt } )
-                    msgStr = [ 'The sampling interval must be a  ' ...
-                               'positive scalar' ];
-                    error( msgStr )
+            if ~isempty( iRegType )
+                if ~isrowstr( varargin{ iRegType } )
+                    error( 'Invalid regularization type specification' )
                 end
-                obj.dt = varargin{ iDt };
-            end
-            if ~isempty( iFileLambda )
-                if ~isrowstr( varargin{ iFileLambda } )
-                    error( 'Invalid eigenvalue file specification' )
-                end
-                obj.fileLambda = varargin{ iFileLambda };
-            end
-            if ~isempty( iFilewEambda )
-                if ~isrowstr( varargin{ iFileE } )
-                    error( 'Invalid energy file specification' )
-                end
-                obj.fileE = varargin{ iFileE };
-            end
-            if ~isempty( iPathP )
-                if ~isrowstr( varargin{ iPathP } )
-                    error( 'Invalid operator subpath specification' )
-                end
-                obj.pathV = varargin{ iPathP };
-            end
-            if ~isempty( iPathPhi )
-                if ~isrowstr( varargin{ iPathPhi } )
-                    error( 'Invalid eigenfunction subpath specification' )
-                end
-                obj.pathPhi = varargin{ iPathPhi };
+                obj.regType = varargin{ iRegType };
             end
         end
     end

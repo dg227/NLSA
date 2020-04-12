@@ -1,9 +1,9 @@
 function tag = getDefaultTag( obj )
-% GETDEFAULTTAG  Get default tag of nlsaKoopmanOperator objects
+% GETDEFAULTTAG  Get default tag of nlsaKoopmanOperator_diff objects
 %
-% Modified 2020/04/08
+% Modified 2020/04/11
 
+tag = getDefaultTag@nlsaKoopmanOperator( obj );
 
-tag = sprintf( 'dt%1.3g_eps%1.3g_nPhi%i', getSamplingInterval( obj ), ...
-                                          getEpsilon( obj ), ...
-                                          getNEigenfunction( obj ) );
+tag = [ tag sprintf( '_%s_eps%1.3g', getRegularizationType( obj ), ...
+                                     getRegularization( obj ) ) ];
