@@ -2,7 +2,7 @@ function V = computeOperator( obj, diffOp, varargin )
 % COMPUTEOPERATOR Compute Koopman generator in an eigenbasis of a kernel
 % integral operator.
 % 
-% Modified 2020/04/11
+% Modified 2020/04/12
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments
@@ -46,7 +46,8 @@ tWall0 = tic;
 eta = computeRegularizingEigenvalues( obj, diffOp );
 
 % Form regularized operator
-V = V - eta * eye( size( V ) );
+epsilon = getRegularizationParameter( obj );
+V = V - epsilon * diag( eta );  
 
 tWall = toc( tWall0 );
 fprintf( logId, 'REGV %2.4f \n', tWall );
