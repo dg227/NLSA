@@ -11,15 +11,15 @@ function [ model, In, Out ] = noaaNLSAModel( experiment )
 %  Out, which are then passed to the function climateNLSAModel_base to 
 %  construct the model.
 %
-%  The following script is provided for data import: 
+%  The following function is provided for data import: 
 %
-%      noaaData.m
+%      noaaData
 %               
 %  Longitude range is [ 0 359 ] at 1 degree increments
 %  Latitude range is [ -89 89 ] at 1 degree increments
 %  Date range is is January 1854 to June 2019  at 1 month increments
 %
-% Modified 2020/03/27
+% Modified 2020/04/15
  
 if nargin == 0
     experiment = 'enso_lifecycle';
@@ -78,6 +78,17 @@ switch experiment
         In.idxPhiRec  = 1 : 1;    % eigenfunctions for reconstruction
         In.idxPhiSVD  = 1 : 1;    % eigenfunctions for linear mapping
         In.idxVTRec   = 1 : 1;    % SVD termporal patterns for reconstruction
+
+        % Koopman generator parameters; in-sample data
+        In.koopmanOpType = 'diff';     % Koopman generator type
+        In.koopmanFDType  = 'central'; % finite-difference type
+        In.koopmanFDOrder = 2;         % finite-difference order
+        In.koopmanDt      = 1;         % sampling interval
+        In.koopmanAntisym = false;     % enforce antisymmetrization
+        In.koopmanEpsilon = 1E-3;      % regularization parameter
+        In.koopmanRegType = 'inv';     % regularization type
+        In.idxPhiKoopman  = 1 : 101;   % diffusion eigenfunctions used as basis
+        In.nPhiKoopman    = 21;        % Koopman eigenfunctions to compute
 
     otherwise
         error( 'Invalid experiment' )

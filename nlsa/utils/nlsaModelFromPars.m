@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2020/04/08
+% Modified 2020/04/15
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -53,10 +53,17 @@ else
 end
 
 % Check if we are using kernel density estimation
-if isfield( Pars.In, 'denType' )
+if isfield( In, 'denType' )
     ifDen = true;
 else
     ifDen = false;
+end
+
+% Check if the model has Koopman operators
+if isfield( In, 'koopmanOpType' )
+    ifKoopman = true;
+else
+    ifKoopman = false;
 end
 
 % Check that required high-level fields are present
@@ -198,8 +205,8 @@ if In.nNS == 0
     In.nNS = nSETot;
 end
 
-%% IN-SAMPLE DATA PARTITIONS
-% Loop over realizations for in-sample data
+%% IN-SAMPLE AND OUT-OF-SAMPLE DATA PARTITIONS
+% Loop over realizations for in-sample and out-of-sample data
 % embPartition is a vector of nlsaPartitions for the delay-embedded data
 % recPartition is a vector of nlsaPartitions for the reconstructed data
 % outEmbPartition is a vector of nlsaPartitions for the OS delay-embedded data
@@ -605,7 +612,38 @@ if ifOse
     end
 end
  
+%% KOOPMAN OPERATOR 
+if ifKoopmanOp
+    switch In.koopmanOpType
 
+        % Diffusion regularization
+        case 'diff'
+            koopmanOp = nlsaKoopmanOperator_diff( ...
+                        'samplingInterval',        In.koopmanDt, ...
+                        'fdOrder',                 In.koopmanFDOrder, ...
+                        'fdType',                  In.koopmanFDType, ...  
+                        'antisym',                 In.koopmanAntisym, ...
+                        'regularizationParameter', In.koopmanEpsilon, ...
+                        'regularizationType',      In.koopmanRegType, ...
+                        'basisFunctionIdx',        In.idxPhiKoopman, ...
+                        'nEigenfunction',          In.nPhiKoopman );
+
+        % "Raw" Koopman operator without regularization
+        case 'raw'
+            koopmanOp = nlsaKoopmanOperator( ...
+                        'samplingInterval',        In.koopmanDt, ...
+                        'fdOrder',                 In.koopmanFDOrder, ...
+                        'fdType',                  In.koopmanFDType, ...  
+                        'antisym',                 In.koopmanAntisym, ...
+                        'basisFunctionIdx',        In.idxPhiKoopman, ...
+                        'nEigenfunction',          In.nPhiKoopman );
+    end
+    koopmanOperatorTemplateArg = { 'koopmanOperatorTemplate' koopmanOp };
+
+else
+    koopmanOperatorTemplateArg = { : };
+end
+                        
 %% LINEAR MAP FOR SVD OF TARGET DATA
 linMap = nlsaLinearMap_gl( 'basisFunctionIdx', In.idxPhiSVD );
 
@@ -747,6 +785,7 @@ else
                    'pairwiseDistanceTemplate',        pDist, ...
                    'symmetricDistanceTemplate',       sDist, ...
                    'diffusionOperatorTemplate',       diffOp, ...
+                   koopmanOperatorTemplateArg{ : },   ...
                    'projectionTemplate',              prjComponent, ...
                    'reconstructionTemplate',          recComponent, ...
                    'reconstructionPartition',         recPartition, ...

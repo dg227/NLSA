@@ -33,7 +33,7 @@ function [ model, In, Out ] = climateNLSAModel_base( In, Out )
 %
 %  Structure field Res represents different realizations (ensemble members)
 %
-% Modified 2020/04/08
+% Modified 2020/04/15
  
 %% PRELIMINARY CHECKS
 % Check number of input arguments, and if we are doing out-of-sample extension

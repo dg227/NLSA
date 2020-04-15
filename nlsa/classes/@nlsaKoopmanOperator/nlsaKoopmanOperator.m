@@ -52,7 +52,7 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                     case 'fdType'
                         iFdType = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
-                    case 'iAntisym'
+                    case 'antisym'
                         iAntisym = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'basisFunctionIdx'
