@@ -4,12 +4,12 @@ function [ c, gamma, zeta, mu ] = computeEigenfunctions( obj, diffOp, varargin )
 %
 % diffOp is an nlsaKernelOperator object providing the basis functions.
 %
-% Modified 2020/04/12
+% Modified 2020/04/15
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
-if ~isa( diffOp, 'nlsaKernelOperator' ) || isscalar( diffOp )
+if ~isa( diffOp, 'nlsaKernelOperator' ) || ~isscalar( diffOp )
     msgStr = [ 'Second input argument must be a scalar nlsaKernelOperator ' ...
                'object.' ];
     error( msgStr )
@@ -26,7 +26,8 @@ Opt.logPath                          = getOperatorPath( obj );
 Opt.logFilePermissions               = 'w';
 
 Opt = parseargs( Opt, varargin{ : } );
-nPhi = getNEigenfunctions( obj );
+nPhi = getNEigenfunction( obj );
+idxPhi = getBasisFunctionIndices( obj );
 
 if isempty( Opt.logFile )
     logId = 1;
@@ -41,13 +42,13 @@ fprintf( logId, 'computeEigenfunctions starting on %i/%i/%i %i:%i:%2.1f \n', ...
     clk( 1 ), clk( 2 ), clk( 3 ), clk( 4 ), clk( 5 ), clk( 6 ) );
 fprintf( logId, 'Hostname %s \n', hostname );
 fprintf( logId, 'Path %s \n', obj.path );
-fprintf( logId, 'Number of eigenfunctions       = %i', \n, nPhi );
+fprintf( logId, 'Number of eigenfunctions       = %i \n', nPhi );
 fprintf( logId, 'Basis function incices         = %s \n', idx2str( idxPhi ) );
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Read or compute the generator matrix
-if ~ifCalcOp
+if ~Opt.ifCalcOperator
     tWall0 = tic;
     V = getOperator( obj ); 
     tWall = toc( tWall0 );
@@ -56,10 +57,10 @@ else
     if ~isempty( Opt.logFile )
         fclose( logId );
     end
-    V = computeOperator( obj, src, 'logPath', Opt.logPath, ...
-                                   'logFile', Opt.logFile, ...
-                                   'logFilePermissions', 'a', ...
-                                   'ifWriteOperator', Opt.ifWriteOperator );
+    V = computeOperator( obj, diffOp, 'logPath', Opt.logPath, ...
+                                      'logFile', Opt.logFile, ...
+                                      'logFilePermissions', 'a', ...
+                                      'ifWriteOperator', Opt.ifWriteOperator );
     if ~isempty( Opt.logFile )
         logId = fopen( fullfile( Opt.logPath, Opt.logFile ), 'a' );
     end
@@ -74,8 +75,7 @@ tWall0 = tic;
 [ c, gamma ]  = eig( V );
 gamma         = diag( gamma );
 c             = c( :, 1 : nPhi );
-gamma         = gamma( 1 : nPhi );
-gamma         = gamma( : );        % gamma is a row vector
+gamma         = gamma( 1 : nPhi ) .'; % gamma is a row vector
 tWall         = toc( tWall0 );
 fprintf( logId, 'EIGV %2.4f \n', tWall );
 
@@ -93,8 +93,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Write out results
 tWall0 = tic;
-setEigenvalues( obj, gamma )
 if Opt.ifWriteEigenfunctionCoefficients
+    setEigenvalues( obj, gamma )
     setEigenfunctionCoefficients( obj, c )
 end
 if Opt.ifWriteEigenfunctions

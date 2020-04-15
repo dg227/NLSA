@@ -2,7 +2,7 @@ function V = computeOperator( obj, diffOp, varargin )
 % COMPUTEOPERATOR Compute Koopman generator in an eigenbasis of a kernel
 % integral operator.
 % 
-% Modified 2020/04/12
+% Modified 2020/04/15
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments
@@ -19,7 +19,7 @@ Opt = parseargs( Opt, varargin{ : } );
 V = computeOperator@nlsaKoopmanOperator( obj, diffOp, ...
         'logPath',            Opt.logPath, ...
         'logFile',            Opt.logFile, ...
-        'logFilePermissions', Opt.logFilePermissions;
+        'logFilePermissions', Opt.logFilePermissions, ...
         'ifWriteOperator',    false );
 
 
@@ -58,7 +58,6 @@ if Opt.ifWriteOperator
     setOperator( obj, V, '-v7.3' )
     tWall = toc( tWall0 );
     fprintf( logId, 'WRITEV %2.4f \n', tWall ); 
-    end
 end
 
 clk = clock; % Exit gracefully

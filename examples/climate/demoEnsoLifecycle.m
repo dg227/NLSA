@@ -16,9 +16,15 @@ nProc = 1; % number of batch processes
 
 %% SCRIPT EXECUTION OPTIONS
 ifData    = false; % extract data from NetCDF source files
-ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
+ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
 ifKoopman = true; % compute Koopman eigenfunctions
 
+
+%% BUILD NLSA MODEL 
+% In is a data structure containing the NLSA parameters for the training data
+disp( 'Building NLSA model...' ); t = tic;
+[ model, In ] = climateNLSAModel( dataset, experiment ); 
+toc( t )
 
 %% EXTRACT DATA
 if ifData
@@ -76,12 +82,6 @@ end
 %% PERFORM NLSA
 if ifNLSA
     
-    % Build NLSA model. In is a data structure containing the NLSA parameters
-    % for the training data
-    disp( 'Building NLSA model...' ); t = tic;
-    [ model, In ] = climateNLSAModel( dataset, experiment ); 
-    toc( t )
-
     % Execute NLSA steps. Output from each step is saved on disk
 
     disp( 'Takens delay embedding...' ); t = tic; 
@@ -111,8 +111,7 @@ end
 
 %% COMPUTE EIGENFUNCTIONS OF KOOPMAN GENERATOR
 if ifKoopman
-
-    disp( 'Kernel eigenfunctions...' ); t = tic;
+    disp( 'Koopman eigenfunctions...' ); t = tic;
     computeKoopmanEigenfunctions( model )
     toc( t )
 end

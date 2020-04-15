@@ -2,7 +2,7 @@ function V = computeOperator( obj, diffOp, varargin )
 % COMPUTEOPERATOR Compute Koopman generator in an eigenbasis of a kernel
 % integral operator.
 % 
-% Modified 2020/04/11
+% Modified 2020/04/15
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments and determine array sizes
@@ -64,10 +64,10 @@ fprintf( logId, 'Path %s \n', obj.path );
 fprintf( logId, 'Number of samples               = %i, \n', nS );
 fprintf( logId, 'Number of realizations          = %i, \n', nR );
 fprintf( logId, 'Number of temporal samples      = %i, \n', nT );
-fprintf( logId, 'Finite-difference order         = %i', \n, nFD );
-fprintf( logId, 'Finite-difference type          = %s', \n, fdT );
-fprintf( logId, 'Antisymmetrization              = %i', \n, antiSym );
-fprintf( logId, 'Number of basis functions       = %i', \n, nPhi );
+fprintf( logId, 'Finite-difference order         = %i, \n', nFD );
+fprintf( logId, 'Finite-difference type          = %s, \n', fdT );
+fprintf( logId, 'Antisymmetrization              = %i, \n', ifAntisym );
+fprintf( logId, 'Number of basis functions       = %i, \n', nPhi );
 fprintf( logId, 'Basis function incices          = %s \n', idx2str( idxPhi ) );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -86,6 +86,7 @@ phi  = reshape( phi, [ nT nR nPhi ] );
 dPhi = reshape( shiftdim( phi, 1 ), [ nR * nPhi, nT ] ); 
 dPhi = computeFD( obj, dPhi ); 
 dPhi = shiftdim( reshape( dPhi, [ nR nPhi nTFD ] ), - 1 );
+dPhi = reshape( dPhi, [ nSFD nPhi ] );
 tWall = toc( tWall0 );
 fprintf( logId, 'FD %2.4f \n', tWall );
 
@@ -112,7 +113,6 @@ if Opt.ifWriteOperator
     setOperator( obj, V, '-v7.3' )
     tWall = toc( tWall0 );
     fprintf( logId, 'WRITEV %2.4f \n', tWall ); 
-    end
 end
 
 clk = clock; % Exit gracefully

@@ -3,7 +3,7 @@ function df = computeFD( obj, f )
 %
 % This function operates along the second (column) dimension of array f.
 %
-% Modified 2020/04/09
+% Modified 2020/04/15
 
 % Validate input arguments
 if ~isnumeric( f ) || ~ismatrix( f )
@@ -20,5 +20,5 @@ nSFD = nS - nW + 1;           % number of output samples
 % Initialize output array, and perform FD
 df = zeros( nD, nSFD );
 for iW = 1 : nW
-    df = df + w( iW ) * x( :, iW : iW + nSFD - 1 );
+    df = df + w( iW ) * f( :, iW : iW + nSFD - 1 );
 end
