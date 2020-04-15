@@ -23,8 +23,12 @@ function constrArgs = parseTemplates( varargin )
 %      'symmetricDistanceTemplate' is not specified, nNS is set equal to nN.
 %
 %   'diffusionOperatorTemplate': An nlsaDiffusionOperator object specifying 
-%      the discrete Laplacian in the data analysis model. 
+%      the diffusion operator (Laplacian) in the data analysis model. 
 %
+%   'koopmanOperatorTemplate': An nlsaKoopmanOperator object specifying the
+%      Koopman operator. If koopmanOperatorTemplate is not specified, the
+%      koopmanOperator property of the constructed model is set to empty. 
+% 
 %   'projectionTemplate': An array of nlsaProjection objects specifying the
 %      projections of the target data in delay-embedding space onto the
 %      diffusion eigenfunctions. 'projectionTemplate' must be a vector of size 
@@ -75,7 +79,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/03/28 
+%   Modified 2020/04/14 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -253,8 +257,6 @@ propVal{ iSDistance } = setDefaultSubpath( propVal{ iSDistance } );
 propVal{ iSDistance } = setDefaultFile( propVal{ iSDistance } );
 mkdir( propVal{ iSDistance } )
 
-
-
 %% DIFFUSION OPERATOR
 % Parse diffusion operator template 
 for iProp = 1 : nProp 
@@ -302,6 +304,57 @@ propVal{ iDiffOp } = setDefaultSubpath( propVal{ iDiffOp } );
 propVal{ iDiffOp } = setPath( propVal{ iDiffOp }, modelPathL );
 mkdir( propVal{ iDiffOp } )
 propVal{ iDiffOp } = setDefaultFile( propVal{ iDiffOp } );
+
+%% KOOPMAN OPERATOR
+% Parse Koopman operator template 
+for iProp = 1 : nProp 
+    if strcmp( propName{ iProp }, 'koopmanOperator' )
+        iKoopmanOp = iProp;
+        break
+    end  
+end
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'koopmanOperatorTemplate' )
+        if ~isempty( propVal{ iKoopmanOp } )
+            error( 'A Koopman operator template has been already specified' )
+        end
+        if isa( varargin{ i + 1 }, 'nlsaKoopmanOperator' ) ...
+           && isscalar( varargin{ i + 1 } )
+            propVal{ iKoopmanOp } = varargin{ i + 1 };
+        else
+            msgStr = [ 'The Koopman operator template must be specified ' ...
+                       'as a scalar nlsaKoopmanOperator object' ];
+            error( msgStr )
+        end
+        ifProp( iKoopmanOp ) = true;
+    end
+end
+
+if ifProp( iKoopmanOp )
+    propVal{ iKoopmanOp } = setPartition( propVal{ iKoopmanOp }, partition );
+    propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
+                                partitionQ );
+    idxPhi = getBasisFunctionIndices( propVal{ iKoopmanOp } );
+    if any( idxPhi > nPhi )
+        msgStr = [ 'Diffusion eigenfunctions requested for Koopman ' ...
+                   'operator approximation exceeds available ' ...
+                   'eigenfunctions.' ];
+        error( msgStr )
+    end
+    tag = getTag( propVal{ iKoopmanOp } );
+    if ~isempty( tag )
+        tag = [ tag '_' ];
+    end
+    propVal{ iKoopmanOp } = setTag( propVal{ iKoopmanOp }, ...
+            [ tag getDefaultTag( propVal{ iKoopmanOp } ) ] ); 
+
+    % Assign Koopman operator  paths and filenames
+    modelPathK = fullfile( modelPathL, getTag( propVal{ iKoopmanOp } ) );
+    propVal{ iKoopmanOp } = setDefaultSubpath( propVal{ iKoopmanOp } );
+    propVal{ iKoopmanOp } = setPath( propVal{ iKoopmanOp }, modelPathK );
+    mkdir( propVal{ iKoopmanOp } )
+    propVal{ iKoopmanOp } = setDefaultFile( propVal{ iKoopmanOp } );
+end
 
 
 %% PROJECTED DATA

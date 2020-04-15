@@ -253,7 +253,7 @@ classdef nlsaModel < nlsaModel_base
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/22
+%   Modified 2020/04/14
 
     %% PROPERTIES
     properties
@@ -264,6 +264,7 @@ classdef nlsaModel < nlsaModel_base
         recComponent    = nlsaComponent_rec_phi();
         linMap          = nlsaLinearMap_gl();
         svdRecComponent = nlsaComponent_rec_phi();
+        koopmanOp       = nlsaKoopmanOperator.empty;
     end
 
     methods
@@ -290,6 +291,7 @@ classdef nlsaModel < nlsaModel_base
             iPrjComponent    = [];
             iRecComponent    = [];
             iSvdRecComponent = [];
+            iKoopmanOp       = [];
 
             for i = 1 : 2 : nargin
                 switch varargin{ i } 
@@ -314,6 +316,9 @@ classdef nlsaModel < nlsaModel_base
                     case 'svdRecComponent'
                         iSvdRecComponent = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
+                    case 'koopmanOperator'
+                        iKoopmanOp = i + 1'
+                        ifParentArg( [ i i + 1 ] ) = false;
                 end
             end
 
@@ -330,12 +335,16 @@ classdef nlsaModel < nlsaModel_base
             if ~isempty( iPDistance )
                 if ~isa( varargin{ iPDistance }, 'nlsaPairwiseDistance' ) ...
                        && isscalar( varargin{ iPDistance } )
-                       error( [ msgId 'invalidPDist' ], ...
-                              'The pairwise distance property must be specified as a scalar nlsaPairwiseDistance object' )
+                       msgStr = [ 'The pairwise distance property must be ' ...
+                                  'specified as a scalar ' ...
+                                  'nlsaPairwiseDistance object.' ];
+                       error( [ msgId 'invalidPDist' ], msgStr )
                 end
                 if getNNeighbors( varargin{ iPDistance } ) ...
                    > getNTotalSample( varargin{ iPDistance } )
-                    error( 'The number of nearest neighbors cannot exceed the number of samples' )
+                    msgStr = [ 'The number of nearest neighbors cannot ' ...
+                               'exceed the number of samples.' ];
+                    error( msgStr )
                 end
                 obj.pDistance = varargin{ iPDistance };
             else
@@ -366,7 +375,7 @@ classdef nlsaModel < nlsaModel_base
             % Diffusion operator
             if ~isempty( iDiffOp )
                 if ~isa( varargin{ iDiffOp }, 'nlsaDiffusionOperator' ) ...
-                       && isscalar( varargin{ iDiffOp } )
+                       || ~isscalar( varargin{ iDiffOp } )
                        error( [ msgId 'invalidDiffOp' ], ...
                               'The diffusionOperator property must be specified as a scalar nlsaDiffusionOperator object' )
                 end
@@ -376,6 +385,18 @@ classdef nlsaModel < nlsaModel_base
                     'partition', partition, ...
                     'partitionT', partitionQ, ...
                     'nEigenfunction', min( 10, nSETot ) ); 
+            end
+
+            % Koopman operator
+            if ~isempty( iKoopmanOp )
+                if ~isa( varrargin{ iKoopmanOp }, 'nlsaKoopmanOperator' ) ...
+                    && isscalar( varargin{ iKoopmanOp } )
+                    msgStr = [ 'The koopmanOperator property must be ' ...
+                               'specified as a scalar nlsaKoopmanOperator ' ...
+                               'object' ];
+                    error( msgStr )
+                end
+                obj.koopmanOp = varargin{ iKoopmanOp };
             end
 
             % Projected component
@@ -464,6 +485,7 @@ classdef nlsaModel < nlsaModel_base
                        { 'pairwiseDistance' ...
                          'symmetricDistance' ...
                          'diffusionOperator' ...
+                         'koopmanOperator' ...
                          'prjComponent' ...
                          'recComponent' ...
                          'linearMap' ...
@@ -479,6 +501,7 @@ classdef nlsaModel < nlsaModel_base
                          'pairwiseDistanceTemplate' ...
                          'symmetricDistanceTemplate' ...
                          'diffusionOperatorTemplate' ...
+                         'koopmanOperatorTemplate' ...
                          'projectionTemplate' ...
                          'reconstructionTemplate' ...
                          'reconstructionPartition' ...
