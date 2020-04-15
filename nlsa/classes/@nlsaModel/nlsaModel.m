@@ -253,7 +253,7 @@ classdef nlsaModel < nlsaModel_base
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/04/14
+%   Modified 2020/04/15
 
     %% PROPERTIES
     properties
@@ -317,7 +317,7 @@ classdef nlsaModel < nlsaModel_base
                         iSvdRecComponent = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'koopmanOperator'
-                        iKoopmanOp = i + 1'
+                        iKoopmanOp = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                 end
             end
@@ -389,7 +389,7 @@ classdef nlsaModel < nlsaModel_base
 
             % Koopman operator
             if ~isempty( iKoopmanOp )
-                if ~isa( varrargin{ iKoopmanOp }, 'nlsaKoopmanOperator' ) ...
+                if ~isa( varargin{ iKoopmanOp }, 'nlsaKoopmanOperator' ) ...
                     && isscalar( varargin{ iKoopmanOp } )
                     msgStr = [ 'The koopmanOperator property must be ' ...
                                'specified as a scalar nlsaKoopmanOperator ' ...

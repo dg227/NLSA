@@ -108,3 +108,11 @@ if ifNLSA
     computeDiffusionEigenfunctions( model )
     toc( t )
 end
+
+%% COMPUTE EIGENFUNCTIONS OF KOOPMAN GENERATOR
+if ifKoopman
+
+    disp( 'Kernel eigenfunctions...' ); t = tic;
+    computeKoopmanEigenfunctions( model )
+    toc( t )
+end

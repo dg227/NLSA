@@ -613,7 +613,7 @@ if ifOse
 end
  
 %% KOOPMAN OPERATOR 
-if ifKoopmanOp
+if ifKoopman
     switch In.koopmanOpType
 
         % Diffusion regularization
@@ -641,7 +641,7 @@ if ifKoopmanOp
     koopmanOperatorTemplateArg = { 'koopmanOperatorTemplate' koopmanOp };
 
 else
-    koopmanOperatorTemplateArg = { : };
+    koopmanOperatorTemplateArg = { };
 end
                         
 %% LINEAR MAP FOR SVD OF TARGET DATA

@@ -2,7 +2,7 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
 %NLSAKOOPMANOPERATOR Class definition and constructor of Koopman/Perron-
 % Frobenius generators based on temporal finite differences.
 % 
-% Modified 2020/04/12    
+% Modified 2020/04/15    
 
     %% PROPERTIES
     properties
@@ -147,13 +147,12 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                 if ~obj.isValidIdx( varargin{ iIdxPhi } ) 
                     error( 'Invalid basis function index specification' )
                 end
-                if numel( varargin{ iIdxPhi } ) > getNeigenfunction( obj )
+                if numel( varargin{ iIdxPhi } ) < getNEigenfunction( obj )
                     msgStr = [ 'Eigenfunctions requested exceed the '...
                                'maximum number of available basis functions.' ]
                     error( msgStr )
                 end
                 obj.idxBasis = varargin{ iIdxPhi };
-                obj = setNEigenfunction( obj, numel( varargin{ iIdxPhi } ) );
             else 
                 obj.idxBasis = 1 : getNEigenfunction( obj );
             end

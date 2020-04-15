@@ -34,7 +34,6 @@ switch experiment
         % Source (covariate) data is area-weighted Indo-Pacific SST
         % Target (response) data is Nino 3.4 index
         In.tFormat             = 'yyyymm';              % time format
-        In.freq                = 'monthly';             % sampling frequency
         In.Res( 1 ).tLim       = { '187001' '201906' }; % time limit  
         In.Res( 1 ).experiment = 'noaa';                % 20CRv2 dataset
         In.Src( 1 ).field      = 'sstw';      % physical field
@@ -83,7 +82,7 @@ switch experiment
         In.koopmanOpType = 'diff';     % Koopman generator type
         In.koopmanFDType  = 'central'; % finite-difference type
         In.koopmanFDOrder = 2;         % finite-difference order
-        In.koopmanDt      = 1;         % sampling interval
+        In.koopmanDt      = 1;         % sampling interval (in months)
         In.koopmanAntisym = false;     % enforce antisymmetrization
         In.koopmanEpsilon = 1E-3;      % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
