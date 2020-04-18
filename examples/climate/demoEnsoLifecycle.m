@@ -10,6 +10,20 @@ dirName    = '/Volumes/TooMuch/physics/climate/data/noaa'; % input data dir.
 fileName   = 'sst.mnmean.v4-4.nc'; % filename base for input data
 varName    = 'sst';                % variable name in NetCDF file 
 
+%% ENSO MODES 
+idxPhi = [ 9 10 ]; % ENSO eigenfunctions form NLSA (kernel integral operator)
+
+%% EL NINO/LA NINA EVENTS
+% El Nino/La Nina events to mark up in lifecycle plots (in mmyyyy format)% El Nino/La Nina events to mark up in lifecycle plots (in mmyyyy format)
+ElNinos = { { '102015' '032016' } ... 
+            { '101997' '031998' } ...
+            { '101982'  031983' } };
+
+LaNinas = { { '102010' '032011' } ... 
+            { '102007' '032008' } ...
+            { '101999' '200010' } };
+
+
 %% BATCH PROCCESSING
 iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
@@ -17,8 +31,10 @@ nProc = 1; % number of batch processes
 %% SCRIPT EXECUTION OPTIONS
 ifData    = false; % extract data from NetCDF source files
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
-ifKoopman = true; % compute Koopman eigenfunctions
+ifKoopman = true;  % compute Koopman eigenfunctions
 
+ifNLSALifecycle = true; % plot ENSO lifecycle from NLSA
+ifKoopmanLifecycle = true; 
 
 %% BUILD NLSA MODEL 
 % In is a data structure containing the NLSA parameters for the training data

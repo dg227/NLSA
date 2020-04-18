@@ -1,4 +1,4 @@
-function [ phi, mu, lambda ] = getKoopmanEigenfunctions( obj, varargin )
+function [ zeta, mu, gamma ] = getKoopmanEigenfunctions( obj, varargin )
 % GETKOOPMANEIGENFUNCTIONS Get Koopman eigenfunctions, inner product weights, 
 % and corresponding eigenvalues from an nlsaModel object.
 %

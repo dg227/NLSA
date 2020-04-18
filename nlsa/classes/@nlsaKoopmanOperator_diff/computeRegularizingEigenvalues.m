@@ -26,7 +26,7 @@ case 'log'
     if any( lambda( idxPhi ) < 0 ) 
         error( 'Negative eigenvalues detected in log normalization' )
     end
-    eta = log( 1 - lambda( idxPhi ) );
+    eta = log( lambda( idxPhi ) );
     eta = eta / eta( 2 );
 
 case 'inv'

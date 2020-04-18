@@ -5,7 +5,7 @@ function [ c, gamma, eta, zeta, mu ] = computeEigenfunctions( ...
 %
 % diffOp is an nlsaKernelOperator object providing the basis functions.
 %
-% Modified 2020/04/15
+% Modified 2020/04/17
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments
@@ -65,6 +65,9 @@ E = sum( eta .* abs( c ) .^ 2, 1 );
 [ E, idxE ] = sort( E, 'ascend' );
 gamma = gamma( idxE );
 c = c( :, idxE );
+if ifZeta
+    zeta = zeta( :, idxE );
+end
 tWall = toc( tWall0 );
 fprintf( logId, 'ENGY %2.4f \n', tWall );
 

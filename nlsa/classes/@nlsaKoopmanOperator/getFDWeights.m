@@ -1,6 +1,7 @@
 function w = getFDWeights( obj )
 % GETFDWEIGHTS Get finite difference weights of nlsaKoopman operator object
 %
-% Modified 2020/04/15
+% Modified 2020/04/17
 
-w = fdWeights( getFDOrder( obj ), getFDType( obj ) );
+dt = getSamplingInterval( obj );
+w = fdWeights( getFDOrder( obj ), getFDType( obj ) ) / dt;

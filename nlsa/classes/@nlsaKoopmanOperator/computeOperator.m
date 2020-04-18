@@ -83,9 +83,9 @@ fprintf( logId, 'READPHI %2.4f \n', tWall );
 % Perform temporal finite difference 
 tWall0 = tic;
 phi  = reshape( phi, [ nT nR nPhi ] );
-dPhi = reshape( shiftdim( phi, 1 ), [ nR * nPhi, nT ] ); 
+dPhi = reshape( permute( phi, [ 2 3 1 ] ), [ nR * nPhi, nT ] ); 
 dPhi = computeFD( obj, dPhi ); 
-dPhi = shiftdim( reshape( dPhi, [ nR nPhi nTFD ] ), - 1 );
+dPhi = permute( reshape( dPhi, [ nR nPhi nTFD ] ), [ 3 1 2 ] );
 dPhi = reshape( dPhi, [ nSFD nPhi ] );
 tWall = toc( tWall0 );
 fprintf( logId, 'FD %2.4f \n', tWall );
@@ -104,7 +104,7 @@ if ifAntisym
     tWall0 = tic;
     V = ( V - V' ) / 2;
     tWall = toc( tWall0 );
-    fprint( logId, 'ANTISYM %2.4f \n', tWall );
+    fprintf( logId, 'ANTISYM %i \n', tWall );
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
