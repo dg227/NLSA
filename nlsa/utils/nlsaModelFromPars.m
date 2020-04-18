@@ -163,22 +163,22 @@ if isfield( In, 'tFormat' )
 else
     timeFormatArg = {};
 end
-if isfield( In.Res, 'tNum' )
+if isfield( In.Res( 1 ), 'tNum' )
     tNum = cell( 1, In.nR );
     for iR = 1 : In.nR
         tNum{ iR } = In.Res( iR ).tNum;
     end
-    srcTimeArg = { 'srcTime', tNum };
+    srcTimeArg = { 'sourceTime', tNum };
 else
     srcTimeArg = {};
 end
 if ifOse && isfield( Out, 'tFormat' )
     outTimeFormatArg = { 'outTimeFOrmat', Out.tFormat };
 end
-if ifOse && isfield( Out.res( iR ).tNum )
+if ifOse && isfield( Out.res( 1 ).tNum )
     tNumO = cell( 1, Out.nR );
     for Ir = 1 : Out.nR
-        tNum{ iR } = Out.Res( iR ).tNum;
+        tNum{ iR } = Out.Res( 1 ).tNum;
     end
     outTimeArg = { 'outTime', tNumO };
 end
@@ -775,9 +775,9 @@ else
                    'sourceComponent',                 srcComponent, ...
                    'targetComponent',                 trgComponent, ...
                    componentNamesArg{ : }, ...
-                   realizationNamesArg{ : },           ...
-                   timeFormatArg{ : },                 ...
-                   srcTimeArg{ : },                    ...
+                   realizationNamesArg{ : },          ...
+                   timeFormatArg{ : },                ...
+                   srcTimeArg{ : },                   ...
                    'embeddingOrigin',                 idxT1, ...
                    'embeddingTemplate',               embComponent, ...
                    'targetEmbeddingTemplate',         trgEmbComponent, ...

@@ -44,7 +44,7 @@ switch experiment
         In.Trg( 1 ).yLim       = [ -5 5 ];     % latitude limits
 
         % Delay-embedding/finite-difference parameters; in-sample data
-        In.Src( 1 ).idxE      = 1 : 96;     % delay-embedding indices 
+        In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
         In.Src( 1 ).nXB       = 1;          % samples before main interval
         In.Src( 1 ).nXA       = 0;          % samples after main interval
         In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
@@ -67,7 +67,7 @@ switch experiment
         In.coneAlpha  = 0;      % velocity exponent in cone kernel
         In.nNS        = In.nN;  % nearest neighbors for symmetric distance
         In.diffOpType = 'gl_mb_bs'; % diffusion operator type
-        In.epsilon    = 1.5;        % kernel bandwidth parameter 
+        In.epsilon    = 2;        % kernel bandwidth parameter 
         In.epsilonB   = 2;          % kernel bandwidth base
         In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
         In.nEpsilon   = 200;      % number of exponents for bandwidth tuning
