@@ -10,12 +10,13 @@ dirName    = '/Volumes/TooMuch/physics/climate/data/noaa'; % input data dir.
 fileName   = 'sst.mnmean.v4-4.nc'; % filename base for input data
 varName    = 'sst';                % variable name in NetCDF file 
 
-nShiftNino = 11; % temporal shift 
-%idxPhiEnso = [ 13 14 ]; % ENSO eigenfunctions from NLSA (kernel operator)
-idxPhiEnso = [ 10 9 ]; % ENSO eigenfunctions from NLSA (kernel operator)
-signPhi    = [ -1 1 ]; % multiplication factor (for consistency with Nino)
-idxZEnso   = 9;       % ENSO eigenfunction from generator      
-signZ      = -1;        % multiplication factor (for consistency with Nino)
+nShiftNino   = 11;        % temporal shift to obtain 2D Nino index
+idxPhiEnso   = [ 10 9 ];  % ENSO eigenfunctions from NLSA (kernel operator)
+signPhi      = [ -1 1 ];  % multiplication factor (for consistency with Nino)
+idxZEnso     = 9;         % ENSO eigenfunction from generator      
+signZ        = -1;        % multiplication factor (for consistency with Nino)
+nPhase       = 8;         % number of ENSO phases
+nSamplePhase = 200;       % number of samples per phase
 
 %% EL NINO/LA NINA EVENTS
 % El Nino/La Nina events to mark up in lifecycle plots (in yyyymm format)
@@ -40,10 +41,12 @@ nProc = 1; % number of batch processes
 ifData    = false; % extract data from NetCDF source files
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
-ifNino    = false;  % compute two-dimensional (lead/lag) Nino 3.4 index  
-
-ifNLSALifecycle = true; % plot ENSO lifecycle from kernel eigenfunctions
+ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino 3.4 index  
+ifNLSALifecycle    = true; % plot ENSO lifecycle from kernel eigenfunctions
 ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfunctions 
+ifNLSAPhases = true; % compute ENSO phases fron NLSA eigenfunctions
+ifKoopmanPhases = true; % compute ENSO phases from Koopman eigenfunctions
+
 
 ifPrintFig = true; % print figures to file
 %% BUILD NLSA MODEL, DETERMINE BASIC ARRAY SIZES
@@ -166,7 +169,7 @@ end
 % 
 % Nino.time is an array of size [ 1 nSE ] containing the timestamps in
 % Matlab serial date number format. 
-if ifNino
+if ifNinoIdx
 
     disp( 'Constructing lagged Nino 3.4 index...' ); t = tic;
 
@@ -296,9 +299,72 @@ if ifKoopmanLifecycle
     end
 end
 
-%% AUXILIARY FUNCTIONS
+%% COMPUTE AND PLOT ENSO PHASES BASED ON NLSA EIGENFUNCTIONS
+%
+% selectIndNLSA is a cell array of size [ 1 nPhase ]. selectIndNLSA{ iPhase } 
+% is a row vector containing the indices (timestamps) of the data affiliated
+% with ENSO phase iPHase. 
+%
+% anglesNLSA is a row vector of size [ 1 nPhase ] containing the polar angles
+% in the 2D plane of the phase boundaries.
+% 
+% avNinoInNLSA is a row vector of size [ 1 nPhase ] containing the average
+% Nino 3.4 index for each NLSA phase. 
+if ifNLSAPhases
+   
+    % Compute ENSO phases based on NLSA
+    [ selectIndPhi, anglesPhi, avNinoIndPhi ] = computeLifecyclePhases( ...
+        Phi.idx', Nino.idx( 1, : )', nPhase, nSamplePhase );
+
+    % Compute ENSO phases based on Nino 3.4 index
+    [ selectIndNino, anglesNino, avNinoIndNino ] = computeLifecyclePhases( ...
+        Nino.idx', Nino.idx(1,:)', nPhase, nSamplePhase );
+        
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 8; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .60;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0; 
+    Fig.nTileX     = 2;
+    Fig.nTileY     = 1;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 8;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % Plot Nino 3.4 phases
+    set( gcf, 'currentAxes', ax( 1 ) )
+    plotPhases( Nino, selectIndNino, anglesNino ) 
+    xlabel( 'Nino 3.4' )
+    ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+
+    % Plot NLSA phases
+    set( gcf, 'currentAxes', ax( 2 ) )
+    plotPhases( Phi, selectIndPhi, anglesPhi )
+    xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
+    ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    title( 'Kernel integral operator' )
+
+end
+
+
+% AUXILIARY FUNCTIONS
+
+%% Function to plot two-dimensional ENSO index, highlighting significant events
 function plotLifecycle( Index, Ninos, Ninas, tFormat )
-% Plots two-dimensional ENSO index, highlighting significant events
 
 % plot temporal evolution of index
 plot( Index.idx( 1, : ), Index.idx( 2, : ), 'g-' )
@@ -333,6 +399,21 @@ for iENSO = 1 : numel( Ninas )
           'b-', 'lineWidth', 2 )
     text( Index.idx( 1, idxTLabel ), Index.idx( 2, idxTLabel ), ...
           datestr( Index.time( idxT2 ), 'yyyy' ) )
+end
+
+%% Function to plot two-dimensional ENSO index and associated phases
+function plotPhases( index, selectInd, angles )
+
+% plot temporal evolution of index
+plot( Index.idx( 1, : ), Index.idx( 2, : ), '-', ...
+      'Color', [ 1 1 1 ] * 17 / 255  )
+hold on
+
+% plot phases
+for iPhase = 1 : numel( selectInd )
+
+    plot( index( selectInd{ iPhase }, 1 ), index( selectInd{ iPhase }, 2 ), ...
+        'o', 'markersize', 10 )
 end
 
 end
