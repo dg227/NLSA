@@ -6,7 +6,7 @@ function [ selectind, angles, avbindex ] = computeLifecyclePhases( ...
 
 % default input arguments
 if nargin < 6 
-    ifPlot = true;
+    ifPlot = false;
 end
 if nargin < 5
     skipfraction = 1 / 120; 
@@ -23,8 +23,9 @@ for theta=-pi:2*pi*skipfraction:pi-2*pi*skipfraction,
     ind=find(anglemin<pi*wedgefraction);
              
     [y,sorti]=sort(phi(ind,1).^2+phi(ind,2).^2,'descend');
-    rotind{count}=ind(sorti(1:200));
-    avbindex(count)=mean(x_34I(rotind{count}+24));
+    nSort = min( num, numel( sorti ) );
+    rotind{count}=ind(sorti(1:nSort));
+    avbindex(count)=mean(refI(rotind{count}));
 end
 [y,i]=max(avbindex);
 
@@ -53,18 +54,21 @@ for theta=angles,
     anglemin=min([abs(angle(complex(phi(:,1),phi(:,2)))-theta) abs(angle(complex(phi(:,1),phi(:,2)))+2*pi-theta) abs(angle(complex(phi(:,1),phi(:,2)))-2*pi-theta)],[],2);
     ind=find(anglemin<pi*wedgefraction);
     [y,sorti]=sort(phi(ind,1).^2+phi(ind,2).^2,'descend');
-    selectind{count}=ind(sorti(1:num));
-    avbindex(count)=mean(refI(selectind{count}+24));
+    nSort = min( num, numel( sorti ) );
+    selectind{count}=ind(sorti(1:nSort));
+    avbindex(count)=mean(refI(selectind{count}));
 end
 
-figure
-plot(phi(:,1),phi(:,2),'.')
-hold on
-for i=1:nPhase,
-    plot(phi(selectind{i},1),phi(selectind{i},2),'o','markersize',10)
-    axis equal
-    axis tight
-    xlabel('phi_1')
-    ylabel('phi_2')
-    title('ENSO lifecycle from IndoPacific vector embedding')
+if ifPlot
+    figure
+    plot(phi(:,1),phi(:,2),'.')
+    hold on
+    for i=1:nPhase,
+        plot(phi(selectind{i},1),phi(selectind{i},2),'o','markersize',10)
+        axis equal
+        axis tight
+        xlabel('phi_1')
+        ylabel('phi_2')
+        title('ENSO lifecycle from IndoPacific vector embedding')
+    end
 end

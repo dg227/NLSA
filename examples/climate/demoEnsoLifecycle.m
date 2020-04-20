@@ -12,11 +12,13 @@ varName    = 'sst';                % variable name in NetCDF file
 
 nShiftNino   = 11;        % temporal shift to obtain 2D Nino index
 idxPhiEnso   = [ 10 9 ];  % ENSO eigenfunctions from NLSA (kernel operator)
-signPhi      = [ -1 1 ];  % multiplication factor (for consistency with Nino)
+signPhi      = [ -1 -1 ]; % multiplication factor (for consistency with Nino)
 idxZEnso     = 9;         % ENSO eigenfunction from generator      
 signZ        = -1;        % multiplication factor (for consistency with Nino)
 nPhase       = 8;         % number of ENSO phases
-nSamplePhase = 200;       % number of samples per phase
+nSamplePhase = 100;       % number of samples per phase
+phase0       = 5;         % start phase in equivariance plots
+leads        = [ 0 6 12 18 24 ]; % leads (in months) for equivariance plots
 
 %% EL NINO/LA NINA EVENTS
 % El Nino/La Nina events to mark up in lifecycle plots (in yyyymm format)
@@ -42,11 +44,12 @@ ifData    = false; % extract data from NetCDF source files
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
 ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino 3.4 index  
-ifNLSALifecycle    = true; % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfunctions 
-ifNLSAPhases = true; % compute ENSO phases fron NLSA eigenfunctions
-ifKoopmanPhases = true; % compute ENSO phases from Koopman eigenfunctions
-
+ifNLSALifecycle    = false; % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSAPhases = false; % compute ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases = false; % compute ENSO phases from generator eigenfunctions
+ifNLSAEquivariance = true; % make ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = true; % make ENSO equivariance plots based on Koopman
 
 ifPrintFig = true; % print figures to file
 %% BUILD NLSA MODEL, DETERMINE BASIC ARRAY SIZES
@@ -301,15 +304,19 @@ end
 
 %% COMPUTE AND PLOT ENSO PHASES BASED ON NLSA EIGENFUNCTIONS
 %
-% selectIndNLSA is a cell array of size [ 1 nPhase ]. selectIndNLSA{ iPhase } 
+% selectIndPhi is a cell array of size [ 1 nPhase ]. selectIndNLSA{ iPhase } 
 % is a row vector containing the indices (timestamps) of the data affiliated
 % with ENSO phase iPHase. 
 %
-% anglesNLSA is a row vector of size [ 1 nPhase ] containing the polar angles
+% anglesPhi is a row vector of size [ 1 nPhase ] containing the polar angles
 % in the 2D plane of the phase boundaries.
 % 
-% avNinoInNLSA is a row vector of size [ 1 nPhase ] containing the average
+% avNinoIndPhi is a row vector of size [ 1 nPhase ] containing the average
 % Nino 3.4 index for each NLSA phase. 
+%
+% selectIndNino, anglesNino, and avNinoIndNino are defined analogously to
+% selectIndPhi, anglesPhi, and avNinoIndPhi, respectively, using the Nino 3.4
+% index. 
 if ifNLSAPhases
    
     % Compute ENSO phases based on NLSA
@@ -343,7 +350,7 @@ if ifNLSAPhases
 
     % Plot Nino 3.4 phases
     set( gcf, 'currentAxes', ax( 1 ) )
-    plotPhases( Nino, selectIndNino, anglesNino ) 
+    plotPhases( Nino.idx', selectIndNino, anglesNino ) 
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
@@ -351,14 +358,225 @@ if ifNLSAPhases
 
     % Plot NLSA phases
     set( gcf, 'currentAxes', ax( 2 ) )
-    plotPhases( Phi, selectIndPhi, anglesPhi )
+    plotPhases( Phi.idx', selectIndPhi, anglesPhi )
     xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
     ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
     title( 'Kernel integral operator' )
 
+    % Print figure
+    if ifPrintFig
+        figFile = 'figEnsoPhasesKernel.png';
+        print( figFile, '-dpng', '-r300' ) 
+    end
+
 end
+
+%% COMPUTE AND PLOT ENSO PHASES BASED ON GENERATOR EIGENFUNCTIONS
+%
+% selectIndZ is a cell array of size [ 1 nPhase ]. selectIndZ{ iPhase } 
+% is a row vector containing the indices (timestamps) of the data affiliated
+% with ENSO phase iPHase. 
+%
+% anglesZ is a row vector of size [ 1 nPhase ] containing the polar angles
+% in the 2D plane of the phase boundaries.
+% 
+% avNinoIndZ is a row vector of size [ 1 nPhase ] containing the average
+% Nino 3.4 index for each NLSA generator. 
+%
+% selectIndNino, anglesNino, and avNinoIndNino are defined analogously to
+% selectIndZ, anglesZ, and avNinoIndZ, respectively, using the Nino 3.4
+% index. 
+if ifKoopmanPhases
+   
+    % Compute ENSO phases based on generator
+    [ selectIndZ, anglesZ, avNinoIndZ ] = computeLifecyclePhases( ...
+        Z.idx', Nino.idx( 1, : )', nPhase, nSamplePhase );
+
+    % Compute ENSO phases based on Nino 3.4 index
+    [ selectIndNino, anglesNino, avNinoIndNino ] = computeLifecyclePhases( ...
+        Nino.idx', Nino.idx(1,:)', nPhase, nSamplePhase );
+        
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 8; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .60;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0; 
+    Fig.nTileX     = 2;
+    Fig.nTileY     = 1;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 8;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % Plot Nino 3.4 phases
+    set( gcf, 'currentAxes', ax( 1 ) )
+    plotPhases( Nino.idx', selectIndNino, anglesNino ) 
+    xlabel( 'Nino 3.4' )
+    ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+
+    % Plot generator phases
+    set( gcf, 'currentAxes', ax( 2 ) )
+    plotPhases( Z.idx', selectIndZ, anglesZ )
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+    ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    title( sprintf( 'Generator; eigenperiod = %1.2f y', TEnso ) )
+
+    % Print figure
+    if ifPrintFig
+        figFile = 'figEnsoPhasesKoopman.png';
+        print( figFile, '-dpng', '-r300' ) 
+    end
+
+
+end
+
+%% EQUIVARIANCE PLOTS BASED ON NLSA
+if ifNLSAEquivariance
+
+    nLead = numel( leads );  
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 10; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .5;
+    Fig.gapX       = .20;
+    Fig.gapY       = .5;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = nLead;
+    Fig.nTileY     = 2;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Loop over the leads
+    for iLead = 1 : numel( leads )
+
+        % Plot Nino 3.4 phases
+        set( gcf, 'currentAxes', ax( iLead, 1 ) )
+        plotPhaseEvolution( Nino.idx', selectIndNino, anglesNino, ...
+                            phase0, leads( iLead ) ) 
+        xlabel( 'Nino 3.4' )
+        xlim( [ -3 3 ] )
+        ylim( [ -3 3 ] )
+        if iLead > 1 
+            yticklabels( [] )
+        else
+            ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
+        end
+        title( sprintf( 'Lead = %i months', leads( iLead ) ) )
+        
+        % Plot NLSA phases 
+        set( gcf, 'currentAxes', ax( iLead, 2 ) )
+        plotPhaseEvolution( Phi.idx', selectIndPhi, anglesPhi, ...
+                            phase0, leads( iLead ) )
+        xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
+        if iLead > 1
+            yticklabels( [] )
+        else
+            ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
+        end
+        xlim( [ -3 3 ] )
+        ylim( [ -3 3 ] )
+    end
+
+    title( axTitle, sprintf( 'Start phase = %i', phase0 ) )
+
+    % Print figure
+    if ifPrintFig
+        figFile = sprintf( 'figEnsoEquivarianceKernel_phase%i.png', phase0 );
+        print( figFile, '-dpng', '-r300' ) 
+    end
+end
+
+%% EQUIVARIANCE PLOTS BASED ON GENERATOR
+if ifKoopmanEquivariance
+
+    nLead = numel( leads );  
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 10; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .5;
+    Fig.gapX       = .20;
+    Fig.gapY       = .5;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = nLead;
+    Fig.nTileY     = 2;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Loop over the leads
+    for iLead = 1 : numel( leads )
+
+        % Plot Nino 3.4 phases
+        set( gcf, 'currentAxes', ax( iLead, 1 ) )
+        plotPhaseEvolution( Nino.idx', selectIndNino, anglesNino, ...
+                            phase0, leads( iLead ) ) 
+        xlabel( 'Nino 3.4' )
+        xlim( [ -3 3 ] )
+        ylim( [ -3 3 ] )
+        if iLead > 1 
+            yticklabels( [] )
+        else
+            ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
+        end
+        title( sprintf( 'Lead = %i months', leads( iLead ) ) )
+        
+        % Plot Koopman phases 
+        set( gcf, 'currentAxes', ax( iLead, 2 ) )
+        plotPhaseEvolution( Z.idx', selectIndZ, anglesZ, ...
+                            phase0, leads( iLead ) )
+        xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+        if iLead > 1
+            yticklabels( [] )
+        else
+            ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
+        end
+        xlim( [ -2.5 2.5 ] )
+        ylim( [ -2.5 2.5 ] )
+    end
+
+    title( axTitle, sprintf( 'Start phase = %i', phase0 ) )
+
+    % Print figure
+    if ifPrintFig
+        figFile = sprintf( 'figEnsoEquivarianceGenerator_phase%i.png', phase0);
+        print( figFile, '-dpng', '-r300' ) 
+    end
+end
+
 
 
 % AUXILIARY FUNCTIONS
@@ -401,19 +619,48 @@ for iENSO = 1 : numel( Ninas )
           datestr( Index.time( idxT2 ), 'yyyy' ) )
 end
 
+end
+
 %% Function to plot two-dimensional ENSO index and associated phases
 function plotPhases( index, selectInd, angles )
 
 % plot temporal evolution of index
-plot( Index.idx( 1, : ), Index.idx( 2, : ), '-', ...
-      'Color', [ 1 1 1 ] * 17 / 255  )
+plot( index( :, 1 ), index( :, 2 ), '-', 'Color', [ 1 1 1 ] * .7  )
 hold on
 
 % plot phases
-for iPhase = 1 : numel( selectInd )
+nPhase = numel( selectInd );
+c = distinguishable_colors( nPhase );
+c = c( [ 2 3 4 5 1 6 7 8 ], : );
+for iPhase = 1 : nPhase
 
     plot( index( selectInd{ iPhase }, 1 ), index( selectInd{ iPhase }, 2 ), ...
-        'o', 'markersize', 10 )
+        '.', 'markersize', 15, 'color', c( iPhase, : ) )
 end
 
+end
+
+%% Function to plot ENSO phase evolution
+function plotPhaseEvolution( index, selectInd, angles, phase0, lead )
+
+% plot temporal evolution of index
+plot( index( :, 1 ), index( :, 2 ), '-', 'Color', [ 1 1 1 ] * .7  )
+hold on
+
+% plot phases
+nPhase = numel( selectInd );
+c = distinguishable_colors( nPhase );
+c = c( [ 2 3 4 5 1 6 7 8 ], : );
+for iPhase = 1 : nPhase
+
+    plot( index( selectInd{ iPhase }, 1 ), index( selectInd{ iPhase }, 2 ), ...
+        '.', 'markersize', 5, 'color', c( iPhase, : ) * .7 )
+end
+
+% plot evolution from reference phase
+indMax = size( index, 1 );
+ind = selectInd{ phase0 } + lead; 
+ind = ind( ind <= indMax );
+plot( index( ind, 1 ), index( ind, 2 ), ...
+    '.', 'markersize', 10, 'color', c( phase0, : ) )   
 end
