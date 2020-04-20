@@ -3,7 +3,11 @@ function Data = noaaData( DataSpecs )
 % appropriate for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
-% be read. It has the following fields:
+% be read. 
+%
+% Data is a data structure containing the data read and associated attributes.
+
+% DataSpecs has the following fields:
 %
 % In.dir:             Input directory name
 % In.file:            Input filename
@@ -20,14 +24,14 @@ function Data = noaaData( DataSpecs )
 % Opts.ifCenterMonth: Remove monthly climatology if true 
 % Opts.ifNormalize:   Standardize data to unit L2 norm if true
 % Opts.ifWrite:       Write data to disk
+% Opts.ifOutputData:  Only data attributes are returned if set to false
 %
 % Longitude range is [ 0 359 ] at 1 degree increments
 % Latitude range is [ -89 89 ] at 1 degree increments
 % Date range is January 18854 to June 2019 at 1 month increements
 %
-% Outpur argument Data contains the data read and associated attributes.
 %
-% Modified 2020/03/28
+% Modified 2020/04/20
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 In     = DataSpecs.In;
@@ -200,6 +204,9 @@ end
 %% RETURN AND WRITE DATA
 % Coordinates and area mask
 gridVarList = { 'lat', 'lon', 'ifXY', 'fldStr', 'nD' };
+if Opts.ifWeight
+    gridVarList = [ gridVarList 'w' ];
+end
 if Opts.ifWrite
     gridFile = fullfile( dataDir, 'dataGrid.mat' );
     save( gridFile, gridVarList{ : }, '-v7.3' )  
@@ -210,9 +217,6 @@ x = double( fld ); % for compatibility with NLSA code
 varList = { 'x' 'idxT0' };
 if Opts.ifCenter || Opts.ifCenterMonth
     varList = [ varList 'cli' 'idxTClim0' 'nTClim' ];
-end
-if Opts.ifWeight
-    varList = [ varList 'w' ];
 end
 if Opts.ifNormalize
     varList = [ varList 'l2Norm' ];
@@ -226,6 +230,10 @@ end
 % If needed, assemble data and attributes into data structure and return
 if nargout > 0
     varList = [ varList gridVarList ];
+    if ~Opts.ifOutputData
+        % Exclude data from output 
+        varList = varList( 2 : end );
+    end
     nVar = numel( varList );
     vars = cell( 1, nVar );
     for iVar = 1 : nVar

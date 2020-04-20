@@ -19,7 +19,7 @@ function [ model, In, Out ] = noaaNLSAModel( experiment )
 %  Latitude range is [ -89 89 ] at 1 degree increments
 %  Date range is is January 1854 to June 2019  at 1 month increments
 %
-% Modified 2020/04/15
+% Modified 2020/04/20
  
 if nargin == 0
     experiment = 'enso_lifecycle';
@@ -32,7 +32,11 @@ switch experiment
 
         % In-sample dataset parameters 
         % Source (covariate) data is area-weighted Indo-Pacific SST
-        % Target (response) data is Nino 3.4 index
+        %
+        % Target (response) data is:
+        %
+        % Component 1: Nino 3.4 index
+        % Component 2: Global SST anomalies 
         In.tFormat             = 'yyyymm';              % time format
         In.Res( 1 ).tLim       = { '187001' '201906' }; % time limit  
         In.Res( 1 ).experiment = 'noaa';                % 20CRv2 dataset
@@ -42,6 +46,9 @@ switch experiment
         In.Trg( 1 ).field      = 'sstmawav_198101-201012';  % physical field
         In.Trg( 1 ).xLim       = [ 190 240 ];  % longitude limits
         In.Trg( 1 ).yLim       = [ -5 5 ];     % latitude limits
+        In.Trg( 2 ).field      = 'sstma_198101-201012';  % physical field
+        In.Trg( 2 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 2 ).yLim       = [ -89 89 ];  % latitude limits
 
         % Delay-embedding/finite-difference parameters; in-sample data
         In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
@@ -56,6 +63,12 @@ switch experiment
         In.Trg( 1 ).fdOrder   = 1;          % finite-difference order 
         In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 1 ).embFormat = 'overlap';  % storage format
+        In.Trg( 2 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 2 ).nXB       = 1;          % before main interval
+        In.Trg( 2 ).nXA       = 0;          % samples after main interval
+        In.Trg( 2 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 2 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 2 ).embFormat = 'overlap';  % storage format
         In.Res( 1 ).nB        = 1;          % partition batches
         In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
 

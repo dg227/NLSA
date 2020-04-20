@@ -2,7 +2,7 @@ function tag = concatenateRealizationTags( obj )
 % CONCATENATEREALIZATIONTAGS Concatenate realization tags of a matrix of 
 % nlsaComponent objects
 %
-% Modified 2019/11/15
+% Modified 2020/04/20
 
 if ~ismatrix( obj )
     error( 'Input argument must be a matrix of nlsaComponent objects.' )
@@ -15,6 +15,12 @@ if nC > 1
     tag = cell( nC, 1 );
     for iC = 1 : nC
         tag{ iC } = concatenateRealizationTags( obj( iC, : ) );
+    end
+    uTag = unique( tag );
+    if numel( uTag ) == 1
+        tag = uTag{ 1 };
+    else
+        tag = strjoin_e( tag, '_' );
     end
     return
 end
