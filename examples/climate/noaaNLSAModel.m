@@ -19,7 +19,7 @@ function [ model, In, Out ] = noaaNLSAModel( experiment )
 %  Latitude range is [ -89 89 ] at 1 degree increments
 %  Date range is is January 1854 to June 2019  at 1 month increments
 %
-% Modified 2020/04/20
+% Modified 2020/04/21
  
 if nargin == 0
     experiment = 'enso_lifecycle';
@@ -28,15 +28,17 @@ end
 switch experiment
 
     % ENSO LIFECYCLE BASED ON INDO-PACIFIC SST 
+    % Source (covariate) data is area-weighted Indo-Pacific SST
+    %
+    % Target (response) data is:
+    %
+    % Component 1: Nino 3.4 index
+    % Component 2: Global SST anomalies 
+    % Component 3: Global SAT anomalies
+    % Component 4: Global precipitation rates
     case 'enso_lifecycle'
 
         % In-sample dataset parameters 
-        % Source (covariate) data is area-weighted Indo-Pacific SST
-        %
-        % Target (response) data is:
-        %
-        % Component 1: Nino 3.4 index
-        % Component 2: Global SST anomalies 
         In.tFormat             = 'yyyymm';              % time format
         In.Res( 1 ).tLim       = { '187001' '201906' }; % time limit  
         In.Res( 1 ).experiment = 'noaa';                % 20CRv2 dataset
@@ -49,6 +51,22 @@ switch experiment
         In.Trg( 2 ).field      = 'sstma_198101-201012';  % physical field
         In.Trg( 2 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 2 ).yLim       = [ -89 89 ];  % latitude limits
+        In.Trg( 3 ).field      = 'airma_198101-201012';  % physical field
+        In.Trg( 3 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 3 ).yLim       = [ -89 89 ];  % latitude limits
+        In.Trg( 4 ).field      = 'pratema_198101-201012';  % physical field
+        In.Trg( 4 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 4 ).yLim       = [ -89 89 ];  % latitude limits
+        In.Trg( 5 ).field      = 'uwndma_198101-201012';  % physical field
+        In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
+        In.Trg( 6 ).field      = 'vwndma_198101-201012';  % physical field
+        In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
+        
+        % Abbreviated target component names
+        In.targetComponentName = [ 'sstw_sstmawav_air_prate_uv' ];
+        In.targetRealizationName = '187001-201906';
 
         % Delay-embedding/finite-difference parameters; in-sample data
         In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
@@ -69,6 +87,30 @@ switch experiment
         In.Trg( 2 ).fdOrder   = 1;          % finite-difference order 
         In.Trg( 2 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 2 ).embFormat = 'overlap';  % storage format
+        In.Trg( 3 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 3 ).nXB       = 1;          % before main interval
+        In.Trg( 3 ).nXA       = 0;          % samples after main interval
+        In.Trg( 3 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 3 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 3 ).embFormat = 'overlap';  % storage format
+        In.Trg( 4 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 4 ).nXB       = 1;          % before main interval
+        In.Trg( 4 ).nXA       = 0;          % samples after main interval
+        In.Trg( 4 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 4 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 4 ).embFormat = 'overlap';  % storage format
+        In.Trg( 5 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 5 ).nXB       = 1;          % before main interval
+        In.Trg( 5 ).nXA       = 0;          % samples after main interval
+        In.Trg( 5 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 5 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 5 ).embFormat = 'overlap';  % storage format
+        In.Trg( 6 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 6 ).nXB       = 1;          % before main interval
+        In.Trg( 6 ).nXA       = 0;          % samples after main interval
+        In.Trg( 6 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 6 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 6 ).embFormat = 'overlap';  % storage format
         In.Res( 1 ).nB        = 1;          % partition batches
         In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
 

@@ -1,6 +1,6 @@
 function Data = noaaData( DataSpecs )
-% NOAADATA Read NOAA 20th Century Reanalysis data and output in format 
-% appropriate for NLSA code.
+% NOAADATA Read NOAA data from NetCDF files, and output in format appropriate 
+% for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
 % be read. 
@@ -26,12 +26,10 @@ function Data = noaaData( DataSpecs )
 % Opts.ifWrite:       Write data to disk
 % Opts.ifOutputData:  Only data attributes are returned if set to false
 %
-% Longitude range is [ 0 359 ] at 1 degree increments
-% Latitude range is [ -89 89 ] at 1 degree increments
-% Date range is January 18854 to June 2019 at 1 month increements
-%
-%
-% Modified 2020/04/20
+% If the requested date range preceeds/exceeds the available limits, a
+% warning message is displayed and the additional samples are set to 0. 
+% 
+% Modified 2020/04/22
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 In     = DataSpecs.In;
@@ -103,28 +101,64 @@ idxTClim0 = months( startNum, climNum( 1 ) );
 
 % Open netCDF file, find variable IDs
 ncId   = netcdf.open( fullfile( In.dir, In.file ) );
+idTime = netcdf.inqVarID( ncId, 'time' );
 idLon  = netcdf.inqVarID( ncId, 'lon' );
 idLat  = netcdf.inqVarID( ncId, 'lat' );
 idFld  = netcdf.inqVarID( ncId, In.var );
 
-% Create region mask
+% Get timestamps and total number of available samples
+time = netcdf.getVar( ncId, idTime );
+nTTot = numel( time );
+
+% Determine time range to read 
+if idxT0 < 0
+    idxT0Read = 0;
+    msgStr = [ 'Date range requested preceeds the available date range. ' ...
+           sprintf( 'Setting the first %i samples to zero.', abs( idxT0 ) ) ]; 
+    warning( msgStr )
+    idxT0Read = 0;
+    preDeficit = abs( idxT0 );
+else
+    idxT0Read = idxT0;
+    preDeficit = 0;
+end
+postDeficit = idxT0Read + nT - preDeficit - nTTot;
+if postDeficit > 0
+    msgStr = [ 'Date range requested exceeds the available date range. ' ...
+               sprintf( 'Setting %i samples to zero.', postDeficit ) ]; 
+    warning( msgStr )
+end
+nTRead = nT - preDeficit - postDeficit;
+
+% Create longitude-latitude grid
 lon = netcdf.getVar( ncId, idLon );
 lat = netcdf.getVar( ncId, idLat );
 nX  = length( lon );
 nY  = length( lat );
 [ X, Y ] = ndgrid( lon, lat );
+
+%  Retrieve data
+fldRead = netcdf.getVar( ncId, idFld, [ 0 0 idxT0Read ], [ nX nY nTRead ] );
+
+% Create region mask. Here, we are being conservative and
+% only retain grid points with physical values for the entire temporal
+% extent of the dataset. 
 rng = netcdf.getAtt( ncId, idFld, 'valid_range' );
-fldRef = netcdf.getVar( ncId, idFld, [ 0 0 0 ], [ nX nY 1 ] ); 
+%fldRef = netcdf.getVar( ncId, idFld, [ 0 0 0 ], [ nX nY 1 ] ); 
+%ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
+%     & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 ) ...
+%     & fldRef >= rng( 1 ) & fldRef <= rng( 2 );
 ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
      & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 ) ...
-     & fldRef >= rng( 1 ) & fldRef <= rng( 2 );
+     & all( fldRead >= rng( 1 ) & fldRead <= rng( 2 ), 3 );
+iXY = find( ifXY( : ) );
 iXY = find( ifXY( : ) );
 nXY = length( iXY );
 
-%  Retrieve data
-fld = netcdf.getVar( ncId, idFld, [ 0 0 idxT0 ], [ nX nY nT ] );
-fld = reshape( fld, [ nX * nY nT ] );
-fld = fld( iXY, : );
+% Create output array
+fldRead = reshape( fldRead, [ nX * nY nTRead ] );
+fld = zeros( nXY, nT );
+fld( :, 1 + preDeficit : nTRead + preDeficit ) = fldRead( iXY, : );
 
 % If requested, weigh the data by the (normalized) grid cell surface areas. 
 % Surface area calculation is approximate as it treats Earth as spherical
