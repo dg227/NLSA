@@ -51,7 +51,7 @@ ifNinoIdx = false;  % compute two-dimensional (lead/lag) Nino 3.4 index
 
 % ENSO 2D lifecycle plots
 ifNLSALifecycle    = false; % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
+ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
 ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
@@ -60,9 +60,9 @@ ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
 ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Output options
 ifPrintFig = true; % print figures to file
@@ -147,6 +147,11 @@ end
 if ifDataSAT
     % Create data structure with input data specifications, and retrieve 
     % input data. Data is saved on disk. 
+    %
+    % Start dates/end dates for possible source files are as follows:
+    %
+    % air.2m.mon.mean-2.nc: 187101 to 201212
+    % air.mon.anom.v5.nc:   188001 to 201908 
  
     % Input data directory 
     dirName    = '/Volumes/TooMuch/physics/climate/data/noaa'; 
@@ -154,11 +159,11 @@ if ifDataSAT
     % Time specification
     DataSpecs.Time.tLim    = { '187001' '201906' }; % time limits
     DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology time limits
-    DataSpecs.Time.tStart  = '188001';              % start time in nc file 
+    DataSpecs.Time.tStart  = '187101';              % start time in nc file 
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
 
     % File name for SAT field
-    fileName   = 'air.mon.anom.v4.nc'; % filename base for input data
+    fileName   = 'air.2m.mon.mean-2.nc'; % filename base for input data
     varName    = 'air';                % variable name in NetCDF file 
 
     % Input data
@@ -235,7 +240,11 @@ end
 if ifDataWind
     % Create data structure with input data specifications, and retrieve 
     % input data. Data is saved on disk. 
- 
+    %
+    % Start dates/end dates for possible source files are as follows:
+    %
+    % uwnd.10m.mon.mean.nc, vwnd.10m.mean.nc: 185101 to 201412
+    %
     % Input/output data directory 
     dirName    = '/Volumes/TooMuch/physics/climate/data/noaa'; 
     DataSpecs.In.dir  = dirName;
@@ -389,15 +398,15 @@ if ifNLSALifecycle
     
     % Set up figure and axes 
     Fig.units      = 'inches';
-    Fig.figWidth   = 8; 
+    Fig.figWidth   = 12; 
     Fig.deltaX     = .5;
-    Fig.deltaX2    = .1;
+    Fig.deltaX2    = .65;
     Fig.deltaY     = .48;
     Fig.deltaY2    = .3;
     Fig.gapX       = .60;
     Fig.gapY       = .3;
     Fig.gapT       = 0; 
-    Fig.nTileX     = 2;
+    Fig.nTileX     = 3;
     Fig.nTileY     = 1;
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
@@ -415,6 +424,7 @@ if ifNLSALifecycle
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
+    title( 'Nino 3.4 lifecycle' )
 
     % Plot NLSA lifecycle
     set( gcf, 'currentAxes', ax( 2 ) )
@@ -423,10 +433,34 @@ if ifNLSALifecycle
     ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
-    title( 'Kernel integral operator' )
+    title( 'NLSA lifecycle' )
+
+    % Make scatterplot of NLSA lifcycle colored by Nino 3.4 index
+    set( gcf, 'currentAxes', ax( 3 ) )
+    plot( Phi.idx( 1, : ), Phi.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Phi.idx( 1, : ), Phi.idx( 2, : ), 17, Nino.idx( 1, : ), ...
+             'o', 'filled' )  
+    xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
+    ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    %set( gca, 'clim', [ -1 1 ] * max( abs( Nino.idx( 1, : ) ) ) )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'eastOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 3 ) = cPos( 3 ) * .7;
+    cPos( 1 ) = cPos( 1 ) + .05;
+    set( hC, 'position', cPos )
+    %xlabel( hC, 'Nino 3.4 index' )
+    set( gca, 'position', axPos )
+    title( 'NLSA colored by Nino 3.4' )
 
     % Print figure
     if ifPrintFig
+        set( gcf, 'invertHardCopy', 'off' )
         figFile = 'figEnsoLifecycleKernel.png';
         print( figFile, '-dpng', '-r300' ) 
     end
@@ -447,15 +481,15 @@ if ifKoopmanLifecycle
     
     % Set up figure and axes 
     Fig.units      = 'inches';
-    Fig.figWidth   = 8; 
+    Fig.figWidth   = 12; 
     Fig.deltaX     = .5;
-    Fig.deltaX2    = .1;
+    Fig.deltaX2    = .65;
     Fig.deltaY     = .48;
     Fig.deltaY2    = .3;
     Fig.gapX       = .60;
     Fig.gapY       = .3;
     Fig.gapT       = 0; 
-    Fig.nTileX     = 2;
+    Fig.nTileX     = 3;
     Fig.nTileY     = 1;
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
@@ -473,6 +507,7 @@ if ifKoopmanLifecycle
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
+    title( 'Nino 3.4 lifecycle' )
 
     % Plot generator lifecycle
     set( gcf, 'currentAxes', ax( 2 ) )
@@ -481,11 +516,38 @@ if ifKoopmanLifecycle
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
-    title( sprintf( 'Generator; eigenperiod = %1.2f y', TEnso ) )
+    title( sprintf( 'Koopman lifecycle; eigenperiod = %1.2f y', TEnso ) )
+
+    % Make scatterplot of generator lifcycle colored by Nino 3.4 index
+    set( gcf, 'currentAxes', ax( 3 ) )
+    plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino.idx( 1, : ), ...
+             'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+    ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    title( sprintf( 'Generator lifecycle; eigenperiod = %1.2f y', TEnso ) )
+    %set( gca, 'clim', [ -1 1 ] * max( abs( Nino.idx( 1, : ) ) ) )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'eastOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 3 ) = cPos( 3 ) * .7;
+    cPos( 1 ) = cPos( 1 ) + .05;
+    set( hC, 'position', cPos )
+    %xlabel( hC, 'Nino 3.4 index' )
+    set( gca, 'position', axPos )
+    title( 'Koopman colored by Nino 3.4' )
+
+
 
     % Print figure
     if ifPrintFig
         figFile = 'figEnsoLifecycleGenerator.png';
+        set( gcf, 'invertHardCopy', 'off' )
         print( figFile, '-dpng', '-r300' ) 
     end
 end

@@ -184,7 +184,10 @@ if Opts.ifWeight
     fld = fld .* w;
 end
 
-% If requested, subtract climatology
+% If requested, subtract climatology.
+% We do this only for the samples within the available date range in the 
+% NetCDF file. In other words, zero-padded samples have zero anomaly relative
+% to global climatology. 
 if Opts.ifCenter
     cli = netcdf.getVar( ncId, idFld, [ 0 0 idxTClim0 ], [ nX nY nTClim ] );
     cli = reshape( cli, [ nX * nY nTClim ] );
@@ -193,10 +196,14 @@ if Opts.ifCenter
         cli = cli .* w;
     end
     cli = mean( cli, 2 );
-    fld = fld - cli;
+    fld( :, 1 + preDeficit : end - postDeficit ) = ...
+        fld( :, 1 + preDeficit : end - postDeficit ) - cli;
 end
 
-% If requested, subtract mnthly climatology
+% If requested, subtract monthly climatology.
+% We do this only for the samples within the available date range in the 
+% NetCDF file. In other words, zero-padded samples have zero anomaly relative
+% to monthly climatology. 
 if Opts.ifCenterMonth
     cliData = netcdf.getVar( ncId, idFld, [ 0 0 idxTClim0 ], [ nX nY nTClim ] );
     cliData = reshape( cliData, [ nX * nY nTClim ] );
@@ -208,10 +215,12 @@ if Opts.ifCenterMonth
     for iM = 1 : 12
         cli( :, iM ) = mean( cliData( :, iM : 12 : end ), 2 );
     end
-    idxM0 = month( limNum( 1 ) ); 
+    idxM0 = month( datemnth( limNum( 1 ), preDeficit ) ); 
     for iM = 1 : 12
         idxM = mod( idxM0 + iM - 2, 12 ) + 1; 
-        fld( :, iM : 12 : end ) = fld( :,  iM : 12 : end ) - cli( :, idxM ); 
+        fld( :, iM + preDeficit : 12 : end - postDeficit ) = ...
+              fld( :,  iM + preDeficit : 12 : end - postDeficit ) ...
+            - cli( :, idxM ); 
     end  
 end
 
