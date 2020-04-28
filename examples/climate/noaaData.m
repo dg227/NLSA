@@ -29,7 +29,7 @@ function Data = noaaData( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Modified 2020/04/22
+% Modified 2020/04/28
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 In     = DataSpecs.In;
@@ -125,7 +125,7 @@ end
 postDeficit = idxT0Read + nT - preDeficit - nTTot;
 if postDeficit > 0
     msgStr = [ 'Date range requested exceeds the available date range. ' ...
-               sprintf( 'Setting %i samples to zero.', postDeficit ) ]; 
+              sprintf( 'Setting the last %i samples to zero.', postDeficit ) ]; 
     warning( msgStr )
 end
 nTRead = nT - preDeficit - postDeficit;

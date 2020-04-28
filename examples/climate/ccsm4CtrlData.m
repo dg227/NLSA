@@ -1,6 +1,6 @@
-function Data = ccsm4Data( DataSpecs )
-% CCSM4DATA Read monthly  CCSM4 data from NetCDF files, and output in format 
-% appropriate for NLSA code.
+function Data = ccsm4CtrlData( DataSpecs )
+% CCSM4DATA Read monthly CCSM4 control data from NetCDF files, and output in 
+% format appropriate for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
 % be read. 
@@ -29,7 +29,7 @@ function Data = ccsm4Data( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Modified 2020/04/25
+% Modified 2020/04/27
 
 % Longitude range is [ 0 359 ] 
 % Latitude range is [ -89 89 ] 

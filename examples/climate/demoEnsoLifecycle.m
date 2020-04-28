@@ -1,10 +1,11 @@
 % RECONSTRUCT THE LIFECYCLE OF THE EL NINO SOUTHERN OSCILLATION (ENSO) 
 % USING DATA-DRIVEN SPECTRAL ANALYSIS OF KOOPMAN/TRANSFER OPERATORS
 %
-% Modified 2020/04/20
+% Modified 2020/04/27
 
 %% DATA SPECIFICATION AND GLOBAL PARAMETERS 
-dataset    = 'noaa';           % NOAA 20th Century Reanalysis v2
+dataset    = 'noaa';          % NOAA 20th Century Reanalysis v2
+%dataset    = 'ccsm4_ctrl';     % CCSM4 control run
 experiment = 'enso_lifecycle'; % data analysis experiment 
 
 nShiftNino   = 11;        % temporal shift to obtain 2D Nino index
@@ -50,254 +51,64 @@ ifKoopman = false; % compute Koopman eigenfunctions
 ifNinoIdx = false;  % compute two-dimensional (lead/lag) Nino 3.4 index  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = false; % plot ENSO lifecycle from kernel eigenfunctions
+ifNLSALifecycle    = true; % plot ENSO lifecycle from kernel eigenfunctions
 ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = false; % compute phase composites based on NLSA
-ifKoopmanComposites = false; % compute phase composites based on Koopman
+ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = true; % compute phase composites based on NLSA
+ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Output options
 ifPrintFig = true; % print figures to file
 
 %% EXTRACT SST DATA
 if ifDataSST
-    % Create data structure with input data specifications, and retrieve 
-    % input data. Data is saved on disk. 
  
-    % Input data directory 
-    dirName    = '/Volumes/TooMuch/physics/climate/data/noaa'; 
-
-    % Time specification
-    DataSpecs.Time.tLim    = { '187001' '201906' }; % time limits
-    DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology time limits
-    DataSpecs.Time.tStart  = '185401';              % start time in nc file 
-    DataSpecs.Time.tFormat = 'yyyymm';              % time format
-
-    % File name for SST field
-    fileName   = 'sst.mnmean.v4-4.nc'; % filename base for input data
-    varName    = 'sst';                % variable name in NetCDF file 
-
-    % Input data
-    DataSpecs.In.dir  = dirName;
-    DataSpecs.In.file = fileName;
-    DataSpecs.In.var  = varName;
-    
-    % Output data specification
-    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
-    DataSpecs.Out.fld = varName;      
-
-    % Read area-weighted SST data for Indo-Pacific domain
     disp( 'Reading Indo-Pacific SST data...' ); t = tic;
-
-    DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
-    DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
-    
-    DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
-    DataSpecs.Opts.ifWeight      = true;  % perform area weighting
-    DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
-    DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
-    DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
-    DataSpecs.Opts.ifWrite       = true;  % write data to disk
-
-    climateData( dataset, DataSpecs ) % read SST data
+    demoEnsoLifecycle_data( dataset, 'IPSST' ) 
     toc( t )
 
-    % Read Nino 3.4 index 
-    disp( 'Reading Nino 3.4 data...' ); t = tic; 
-
-    DataSpecs.Domain.xLim = [ 190 240 ]; % longitude limits 
-    DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
-
-    DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
-    DataSpecs.Opts.ifWeight      = true;  % perform area weighting
-    DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-    DataSpecs.Opts.ifAverage     = true;  % perform area averaging
-    DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
-    DataSpecs.Opts.ifWrite       = true;  % write data to disk
-
-    climateData( dataset, DataSpecs ) % read Nino 3.4 data
+    disp( 'Reading Nino 3.4 index...' ); t = tic;
+    demoEnsoLifecycle_data( dataset, 'Nino3.4' ) 
     toc( t )
 
-    % Read global SST
     disp( 'Reading global SST data...' ); t = tic; 
-
-    DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-    DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
-
-    DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
-    DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-    DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-    DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
-    DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
-    DataSpecs.Opts.ifWrite       = true;  % write data to disk
-
-    climateData( dataset, DataSpecs ) % read global SST data
+    demoEnsoLifecycle_data( dataset, 'SST' ) 
     toc( t )
 end
 
 %% EXTRACT SAT DATA
 if ifDataSAT
-    % Create data structure with input data specifications, and retrieve 
-    % input data. Data is saved on disk. 
-    %
-    % Start dates/end dates for possible source files are as follows:
-    %
-    % air.2m.mon.mean-2.nc: 187101 to 201212
-    % air.mon.anom.v5.nc:   188001 to 201908 
- 
-    % Input data directory 
-    dirName    = '/Volumes/TooMuch/physics/climate/data/noaa'; 
 
-    % Time specification
-    DataSpecs.Time.tLim    = { '187001' '201906' }; % time limits
-    DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology time limits
-    DataSpecs.Time.tStart  = '187101';              % start time in nc file 
-    DataSpecs.Time.tFormat = 'yyyymm';              % time format
-
-    % File name for SAT field
-    fileName   = 'air.2m.mon.mean-2.nc'; % filename base for input data
-    varName    = 'air';                % variable name in NetCDF file 
-
-    % Input data
-    DataSpecs.In.dir  = dirName;
-    DataSpecs.In.file = fileName;
-    DataSpecs.In.var  = varName;
-    
-    % Output data specification
-    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
-    DataSpecs.Out.fld = varName;      
-
-    % Read global SAT
-    disp( 'Reading global SAT (air) data...' ); t = tic; 
-
-    DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-    DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
-
-    DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
-    DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-    DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-    DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
-    DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
-    DataSpecs.Opts.ifWrite       = true;  % write data to disk
-
-    climateData( dataset, DataSpecs ) % read global SAT data
+    disp( 'Reading global SAT data...' ); t = tic; 
+    demoEnsoLifecycle_data( dataset, 'SAT' )
     toc( t )
 end
 
 %% EXTRACT PRECIPITATION RATE DATA
 if ifDataPrecip
-    % Create data structure with input data specifications, and retrieve 
-    % input data. Data is saved on disk. 
- 
-    % Input data directory 
-    dirName    = '/Volumes/TooMuch/physics/climate/data/noaa'; 
 
-    % Time specification
-    DataSpecs.Time.tLim    = { '187001' '201906' }; % time limits
-    DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology time limits
-    DataSpecs.Time.tStart  = '185101';              % start time in nc file 
-    DataSpecs.Time.tFormat = 'yyyymm';              % time format
-
-    % File name for precipitation field
-    fileName   = 'prate.mon.mean.nc'; % filename base for input data
-    varName    = 'prate';             % variable name in NetCDF file 
-
-    % Input data
-    DataSpecs.In.dir  = dirName;
-    DataSpecs.In.file = fileName;
-    DataSpecs.In.var  = varName;
-    
-    % Output data specification
-    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
-    DataSpecs.Out.fld = varName;      
-
-    % Read global precipitation
     disp( 'Reading global precipitation rate data...' ); t = tic; 
-
-    DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-    DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
-
-    DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
-    DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-    DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-    DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
-    DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
-    DataSpecs.Opts.ifWrite       = true;  % write data to disk
-
-    climateData( dataset, DataSpecs ) % read global SAT data
+    demoEnsoLifecycle_data( dataset, 'precip' )
     toc( t )
 end
 
 %% EXTRACT SURFACE WIND DATA
 if ifDataWind
-    % Create data structure with input data specifications, and retrieve 
-    % input data. Data is saved on disk. 
-    %
-    % Start dates/end dates for possible source files are as follows:
-    %
-    % uwnd.10m.mon.mean.nc, vwnd.10m.mean.nc: 185101 to 201412
-    %
-    % Input/output data directory 
-    dirName    = '/Volumes/TooMuch/physics/climate/data/noaa'; 
-    DataSpecs.In.dir  = dirName;
-    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
-
-    % Time specification
-    DataSpecs.Time.tLim    = { '187001' '201906' }; % time limits
-    DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology time limits
-    DataSpecs.Time.tStart  = '185101';              % start time in nc file 
-    DataSpecs.Time.tFormat = 'yyyymm';              % time format
-
-    % Domain specification 
-    DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-    DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
-
-    % Output options
-    DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
-    DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-    DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-    DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
-    DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
-    DataSpecs.Opts.ifWrite       = true;  % write data to disk
-
-    % File name for zonal wind field field
-    fileName   = 'uwnd.10m.mon.mean.nc'; % filename base for input data
-    varName    = 'uwnd';                 % variable name in NetCDF file 
-
-    % Input/output names 
-    DataSpecs.In.file = fileName;
-    DataSpecs.In.var  = varName;
-    DataSpecs.Out.fld = varName;      
-
-    % Read global zonal winds
-    disp( 'Reading global zonal wind data...' ); t = tic; 
-
-    climateData( dataset, DataSpecs ) 
+    disp( 'Reading global zonal surface wind data...' ); t = tic; 
+    demoEnsoLifecycle_data( dataset, 'uwind' )
     toc( t )
 
-    % File name for meridional wind field field
-    fileName   = 'vwnd.10m.mon.mean.nc'; % filename base for input data
-    varName    = 'vwnd';                 % variable name in NetCDF file 
-
-    % Input/output names 
-    DataSpecs.In.file = fileName;
-    DataSpecs.In.var  = varName;
-    DataSpecs.Out.fld = varName;      
-
-    % Read global meridional winds
-    disp( 'Reading global meridional wind data...' ); t = tic; 
-
-    climateData( dataset, DataSpecs ) 
+    disp( 'Reading global meridional surface wind data...' ); t = tic; 
+    demoEnsoLifecycle_data( dataset, 'vwind' )
     toc( t )
-
 end
 
 
@@ -321,6 +132,11 @@ nSE          = getNTotalSample( model.embComponent );
 nSB          = getNXB( model.embComponent );
 nShiftTakens = floor( getEmbeddingWindow( model.embComponent ) / 2 );
 toc( t )
+
+figDir = fullfile( pwd, 'figs', dataset, experiment );
+if ~isdir( figDir )
+    mkdir( figDir )
+end
 
 %% PERFORM NLSA
 if ifNLSA
@@ -461,7 +277,7 @@ if ifNLSALifecycle
     % Print figure
     if ifPrintFig
         set( gcf, 'invertHardCopy', 'off' )
-        figFile = 'figEnsoLifecycleKernel.png';
+        figFile = fullfile( figDir, 'figEnsoLifecycleKernel.png' );
         print( figFile, '-dpng', '-r300' ) 
     end
 end
@@ -546,7 +362,7 @@ if ifKoopmanLifecycle
 
     % Print figure
     if ifPrintFig
-        figFile = 'figEnsoLifecycleGenerator.png';
+        figFile = fullfile( figDir, 'figEnsoLifecycleGenerator.png' );
         set( gcf, 'invertHardCopy', 'off' )
         print( figFile, '-dpng', '-r300' ) 
     end
@@ -617,7 +433,7 @@ if ifNLSAPhases
 
     % Print figure
     if ifPrintFig
-        figFile = 'figEnsoPhasesKernel.png';
+        figFile = fullfile( figDir, 'figEnsoPhasesKernel.png' );
         print( figFile, '-dpng', '-r300' ) 
     end
 
@@ -688,7 +504,7 @@ if ifKoopmanPhases
 
     % Print figure
     if ifPrintFig
-        figFile = 'figEnsoPhasesKoopman.png';
+        figFile = fullfile( figDir, 'figEnsoPhasesKoopman.png' );
         print( figFile, '-dpng', '-r300' ) 
     end
 
@@ -757,6 +573,7 @@ if ifNLSAEquivariance
     % Print figure
     if ifPrintFig
         figFile = sprintf( 'figEnsoEquivarianceKernel_phase%i.png', phase0 );
+        figFile = fullfile( figDir, figFile );
         print( figFile, '-dpng', '-r300' ) 
     end
 end
@@ -823,6 +640,7 @@ if ifKoopmanEquivariance
     % Print figure
     if ifPrintFig
         figFile = sprintf( 'figEnsoEquivarianceGenerator_phase%i.png', phase0);
+        figFile = fullfile( figDir, figFile );
         print( figFile, '-dpng', '-r300' ) 
     end
 end
@@ -951,7 +769,7 @@ if ifNinoComposites
 
     % Print figure
     if ifPrintFig
-        figFile = 'figEnsoCompositesNino.png';
+        figFile = fullfile( figDir, 'figEnsoCompositesNino.png' );
         print( figFile, '-dpng', '-r300' ) 
     end
 end
@@ -1080,7 +898,7 @@ if ifNLSAComposites
 
     % Print figure
     if ifPrintFig
-        figFile = 'figEnsoCompositesKernel.png';
+        figFile = fullfile( figDir, 'figEnsoCompositesKernel.png' );
         print( figFile, '-dpng', '-r300' ) 
     end
 end
@@ -1210,7 +1028,7 @@ if ifKoopmanComposites
 
     % Print figure
     if ifPrintFig
-        figFile = 'figEnsoCompositesGenerator.png';
+        figFile = fullfile( figDir, 'figEnsoCompositesGenerator.png' );
         print( figFile, '-dpng', '-r300' ) 
     end
 end

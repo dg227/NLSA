@@ -8,18 +8,18 @@ function [ model, In, Out ] = climateNLSAModel( dataset, experiment )
 %
 % dataset:      a string identifier for the dataset. Possible options are:
 %
-%               - noaa    (NOAA 20th century reanalysis)
-%               - hadisst (HadISST dataset) 
-%               - ccsm4   (CCSM4 model)
-%               - claus   (CLAUS brightness temperature dataset)
-%               - gpcp    (GPCP griddded precipitation dataset)
+%               - noaa         (NOAA 20th century reanalysis)
+%               - hadisst      (HadISST dataset) 
+%               - ccsm4_ctrl   (CCSM4 model, control integration)
+%               - claus        (CLAUS brightness temperature dataset)
+%               - gpcp         (GPCP griddded precipitation dataset)
 % 
 % climateNLSAModel calls dataset-speficic model constructors according to the
 % dataset argument. 
 %
 % In and Out are data structures containing the model parameters. 
 %
-% Modified 2020/03/27
+% Modified 2020/04/27
 
 % Default input arguments
 if nargin == 0 
@@ -34,8 +34,8 @@ case 'noaa'
     [ model, In, Out ] = noaaNLSAModel( experiment ); 
 case 'hadisst'
     [ model, In, Out ] = hadisstNLSAModel( experiment ); 
-case 'ccsm4'
-    [ model, In, Out ] = ccsm4NLSAModel( experiment ); 
+case 'ccsm4_ctrl'
+    [ model, In, Out ] = ccsm4CtrlNLSAModel( experiment ); 
 case 'gpcp'
     [ model, In, Out ] = gpcpNLSAModel( experiment ); 
 case 'claus'
