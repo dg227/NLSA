@@ -1,12 +1,13 @@
 % RECONSTRUCT THE LIFECYCLE OF THE EL NINO SOUTHERN OSCILLATION (ENSO) 
 % USING DATA-DRIVEN SPECTRAL ANALYSIS OF KOOPMAN/TRANSFER OPERATORS
 %
-% Modified 2020/04/28
+% Modified 2020/04/29
 
 %% DATA SPECIFICATION AND GLOBAL PARAMETERS 
-dataset    = 'noaa';          % NOAA 20th Century Reanalysis 
-%dataset    = 'ccsm4_ctrl';     % CCSM4 control run
+dataset    = 'noaa';           % NOAA 20th Century Reanalysis 
+%dataset   = 'ccsm4_ctrl';    % CCSM4 control run
 experiment = 'enso_lifecycle'; % data analysis experiment 
+period     = 'industrial';     % time period
 
 nShiftNino   = 11;        % temporal shift to obtain 2D Nino index
 idxPhiEnso   = [ 10 9 ];  % ENSO eigenfunctions from NLSA (kernel operator)
@@ -24,13 +25,18 @@ ElNinos = { { '201511' '201603' } ...
             { '199711' '199803' } ...
             { '199111' '199203' } ...
             { '198711' '198803' } ...
-            { '198211' '198303' } };
+            { '198211' '198303' } ...
+            { '197211' '197303' } ...
+            { '196511' '196603' } ...
+            { '195711' '195803' } };
 
 LaNinas = { { '201011' '201103' } ... 
             { '200711' '200803' } ...
             { '199911' '200003' } ...
             { '199811' '199903' } ...
-            { '198811' '198903' } };
+            { '198811' '198903' } ...
+            { '197511' '197603' } ...
+            { '197311' '197403' } };
 
 
 %% BATCH PROCCESSING
@@ -48,11 +54,11 @@ ifDataWind   = false; % extract 10m wind data from NetCDF source files
 % ENSO representations
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = true;  % compute two-dimensional (lead/lag) Nino indices  
+ifNinoIdx = false;  % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = false; % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
 ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
@@ -138,7 +144,7 @@ end
 % center of the Takens embedding window eployed in the NLSA kernel. 
 
 disp( 'Building NLSA model...' ); t = tic;
-[ model, In ] = climateNLSAModel( dataset, experiment ); 
+[ model, In ] = climateNLSAModel( dataset, [ experiment '_' period ] ); 
 toc( t )
 
 nSE          = getNTotalSample( model.embComponent );
@@ -154,9 +160,9 @@ iCSST    = 5; % global SST
 iCSAT    = 6; % global SAT
 iCPRate  = 7; % global precipitation rate
 iCUWnd   = 8; % global surface meridional winds
-iCVWnd   = 9;  % global surface zonal winds
+iCVWnd   = 9; % global surface zonal winds
 
-figDir = fullfile( pwd, 'figs', dataset, experiment );
+figDir = fullfile( pwd, 'figs', dataset, [ experiment '_' period ] );
 if ~isdir( figDir )
     mkdir( figDir )
 end
@@ -272,7 +278,7 @@ if ifNLSALifecycle
     Fig.deltaX2    = .65;
     Fig.deltaY     = .48;
     Fig.deltaY2    = .3;
-    Fig.gapX       = .60;
+    Fig.gapX       = .40;
     Fig.gapY       = .3;
     Fig.gapT       = 0; 
     Fig.nTileX     = 5;
@@ -289,8 +295,8 @@ if ifNLSALifecycle
     % Plot Nino 4 lifecycle
     set( gcf, 'currentAxes', ax( 1, 1 ) )
     plotLifecycle( Nino4, ElNinos, LaNinas, model.tFormat )
-    xlabel( 'Nino 4' )
-    ylabel( sprintf( 'Nino 4 - %i months', nShiftNino ) )
+    %xlabel( 'Nino 4' )
+    ylabel( sprintf( 'Nino - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
     title( 'Nino 4 lifecycle' )
@@ -298,28 +304,28 @@ if ifNLSALifecycle
     % Plot Nino 3.4 lifecycle
     set( gcf, 'currentAxes', ax( 2, 1 ) )
     plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
-    xlabel( 'Nino 3.4' )
-    ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
+    %xlabel( 'Nino 3.4' )
+    %ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
     title( 'Nino 3.4 lifecycle' )
 
     % Plot Nino 3 lifecycle
     set( gcf, 'currentAxes', ax( 3, 1 ) )
-    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
-    xlabel( 'Nino 3' )
-    ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
+    plotLifecycle( Nino3, ElNinos, LaNinas, model.tFormat )
+    %xlabel( 'Nino 3' )
+    %ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
     title( 'Nino 3 lifecycle' )
 
     % Plot Nino 1+2 lifecycle
     set( gcf, 'currentAxes', ax( 4, 1 ) )
-    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
-    xlabel( 'Nino 3' )
-    ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    plotLifecycle( Nino12, ElNinos, LaNinas, model.tFormat )
+    %xlabel( 'Nino 3' )
+    %ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
+    xlim( [ -4.5 4.5 ] )
+    ylim( [ -4.5 4.5 ] )
     title( 'Nino 1+2 lifecycle' )
 
     % Plot NLSA lifecycle
@@ -329,6 +335,7 @@ if ifNLSALifecycle
     ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
+    set( gca, 'yAxisLocation', 'right' )
     title( 'NLSA lifecycle' )
 
     % Make scatterplot of NLSA lifcycle colored by Nino 4 index
@@ -340,20 +347,9 @@ if ifNLSALifecycle
     ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
-    %set( gca, 'clim', [ -1 1 ] * max( abs( Nino.idx( 1, : ) ) ) )
     set( gca, 'clim', [ -1 1 ] * 2.5 )
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
-    axPos = get( gca, 'position' );
-    hC = colorbar( 'location', 'eastOutside' );
-    cPos = get( hC, 'position' );
-    cPos( 3 ) = cPos( 3 ) * .7;
-    cPos( 1 ) = cPos( 1 ) + .05;
-    set( hC, 'position', cPos )
-    %xlabel( hC, 'Nino 3.4 index' )
-    set( gca, 'position', axPos )
-    title( 'NLSA colored by Nino 4' )
-
 
     % Make scatterplot of NLSA lifcycle colored by Nino 3.4 index
     set( gcf, 'currentAxes', ax( 2, 2 ) )
@@ -361,10 +357,35 @@ if ifNLSALifecycle
     scatter( Phi.idx( 1, : ), Phi.idx( 2, : ), 17, Nino34.idx( 1, : ), ...
              'o', 'filled' )  
     xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
-    ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
+    %ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
-    %set( gca, 'clim', [ -1 1 ] * max( abs( Nino.idx( 1, : ) ) ) )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+
+    % Make scatterplot of NLSA lifcycle colored by Nino 3 index
+    set( gcf, 'currentAxes', ax( 3, 2 ) )
+    plot( Phi.idx( 1, : ), Phi.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Phi.idx( 1, : ), Phi.idx( 2, : ), 17, Nino3.idx( 1, : ), ...
+             'o', 'filled' )  
+    xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
+    %ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+
+    % Make scatterplot of NLSA lifcycle colored by Nino 1+2 index
+    set( gcf, 'currentAxes', ax( 4, 2 ) )
+    plot( Phi.idx( 1, : ), Phi.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Phi.idx( 1, : ), Phi.idx( 2, : ), 17, Nino12.idx( 1, : ), ...
+             'o', 'filled' )  
+    xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
+    %ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
     set( gca, 'clim', [ -1 1 ] * 2.5 )
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
@@ -372,11 +393,14 @@ if ifNLSALifecycle
     hC = colorbar( 'location', 'eastOutside' );
     cPos = get( hC, 'position' );
     cPos( 3 ) = cPos( 3 ) * .7;
-    cPos( 1 ) = cPos( 1 ) + .05;
+    cPos( 1 ) = cPos( 1 ) + .045;
     set( hC, 'position', cPos )
-    %xlabel( hC, 'Nino 3.4 index' )
+    xlabel( hC, 'Nino index' )
     set( gca, 'position', axPos )
-    title( 'NLSA colored by Nino 3.4' )
+
+    % Make redundant axis invisible
+    set( gcf, 'currentAxes', ax( 5, 2 ) )
+    axis off
 
     % Print figure
     if ifPrintFig
@@ -401,54 +425,117 @@ if ifKoopmanLifecycle
     
     % Set up figure and axes 
     Fig.units      = 'inches';
-    Fig.figWidth   = 12; 
+    Fig.figWidth   = 15; 
     Fig.deltaX     = .5;
     Fig.deltaX2    = .65;
     Fig.deltaY     = .48;
     Fig.deltaY2    = .3;
-    Fig.gapX       = .60;
+    Fig.gapX       = .40;
     Fig.gapY       = .3;
     Fig.gapT       = 0; 
-    Fig.nTileX     = 3;
-    Fig.nTileY     = 1;
+    Fig.nTileX     = 5;
+    Fig.nTileY     = 2;
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 8;
+    Fig.fontSize   = 6;
     Fig.tickLength = [ 0.02 0 ];
     Fig.visible    = 'on';
     Fig.nextPlot   = 'add'; 
 
     [ fig, ax ] = tileAxes( Fig );
 
-    % Plot Nino lifecycle
-    set( gcf, 'currentAxes', ax( 1 ) )
+    % Plot Nino 4 lifecycle
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    plotLifecycle( Nino4, ElNinos, LaNinas, model.tFormat )
+    %xlabel( 'Nino 4' )
+    ylabel( sprintf( 'Nino - %i months', nShiftNino ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    title( 'Nino 4 lifecycle' )
+
+    % Plot Nino 3.4 lifecycle
+    set( gcf, 'currentAxes', ax( 2, 1 ) )
     plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
-    xlabel( 'Nino 3.4' )
-    ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
+    %xlabel( 'Nino 3.4' )
+    %ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
     title( 'Nino 3.4 lifecycle' )
 
+    % Plot Nino 3 lifecycle
+    set( gcf, 'currentAxes', ax( 3, 1 ) )
+    plotLifecycle( Nino3, ElNinos, LaNinas, model.tFormat )
+    %xlabel( 'Nino 3' )
+    %ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    title( 'Nino 3 lifecycle' )
+
+    % Plot Nino 1+2 lifecycle
+    set( gcf, 'currentAxes', ax( 4, 1 ) )
+    plotLifecycle( Nino12, ElNinos, LaNinas, model.tFormat )
+    %xlabel( 'Nino 3' )
+    %ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
+    xlim( [ -4.5 4.5 ] )
+    ylim( [ -4.5 4.5 ] )
+    title( 'Nino 1+2 lifecycle' )
+
+
     % Plot generator lifecycle
-    set( gcf, 'currentAxes', ax( 2 ) )
+    set( gcf, 'currentAxes', ax( 5, 1 ) )
     plotLifecycle( Z, ElNinos, LaNinas, model.tFormat )
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
+    set( gca, 'yAxisLocation', 'right' )
     title( sprintf( 'Koopman lifecycle; eigenperiod = %1.2f y', TEnso ) )
 
-    % Make scatterplot of generator lifcycle colored by Nino 3.4 index
-    set( gcf, 'currentAxes', ax( 3 ) )
+    % Make scatterplot of generator lifcycle colored by Nino 4 index
+    set( gcf, 'currentAxes', ax( 1, 2 ) )
     plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
-    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino34.idx( 1, : ), ...
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino4.idx( 1, : ), ...
              'o', 'filled' )  
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
-    title( sprintf( 'Generator lifecycle; eigenperiod = %1.2f y', TEnso ) )
-    %set( gca, 'clim', [ -1 1 ] * max( abs( Nino.idx( 1, : ) ) ) )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+
+    % Make scatterplot of generator lifcycle colored by Nino 3.4 index
+    set( gcf, 'currentAxes', ax( 2, 2 ) )
+    plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino34.idx( 1, : ), ...
+             'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+
+    % Make scatterplot of generator lifcycle colored by Nino 3 index
+    set( gcf, 'currentAxes', ax( 3, 2 ) )
+    plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino3.idx( 1, : ), ...
+             'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+
+    % Make scatterplot of generator lifcycle colored by Nino 1+2 index
+    set( gcf, 'currentAxes', ax( 4, 2 ) )
+    plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino12.idx( 1, : ), ...
+             'o', 'filled' )  
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     set( gca, 'clim', [ -1 1 ] * 2.5 )
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
@@ -456,13 +543,14 @@ if ifKoopmanLifecycle
     hC = colorbar( 'location', 'eastOutside' );
     cPos = get( hC, 'position' );
     cPos( 3 ) = cPos( 3 ) * .7;
-    cPos( 1 ) = cPos( 1 ) + .05;
+    cPos( 1 ) = cPos( 1 ) + .045;
     set( hC, 'position', cPos )
-    %xlabel( hC, 'Nino 3.4 index' )
+    xlabel( hC, 'Nino index' )
     set( gca, 'position', axPos )
-    title( 'Koopman colored by Nino 3.4' )
 
-
+    % Make redundant axis invisible
+    set( gcf, 'currentAxes', ax( 5, 2 ) )
+    axis off
 
     % Print figure
     if ifPrintFig

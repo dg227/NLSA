@@ -1,8 +1,9 @@
-function demoEnsoLifecycle_data( dataset, fld )
+function demoEnsoLifecycle_data( dataset, period, fld )
 % DEMOENSOLIFECYCLE_DATA Helper function to import datasets for ENSO lifecycle
 % analyses.
 %
 % dataset - String identifier for dataset to read. 
+% period  - String identifier for time period. 
 % fld     - String identifier for variable to read. 
 %
 % This function creates a data structure with input data specifications as 
@@ -10,7 +11,7 @@ function demoEnsoLifecycle_data( dataset, fld )
 %
 % The data is then retrieved and saved on disk using the climateData function. 
 %
-% Modified 2020/04/28
+% Modified 2020/04/29
 
 switch( dataset )
 
@@ -24,9 +25,16 @@ case 'noaa'
     DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
 
     % Time specification
-    DataSpecs.Time.tLim    = { '187001' '201906' }; % time limits
-    DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology time limits
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
+    switch( period )
+
+    % Industrial era
+    case 'industrial' 
+
+        DataSpecs.Time.tLim    = { '187001' '201906' }; % time limits
+        DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
+
+    end
 
     switch( fld )
 
