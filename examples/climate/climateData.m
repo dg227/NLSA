@@ -22,6 +22,8 @@ function Data = climateData( dataset, DataSpecs )
 %
 % Data:         A data structure containing the data retrived along with 
 %               associated attributes.
+%
+% Modified 2020/04/29
 
 switch dataset
 case 'noaa'
@@ -36,11 +38,11 @@ case 'hadisst'
     else
         hadisstData( DataSpecs )
     end
-case 'ccsm4'
+case 'ccsm4Ctrl'
     if nargout > 0 
-        Data = ccsm4Data( DataSpecs );
+        Data = ccsm4CtrlData( DataSpecs );
     else
-        ccsm4Data( DataSpecs )
+        ccsm4CtrlData( DataSpecs )
     end
 case 'gpcp'
     if nargout > 0 

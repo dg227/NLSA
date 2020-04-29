@@ -34,8 +34,8 @@ case 'noaa'
     [ model, In, Out ] = noaaNLSAModel( experiment ); 
 case 'hadisst'
     [ model, In, Out ] = hadisstNLSAModel( experiment ); 
-case 'ccsm4_ctrl'
-    [ model, In, Out ] = ccsm4CtrlNLSAModel( experiment ); 
+case 'ccsm4Ctrl'
+    [ model, In, Out ] = ccsm4NLSAModel( experiment ); 
 case 'gpcp'
     [ model, In, Out ] = gpcpNLSAModel( experiment ); 
 case 'claus'

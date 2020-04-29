@@ -10,7 +10,7 @@ function Data = ccsm4CtrlData( DataSpecs )
 % DataSpecs has the following fields:
 %
 % In.dir:             Input directory name
-% In.fileBase:        Input filename base
+% In.file:            Input filename base
 % In.var:             Variable to be read
 % Out.dir:            Output directory name
 % Out.fld:            Output label 
@@ -29,14 +29,11 @@ function Data = ccsm4CtrlData( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Modified 2020/04/27
-
 % Longitude range is [ 0 359 ] 
 % Latitude range is [ -89 89 ] 
 %
-% Period to compute climatology must start at a January
-%
-% Modified 2019/08/27
+% Modified 2020/04/29
+
 
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
@@ -53,7 +50,7 @@ if Opts.ifCenter && Opts.ifCenterMonth
     error( [ 'Global and monthly climatology removal cannot be ' ...
              'simultaneously selected' ] )
 end
-ifClim = ifCenter || ifCenterMonth;
+ifClim = Opts.ifCenter || Opts.ifCenterMonth;
 
 % Append 'a' to field string if outputting anomalies
 if Opts.ifCenter
@@ -108,7 +105,7 @@ for iFile = 1 : nFile
 
     % Open netCDF file, find number of samples
     ncId   = netcdf.open( fullfile( In.dir, files( iFile ).name ) );
-    idTime = netcdf.inqDimID( ncId, 'time' )
+    idTime = netcdf.inqDimID( ncId, 'time' );
     [ ~, nTFiles( iFile ) ] = netcdf.inqDim( ncId, idTime );
    
     % Close currently open file
@@ -118,12 +115,14 @@ end
 % Create partition representing how samples are distributed among files 
 partitionT = nlsaPartition( 'idx', cumsum( nTFiles ) ); 
 
-% Retrieve longitude/latitude grid, grid cell area, and  region mask
+% Retrieve longitude/latitude grid, grid cell area, region mask, and variable
+% (field) to be read. 
 ncId   = netcdf.open( fullfile( In.dir, files( 1 ).name ) );
 idLon  = netcdf.inqVarID( ncId, 'TLONG' );
 idLat  = netcdf.inqVarID( ncId, 'TLAT' );
 idArea = netcdf.inqVarID( ncId, 'TAREA' );
 idMsk  = netcdf.inqVarID( ncId, 'REGION_MASK' );
+idFld  = netcdf.inqVarID( ncId, In.var );
 
 % Read longitude/latitude data, create region mask
 lon  = netcdf.getVar( ncId, idLon );
@@ -131,8 +130,8 @@ lat  = netcdf.getVar( ncId, idLat );
 X    = lon;
 Y    = lat;
 ifXY = netcdf.getVar( ncId, idMsk ) ~= 0; % nonzero values are ocean gridpoints
-ifXY = X >= xLim( 1 ) & X <= xLim( 2 ) ...
-     & Y >= yLim( 1 ) & Y <= yLim( 2 ) ...
+ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
+     & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 ) ...
      & ifXY;
 nXY = numel( ifXY );   % number of gridpoints 
 iXY = find( ifXY( : ) ); % extract linear indices from area mask
@@ -141,7 +140,7 @@ nXY  = nnz( ifXY ); % number if gridpoints in mask
 disp( sprintf( '%i unmasked gridpoints ', nXY ) )
 
 % If needed, compute area weights
-if ifWeight
+if Opts.ifWeight
     w = netcdf.getVar( ncId, idArea ); 
     w  = w( ifXY );
     w  = sqrt( w / sum( w ) * nXY );
@@ -153,21 +152,19 @@ end
 netcdf.close( ncId );
  
 % Output directory
-dataDir = fullfile( pwd, ...
-                    'data/raw', ...
-                    experiment, ...
+dataDir = fullfile( Out.dir, ...
                     fldStr, ...
-                    [ sprintf( 'x%i-%i', xLim ) ...
-                      sprintf( '_y%i-%i', yLim ) ...
-                      '_' tLim{ 1 } '-' tLim{ 2 } ] );
+                    [ sprintf( 'x%i-%i', Domain.xLim ) ...
+                      sprintf( '_y%i-%i', Domain.yLim ) ...
+                      '_' Time.tLim{ 1 } '-' Time.tLim{ 2 } ] );
 if ~isdir( dataDir )
     mkdir( dataDir )
 end
 
 
 % Prepare local and global indices for data retrieval
-startNum = datenum( tStart, tFormat );
-limNum = datenum( tLim, tFormat );
+startNum = datenum( Time.tStart, Time.tFormat );
+limNum = datenum( Time.tLim, Time.tFormat );
 nT = months( limNum( 1 ), limNum( 2 ) ) + 1;
 idxT1 = months( startNum, limNum( 1 ) ) + 1;   % first global index
 idxTEnd = months( startNum, limNum( 2 ) ) + 1; % last global index
@@ -180,7 +177,7 @@ fld = zeros( nXY, nT );
 
 % Prepare local and global indices for climatology
 if ifClim
-    climNum = datenum( tClim, tFormat );
+    climNum = datenum( Time.tClim, Time.tFormat );
     nTClim = months( climNum( 1 ), climNum( 2 ) ) + 1;
     idxTClim1 = months( startNum, climNum( 1 ) ) + 1; 
     idxTClimEnd = months( startNum, climNum( 2 ) ) + 1;
@@ -195,13 +192,18 @@ if ifClim
 end
 
 % Loop over the netCDF files, read output data and climatology data
-for iFile = unique( [ idxFile1 : idxFileEnd idxFileClim1 : idxFileClimEnd ] ); 
-
-    disp( sprintf( 'Extracting data from file %s', filenameIn{ iFile } ) )
-    ncId   = netcdf.open( fullfile( In.dir, files( iFile ).name ) );
+iFiles = idxFile1 : idxFileEnd;
+if ifClim
+    iFiles = unique( [ iFiles idxFileClim1 : idxFileClimEnd ] ); 
+end
+for iFile = iFiles
+    
+    fileIn = fullfile( In.dir, files( iFile ).name );
+    disp( sprintf( 'Extracting data from file %s', fileIn ) )
+    ncId   = netcdf.open( fileIn  );
 
     % Number of samples in current file
-    nTFile = nTFiles( iFle ); 
+    nTFile = nTFiles( iFile ); 
 
     % Number of samples to read into output data array
     if iFile >= idxFile1 && iFile < idxFileEnd
@@ -220,11 +222,10 @@ for iFile = unique( [ idxFile1 : idxFileEnd idxFileClim1 : idxFileClimEnd ] );
         elseif iFile == idxFileClimEnd
             nTClimRead = iTClimFileEnd - iTClimFile1 + 1;
         end
-        iTClim2 = iTClim1 + nTClimRead;
+        iTClim2 = iTClim1 + nTClimRead - 1;
     end
         
     % Read data from netCDF file, reshape into 2D array
-    ncId = netcdf.open( filenameIn{ iFile } );
     fldFile = netcdf.getVar( ncId, idFld );
     netcdf.close( ncId ); 
     fldFile = reshape( fldFile, [ nX * nY, nTFile ] );
@@ -247,7 +248,7 @@ for iFile = unique( [ idxFile1 : idxFileEnd idxFileClim1 : idxFileClimEnd ] );
 end
 
 % If requested, weigh the data by the (normalized) grid cell surface areas. 
-if ifWeight
+if Opts.ifWeight
     fld = fld .* w;  
     if ifClim
         cliData = cliData .* w;
@@ -256,13 +257,13 @@ end
 
 
 % If requested, subtract global climatology
-if ifCenter
+if Opts.ifCenter
     cli = mean( cliData, 2 );
     fld = fld - cli;
 end
 
 % If requested, subtract monthly climatology
-if ifCenterMonth
+if Opts.ifCenterMonth
     cli = zeros( nXY, 12 );
     for iM = 1 : 12
         cli( :, iM ) = mean( cliData( :, iM : 12 : end ), 2 );
@@ -270,13 +271,13 @@ if ifCenterMonth
     idxM0 = month( limNum( 1 ) ); 
     for iM = 1 : 12
         idxM = mod( idxM0 + iM - 2, 12 ) + 1; 
-        fld( :, iM : 12 : end ) = fld( :,  iM : 12 : end ) - cli( :, idxM ) ); 
+        fld( :, iM : 12 : end ) = fld( :,  iM : 12 : end ) - cli( :, idxM ); 
     end  
 end
 
 
 % If requested, perform area averaging
-if ifAverage
+if Opts.ifAverage
     fld = mean( fld, 1 );
     if ifClim
         cli = mean( cli, 1 );
@@ -287,7 +288,7 @@ end
 nD = size( fld, 1 );
 
 % If requested, normalize by RMS climatology norm
-if ifNormalize
+if Opts.ifNormalize
     l2Norm = norm( cli( : ), 2 ) / sqrt( nTClim );
     fld = fld / l2Norm;
 end
@@ -305,9 +306,9 @@ end
 
 % Output data and attributes
 x = double( fld ); % for compatibility with NLSA code
-varList = { 'x' 'idxT0' };
+varList = { 'x' };
 if Opts.ifCenter || Opts.ifCenterMonth
-    varList = [ varList 'cli' 'idxTClim0' 'nTClim' ];
+    varList = [ varList 'cli' 'nTClim' ];
 end
 if Opts.ifNormalize
     varList = [ varList 'l2Norm' ];

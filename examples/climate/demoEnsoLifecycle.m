@@ -4,19 +4,79 @@
 % Modified 2020/04/29
 
 %% DATA SPECIFICATION AND GLOBAL PARAMETERS 
-dataset    = 'noaa';           % NOAA 20th Century Reanalysis 
-%dataset   = 'ccsm4_ctrl';    % CCSM4 control run
-experiment = 'enso_lifecycle'; % data analysis experiment 
-period     = 'industrial';     % time period
+dataset    = 'ccsm4Ctrl';                 % NOAA 20th Century Reanalysis 
+experiment = 'enso_lifecycle_industrial';  % data analysis experiment 
+
+% The following parameters are defined:
+% idxPhiEnso:   ENSO eigenfunctions from NLSA (kernel operator)
+% signPhi:      Multiplication factor (for consistency with Nino)
+% idxZEnso:     ENSO eigenfunction fro generator      
+% phaseZ:       Phase multpiplication factor (for consistency with Nino)
+% nSamplePhase: Number of samples per ENSO phase
+% period:       String identifier for time period
+
+switch dataset
+    
+% NOAA 20th century reanalysis 
+case 'noaa'
+
+    switch experiment
+        
+    % ENSO recovered from industrial-era Indo-Pacific SST
+    case 'enso_lifecycle_industrial'
+
+        idxPhiEnso   = [ 10 9 ];  
+        signPhi      = [ -1 -1 ]; 
+        idxZEnso     = 9;         
+        phaseZ        = -1;        
+        nPhase       = 8;         
+        nSamplePhase = 100;       
+        period       = 'industrial';
+
+    % ENSO recovered from satellite-era Indo-Pacific SST
+    case 'enso_lifecycle_satellite'
+
+        idxPhiEnso   = [ 8 7 ];  
+        signPhi      = [ 1 -1 ]; 
+        idxZEnso     = 7;         
+        phaseZ       = -1 * exp( i * pi / 4 );        
+        nPhase       = 8;         
+        nSamplePhase = 30;       
+        period       = 'satellite';
+
+    otherwise
+        error( 'Invalid experiment' )
+
+    end
+
+case 'ccsm4Ctrl'
+
+    switch experiment
+
+    % ENSO recovered from 200-yr dataset (comparable in timespan to industrial
+    % era)
+    case 'enso_lifecycle_industrial'
+
+        idxPhiEnso   = [ 7 6 ];  
+        signPhi      = [ 1 1 ]; 
+        idxZEnso     = 6;         
+        phaseZ       = i;        
+        nPhase       = 8;         
+        nSamplePhase = 100;       
+        period       = 'industrial';
+
+    otherwise
+        error( 'Invalid experiment' )
+
+    end
+
+otherwise
+    error( 'Invalid dataset' )
+
+end
 
 nShiftNino   = 11;        % temporal shift to obtain 2D Nino index
-idxPhiEnso   = [ 10 9 ];  % ENSO eigenfunctions from NLSA (kernel operator)
-signPhi      = [ -1 -1 ]; % multiplication factor (for consistency with Nino)
-idxZEnso     = 9;         % ENSO eigenfunction from generator      
-signZ        = -1;        % multiplication factor (for consistency with Nino)
-nPhase       = 8;         % number of ENSO phases
-nSamplePhase = 100;       % number of samples per phase
-phase0       = 5;         % start phase in equivariance plots
+phase0       = 1;         % start phase in equivariance plots
 leads        = [ 0 6 12 18 24 ]; % leads (in months) for equivariance plots
 
 %% EL NINO/LA NINA EVENTS
@@ -46,7 +106,7 @@ nProc = 1; % number of batch processes
 %% SCRIPT EXECUTION OPTIONS
 
 % Data extraction
-ifDataSST    = false; % extract SST data from NetCDF source files
+ifDataSST    = false;  % extract SST data from NetCDF source files
 ifDataSAT    = false; % extract SAT data from NetCDF source files
 ifDataPrecip = false; % extract precipitation data from NetCDF source files  
 ifDataWind   = false; % extract 10m wind data from NetCDF source files  
@@ -54,17 +114,17 @@ ifDataWind   = false; % extract 10m wind data from NetCDF source files
 % ENSO representations
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = false;  % compute two-dimensional (lead/lag) Nino indices  
+ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
+ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
 ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
 
 % Composite plots
 ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
@@ -78,27 +138,27 @@ ifPrintFig = true; % print figures to file
 if ifDataSST
  
     disp( 'Reading Indo-Pacific SST data...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, 'IPSST' ) 
+    demoEnsoLifecycle_data( dataset, period, 'IPSST' ) 
     toc( t )
 
     disp( 'Reading Nino 3.4 index...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, 'Nino3.4' ) 
+    demoEnsoLifecycle_data( dataset, period, 'Nino3.4' ) 
     toc( t )
 
     disp( 'Reading Nino 3 index...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, 'Nino3' ) 
+    demoEnsoLifecycle_data( dataset, period, 'Nino3' ) 
     toc( t )
 
     disp( 'Reading Nino 4 index...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, 'Nino4' ) 
+    demoEnsoLifecycle_data( dataset, period, 'Nino4' ) 
     toc( t )
 
     disp( 'Reading Nino 1+2 index...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, 'Nino1+2' ) 
+    demoEnsoLifecycle_data( dataset, period, 'Nino1+2' ) 
     toc( t )
 
     disp( 'Reading global SST data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, 'SST' ) 
+    demoEnsoLifecycle_data( dataset, period, 'SST' ) 
     toc( t )
 end
 
@@ -106,7 +166,7 @@ end
 if ifDataSAT
 
     disp( 'Reading global SAT data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, 'SAT' )
+    demoEnsoLifecycle_data( dataset, period, 'SAT' )
     toc( t )
 end
 
@@ -114,18 +174,18 @@ end
 if ifDataPrecip
 
     disp( 'Reading global precipitation rate data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, 'precip' )
+    demoEnsoLifecycle_data( dataset, period, 'precip' )
     toc( t )
 end
 
 %% EXTRACT SURFACE WIND DATA
 if ifDataWind
     disp( 'Reading global zonal surface wind data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, 'uwind' )
+    demoEnsoLifecycle_data( dataset, period, 'uwind' )
     toc( t )
 
     disp( 'Reading global meridional surface wind data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, 'vwind' )
+    demoEnsoLifecycle_data( dataset, period, 'vwind' )
     toc( t )
 end
 
@@ -144,7 +204,7 @@ end
 % center of the Takens embedding window eployed in the NLSA kernel. 
 
 disp( 'Building NLSA model...' ); t = tic;
-[ model, In ] = climateNLSAModel( dataset, [ experiment '_' period ] ); 
+[ model, In ] = climateNLSAModel( dataset, experiment ); 
 toc( t )
 
 nSE          = getNTotalSample( model.embComponent );
@@ -162,7 +222,7 @@ iCPRate  = 7; % global precipitation rate
 iCUWnd   = 8; % global surface meridional winds
 iCVWnd   = 9; % global surface zonal winds
 
-figDir = fullfile( pwd, 'figs', dataset, [ experiment '_' period ] );
+figDir = fullfile( pwd, 'figs', dataset, experiment );
 if ~isdir( figDir )
     mkdir( figDir )
 end
@@ -417,8 +477,8 @@ if ifKoopmanLifecycle
     z = getKoopmanEigenfunctions( model );
     T = getEigenperiods( model.koopmanOp );
     TEnso = T( idxZEnso ) / 12;
-    Z.idx = signZ' .*  [ real( z( :, idxZEnso ) )' 
-                         imag( z( :, idxZEnso ) )' ];
+    Z.idx = [ real( phaseZ * z( :, idxZEnso ) )' 
+             imag( phaseZ * z( :, idxZEnso ) )' ];
     Z.time = getTrgTime( model );
     Z.time = Z.time( nSB + 1 + nShiftTakens : end );
     Z.time = Z.time( 1 : nSE );
@@ -653,8 +713,9 @@ if ifKoopmanPhases
         Z.idx', Nino34.idx( 1, : )', nPhase, nSamplePhase );
 
     % Compute ENSO phases based on Nino 3.4 index
-    [ selectIndNino34, anglesNino34, avNino34IndNino34 ] = computeLifecyclePhases( ...
-        Nino34.idx', Nino34.idx(1,:)', nPhase, nSamplePhase );
+    [ selectIndNino34, anglesNino34, avNino34IndNino34 ] = ...
+        computeLifecyclePhases( Nino34.idx', Nino34.idx( 1, : )', ...
+        nPhase, nSamplePhase );
         
     % Set up figure and axes 
     Fig.units      = 'inches';

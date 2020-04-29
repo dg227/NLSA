@@ -17,32 +17,61 @@ function [ model, In, Out ] = ccsm4NLSAModel( experiment )
 % Modified 2020/04/27
  
 if nargin == 0
-    experiment = 'enso_lifecycle';
+    experiment = 'enso_lifecycle_industrial';
 end
 
 switch experiment
 
-    % ENSO LIFECYCLE BASED ON INDO-PACIFIC SST 
+    % ENSO LIFECYCLE BASED ON INDO-PACIFIC SST FROM 200 YEARS OF CCSM4 CONTROL
     % Source (covariate) data is area-weighted Indo-Pacific SST
     %
     % Target (response) data is:
     %
     % Component 1: Nino 3.4 index
-    % Component 2: Global SST anomalies 
+    % Component 2: Nino 4 index
+    % Component 3: Nino 3 index
+    % Component 4: Nino 1+2 index
+    % Component 5: Global SST anomalies 
     % Component 3: Global SAT anomalies
     % Component 4: Global precipitation rates
-    case 'enso_lifecycle'
+    case 'enso_lifecycle_industrial'
 
         % In-sample dataset parameters 
         In.tFormat             = 'yyyymm';              % time format
-        In.Res( 1 ).tLim       = { '000001' '019912' }; % time limit  
-        In.Res( 1 ).experiment = 'ccsm4';               % 20CRv2 dataset
+        In.Res( 1 ).tLim       = { '000101' '019912' }; % time limit  
+        In.Res( 1 ).experiment = 'ccsm4Ctrl';           % CCSM4 control run
+
+        % Indo-Pacific SST
         In.Src( 1 ).field      = 'sstw';      % physical field
         In.Src( 1 ).xLim       = [ 28 290 ];  % longitude limits
         In.Src( 1 ).yLim       = [ -60  20 ]; % latitude limits
-        In.Trg( 1 ).field      = 'sstmawav_198101-201012';  % physical field
+
+        % Nino 3.4 index
+        In.Trg( 1 ).field      = 'sstmawav_000101-019912';  % physical field
         In.Trg( 1 ).xLim       = [ 190 240 ];  % longitude limits
         In.Trg( 1 ).yLim       = [ -5 5 ];     % latitude limits
+
+        % Nino 4 index
+        In.Trg( 2 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 2 ).xLim       = [ 160 210 ];  % longitude limits
+        In.Trg( 2 ).yLim       = [ -5 5 ];     % latitude limits
+
+        % Nino 3 index
+        In.Trg( 3 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 3 ).xLim       = [ 210 270 ];  % longitude limits
+        In.Trg( 3 ).yLim       = [ -5 5 ];     % latitude limits
+
+        % Nino 1+2 index
+        In.Trg( 4 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 4 ).xLim       = [ 270 280 ];  % longitude limits
+        In.Trg( 4 ).yLim       = [ -10 0 ];     % latitude limits
+
+        % Global SST field
+        In.Trg( 5 ).field      = 'sstma_000101-019912';  % physical field
+        In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
+
+
         %In.Trg( 2 ).field      = 'sstma_198101-201012';  % physical field
         %In.Trg( 2 ).xLim       = [ 0 359 ];   % longitude limits
         %In.Trg( 2 ).yLim       = [ -89 89 ];  % latitude limits
@@ -59,53 +88,68 @@ switch experiment
         %In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
         %In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
         
+
         % Abbreviated target component names
-        %In.targetComponentName = [ 'sstw_sstmawav_air_prate_uv' ];
-        %In.targetRealizationName = '187001-201906';
+        In.targetComponentName   = [ 'nino_sst_air_prate_uv' ];
+        In.targetRealizationName = '000101-019912';
 
         % Delay-embedding/finite-difference parameters; in-sample data
+        % Indo-Pacific SST source data
         In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
         In.Src( 1 ).nXB       = 1;          % samples before main interval
         In.Src( 1 ).nXA       = 0;          % samples after main interval
         In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
         In.Src( 1 ).fdType    = 'backward'; % finite-difference type
         In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
+        % Nino 3.4 index
         In.Trg( 1 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 1 ).nXB       = 1;          % before main interval
         In.Trg( 1 ).nXA       = 0;          % samples after main interval
         In.Trg( 1 ).fdOrder   = 1;          % finite-difference order 
         In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 1 ).embFormat = 'overlap';  % storage format
-        %In.Trg( 2 ).idxE      = 1 : 1;      % delay embedding indices 
-        %In.Trg( 2 ).nXB       = 1;          % before main interval
-        %In.Trg( 2 ).nXA       = 0;          % samples after main interval
-        %In.Trg( 2 ).fdOrder   = 1;          % finite-difference order 
-        %In.Trg( 2 ).fdType    = 'backward'; % finite-difference type
-        %In.Trg( 2 ).embFormat = 'overlap';  % storage format
-        %In.Trg( 3 ).idxE      = 1 : 1;      % delay embedding indices 
-        %In.Trg( 3 ).nXB       = 1;          % before main interval
-        %In.Trg( 3 ).nXA       = 0;          % samples after main interval
-        %In.Trg( 3 ).fdOrder   = 1;          % finite-difference order 
-        %In.Trg( 3 ).fdType    = 'backward'; % finite-difference type
-        %In.Trg( 3 ).embFormat = 'overlap';  % storage format
-        %In.Trg( 4 ).idxE      = 1 : 1;      % delay embedding indices 
-        %In.Trg( 4 ).nXB       = 1;          % before main interval
-        %In.Trg( 4 ).nXA       = 0;          % samples after main interval
-        %In.Trg( 4 ).fdOrder   = 1;          % finite-difference order 
-        %In.Trg( 4 ).fdType    = 'backward'; % finite-difference type
-        %In.Trg( 4 ).embFormat = 'overlap';  % storage format
-        %In.Trg( 5 ).idxE      = 1 : 1;      % delay embedding indices 
-        %In.Trg( 5 ).nXB       = 1;          % before main interval
-        %In.Trg( 5 ).nXA       = 0;          % samples after main interval
-        %In.Trg( 5 ).fdOrder   = 1;          % finite-difference order 
-        %In.Trg( 5 ).fdType    = 'backward'; % finite-difference type
-        %In.Trg( 5 ).embFormat = 'overlap';  % storage format
+
+        % Nino 4 index
+        In.Trg( 2 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 2 ).nXB       = 1;          % before main interval
+        In.Trg( 2 ).nXA       = 0;          % samples after main interval
+        In.Trg( 2 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 2 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 2 ).embFormat = 'overlap';  % storage format
+
+        % Nino 3 index
+        In.Trg( 3 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 3 ).nXB       = 1;          % before main interval
+        In.Trg( 3 ).nXA       = 0;          % samples after main interval
+        In.Trg( 3 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 3 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 3 ).embFormat = 'overlap';  % storage format
+
+        % Nino 1+2 index
+        In.Trg( 4 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 4 ).nXB       = 1;          % before main interval
+        In.Trg( 4 ).nXA       = 0;          % samples after main interval
+        In.Trg( 4 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 4 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 4 ).embFormat = 'overlap';  % storage format
+
+        % Global SST data
+        In.Trg( 5 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 5 ).nXB       = 1;          % before main interval
+        In.Trg( 5 ).nXA       = 0;          % samples after main interval
+        In.Trg( 5 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 5 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 5 ).embFormat = 'overlap';  % storage format
+
         %In.Trg( 6 ).idxE      = 1 : 1;      % delay embedding indices 
         %In.Trg( 6 ).nXB       = 1;          % before main interval
         %In.Trg( 6 ).nXA       = 0;          % samples after main interval
         %In.Trg( 6 ).fdOrder   = 1;          % finite-difference order 
         %In.Trg( 6 ).fdType    = 'backward'; % finite-difference type
         %In.Trg( 6 ).embFormat = 'overlap';  % storage format
+
+        % Batches to partition the in-sample data
         In.Res( 1 ).nB        = 1;          % partition batches
         In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
 

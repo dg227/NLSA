@@ -34,6 +34,11 @@ case 'noaa'
         DataSpecs.Time.tLim    = { '187001' '201906' }; % time limits
         DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
 
+    % Satellite era
+    case 'satellite'
+
+        DataSpecs.Time.tLim    = { '197001' '201906' }; % time limits
+        DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
     end
 
     switch( fld )
@@ -288,6 +293,193 @@ case 'noaa'
 
         % Time specification
         DataSpecs.Time.tStart  = '185101';              % start time in nc file 
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    end
+
+%%CCSM4 PRE-INDUSTRIAL CONTROL RUN 
+case 'ccsm4Ctrl'
+
+    % Input data directory 
+    DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+
+    % Output data specification
+    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
+
+    % Time specification
+    DataSpecs.Time.tFormat = 'yyyymm';              % time format
+    switch( period )
+
+    % Industrial era
+    case 'industrial' 
+
+        DataSpecs.Time.tLim    = { '000101' '019912' }; % time limits
+        DataSpecs.Time.tClim   = DataSpecs.Time.tLim;  % climatology 
+
+    % Satellite era
+    case 'satellite'
+
+        DataSpecs.Time.tLim    = { '000101' '004912' }; % time limits
+        DataSpecs.Time.tClim   = DataSpecs.Time.tLim; % climatology 
+    end
+
+    switch( fld )
+
+    %% Indo-Pacific SST
+    case 'IPSST'
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'sst';      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain
+        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
+        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+    
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    %% Nino 4 index
+    case 'Nino4'
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'sst';
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 160 210 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+
+    %% Nino 3.4 index
+    case 'Nino3.4'
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'sst';
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 190 240 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    %% Nino 3 index
+    case 'Nino3'
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'sst';
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 210 270 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    %% Nino 1+2 index
+    case 'Nino1+2'
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'sst';
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 270 280 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -10 0 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    %% Global SST
+    case( 'SST' )
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'sst';
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
         % Spatial domain 
         DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
         DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
