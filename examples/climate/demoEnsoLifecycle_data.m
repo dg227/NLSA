@@ -55,6 +55,31 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+    %% Nino 4 index
+    case 'Nino4'
+
+        % Input data
+        DataSpecs.In.file = 'sst.mnmean.v4-4.nc'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '185401';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 160 210 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
 
     %% Nino 3.4 index
     case 'Nino3.4'
@@ -81,6 +106,55 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+    %% Nino 3 index
+    case 'Nino3'
+
+        % Input data
+        DataSpecs.In.file = 'sst.mnmean.v4-4.nc'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '185401';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 210 270 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    %% Nino 1+2 index
+    case 'Nino1+2'
+
+        % Input data
+        DataSpecs.In.file = 'sst.mnmean.v4-4.nc'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '185401';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 270 280 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -10 0 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
     %% Global SST
     case( 'SST' )

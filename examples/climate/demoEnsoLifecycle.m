@@ -1,10 +1,10 @@
 % RECONSTRUCT THE LIFECYCLE OF THE EL NINO SOUTHERN OSCILLATION (ENSO) 
 % USING DATA-DRIVEN SPECTRAL ANALYSIS OF KOOPMAN/TRANSFER OPERATORS
 %
-% Modified 2020/04/27
+% Modified 2020/04/28
 
 %% DATA SPECIFICATION AND GLOBAL PARAMETERS 
-dataset    = 'noaa';          % NOAA 20th Century Reanalysis v2
+dataset    = 'noaa';          % NOAA 20th Century Reanalysis 
 %dataset    = 'ccsm4_ctrl';     % CCSM4 control run
 experiment = 'enso_lifecycle'; % data analysis experiment 
 
@@ -43,27 +43,27 @@ nProc = 1; % number of batch processes
 ifDataSST    = false; % extract SST data from NetCDF source files
 ifDataSAT    = false; % extract SAT data from NetCDF source files
 ifDataPrecip = false; % extract precipitation data from NetCDF source files  
-ifDataWind   = false;  % extract 10m wind data from NetCDF source files  
+ifDataWind   = false; % extract 10m wind data from NetCDF source files  
 
 % ENSO representations
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = false;  % compute two-dimensional (lead/lag) Nino 3.4 index  
+ifNinoIdx = true;  % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = true; % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = false; % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Output options
 ifPrintFig = true; % print figures to file
@@ -77,6 +77,18 @@ if ifDataSST
 
     disp( 'Reading Nino 3.4 index...' ); t = tic;
     demoEnsoLifecycle_data( dataset, 'Nino3.4' ) 
+    toc( t )
+
+    disp( 'Reading Nino 3 index...' ); t = tic;
+    demoEnsoLifecycle_data( dataset, 'Nino3' ) 
+    toc( t )
+
+    disp( 'Reading Nino 4 index...' ); t = tic;
+    demoEnsoLifecycle_data( dataset, 'Nino4' ) 
+    toc( t )
+
+    disp( 'Reading Nino 1+2 index...' ); t = tic;
+    demoEnsoLifecycle_data( dataset, 'Nino1+2' ) 
     toc( t )
 
     disp( 'Reading global SST data...' ); t = tic; 
@@ -127,11 +139,22 @@ end
 
 disp( 'Building NLSA model...' ); t = tic;
 [ model, In ] = climateNLSAModel( dataset, experiment ); 
+toc( t )
 
 nSE          = getNTotalSample( model.embComponent );
 nSB          = getNXB( model.embComponent );
 nShiftTakens = floor( getEmbeddingWindow( model.embComponent ) / 2 );
-toc( t )
+
+% Specify the NLSA model components corresponding to the analyzed observables
+iCNino34 = 1; % Nino 3.4 index
+iCNino4  = 2; % Nino 4 index
+iCNino3  = 3; % Nino 3 index
+iCNino12 = 4; % Nino 1+2 index
+iCSST    = 5; % global SST
+iCSAT    = 6; % global SAT
+iCPRate  = 7; % global precipitation rate
+iCUWnd   = 8; % global surface meridional winds
+iCVWnd   = 9;  % global surface zonal winds
 
 figDir = fullfile( pwd, 'figs', dataset, experiment );
 if ~isdir( figDir )
@@ -176,30 +199,60 @@ if ifKoopman
 end
 
 %% CONSTRUCT TWO-DIMENSIONAL NINO INDEX
-% Build a data structure Nino such that:
+% Build a data structure Nino34 such that:
 % 
-% Nino.idx is an array of size [ 2 nSE ], where nSE is the number of samples 
-% after delay embedding. Nino.idx( 1, : ) contains the values of the Nino 3.4 
-% index at the current time. Nino( 2, : ) contains the values of the Nino 3.4 
-% index at nShiftNino timesteps (months) in the past.
+% Nino34.idx is an array of size [ 2 nSE ], where nSE is the number of samples 
+% after delay embedding. Nino34.idx( 1, : ) contains the values of the 
+% Nino 3.4 index at the current time. Nino34( 2, : ) contains the values of 
+% the Nino 3.4 index at nShiftNino timesteps (months) in the past.
 % 
-% Nino.time is an array of size [ 1 nSE ] containing the timestamps in
+% Nino34.time is an array of size [ 1 nSE ] containing the timestamps in
 % Matlab serial date number format. 
+%
+% Data stuctures Nino4, Nino3, Nino12 are constructed analogously for the 
+% Nino 4, Nino 3, and Nino 1+2 indices, respectively. 
 if ifNinoIdx
 
-    disp( 'Constructing lagged Nino 3.4 index...' ); t = tic;
+    disp( 'Constructing lagged Nino indicesx...' ); t = tic;
 
     % Timestamps
-    Nino.time = getTrgTime( model ); 
-    Nino.time = Nino.time( nSB + 1 + nShiftTakens : end );
-    Nino.time = Nino.time( 1 : nSE );
+    Nino34.time = getTrgTime( model ); 
+    Nino34.time = Nino34.time( nSB + 1 + nShiftTakens : end );
+    Nino34.time = Nino34.time( 1 : nSE );
 
     % Nino 3.4 index
-    nino = getData( model.trgComponent( 1 ) );
-    Nino.idx = [ nino( nShiftNino + 1 : end ) 
+    nino = getData( model.trgComponent( iCNino34 ) );
+    Nino34.idx = [ nino( nShiftNino + 1 : end ) 
                  nino( 1 : end - nShiftNino ) ];
-    Nino.idx = Nino.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
-    Nino.idx = Nino.idx( :, 1 : nSE );
+    Nino34.idx = Nino34.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino34.idx = Nino34.idx( :, 1 : nSE );
+
+
+    % Nino 4 index
+    Nino4.time = Nino34.time;
+    nino = getData( model.trgComponent( iCNino4 ) );
+    Nino4.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino4.idx = Nino4.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino4.idx = Nino4.idx( :, 1 : nSE );
+
+    % Nino 3 index
+    Nino3.time = Nino34.time;
+    nino = getData( model.trgComponent( iCNino3 ) );
+    Nino3.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino3.idx = Nino3.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino3.idx = Nino3.idx( :, 1 : nSE );
+
+    % Nino 1+2 index
+    Nino12.time = Nino34.time;
+    nino = getData( model.trgComponent( iCNino12 ) );
+    Nino12.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino12.idx = Nino12.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino12.idx = Nino12.idx( :, 1 : nSE );
+
+    toc( t );
 end
 
 %% PLOT ENSO LIFECYCLE BASED ON NLSA EIGENFUNCTIONS
@@ -214,7 +267,7 @@ if ifNLSALifecycle
     
     % Set up figure and axes 
     Fig.units      = 'inches';
-    Fig.figWidth   = 12; 
+    Fig.figWidth   = 15; 
     Fig.deltaX     = .5;
     Fig.deltaX2    = .65;
     Fig.deltaY     = .48;
@@ -222,28 +275,55 @@ if ifNLSALifecycle
     Fig.gapX       = .60;
     Fig.gapY       = .3;
     Fig.gapT       = 0; 
-    Fig.nTileX     = 3;
-    Fig.nTileY     = 1;
+    Fig.nTileX     = 5;
+    Fig.nTileY     = 2;
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 8;
+    Fig.fontSize   = 6;
     Fig.tickLength = [ 0.02 0 ];
     Fig.visible    = 'on';
     Fig.nextPlot   = 'add'; 
 
     [ fig, ax ] = tileAxes( Fig );
 
-    % Plot Nino lifecycle
-    set( gcf, 'currentAxes', ax( 1 ) )
-    plotLifecycle( Nino, ElNinos, LaNinas, model.tFormat )
+    % Plot Nino 4 lifecycle
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    plotLifecycle( Nino4, ElNinos, LaNinas, model.tFormat )
+    xlabel( 'Nino 4' )
+    ylabel( sprintf( 'Nino 4 - %i months', nShiftNino ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    title( 'Nino 4 lifecycle' )
+
+    % Plot Nino 3.4 lifecycle
+    set( gcf, 'currentAxes', ax( 2, 1 ) )
+    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
     title( 'Nino 3.4 lifecycle' )
 
+    % Plot Nino 3 lifecycle
+    set( gcf, 'currentAxes', ax( 3, 1 ) )
+    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
+    xlabel( 'Nino 3' )
+    ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    title( 'Nino 3 lifecycle' )
+
+    % Plot Nino 1+2 lifecycle
+    set( gcf, 'currentAxes', ax( 4, 1 ) )
+    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
+    xlabel( 'Nino 3' )
+    ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    title( 'Nino 1+2 lifecycle' )
+
     % Plot NLSA lifecycle
-    set( gcf, 'currentAxes', ax( 2 ) )
+    set( gcf, 'currentAxes', ax( 5, 1 ) )
     plotLifecycle( Phi, ElNinos, LaNinas, model.tFormat )
     xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
     ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
@@ -251,10 +331,34 @@ if ifNLSALifecycle
     ylim( [ -3 3 ] )
     title( 'NLSA lifecycle' )
 
-    % Make scatterplot of NLSA lifcycle colored by Nino 3.4 index
-    set( gcf, 'currentAxes', ax( 3 ) )
+    % Make scatterplot of NLSA lifcycle colored by Nino 4 index
+    set( gcf, 'currentAxes', ax( 1, 2 ) )
     plot( Phi.idx( 1, : ), Phi.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
-    scatter( Phi.idx( 1, : ), Phi.idx( 2, : ), 17, Nino.idx( 1, : ), ...
+    scatter( Phi.idx( 1, : ), Phi.idx( 2, : ), 17, Nino4.idx( 1, : ), ...
+             'o', 'filled' )  
+    xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
+    ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    %set( gca, 'clim', [ -1 1 ] * max( abs( Nino.idx( 1, : ) ) ) )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'eastOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 3 ) = cPos( 3 ) * .7;
+    cPos( 1 ) = cPos( 1 ) + .05;
+    set( hC, 'position', cPos )
+    %xlabel( hC, 'Nino 3.4 index' )
+    set( gca, 'position', axPos )
+    title( 'NLSA colored by Nino 4' )
+
+
+    % Make scatterplot of NLSA lifcycle colored by Nino 3.4 index
+    set( gcf, 'currentAxes', ax( 2, 2 ) )
+    plot( Phi.idx( 1, : ), Phi.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Phi.idx( 1, : ), Phi.idx( 2, : ), 17, Nino34.idx( 1, : ), ...
              'o', 'filled' )  
     xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
     ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
@@ -318,7 +422,7 @@ if ifKoopmanLifecycle
 
     % Plot Nino lifecycle
     set( gcf, 'currentAxes', ax( 1 ) )
-    plotLifecycle( Nino, ElNinos, LaNinas, model.tFormat )
+    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
@@ -337,7 +441,7 @@ if ifKoopmanLifecycle
     % Make scatterplot of generator lifcycle colored by Nino 3.4 index
     set( gcf, 'currentAxes', ax( 3 ) )
     plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
-    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino.idx( 1, : ), ...
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino34.idx( 1, : ), ...
              'o', 'filled' )  
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
@@ -377,21 +481,21 @@ end
 % anglesPhi is a row vector of size [ 1 nPhase ] containing the polar angles
 % in the 2D plane of the phase boundaries.
 % 
-% avNinoIndPhi is a row vector of size [ 1 nPhase ] containing the average
+% avNino34IndPhi is a row vector of size [ 1 nPhase ] containing the average
 % Nino 3.4 index for each NLSA phase. 
 %
-% selectIndNino, anglesNino, and avNinoIndNino are defined analogously to
-% selectIndPhi, anglesPhi, and avNinoIndPhi, respectively, using the Nino 3.4
+% selectIndNino34, anglesNino34, and avNino34IndNino34 are defined analogously to
+% selectIndPhi, anglesPhi, and avNino34IndPhi, respectively, using the Nino 3.4
 % index. 
 if ifNLSAPhases
    
     % Compute ENSO phases based on NLSA
-    [ selectIndPhi, anglesPhi, avNinoIndPhi ] = computeLifecyclePhases( ...
-        Phi.idx', Nino.idx( 1, : )', nPhase, nSamplePhase );
+    [ selectIndPhi, anglesPhi, avNino34IndPhi ] = computeLifecyclePhases( ...
+        Phi.idx', Nino34.idx( 1, : )', nPhase, nSamplePhase );
 
     % Compute ENSO phases based on Nino 3.4 index
-    [ selectIndNino, anglesNino, avNinoIndNino ] = computeLifecyclePhases( ...
-        Nino.idx', Nino.idx(1,:)', nPhase, nSamplePhase );
+    [ selectIndNino34, anglesNino34, avNino34IndNino34 ] = computeLifecyclePhases( ...
+        Nino34.idx', Nino34.idx(1,:)', nPhase, nSamplePhase );
         
     % Set up figure and axes 
     Fig.units      = 'inches';
@@ -416,7 +520,7 @@ if ifNLSAPhases
 
     % Plot Nino 3.4 phases
     set( gcf, 'currentAxes', ax( 1 ) )
-    plotPhases( Nino.idx', selectIndNino, anglesNino ) 
+    plotPhases( Nino34.idx', selectIndNino34, anglesNino34 ) 
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
@@ -448,21 +552,21 @@ end
 % anglesZ is a row vector of size [ 1 nPhase ] containing the polar angles
 % in the 2D plane of the phase boundaries.
 % 
-% avNinoIndZ is a row vector of size [ 1 nPhase ] containing the average
+% avNino34IndZ is a row vector of size [ 1 nPhase ] containing the average
 % Nino 3.4 index for each NLSA generator. 
 %
-% selectIndNino, anglesNino, and avNinoIndNino are defined analogously to
-% selectIndZ, anglesZ, and avNinoIndZ, respectively, using the Nino 3.4
+% selectIndNino34, anglesNino34, and avNino34IndNino34 are defined analogously to
+% selectIndZ, anglesZ, and avNino34IndZ, respectively, using the Nino 3.4
 % index. 
 if ifKoopmanPhases
    
     % Compute ENSO phases based on generator
-    [ selectIndZ, anglesZ, avNinoIndZ ] = computeLifecyclePhases( ...
-        Z.idx', Nino.idx( 1, : )', nPhase, nSamplePhase );
+    [ selectIndZ, anglesZ, avNino34IndZ ] = computeLifecyclePhases( ...
+        Z.idx', Nino34.idx( 1, : )', nPhase, nSamplePhase );
 
     % Compute ENSO phases based on Nino 3.4 index
-    [ selectIndNino, anglesNino, avNinoIndNino ] = computeLifecyclePhases( ...
-        Nino.idx', Nino.idx(1,:)', nPhase, nSamplePhase );
+    [ selectIndNino34, anglesNino34, avNino34IndNino34 ] = computeLifecyclePhases( ...
+        Nino34.idx', Nino34.idx(1,:)', nPhase, nSamplePhase );
         
     % Set up figure and axes 
     Fig.units      = 'inches';
@@ -487,7 +591,7 @@ if ifKoopmanPhases
 
     % Plot Nino 3.4 phases
     set( gcf, 'currentAxes', ax( 1 ) )
-    plotPhases( Nino.idx', selectIndNino, anglesNino ) 
+    plotPhases( Nino34.idx', selectIndNino34, anglesNino34 ) 
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( [ -3 3 ] )
@@ -542,7 +646,7 @@ if ifNLSAEquivariance
 
         % Plot Nino 3.4 phases
         set( gcf, 'currentAxes', ax( iLead, 1 ) )
-        plotPhaseEvolution( Nino.idx', selectIndNino, anglesNino, ...
+        plotPhaseEvolution( Nino34.idx', selectIndNino34, anglesNino34, ...
                             phase0, leads( iLead ) ) 
         xlabel( 'Nino 3.4' )
         xlim( [ -3 3 ] )
@@ -609,7 +713,7 @@ if ifKoopmanEquivariance
 
         % Plot Nino 3.4 phases
         set( gcf, 'currentAxes', ax( iLead, 1 ) )
-        plotPhaseEvolution( Nino.idx', selectIndNino, anglesNino, ...
+        plotPhaseEvolution( Nino34.idx', selectIndNino34, anglesNino34, ...
                             phase0, leads( iLead ) ) 
         xlabel( 'Nino 3.4' )
         xlim( [ -3 3 ] )
@@ -650,8 +754,8 @@ end
 % observables to be composited. nC is equal to the number of target 
 % components in the NLSA model. 
 %
-% compNino{ iC } is an array of size [ nD nPhase ], where nD is the dimension
-% of component iC. compNino{ iC }( :, iPhase ) contains the phase 
+% compNino34{ iC } is an array of size [ nD nPhase ], where nD is the dimension
+% of component iC. compNino34{ iC }( :, iPhase ) contains the phase 
 % composite for observable iC and phase iPhase. 
 if ifNinoComposites
 
@@ -661,7 +765,8 @@ if ifNinoComposites
     iStart = 1 + nSB + nShiftTakens;
     iEnd   = iStart + nSE - 1;  
 
-    compNino = computePhaseComposites( model, selectIndNino, iStart, iEnd );
+    compNino34 = computePhaseComposites( model, selectIndNino34, ...
+                                         iStart, iEnd );
 
     toc( t )
 
@@ -690,7 +795,8 @@ if ifNinoComposites
 
     % Retrieve grid data for SST field
     % SST.ifXY is logical mask for valid ocean gridpoints
-    SST = load( fullfile( model.trgComponent( 2 ).path, 'dataGrid.mat' ) ); 
+    SST = load( fullfile( model.trgComponent( iCSST ).path, ...
+                          'dataGrid.mat' ) ); 
     SST.xLim = [ min( SST.lon ) max( SST.lon ) ]; % longitude plot limits
     SST.yLim = [ min( SST.lat ) max( SST.lat ) ]; % latitude plot limits
     SST.cLim    = [ -2 2 ]; % color range
@@ -701,7 +807,8 @@ if ifNinoComposites
     
     % Retrieve grid data for SAT field
     % SAT.ifXY is logical mask for valid gridpoints
-    SAT = load( fullfile( model.trgComponent( 3 ).path, 'dataGrid.mat' ) ); 
+    SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
+                          'dataGrid.mat' ) ); 
     SAT.xLim = [ min( SAT.lon ) max( SAT.lon ) ]; % longitude plot limits
     SAT.yLim = [ min( SAT.lat ) max( SAT.lat ) ]; % latitude plot limits
     SAT.cLim    = [ -2 2 ]; % color range
@@ -712,7 +819,8 @@ if ifNinoComposites
  
     % Retrieve grid data for precipitation rate field
     % PRate.ifXY is logical mask for valid gridpoints
-    PRate = load( fullfile( model.trgComponent( 4 ).path, 'dataGrid.mat' ) ); 
+    PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
+                            'dataGrid.mat' ) ); 
     PRate.xLim = [ min( PRate.lon ) max( PRate.lon ) ]; % longitude plot limits
     PRate.yLim = [ min( PRate.lat ) max( PRate.lat ) ]; % latitude plot limits
     PRate.cLim    = [ -2 2 ]; % color range
@@ -722,7 +830,8 @@ if ifNinoComposites
     PRate.ifYTickLabels = false;
  
     % Retrieve grid data for surface wind field
-    UVWnd = load( fullfile( model.trgComponent( 4 ).path, 'dataGrid.mat' ) ); 
+    UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+                  'dataGrid.mat' ) ); 
     UVWnd.nSkipX = 5;
     UVWnd.nSkipY = 5;
  
@@ -735,8 +844,9 @@ if ifNinoComposites
             title( 'SST anomaly (K), surface wind' )
         end
         SST.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compNino{ 2 }( :, iPhase ), SST, ...
-            compNino{ 5 }( :, iPhase ), compNino{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compNino34{ iCSST }( :, iPhase ), SST, ...
+                            compNino34{ iCUWnd }( :, iPhase ), ...
+                            compNino34{ iCVWnd }( :, iPhase ), UVWnd )
         lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
         lblPos = get( lbl, 'position' );
         lblPos( 1 ) = lblPos( 1 ) - .4;
@@ -748,8 +858,9 @@ if ifNinoComposites
             title( 'SAT anomaly (K), surface wind' )
         end
         SAT.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compNino{ 3 }( :, iPhase ), SAT, ...
-            compNino{ 5 }( :, iPhase ), compNino{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT, ...
+                            compNino34{ iCUWnd }( :, iPhase ), ...
+                            compNino34{ iCVWnd }( :, iPhase ), UVWnd )
 
         % Precipitation rate phase composites
         set( fig, 'currentAxes', ax( 3, iPhase ) )
@@ -757,15 +868,12 @@ if ifNinoComposites
             title( 'PRate anomaly (cg/m^2/s), surface wind' )
         end
         PRate.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compNino{ 4 }( :, iPhase ) * 1E5, PRate, ...
-            compNino{ 5 }( :, iPhase ), compNino{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compNino34{ iCPRate }( :, iPhase ) *1E5, PRate, ...
+                            compNino34{ iCUWnd }( :, iPhase ), ...
+                            compNino34{ iCVWnd }( :, iPhase ), UVWnd )
     end
 
-
-
-
     title( axTitle, 'ENSO composites -- Nino 3.4 index' )
-
 
     % Print figure
     if ifPrintFig
@@ -773,8 +881,6 @@ if ifNinoComposites
         print( figFile, '-dpng', '-r300' ) 
     end
 end
-
-
 
 
 
@@ -823,7 +929,8 @@ if ifNLSAComposites
 
     % Retrieve grid data for SST field
     % SST.ifXY is logical mask for valid ocean gridpoints
-    SST = load( fullfile( model.trgComponent( 2 ).path, 'dataGrid.mat' ) ); 
+    SST = load( fullfile( model.trgComponent( iCSST ).path, ...
+                'dataGrid.mat' ) ); 
     SST.xLim = [ min( SST.lon ) max( SST.lon ) ]; % longitude plot limits
     SST.yLim = [ min( SST.lat ) max( SST.lat ) ]; % latitude plot limits
     SST.cLim    = [ -2 2 ]; % color range
@@ -834,7 +941,8 @@ if ifNLSAComposites
     
     % Retrieve grid data for SAT field
     % SAT.ifXY is logical mask for valid gridpoints
-    SAT = load( fullfile( model.trgComponent( 3 ).path, 'dataGrid.mat' ) ); 
+    SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
+                'dataGrid.mat' ) ); 
     SAT.xLim = [ min( SAT.lon ) max( SAT.lon ) ]; % longitude plot limits
     SAT.yLim = [ min( SAT.lat ) max( SAT.lat ) ]; % latitude plot limits
     SAT.cLim    = [ -2 2 ]; % color range
@@ -845,7 +953,8 @@ if ifNLSAComposites
  
     % Retrieve grid data for precipitation rate field
     % PRate.ifXY is logical mask for valid gridpoints
-    PRate = load( fullfile( model.trgComponent( 4 ).path, 'dataGrid.mat' ) ); 
+    PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
+                  'dataGrid.mat' ) ); 
     PRate.xLim = [ min( PRate.lon ) max( PRate.lon ) ]; % longitude plot limits
     PRate.yLim = [ min( PRate.lat ) max( PRate.lat ) ]; % latitude plot limits
     PRate.cLim    = [ -2 2 ]; % color range
@@ -855,7 +964,8 @@ if ifNLSAComposites
     PRate.ifYTickLabels = false;
  
     % Retrieve grid data for surface wind field
-    UVWnd = load( fullfile( model.trgComponent( 4 ).path, 'dataGrid.mat' ) ); 
+    UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+                  'dataGrid.mat' ) ); 
     UVWnd.nSkipX = 5;
     UVWnd.nSkipY = 5;
  
@@ -868,8 +978,9 @@ if ifNLSAComposites
             title( 'SST anomaly (K), surface wind' )
         end
         SST.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compPhi{ 2 }( :, iPhase ), SST, ...
-            compPhi{ 5 }( :, iPhase ), compPhi{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compPhi{ iCSST }( :, iPhase ), SST, ...
+                            compPhi{ iCUWnd }( :, iPhase ), ...
+                            compPhi{ iCVWnd }( :, iPhase ), UVWnd )
         lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
         lblPos = get( lbl, 'position' );
         lblPos( 1 ) = lblPos( 1 ) - .4;
@@ -881,8 +992,9 @@ if ifNLSAComposites
             title( 'SAT anomaly (K), surface wind' )
         end
         SAT.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compPhi{ 3 }( :, iPhase ), SAT, ...
-            compPhi{ 5 }( :, iPhase ), compPhi{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compPhi{ iCSAT }( :, iPhase ), SAT, ...
+                            compPhi{ iCUWnd }( :, iPhase ), ...
+                            compPhi{ iCVWnd }( :, iPhase ), UVWnd )
 
         % Precipitation rate phase composites
         set( fig, 'currentAxes', ax( 3, iPhase ) )
@@ -890,8 +1002,9 @@ if ifNLSAComposites
             title( 'PRate anomaly (cg/m^2/s), surface wind' )
         end
         PRate.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compPhi{ 4 }( :, iPhase ) * 1E5, PRate, ...
-            compPhi{ 5 }( :, iPhase ), compPhi{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compPhi{ iCPRate }( :, iPhase ) * 1E5, PRate, ...
+                            compPhi{ iCUWnd }( :, iPhase ), ...
+                            compPhi{ iCVWnd }( :, iPhase ), UVWnd )
     end
 
     title( axTitle, 'ENSO composites -- kernel integral operator' )
@@ -949,7 +1062,8 @@ if ifKoopmanComposites
 
     % Retrieve grid data for SST field
     % SST.ifXY is logical mask for valid ocean gridpoints
-    SST = load( fullfile( model.trgComponent( 2 ).path, 'dataGrid.mat' ) ); 
+    SST = load( fullfile( model.trgComponent( iCSST ).path, ...
+                          'dataGrid.mat' ) ); 
     SST.xLim = [ min( SST.lon ) max( SST.lon ) ]; % longitude plot limits
     SST.yLim = [ min( SST.lat ) max( SST.lat ) ]; % latitude plot limits
     SST.cLim    = [ -2 2 ]; % color range
@@ -960,7 +1074,8 @@ if ifKoopmanComposites
     
     % Retrieve grid data for SAT field
     % SAT.ifXY is logical mask for valid gridpoints
-    SAT = load( fullfile( model.trgComponent( 3 ).path, 'dataGrid.mat' ) ); 
+    SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
+                          'dataGrid.mat' ) ); 
     SAT.xLim = [ min( SAT.lon ) max( SAT.lon ) ]; % longitude plot limits
     SAT.yLim = [ min( SAT.lat ) max( SAT.lat ) ]; % latitude plot limits
     SAT.cLim    = [ -2 2 ]; % color range
@@ -971,7 +1086,8 @@ if ifKoopmanComposites
  
     % Retrieve grid data for precipitation rate field
     % PRate.ifXY is logical mask for valid gridpoints
-    PRate = load( fullfile( model.trgComponent( 4 ).path, 'dataGrid.mat' ) ); 
+    PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
+                            'dataGrid.mat' ) ); 
     PRate.xLim = [ min( PRate.lon ) max( PRate.lon ) ]; % longitude plot limits
     PRate.yLim = [ min( PRate.lat ) max( PRate.lat ) ]; % latitude plot limits
     PRate.cLim    = [ -2 2 ]; % color range
@@ -981,7 +1097,8 @@ if ifKoopmanComposites
     PRate.ifYTickLabels = false;
  
     % Retrieve grid data for surface wind field
-    UVWnd = load( fullfile( model.trgComponent( 4 ).path, 'dataGrid.mat' ) ); 
+    UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+                  'dataGrid.mat' ) ); 
     UVWnd.nSkipX = 5;
     UVWnd.nSkipY = 5;
  
@@ -994,8 +1111,9 @@ if ifKoopmanComposites
             title( 'SST anomaly (K), surface wind' )
         end
         SST.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compZ{ 2 }( :, iPhase ), SST, ...
-            compZ{ 5 }( :, iPhase ), compZ{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST, ...
+                            compZ{ iCUWnd }( :, iPhase ), ...
+                            compZ{ iCVWnd }( :, iPhase ), UVWnd )
         lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
         lblPos = get( lbl, 'position' );
         lblPos( 1 ) = lblPos( 1 ) - .4;
@@ -1007,8 +1125,9 @@ if ifKoopmanComposites
             title( 'SAT anomaly (K), surface wind' )
         end
         SAT.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compZ{ 3 }( :, iPhase ), SAT, ...
-            compZ{ 5 }( :, iPhase ), compZ{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT, ...
+                            compZ{ iCUWnd }( :, iPhase ), ...
+                            compZ{ iCVWnd }( :, iPhase ), UVWnd )
 
         % Precipitation rate phase composites
         set( fig, 'currentAxes', ax( 3, iPhase ) )
@@ -1016,11 +1135,10 @@ if ifKoopmanComposites
             title( 'PRate anomaly (cg/m^2/s), surface wind' )
         end
         PRate.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compZ{ 4 }( :, iPhase ) * 1E5, PRate, ...
-            compZ{ 5 }( :, iPhase ), compZ{ 6 }( :, iPhase ), UVWnd )
+        plotPhaseComposite( compZ{ iCPRate }( :, iPhase ) * 1E5, PRate, ...
+                            compZ{ iCUWnd }( :, iPhase ), ...
+                            compZ{ iCVWnd }( :, iPhase ), UVWnd )
     end
-
-
 
 
 

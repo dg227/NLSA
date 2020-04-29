@@ -33,84 +33,155 @@ switch experiment
     % Target (response) data is:
     %
     % Component 1: Nino 3.4 index
-    % Component 2: Global SST anomalies 
-    % Component 3: Global SAT anomalies
-    % Component 4: Global precipitation rates
+    % Component 2: Nino 4 index
+    % Component 3: Nino 3 index
+    % Component 4: Nino 1+2 index
+    % Component 5: Global SST anomalies 
+    % Component 6: Global SAT anomalies
+    % Component 7: Global precipitation rates
     case 'enso_lifecycle'
 
         % In-sample dataset parameters 
         In.tFormat             = 'yyyymm';              % time format
         In.Res( 1 ).tLim       = { '187001' '201906' }; % time limit  
         In.Res( 1 ).experiment = 'noaa';                % 20CRv2 dataset
+
+        % Indo-Pacific SST
         In.Src( 1 ).field      = 'sstw';      % physical field
         In.Src( 1 ).xLim       = [ 28 290 ];  % longitude limits
         In.Src( 1 ).yLim       = [ -60  20 ]; % latitude limits
+
+        % Nino 3.4 index
         In.Trg( 1 ).field      = 'sstmawav_198101-201012';  % physical field
         In.Trg( 1 ).xLim       = [ 190 240 ];  % longitude limits
         In.Trg( 1 ).yLim       = [ -5 5 ];     % latitude limits
-        In.Trg( 2 ).field      = 'sstma_198101-201012';  % physical field
-        In.Trg( 2 ).xLim       = [ 0 359 ];   % longitude limits
-        In.Trg( 2 ).yLim       = [ -89 89 ];  % latitude limits
-        In.Trg( 3 ).field      = 'airma_198101-201012';  % physical field
-        In.Trg( 3 ).xLim       = [ 0 359 ];   % longitude limits
-        In.Trg( 3 ).yLim       = [ -89 89 ];  % latitude limits
-        In.Trg( 4 ).field      = 'pratema_198101-201012';  % physical field
-        In.Trg( 4 ).xLim       = [ 0 359 ];   % longitude limits
-        In.Trg( 4 ).yLim       = [ -89 89 ];  % latitude limits
-        In.Trg( 5 ).field      = 'uwndma_198101-201012';  % physical field
+
+        % Nino 4 index
+        In.Trg( 2 ).field      = 'sstmawav_198101-201012';  % physical field
+        In.Trg( 2 ).xLim       = [ 160 210 ];  % longitude limits
+        In.Trg( 2 ).yLim       = [ -5 5 ];     % latitude limits
+
+        % Nino 3 index
+        In.Trg( 3 ).field      = 'sstmawav_198101-201012';  % physical field
+        In.Trg( 3 ).xLim       = [ 210 270 ];  % longitude limits
+        In.Trg( 3 ).yLim       = [ -5 5 ];     % latitude limits
+
+        % Nino 1+2 index
+        In.Trg( 4 ).field      = 'sstmawav_198101-201012';  % physical field
+        In.Trg( 4 ).xLim       = [ 270 280 ];  % longitude limits
+        In.Trg( 4 ).yLim       = [ -10 0 ];     % latitude limits
+
+        % Global SST field
+        In.Trg( 5 ).field      = 'sstma_198101-201012';  % physical field
         In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
-        In.Trg( 6 ).field      = 'vwndma_198101-201012';  % physical field
+
+        % Global SAT field
+        In.Trg( 6 ).field      = 'airma_198101-201012';  % physical field
         In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
+            
+        % Global precipitation field
+        In.Trg( 7 ).field      = 'pratema_198101-201012';  % physical field
+        In.Trg( 7 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 7 ).yLim       = [ -89 89 ];  % latitude limits
+
+        % Global surface zonal wind field 
+        In.Trg( 8 ).field      = 'uwndma_198101-201012';  % physical field
+        In.Trg( 8 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 8 ).yLim       = [ -89 89 ];  % latitude limits
+
+        % Global surface meridional wind field
+        In.Trg( 9 ).field      = 'vwndma_198101-201012';  % physical field
+        In.Trg( 9 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 9 ).yLim       = [ -89 89 ];  % latitude limits
         
         % Abbreviated target component names
-        In.targetComponentName = [ 'sstw_sstmawav_air_prate_uv' ];
+        In.targetComponentName   = [ 'nino_sst_air_prate_uv' ];
         In.targetRealizationName = '187001-201906';
 
         % Delay-embedding/finite-difference parameters; in-sample data
+        % Indo-Pacific SST
         In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
         In.Src( 1 ).nXB       = 1;          % samples before main interval
         In.Src( 1 ).nXA       = 0;          % samples after main interval
         In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
         In.Src( 1 ).fdType    = 'backward'; % finite-difference type
         In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
+        % Nino 3.4 index
         In.Trg( 1 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 1 ).nXB       = 1;          % before main interval
         In.Trg( 1 ).nXA       = 0;          % samples after main interval
-        In.Trg( 1 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 1 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 1 ).embFormat = 'overlap';  % storage format
+
+        % Nino 4 index
         In.Trg( 2 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 2 ).nXB       = 1;          % before main interval
         In.Trg( 2 ).nXA       = 0;          % samples after main interval
-        In.Trg( 2 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 2 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 2 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 2 ).embFormat = 'overlap';  % storage format
+
+        % Nino 3 index
         In.Trg( 3 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 3 ).nXB       = 1;          % before main interval
         In.Trg( 3 ).nXA       = 0;          % samples after main interval
-        In.Trg( 3 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 3 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 3 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 3 ).embFormat = 'overlap';  % storage format
+
+        % Nino 1+3 index
         In.Trg( 4 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 4 ).nXB       = 1;          % before main interval
         In.Trg( 4 ).nXA       = 0;          % samples after main interval
-        In.Trg( 4 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 4 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 4 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 4 ).embFormat = 'overlap';  % storage format
+
+        % Global SST data
         In.Trg( 5 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 5 ).nXB       = 1;          % before main interval
         In.Trg( 5 ).nXA       = 0;          % samples after main interval
-        In.Trg( 5 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 5 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 5 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 5 ).embFormat = 'overlap';  % storage format
+
+        % Global SAT data
         In.Trg( 6 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 6 ).nXB       = 1;          % before main interval
         In.Trg( 6 ).nXA       = 0;          % samples after main interval
-        In.Trg( 6 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 6 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 6 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 6 ).embFormat = 'overlap';  % storage format
+
+        % Global precipitation data
+        In.Trg( 7 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 7 ).nXB       = 1;          % before main interval
+        In.Trg( 7 ).nXA       = 0;          % samples after main interval
+        In.Trg( 7 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 7 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 7 ).embFormat = 'overlap';  % storage format
+
+        % Global surface zonal wind data
+        In.Trg( 8 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 8 ).nXB       = 1;          % before main interval
+        In.Trg( 8 ).nXA       = 0;          % samples after main interval
+        In.Trg( 8 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 8 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 8 ).embFormat = 'overlap';  % storage format
+        
+        % Global surface meridional wind data
+        In.Trg( 9 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 9 ).nXB       = 1;          % before main interval
+        In.Trg( 9 ).nXA       = 0;          % samples after main interval
+        In.Trg( 9 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 9 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 9 ).embFormat = 'overlap';  % storage format
+
+        % Batches to partition the in-sample data
         In.Res( 1 ).nB        = 1;          % partition batches
         In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
 
