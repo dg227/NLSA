@@ -1,7 +1,7 @@
 function [ c, gamma, E, zeta, mu ] = computeEigenfunctions( ...
     obj, diffOp, varargin )
-% COMPUTEEIGENFUNCTIONS Compute eigenvalues and eigenfunctions of 
-% diffusion-regularized Koopman generator.
+% COMPUTEEIGENFUNCTIONS Compute eigenvalues and eigenfunctions of compactified
+% Koopman generator.
 %
 % diffOp is an nlsaKernelOperator object providing the basis functions.
 %
@@ -21,8 +21,6 @@ function [ c, gamma, E, zeta, mu ] = computeEigenfunctions( ...
 %
 % mu: A column vector of size [ nS 1 ] storing the inner product weights with
 %     repect to which the phi are orthonormal. 
-%
-% lambda: A row vector of size [ 1 nPhi ] 
 %
 % Modified 2020/05/01
 
@@ -93,7 +91,7 @@ end
 % the generator in the eigenbasis of diffOp
 tWall0 = tic;
 [ c, gamma ]  = eig( V );
-gamma         = diag( gamma ).';
+gamma         = diag( gamma );
 tWall         = toc( tWall0 );
 fprintf( logId, 'EIGV %2.4f \n', tWall );
 
@@ -104,12 +102,14 @@ tWall0 = tic;
 eta = computeRegularizingEigenvalues( obj, diffOp );
 eta = eta( : );  % ensure eta is a column vector
 epsilon = getRegularizationParameter( obj );
-E = sum( eta .* abs( c ) .^ 2, 1 );  
+dt = getSamplingInterval( obj );
+lambda = exp( - epsilon * eta );
+omega = imag( gamma )';
+E = sum( lambda .* abs( c ) .^ 2, 1 );  
+E = ( 1 ./ E - 1 ) ./ ( 1 - ( imag( gamma ) * dt ) .^ 2 );
 
 % Sort results in order of increasing Dirichlet energy
 [ E, idxE ] = sort( E, 'ascend' );
-E = E( 1 : nEig );
-idxE = idxE( 1 : nEig );
 gamma = gamma( idxE );
 c = c( :, idxE );
 tWall = toc( tWall0 );
@@ -121,7 +121,8 @@ if ifZeta
     tWall0 = tic;
     [ phi, mu ] = getEigenfunctions( diffOp );
     phi = phi( :, getBasisFunctionIndices( obj ) ); 
-    zeta = phi * c;
+    sqrtLambda = exp( - epsilon * eta / 2 )';
+    zeta = phi * c ./ sqrtLambda;;
     tWall = toc( tWall0 );
     fprintf( logId, 'EVALEIG %2.4f \n', tWall );
 end
