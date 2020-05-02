@@ -1,8 +1,8 @@
 function V = computeOperator( obj, diffOp, varargin )
-% COMPUTEOPERATOR Compute diffusion-regularized Koopman generator in an 
+% COMPUTEOPERATOR Compute RKHS-compactified Koopman generator in an 
 % eigenbasis of a kernel integral operator.
 % 
-% Modified 2020/04/15
+% Modified 2020/05/01
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments
@@ -47,7 +47,9 @@ eta = computeRegularizingEigenvalues( obj, diffOp );
 
 % Form regularized operator
 epsilon = getRegularizationParameter( obj );
-V = V - epsilon * diag( eta );  
+sqrtLambda = exp( - epsilon * eta / 2 );
+sqrtLambda = sqrtLamdba( : ); % ensure sqrtLmabda is a column vector
+V =  sqrtLambda .* V .* sqrtLambda.';  
 
 tWall = toc( tWall0 );
 fprintf( logId, 'REGV %2.4f \n', tWall );

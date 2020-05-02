@@ -26,7 +26,7 @@ Opt.logPath                          = getOperatorPath( obj );
 Opt.logFilePermissions               = 'w';
 
 Opt = parseargs( Opt, varargin{ : } );
-nPhi = getNEigenfunction( obj );
+nEig = getNEigenfunction( obj );
 idxPhi = getBasisFunctionIndices( obj );
 
 if isempty( Opt.logFile )
@@ -42,7 +42,7 @@ fprintf( logId, 'computeEigenfunctions starting on %i/%i/%i %i:%i:%2.1f \n', ...
     clk( 1 ), clk( 2 ), clk( 3 ), clk( 4 ), clk( 5 ), clk( 6 ) );
 fprintf( logId, 'Hostname %s \n', hostname );
 fprintf( logId, 'Path %s \n', obj.path );
-fprintf( logId, 'Number of eigenfunctions       = %i \n', nPhi );
+fprintf( logId, 'Number of eigenfunctions       = %i \n', nEig );
 fprintf( logId, 'Basis function incices         = %s \n', idx2str( idxPhi ) );
 
 
@@ -74,8 +74,8 @@ end
 tWall0 = tic;
 [ c, gamma ]  = eig( V );
 gamma         = diag( gamma );
-c             = c( :, 1 : nPhi );
-gamma         = gamma( 1 : nPhi ) .'; % gamma is a row vector
+c             = c( :, 1 : nEig );
+gamma         = gamma( 1 : nEig ) .'; % gamma is a row vector
 tWall         = toc( tWall0 );
 fprintf( logId, 'EIGV %2.4f \n', tWall );
 
