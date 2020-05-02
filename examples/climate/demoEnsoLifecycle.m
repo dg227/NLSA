@@ -3,10 +3,45 @@
 %
 % Modified 2020/04/29
 
-%% DATA SPECIFICATION AND GLOBAL PARAMETERS 
-dataset    = 'ccsm4Ctrl';                 % NOAA 20th Century Reanalysis 
+%% DATA SPECIFICATION 
+dataset    = 'ccsm4Ctrl';                 % CCSM4 pre-industrial control run
+%dataset    = 'noaa';                       % NOAA 20th Century Reanalysis 
 experiment = 'enso_lifecycle_industrial';  % data analysis experiment 
 
+%% SCRIPT EXECUTION OPTIONS
+
+% Data extraction
+ifDataSST    = false;  % extract SST data from NetCDF source files
+ifDataSAT    = false;  % extract SAT data from NetCDF source files
+ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
+ifDataWind   = false; % extract 10m wind data from NetCDF source files  
+
+% ENSO representations
+ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
+ifKoopman = false; % compute Koopman eigenfunctions
+ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
+
+% ENSO 2D lifecycle plots
+ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
+
+% Lifecycle phases and equivariance plots
+ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+
+% Composite plots
+ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = true; % compute phase composites based on NLSA
+ifKoopmanComposites = true; % compute phase composites based on Koopman
+
+% Output options
+ifPlotWind = false; % overlay composites with quiver plot of surface winds 
+ifPrintFig = true;  % print figures to file
+
+
+%% GLOBAL PARAMETERS
 % The following parameters are defined:
 % idxPhiEnso:   ENSO eigenfunctions from NLSA (kernel operator)
 % signPhi:      Multiplication factor (for consistency with Nino)
@@ -14,6 +49,7 @@ experiment = 'enso_lifecycle_industrial';  % data analysis experiment
 % phaseZ:       Phase multpiplication factor (for consistency with Nino)
 % nSamplePhase: Number of samples per ENSO phase
 % period:       String identifier for time period
+% pRateScl:     Unit conversion for precipitation plots
 
 switch dataset
     
@@ -32,6 +68,7 @@ case 'noaa'
         nPhase       = 8;         
         nSamplePhase = 100;       
         period       = 'industrial';
+        pRateScl     = 1E5; 
 
     % ENSO recovered from satellite-era Indo-Pacific SST
     case 'enso_lifecycle_satellite'
@@ -43,6 +80,7 @@ case 'noaa'
         nPhase       = 8;         
         nSamplePhase = 30;       
         period       = 'satellite';
+        pRateScl     = 1E5; 
 
     otherwise
         error( 'Invalid experiment' )
@@ -64,6 +102,7 @@ case 'ccsm4Ctrl'
         nPhase       = 8;         
         nSamplePhase = 100;       
         period       = 'industrial';
+        pRateScl     = 1E8; 
 
     otherwise
         error( 'Invalid experiment' )
@@ -99,40 +138,9 @@ LaNinas = { { '201011' '201103' } ...
             { '197311' '197403' } };
 
 
-%% BATCH PROCCESSING
+%% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
-
-%% SCRIPT EXECUTION OPTIONS
-
-% Data extraction
-ifDataSST    = false;  % extract SST data from NetCDF source files
-ifDataSAT    = false; % extract SAT data from NetCDF source files
-ifDataPrecip = false; % extract precipitation data from NetCDF source files  
-ifDataWind   = false; % extract 10m wind data from NetCDF source files  
-
-% ENSO representations
-ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
-ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
-
-% ENSO 2D lifecycle plots
-ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
-
-% Lifecycle phases and equivariance plots
-ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
-
-% Composite plots
-ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = false; % compute phase composites based on NLSA
-ifKoopmanComposites = false; % compute phase composites based on Koopman
-
-% Output options
-ifPrintFig = true; % print figures to file
 
 %% EXTRACT SST DATA
 if ifDataSST
@@ -979,23 +987,31 @@ if ifNinoComposites
     PRate.ifYTickLabels = false;
  
     % Retrieve grid data for surface wind field
-    UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
-                  'dataGrid.mat' ) ); 
-    UVWnd.nSkipX = 5;
-    UVWnd.nSkipY = 5;
+    if ifPlotWind
+        UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+                      'dataGrid.mat' ) ); 
+        UVWnd.nSkipX = 5;
+        UVWnd.nSkipY = 5;
+    end
  
     % Loop over the phases
     for iPhase = 1 : nPhase
 
         % SST phase composites
         set( fig, 'currentAxes', ax( 1, iPhase ) )
-        if iPhase == 1
-            title( 'SST anomaly (K), surface wind' )
-        end
         SST.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compNino34{ iCSST }( :, iPhase ), SST, ...
-                            compNino34{ iCUWnd }( :, iPhase ), ...
-                            compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( compNino34{ iCSST }( :, iPhase ), SST, ...
+                                compNino34{ iCUWnd }( :, iPhase ), ...
+                                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SST anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compNino34{ iCSST }( :, iPhase ), SST )
+            titleStr = 'SST anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr )
+        end
         lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
         lblPos = get( lbl, 'position' );
         lblPos( 1 ) = lblPos( 1 ) - .4;
@@ -1003,23 +1019,37 @@ if ifNinoComposites
 
         % SAT phase composites
         set( fig, 'currentAxes', ax( 2, iPhase ) )
-        if iPhase == 1
-            title( 'SAT anomaly (K), surface wind' )
-        end
         SAT.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT, ...
-                            compNino34{ iCUWnd }( :, iPhase ), ...
-                            compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT, ...
+                                compNino34{ iCUWnd }( :, iPhase ), ...
+                                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SAT anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT )
+            titleStr = 'SAT anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
 
         % Precipitation rate phase composites
         set( fig, 'currentAxes', ax( 3, iPhase ) )
-        if iPhase == 1
-            title( 'PRate anomaly (cg/m^2/s), surface wind' )
-        end
         PRate.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compNino34{ iCPRate }( :, iPhase ) *1E5, PRate, ...
-                            compNino34{ iCUWnd }( :, iPhase ), ...
-                            compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( ...
+                compNino34{ iCPRate }( :, iPhase ) * pRateScl, PRate, ...
+                compNino34{ iCUWnd }( :, iPhase ), ...
+                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'PRate anomaly (cg/m^2/s), surface wind';
+        else
+            plotPhaseComposite( ...
+                compNino34{ iCPRate }( :, iPhase ) * pRateScl, PRate )
+            titleStr = 'PRate anomaly (cg/m^2/s)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
     end
 
     title( axTitle, 'ENSO composites -- Nino 3.4 index' )
@@ -1113,23 +1143,31 @@ if ifNLSAComposites
     PRate.ifYTickLabels = false;
  
     % Retrieve grid data for surface wind field
-    UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
-                  'dataGrid.mat' ) ); 
-    UVWnd.nSkipX = 5;
-    UVWnd.nSkipY = 5;
+    if ifPlotWind
+        UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+                      'dataGrid.mat' ) ); 
+        UVWnd.nSkipX = 5;
+        UVWnd.nSkipY = 5;
+    end
  
     % Loop over the phases
     for iPhase = 1 : nPhase
 
         % SST phase composites
         set( fig, 'currentAxes', ax( 1, iPhase ) )
-        if iPhase == 1
-            title( 'SST anomaly (K), surface wind' )
-        end
         SST.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compPhi{ iCSST }( :, iPhase ), SST, ...
-                            compPhi{ iCUWnd }( :, iPhase ), ...
-                            compPhi{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( compPhi{ iCSST }( :, iPhase ), SST, ...
+                                compPhi{ iCUWnd }( :, iPhase ), ...
+                                compPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SST anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compPhi{ iCSST }( :, iPhase ), SST )
+            titleStr = 'SST anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
         lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
         lblPos = get( lbl, 'position' );
         lblPos( 1 ) = lblPos( 1 ) - .4;
@@ -1137,23 +1175,37 @@ if ifNLSAComposites
 
         % SAT phase composites
         set( fig, 'currentAxes', ax( 2, iPhase ) )
-        if iPhase == 1
-            title( 'SAT anomaly (K), surface wind' )
-        end
         SAT.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compPhi{ iCSAT }( :, iPhase ), SAT, ...
-                            compPhi{ iCUWnd }( :, iPhase ), ...
-                            compPhi{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( compPhi{ iCSAT }( :, iPhase ), SAT, ...
+                                compPhi{ iCUWnd }( :, iPhase ), ...
+                                compPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SAT anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compPhi{ iCSAT }( :, iPhase ), SAT );
+            titleStr = 'SAT anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
 
         % Precipitation rate phase composites
         set( fig, 'currentAxes', ax( 3, iPhase ) )
-        if iPhase == 1
-            title( 'PRate anomaly (cg/m^2/s), surface wind' )
-        end
         PRate.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compPhi{ iCPRate }( :, iPhase ) * 1E5, PRate, ...
-                            compPhi{ iCUWnd }( :, iPhase ), ...
-                            compPhi{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( ...
+                compPhi{ iCPRate }( :, iPhase ) * pRateScl, PRate, ...
+                compPhi{ iCUWnd }( :, iPhase ), ...
+                compPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'PRate anomaly (cg/m^2/s), surface wind';
+        else
+            plotPhaseComposite( ...
+                compPhi{ iCPRate }( :, iPhase ) * pRateScl, PRate )
+            titleStr = 'PRate anomaly (cg/m^2/s)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
     end
 
     title( axTitle, 'ENSO composites -- kernel integral operator' )
@@ -1246,23 +1298,31 @@ if ifKoopmanComposites
     PRate.ifYTickLabels = false;
  
     % Retrieve grid data for surface wind field
-    UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
-                  'dataGrid.mat' ) ); 
-    UVWnd.nSkipX = 5;
-    UVWnd.nSkipY = 5;
+    if ifPlotWind
+        UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+                      'dataGrid.mat' ) ); 
+        UVWnd.nSkipX = 5;
+        UVWnd.nSkipY = 5;
+    end
  
     % Loop over the phases
     for iPhase = 1 : nPhase
 
         % SST phase composites
         set( fig, 'currentAxes', ax( 1, iPhase ) )
-        if iPhase == 1
-            title( 'SST anomaly (K), surface wind' )
-        end
         SST.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST, ...
-                            compZ{ iCUWnd }( :, iPhase ), ...
-                            compZ{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SST anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST )
+            titleStr = 'SST anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
         lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
         lblPos = get( lbl, 'position' );
         lblPos( 1 ) = lblPos( 1 ) - .4;
@@ -1270,26 +1330,38 @@ if ifKoopmanComposites
 
         % SAT phase composites
         set( fig, 'currentAxes', ax( 2, iPhase ) )
-        if iPhase == 1
-            title( 'SAT anomaly (K), surface wind' )
-        end
         SAT.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT, ...
-                            compZ{ iCUWnd }( :, iPhase ), ...
-                            compZ{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SAT anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT );
+            titleStr = 'SAT anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
 
         % Precipitation rate phase composites
         set( fig, 'currentAxes', ax( 3, iPhase ) )
-        if iPhase == 1
-            title( 'PRate anomaly (cg/m^2/s), surface wind' )
-        end
         PRate.ifXTickLabels = iPhase == nPhase;
-        plotPhaseComposite( compZ{ iCPRate }( :, iPhase ) * 1E5, PRate, ...
-                            compZ{ iCUWnd }( :, iPhase ), ...
-                            compZ{ iCVWnd }( :, iPhase ), UVWnd )
+        if ifPlotWind
+            plotPhaseComposite( ...
+                compZ{ iCPRate }( :, iPhase ) * pRateScl, PRate, ...
+                compZ{ iCUWnd }( :, iPhase ), ... 
+                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'PRate anomaly (cg/m^2/s), surface wind';
+        else
+            plotPhaseComposite( ...
+                compZ{ iCPRate }( :, iPhase ) * pRateScl, PRate )
+            titleStr = 'PRate anomaly (cg/m^2/s)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
     end
-
-
 
     title( axTitle, 'ENSO composites -- generator' )
 
@@ -1439,6 +1511,10 @@ else
     yTickLabelsArg = { 'yTickLabels' [] };
 end
 m_proj( 'Miller cylindrical', 'lat',  70, 'long', [ 0 359 ] );
+if ~isvector( SGrd.lon )
+    SGrd.lon = SGrd.lon';
+    SGrd.lat = SGrd.lat';
+end
 h = m_pcolor( SGrd.lon, SGrd.lat, sData' );
 set( h, 'edgeColor', 'none' )
 m_grid( 'linest', 'none', 'linewidth', 1, 'tickdir', 'out', ...

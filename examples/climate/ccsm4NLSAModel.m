@@ -71,16 +71,17 @@ switch experiment
         In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
 
+        % Global SAT field 
+        In.Trg( 6 ).field      = 'airma_000101-019912';  % physical field
+        In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
 
-        %In.Trg( 2 ).field      = 'sstma_198101-201012';  % physical field
-        %In.Trg( 2 ).xLim       = [ 0 359 ];   % longitude limits
-        %In.Trg( 2 ).yLim       = [ -89 89 ];  % latitude limits
-        %In.Trg( 3 ).field      = 'airma_198101-201012';  % physical field
-        %In.Trg( 3 ).xLim       = [ 0 359 ];   % longitude limits
-        %In.Trg( 3 ).yLim       = [ -89 89 ];  % latitude limits
-        %In.Trg( 4 ).field      = 'pratema_198101-201012';  % physical field
-        %In.Trg( 4 ).xLim       = [ 0 359 ];   % longitude limits
-        %In.Trg( 4 ).yLim       = [ -89 89 ];  % latitude limits
+        % Global convective precipitation field
+        In.Trg( 7 ).field      = 'pratecma_000101-019912';  % physical field
+        In.Trg( 7 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 7 ).yLim       = [ -89 89 ];  % latitude limits
+
+
         %In.Trg( 5 ).field      = 'uwndma_198101-201012';  % physical field
         %In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
         %In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
@@ -106,7 +107,7 @@ switch experiment
         In.Trg( 1 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 1 ).nXB       = 1;          % before main interval
         In.Trg( 1 ).nXA       = 0;          % samples after main interval
-        In.Trg( 1 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 1 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 1 ).embFormat = 'overlap';  % storage format
 
@@ -114,7 +115,7 @@ switch experiment
         In.Trg( 2 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 2 ).nXB       = 1;          % before main interval
         In.Trg( 2 ).nXA       = 0;          % samples after main interval
-        In.Trg( 2 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 2 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 2 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 2 ).embFormat = 'overlap';  % storage format
 
@@ -122,7 +123,7 @@ switch experiment
         In.Trg( 3 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 3 ).nXB       = 1;          % before main interval
         In.Trg( 3 ).nXA       = 0;          % samples after main interval
-        In.Trg( 3 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 3 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 3 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 3 ).embFormat = 'overlap';  % storage format
 
@@ -130,7 +131,7 @@ switch experiment
         In.Trg( 4 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 4 ).nXB       = 1;          % before main interval
         In.Trg( 4 ).nXA       = 0;          % samples after main interval
-        In.Trg( 4 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 4 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 4 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 4 ).embFormat = 'overlap';  % storage format
 
@@ -138,16 +139,25 @@ switch experiment
         In.Trg( 5 ).idxE      = 1 : 1;      % delay embedding indices 
         In.Trg( 5 ).nXB       = 1;          % before main interval
         In.Trg( 5 ).nXA       = 0;          % samples after main interval
-        In.Trg( 5 ).fdOrder   = 1;          % finite-difference order 
+        In.Trg( 5 ).fdOrder   = 0;          % finite-difference order 
         In.Trg( 5 ).fdType    = 'backward'; % finite-difference type
         In.Trg( 5 ).embFormat = 'overlap';  % storage format
 
-        %In.Trg( 6 ).idxE      = 1 : 1;      % delay embedding indices 
-        %In.Trg( 6 ).nXB       = 1;          % before main interval
-        %In.Trg( 6 ).nXA       = 0;          % samples after main interval
-        %In.Trg( 6 ).fdOrder   = 1;          % finite-difference order 
-        %In.Trg( 6 ).fdType    = 'backward'; % finite-difference type
-        %In.Trg( 6 ).embFormat = 'overlap';  % storage format
+        % Global SAT field
+        In.Trg( 6 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 6 ).nXB       = 1;          % before main interval
+        In.Trg( 6 ).nXA       = 0;          % samples after main interval
+        In.Trg( 6 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 6 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 6 ).embFormat = 'overlap';  % storage format
+
+        % Global convective precipitation field
+        In.Trg( 7 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 7 ).nXB       = 1;          % before main interval
+        In.Trg( 7 ).nXA       = 0;          % samples after main interval
+        In.Trg( 7 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 7 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 7 ).embFormat = 'overlap';  % storage format
 
         % Batches to partition the in-sample data
         In.Res( 1 ).nB        = 1;          % partition batches

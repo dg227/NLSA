@@ -86,6 +86,12 @@ if ifClim
     fldStr = [ fldStr '_' Time.tClim{ 1 } '-' Time.tClim{ 2 } ];
 end 
 
+% Check if region mask is to be read
+ifMsk = isfield( In, 'msk' );
+
+% Check if area weights are to be read
+ifArea = isfield( In, 'area' );
+
 % Output directory
 dataDir = fullfile( Out.dir, ...
                     fldStr, ...
@@ -118,21 +124,31 @@ partitionT = nlsaPartition( 'idx', cumsum( nTFiles ) );
 % Retrieve longitude/latitude grid, grid cell area, region mask, and variable
 % (field) to be read. 
 ncId   = netcdf.open( fullfile( In.dir, files( 1 ).name ) );
-idLon  = netcdf.inqVarID( ncId, 'TLONG' );
-idLat  = netcdf.inqVarID( ncId, 'TLAT' );
-idArea = netcdf.inqVarID( ncId, 'TAREA' );
-idMsk  = netcdf.inqVarID( ncId, 'REGION_MASK' );
+idLon  = netcdf.inqVarID( ncId, In.lon );
+idLat  = netcdf.inqVarID( ncId, In.lat );
+if ifArea
+    idArea = netcdf.inqVarID( ncId, In.area );
+end
+if ifMsk
+    idMsk  = netcdf.inqVarID( ncId, In.msk );
+end
 idFld  = netcdf.inqVarID( ncId, In.var );
 
 % Read longitude/latitude data, create region mask
 lon  = netcdf.getVar( ncId, idLon );
 lat  = netcdf.getVar( ncId, idLat );
-X    = lon;
-Y    = lat;
-ifXY = netcdf.getVar( ncId, idMsk ) ~= 0; % nonzero values are ocean gridpoints
+if isvector( lon )
+    [ X, Y ] = ndgrid( lon, lat );
+else
+    X    = lon;
+    Y    = lat;
+end
 ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
-     & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 ) ...
-     & ifXY;
+     & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 );
+if ifMsk
+    % nonzero mask values are ocean gridpoints
+    ifXY = ifXY & ( netcdf.getVar( ncId, idMsk ) ~= 0 );
+end
 nXY = numel( ifXY );   % number of gridpoints 
 iXY = find( ifXY( : ) ); % extract linear indices from area mask
 [ nX, nY  ] = size( X );
@@ -141,6 +157,7 @@ disp( sprintf( '%i unmasked gridpoints ', nXY ) )
 
 % If needed, compute area weights
 if Opts.ifWeight
+    %dlon=mod( (circshift(lon,-1)-circshift(lon,0))*pi/180, 2*pi);
     w = netcdf.getVar( ncId, idArea ); 
     w  = w( ifXY );
     w  = sqrt( w / sum( w ) * nXY );

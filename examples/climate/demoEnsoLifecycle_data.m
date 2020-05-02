@@ -340,6 +340,10 @@ case 'ccsm4Ctrl'
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.lon  = 'TLONG';
+        DataSpecs.In.lat  = 'TLAT';
+        DataSpecs.In.area = 'TAREA';
+        DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
@@ -366,6 +370,10 @@ case 'ccsm4Ctrl'
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.lon  = 'TLONG';
+        DataSpecs.In.lat  = 'TLAT';
+        DataSpecs.In.area = 'TAREA';
+        DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
@@ -393,6 +401,10 @@ case 'ccsm4Ctrl'
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.lon  = 'TLONG';
+        DataSpecs.In.lat  = 'TLAT';
+        DataSpecs.In.area = 'TAREA';
+        DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
@@ -419,6 +431,10 @@ case 'ccsm4Ctrl'
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.lon  = 'TLONG';
+        DataSpecs.In.lat  = 'TLAT';
+        DataSpecs.In.area = 'TAREA';
+        DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
@@ -445,6 +461,10 @@ case 'ccsm4Ctrl'
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.lon  = 'TLONG';
+        DataSpecs.In.lat  = 'TLAT';
+        DataSpecs.In.area = 'TAREA';
+        DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
@@ -471,6 +491,10 @@ case 'ccsm4Ctrl'
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.lon  = 'TLONG';
+        DataSpecs.In.lat  = 'TLAT';
+        DataSpecs.In.area = 'TAREA';
+        DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
@@ -492,6 +516,70 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+    %% Global SAT
+    case( 'SAT' )
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.TS'; 
+        DataSpecs.In.lon  = 'lon';
+        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.var  = 'TS';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+
+        % Output data
+        DataSpecs.Out.fld = 'air';      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+
+        climateData( dataset, DataSpecs ) % read global SAT data
+
+    %% Global convective precipitation data
+    case( 'precip' )
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.PRECC'; 
+        DataSpecs.In.lon  = 'lon';
+        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.var  = 'PRECC';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'pratec';      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+
+        climateData( dataset, DataSpecs ) % read global SAT data
+
+  
     end
 
 end
