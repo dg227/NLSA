@@ -1,7 +1,8 @@
 % Script to add convective and large scale precipitation data from CCSM4
 % control
 
-dataDir = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+%dataDir = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+dataDir = '/kontiki_array5/data/ccsm4/b40.1850'; 
 
 fileBase = 'b40.1850.track1.1deg.006.cam2.h0.';
 
