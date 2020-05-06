@@ -27,13 +27,14 @@ nVar1     = numel( var1 );
 nVar2     = numel( var2 );
 
 for iFile = 1 : numel( files1 )
+    tic
 
     file1 = fullfile( dir1, files1( iFile ).name );
-    file2 = fullfile( dir1, files2( iFile ).name );
-    fileOut = [ file1( 1 : nFileBase ) ...
+    file2 = fullfile( dir2, files2( iFile ).name );
+    fileOut = [ files1( iFile ).name( 1 : nFileBase ) ...
                 varOut ...
-                file1( nFileBase + nVar1 + 1 : end ) ];
-    fileOut = fulllfile( dirOut, fileOut );
+                files1( iFile ).name( nFileBase + nVar1 + 1 : end ) ];
+    fileOut = fullfile( dirOut, fileOut );
     fileTmp = fullfile( dirOut, 'tmp.nc' );
 
     disp( 'Merging files...' )
@@ -44,13 +45,16 @@ for iFile = 1 : numel( files1 )
     disp( [ 'Command: ' ncCommand ] )
     system( ncCommand );
 
-    disp( 'Adding data into file...' )
-    disp( fileOut )
-    ncCommand = [ 'ncap2 -s "' varOut '=' var1 '+' var2'" -v ' fileTmp ...
-                  fileOut ];
-    disp( [ 'Command: ' ncCommand ] )
-    system( ncCommand )
 
+    disp( 'Adding data in merged file file...' )
+    disp( fileOut )
+    ncCommand = [ 'ncap2 -s "' varOut '=' var1 '+' var2 '" -v ' fileTmp ...
+                  ' ' fileOut ];
+    disp( [ 'Command: ' ncCommand ] )
+    system( ncCommand );
+    delete( fileTmp )
+
+    toc
 end
 
 
