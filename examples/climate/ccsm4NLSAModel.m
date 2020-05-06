@@ -16,7 +16,7 @@ function [ model, In, Out ] = ccsm4NLSAModel( experiment )
 %
 % Modified 2020/05/06
  
-6if nargin == 0
+if nargin == 0
     experiment = 'enso_lifecycle_industrial';
 end
 
@@ -219,37 +219,37 @@ switch experiment
         In.Src( 1 ).yLim       = [ -60  20 ]; % latitude limits
 
         % Nino 3.4 index
-        In.Trg( 1 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 1 ).field      = 'sstmawav_000101-130012';  % physical field
         In.Trg( 1 ).xLim       = [ 190 240 ];  % longitude limits
         In.Trg( 1 ).yLim       = [ -5 5 ];     % latitude limits
 
         % Nino 4 index
-        In.Trg( 2 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 2 ).field      = 'sstmawav_000101-130012';  % physical field
         In.Trg( 2 ).xLim       = [ 160 210 ];  % longitude limits
         In.Trg( 2 ).yLim       = [ -5 5 ];     % latitude limits
 
         % Nino 3 index
-        In.Trg( 3 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 3 ).field      = 'sstmawav_000101-130012';  % physical field
         In.Trg( 3 ).xLim       = [ 210 270 ];  % longitude limits
         In.Trg( 3 ).yLim       = [ -5 5 ];     % latitude limits
 
         % Nino 1+2 index
-        In.Trg( 4 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 4 ).field      = 'sstmawav_000101-130012';  % physical field
         In.Trg( 4 ).xLim       = [ 270 280 ];  % longitude limits
         In.Trg( 4 ).yLim       = [ -10 0 ];     % latitude limits
 
         % Global SST field
-        In.Trg( 5 ).field      = 'sstma_000101-019912';  % physical field
+        In.Trg( 5 ).field      = 'sstma_000101-130012';  % physical field
         In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
 
         % Global SAT field 
-        In.Trg( 6 ).field      = 'airma_000101-019912';  % physical field
+        In.Trg( 6 ).field      = 'airma_000101-130012';  % physical field
         In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
 
         % Global convective precipitation field
-        In.Trg( 7 ).field      = 'pratecma_000101-019912';  % physical field
+        In.Trg( 7 ).field      = 'pratecma_000101-130012';  % physical field
         In.Trg( 7 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 7 ).yLim       = [ -89 89 ];  % latitude limits
 
@@ -264,7 +264,7 @@ switch experiment
 
         % Abbreviated target component names
         In.targetComponentName   = [ 'nino_sst_air_prate_uv' ];
-        In.targetRealizationName = '000101-019912';
+        In.targetRealizationName = '000101-130012';
 
         % Delay-embedding/finite-difference parameters; in-sample data
         % Indo-Pacific SST source data
