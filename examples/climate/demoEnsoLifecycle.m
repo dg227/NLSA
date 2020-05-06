@@ -4,32 +4,33 @@
 % Modified 2020/04/29
 
 %% DATA SPECIFICATION 
-dataset    = 'ccsm4Ctrl';                 % CCSM4 pre-industrial control run
-%dataset    = 'noaa';                       % NOAA 20th Century Reanalysis 
-experiment = 'enso_lifecycle_industrial';  % data analysis experiment 
+%dataset    = 'ccsm4Ctrl';                 % CCSM4 pre-industrial control run
+dataset    = 'noaa';                       % NOAA 20th Century Reanalysis 
+%experiment = 'enso_lifecycle_industrial';  % data analysis experiment 
+experiment = 'enso_lifecycle_satellite';  % data analysis experiment 
 
 %% SCRIPT EXECUTION OPTIONS
 
 % Data extraction
 ifDataSST    = false;  % extract SST data from NetCDF source files
-ifDataSAT    = false;  % extract SAT data from NetCDF source files
+ifDataSAT    = true;  % extract SAT data from NetCDF source files
 ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
 ifDataWind   = false; % extract 10m wind data from NetCDF source files  
 
 % ENSO representations
-ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
-ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
+ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
+ifKoopman = true; % compute Koopman eigenfunctions
+ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
 
 % Composite plots
 ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
@@ -37,7 +38,7 @@ ifNLSAComposites    = true; % compute phase composites based on NLSA
 ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Output options
-ifPlotWind = false; % overlay composites with quiver plot of surface winds 
+ifPlotWind = true; % overlay composites with quiver plot of surface winds 
 ifPrintFig = true;  % print figures to file
 
 

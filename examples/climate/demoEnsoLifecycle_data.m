@@ -210,7 +210,8 @@ case 'noaa'
         DataSpecs.Out.fld = DataSpecs.In.var;      
 
         % Time specification
-        DataSpecs.Time.tStart  = '187101';           % start time in nc file 
+        %DataSpecs.Time.tStart  = '187101';           % start time in nc file 
+        DataSpecs.Time.tStart  = '188001';            % start time in nc file 
 
         % Spatial domain 
         DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
