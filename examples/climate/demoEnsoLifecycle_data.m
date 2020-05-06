@@ -312,8 +312,8 @@ case 'noaa'
 case 'ccsm4Ctrl'
 
     % Input data directory 
-    %DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
-    DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
+    DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+    %DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
 
     % Output data specification
     DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
@@ -550,16 +550,14 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
-        climateData( dataset, DataSpecs ) % read global SAT data
-
     %% Global convective precipitation data
     case( 'precip' )
 
         % Input data
-        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.PRECC'; 
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.PREC'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
-        DataSpecs.In.var  = 'PRECC';
+        DataSpecs.In.var  = 'PREC';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
         % Output data
@@ -580,10 +578,6 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-
-        climateData( dataset, DataSpecs ) % read global SAT data
-
-  
     end
 
 end
