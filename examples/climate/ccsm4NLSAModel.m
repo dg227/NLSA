@@ -14,9 +14,9 @@ function [ model, In, Out ] = ccsm4NLSAModel( experiment )
 %
 %      ccsm4Data
 %
-% Modified 2020/04/27
+% Modified 2020/05/06
  
-if nargin == 0
+6if nargin == 0
     experiment = 'enso_lifecycle_industrial';
 end
 
@@ -192,6 +192,180 @@ switch experiment
         In.koopmanRegType = 'inv';     % regularization type
         In.idxPhiKoopman  = 1 : 401;    % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+
+
+    % ENSO LIFECYCLE BASED ON INDO-PACIFIC SST FROM 1300 YEARS OF CCSM4 CONTROL
+    % Source (covariate) data is area-weighted Indo-Pacific SST
+    %
+    % Target (response) data is:
+    %
+    % Component 1: Nino 3.4 index
+    % Component 2: Nino 4 index
+    % Component 3: Nino 3 index
+    % Component 4: Nino 1+2 index
+    % Component 5: Global SST anomalies 
+    % Component 3: Global SAT anomalies
+    % Component 4: Global precipitation rates
+    case 'enso_lifecycle_millenial'
+
+        % In-sample dataset parameters 
+        In.tFormat             = 'yyyymm';              % time format
+        In.Res( 1 ).tLim       = { '000101' '130012' }; % time limit  
+        In.Res( 1 ).experiment = 'ccsm4Ctrl';           % CCSM4 control run
+
+        % Indo-Pacific SST
+        In.Src( 1 ).field      = 'sstw';      % physical field
+        In.Src( 1 ).xLim       = [ 28 290 ];  % longitude limits
+        In.Src( 1 ).yLim       = [ -60  20 ]; % latitude limits
+
+        % Nino 3.4 index
+        In.Trg( 1 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 1 ).xLim       = [ 190 240 ];  % longitude limits
+        In.Trg( 1 ).yLim       = [ -5 5 ];     % latitude limits
+
+        % Nino 4 index
+        In.Trg( 2 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 2 ).xLim       = [ 160 210 ];  % longitude limits
+        In.Trg( 2 ).yLim       = [ -5 5 ];     % latitude limits
+
+        % Nino 3 index
+        In.Trg( 3 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 3 ).xLim       = [ 210 270 ];  % longitude limits
+        In.Trg( 3 ).yLim       = [ -5 5 ];     % latitude limits
+
+        % Nino 1+2 index
+        In.Trg( 4 ).field      = 'sstmawav_000101-019912';  % physical field
+        In.Trg( 4 ).xLim       = [ 270 280 ];  % longitude limits
+        In.Trg( 4 ).yLim       = [ -10 0 ];     % latitude limits
+
+        % Global SST field
+        In.Trg( 5 ).field      = 'sstma_000101-019912';  % physical field
+        In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
+
+        % Global SAT field 
+        In.Trg( 6 ).field      = 'airma_000101-019912';  % physical field
+        In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
+
+        % Global convective precipitation field
+        In.Trg( 7 ).field      = 'pratecma_000101-019912';  % physical field
+        In.Trg( 7 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 7 ).yLim       = [ -89 89 ];  % latitude limits
+
+
+        %In.Trg( 5 ).field      = 'uwndma_198101-201012';  % physical field
+        %In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
+        %In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
+        %In.Trg( 6 ).field      = 'vwndma_198101-201012';  % physical field
+        %In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
+        %In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
+        
+
+        % Abbreviated target component names
+        In.targetComponentName   = [ 'nino_sst_air_prate_uv' ];
+        In.targetRealizationName = '000101-019912';
+
+        % Delay-embedding/finite-difference parameters; in-sample data
+        % Indo-Pacific SST source data
+        In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+        In.Src( 1 ).nXB       = 1;          % samples before main interval
+        In.Src( 1 ).nXA       = 0;          % samples after main interval
+        In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
+        In.Src( 1 ).fdType    = 'backward'; % finite-difference type
+        In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
+        % Nino 3.4 index
+        In.Trg( 1 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 1 ).nXB       = 1;          % before main interval
+        In.Trg( 1 ).nXA       = 0;          % samples after main interval
+        In.Trg( 1 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 1 ).embFormat = 'overlap';  % storage format
+
+        % Nino 4 index
+        In.Trg( 2 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 2 ).nXB       = 1;          % before main interval
+        In.Trg( 2 ).nXA       = 0;          % samples after main interval
+        In.Trg( 2 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 2 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 2 ).embFormat = 'overlap';  % storage format
+
+        % Nino 3 index
+        In.Trg( 3 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 3 ).nXB       = 1;          % before main interval
+        In.Trg( 3 ).nXA       = 0;          % samples after main interval
+        In.Trg( 3 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 3 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 3 ).embFormat = 'overlap';  % storage format
+
+        % Nino 1+2 index
+        In.Trg( 4 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 4 ).nXB       = 1;          % before main interval
+        In.Trg( 4 ).nXA       = 0;          % samples after main interval
+        In.Trg( 4 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 4 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 4 ).embFormat = 'overlap';  % storage format
+
+        % Global SST data
+        In.Trg( 5 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 5 ).nXB       = 1;          % before main interval
+        In.Trg( 5 ).nXA       = 0;          % samples after main interval
+        In.Trg( 5 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 5 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 5 ).embFormat = 'overlap';  % storage format
+
+        % Global SAT field
+        In.Trg( 6 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 6 ).nXB       = 1;          % before main interval
+        In.Trg( 6 ).nXA       = 0;          % samples after main interval
+        In.Trg( 6 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 6 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 6 ).embFormat = 'overlap';  % storage format
+
+        % Global convective precipitation field
+        In.Trg( 7 ).idxE      = 1 : 1;      % delay embedding indices 
+        In.Trg( 7 ).nXB       = 1;          % before main interval
+        In.Trg( 7 ).nXA       = 0;          % samples after main interval
+        In.Trg( 7 ).fdOrder   = 0;          % finite-difference order 
+        In.Trg( 7 ).fdType    = 'backward'; % finite-difference type
+        In.Trg( 7 ).embFormat = 'overlap';  % storage format
+
+        % Batches to partition the in-sample data
+        In.Res( 1 ).nB        = 2;          % partition batches
+        In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
+
+        % NLSA parameters; in-sample data 
+        In.nN         = 0; % nearest neighbors; defaults to max. value if 0
+        In.lDist      = 'cone'; % local distance
+        In.tol        = 0;      % 0 distance threshold (for cone kernel)
+        In.zeta       = 0.995;  % cone kernel parameter 
+        In.coneAlpha  = 0;      % velocity exponent in cone kernel
+        In.nNS        = In.nN;  % nearest neighbors for symmetric distance
+        In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+        In.epsilon    = 2;        % kernel bandwidth parameter 
+        In.epsilonB   = 2;          % kernel bandwidth base
+        In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+        In.nEpsilon   = 200;      % number of exponents for bandwidth tuning
+        In.alpha      = 0.5;      % diffusion maps normalization 
+        In.nPhi       = 501;      % diffusion eigenfunctions to compute
+        In.nPhiPrj    = In.nPhi;  % eigenfunctions to project the data
+        In.idxPhiRec  = 1 : 1;    % eigenfunctions for reconstruction
+        In.idxPhiSVD  = 1 : 1;    % eigenfunctions for linear mapping
+        In.idxVTRec   = 1 : 1;    % SVD termporal patterns for reconstruction
+
+        % Koopman generator parameters; in-sample data
+        In.koopmanOpType = 'diff';      % Koopman generator type
+        In.koopmanFDType  = 'central'; % finite-difference type
+        In.koopmanFDOrder = 4;         % finite-difference order
+        In.koopmanDt      = 1;         % sampling interval (in months)
+        In.koopmanAntisym = true;     % enforce antisymmetrization
+        In.koopmanEpsilon = 1E-3;      % regularization parameter
+        In.koopmanRegType = 'inv';     % regularization type
+        In.idxPhiKoopman  = 1 : 401;    % diffusion eigenfunctions used as basis
+        In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+
+
 
     otherwise
         error( 'Invalid experiment' )

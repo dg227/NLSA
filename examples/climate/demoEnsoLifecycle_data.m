@@ -312,7 +312,8 @@ case 'noaa'
 case 'ccsm4Ctrl'
 
     % Input data directory 
-    DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+    %DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+    DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
 
     % Output data specification
     DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
@@ -321,18 +322,20 @@ case 'ccsm4Ctrl'
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
     switch( period )
 
-    % Industrial era
+    % Time period comparable to industrial era
     case 'industrial' 
 
         DataSpecs.Time.tLim    = { '000101' '019912' }; % time limits
         DataSpecs.Time.tClim   = DataSpecs.Time.tLim;  % climatology 
 
-    % Satellite era
-    case 'satellite'
+    % Full 1300-yr control integration
+    case 'millenial'
 
-        DataSpecs.Time.tLim    = { '000101' '004912' }; % time limits
-        DataSpecs.Time.tClim   = DataSpecs.Time.tLim; % climatology 
+        DataSpecs.Time.tLim    = { '000101' '130012' }; % time limits
+        DataSpecs.Time.tClim   = DataSpecs.Time.tLim;   % climatology 
     end
+
+
 
     switch( fld )
 
