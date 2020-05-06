@@ -13,19 +13,19 @@ experiment = 'enso_lifecycle_millenial';   % data analysis experiment
 %% SCRIPT EXECUTION OPTIONS
 
 % Data extraction
-ifDataSST    = true;  % extract SST data from NetCDF source files
-ifDataSAT    = true;  % extract SAT data from NetCDF source files
+ifDataSST    = false;  % extract SST data from NetCDF source files
+ifDataSAT    = false;  % extract SAT data from NetCDF source files
 ifDataPrecip = true;  % extract precipitation data from NetCDF source files  
 ifDataWind   = false; % extract 10m wind data from NetCDF source files  
 
 % ENSO representations
-ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
-ifKoopman = true; % compute Koopman eigenfunctions
+ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
+ifKoopman = false; % compute Koopman eigenfunctions
 ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
 ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
