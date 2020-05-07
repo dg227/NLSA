@@ -77,7 +77,7 @@ switch experiment
         In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
 
         % Global convective precipitation field
-        In.Trg( 7 ).field      = 'pratecma_000101-019912';  % physical field
+        In.Trg( 7 ).field      = 'pratema_000101-019912';  % physical field
         In.Trg( 7 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 7 ).yLim       = [ -89 89 ];  % latitude limits
 
@@ -248,18 +248,20 @@ switch experiment
         In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
 
-        % Global convective precipitation field
-        In.Trg( 7 ).field      = 'pratecma_000101-130012';  % physical field
+        % Global precipitation field
+        In.Trg( 7 ).field      = 'pratema_000101-130012';  % physical field
         In.Trg( 7 ).xLim       = [ 0 359 ];   % longitude limits
         In.Trg( 7 ).yLim       = [ -89 89 ];  % latitude limits
 
+        % Global zonal winds
+        In.Trg( 8 ).field      = 'uwndma_000101-130012';  % physical field
+        In.Trg( 8 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 8 ).yLim       = [ -89 89 ];  % latitude limits
 
-        %In.Trg( 5 ).field      = 'uwndma_198101-201012';  % physical field
-        %In.Trg( 5 ).xLim       = [ 0 359 ];   % longitude limits
-        %In.Trg( 5 ).yLim       = [ -89 89 ];  % latitude limits
-        %In.Trg( 6 ).field      = 'vwndma_198101-201012';  % physical field
-        %In.Trg( 6 ).xLim       = [ 0 359 ];   % longitude limits
-        %In.Trg( 6 ).yLim       = [ -89 89 ];  % latitude limits
+        % Global meridional winds
+        In.Trg( 9 ).field      = 'vwndma_000101-130012';  % physical field
+        In.Trg( 9 ).xLim       = [ 0 359 ];   % longitude limits
+        In.Trg( 9 ).yLim       = [ -89 89 ];  % latitude limits
         
 
         % Abbreviated target component names

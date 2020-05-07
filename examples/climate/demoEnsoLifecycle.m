@@ -6,22 +6,22 @@
 %% DATA SPECIFICATION 
 dataset    = 'ccsm4Ctrl';                 % CCSM4 pre-industrial control run
 %dataset    = 'noaa';                     % NOAA 20th Century Reanalysis 
-experiment = 'enso_lifecycle_industrial'; % 200-yr analysis
+%experiment = 'enso_lifecycle_industrial'; % 200-yr analysis
 %experiment = 'enso_lifecycle_satellite'; % 50-yr  analysis 
-%experiment = 'enso_lifecycle_millenial'; % 1300-yr analysis 
+experiment = 'enso_lifecycle_millenial'; % 1300-yr analysis 
 
 %% SCRIPT EXECUTION OPTIONS
 
 % Data extraction
 ifDataSST    = false;  % extract SST data from NetCDF source files
 ifDataSAT    = false;  % extract SAT data from NetCDF source files
-ifDataPrecip = true;  % extract precipitation data from NetCDF source files  
-ifDataWind   = false; % extract 10m wind data from NetCDF source files  
+ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
+ifDataWind   = true; % extract 10m wind data from NetCDF source files  
 
 % ENSO representations
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
-ifKoopman = true; % compute Koopman eigenfunctions
-ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
+ifKoopman = false; % compute Koopman eigenfunctions
+ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
 ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
@@ -39,12 +39,15 @@ ifNLSAComposites    = true; % compute phase composites based on NLSA
 ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Output options
-ifPlotWind = false; % overlay composites with quiver plot of surface winds 
+ifPlotWind = true; % overlay composites with quiver plot of surface winds 
 ifPrintFig = true;  % print figures to file
 
 
 %% GLOBAL PARAMETERS
 % The following parameters are defined:
+% nShiftNino:   Temporal shift to obtain 2D Nino index
+% phase0:       Start phase in equivariance plots
+% leads:        Leads (in months) for equivariance plots
 % idxPhiEnso:   ENSO eigenfunctions from NLSA (kernel operator)
 % signPhi:      Multiplication factor (for consistency with Nino)
 % idxZEnso:     ENSO eigenfunction fro generator      
@@ -53,10 +56,19 @@ ifPrintFig = true;  % print figures to file
 % period:       String identifier for time period
 % pRateScl:     Unit conversion for precipitation plots
 
+nShiftNino   = 11;        
+phase0       = 4;         
+leads        = [ 0 6 12 18 24 ]; 
+
 switch dataset
     
 % NOAA 20th century reanalysis 
 case 'noaa'
+
+    PlotLim.nino4  = [ -3 3 ];
+    PlotLim.nino34 = [ -3 3 ];
+    PlotLim.nino3  = [ -3 3 ];
+    PlotLim.nino12 = [ -4 4 ];
 
     switch experiment
         
@@ -91,6 +103,11 @@ case 'noaa'
 
 case 'ccsm4Ctrl'
 
+    PlotLim.nino4  = [ -3.5 3.5 ];
+    PlotLim.nino34 = [ -4 4 ];
+    PlotLim.nino3  = [ -4 4 ];
+    PlotLim.nino12 = [ -4.5 4.5 ];
+
     switch experiment
 
     % ENSO recovered from 200-yr dataset (comparable in timespan to industrial
@@ -109,12 +126,12 @@ case 'ccsm4Ctrl'
     % ENSO recovered from full 1300-yr control run
     case 'enso_lifecycle_millenial'
 
-        idxPhiEnso   = [ 7 6 ];  
-        signPhi      = [ 1 1 ]; 
-        idxZEnso     = 6;         
-        phaseZ       = i;        
+        idxPhiEnso   = [ 9 8 ];  
+        signPhi      = [ -1 1 ]; 
+        idxZEnso     = 8;         
+        phaseZ       = exp( i * pi * ( 17 / 32 + 1 ) );        
         nPhase       = 8;         
-        nSamplePhase = 100;       
+        nSamplePhase = 200;       
         period       = 'millenial';
         pRateScl     = 1E8; 
 
@@ -128,9 +145,6 @@ otherwise
 
 end
 
-nShiftNino   = 11;        % temporal shift to obtain 2D Nino index
-phase0       = 1;         % start phase in equivariance plots
-leads        = [ 0 6 12 18 24 ]; % leads (in months) for equivariance plots
 
 %% EL NINO/LA NINA EVENTS
 % El Nino/La Nina events to mark up in lifecycle plots (in yyyymm format)
@@ -379,8 +393,8 @@ if ifNLSALifecycle
     plotLifecycle( Nino4, ElNinos, LaNinas, model.tFormat )
     %xlabel( 'Nino 4' )
     ylabel( sprintf( 'Nino - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    xlim( PlotLim.nino4 )
+    ylim( PlotLim.nino4 )
     title( 'Nino 4 lifecycle' )
 
     % Plot Nino 3.4 lifecycle
@@ -388,8 +402,8 @@ if ifNLSALifecycle
     plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
     %xlabel( 'Nino 3.4' )
     %ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    xlim( PlotLim.nino34 )
+    ylim( PlotLim.nino34 )
     title( 'Nino 3.4 lifecycle' )
 
     % Plot Nino 3 lifecycle
@@ -397,8 +411,8 @@ if ifNLSALifecycle
     plotLifecycle( Nino3, ElNinos, LaNinas, model.tFormat )
     %xlabel( 'Nino 3' )
     %ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    xlim( PlotLim.nino3 )
+    ylim( PlotLim.nino3 )
     title( 'Nino 3 lifecycle' )
 
     % Plot Nino 1+2 lifecycle
@@ -406,8 +420,8 @@ if ifNLSALifecycle
     plotLifecycle( Nino12, ElNinos, LaNinas, model.tFormat )
     %xlabel( 'Nino 3' )
     %ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
-    xlim( [ -4.5 4.5 ] )
-    ylim( [ -4.5 4.5 ] )
+    xlim( PlotLim.nino12 )
+    ylim( PlotLim.nino12 )
     title( 'Nino 1+2 lifecycle' )
 
     % Plot NLSA lifecycle
@@ -498,7 +512,7 @@ if ifKoopmanLifecycle
     % Retrieve Koopman eigenfunctions
     z = getKoopmanEigenfunctions( model );
     T = getEigenperiods( model.koopmanOp );
-    TEnso = T( idxZEnso ) / 12;
+    TEnso = abs( T( idxZEnso ) / 12 );
     Z.idx = [ real( phaseZ * z( :, idxZEnso ) )' 
              imag( phaseZ * z( :, idxZEnso ) )' ];
     Z.time = getTrgTime( model );
@@ -531,8 +545,8 @@ if ifKoopmanLifecycle
     plotLifecycle( Nino4, ElNinos, LaNinas, model.tFormat )
     %xlabel( 'Nino 4' )
     ylabel( sprintf( 'Nino - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    xlim( PlotLim.nino4 )
+    ylim( PlotLim.nino4 )
     title( 'Nino 4 lifecycle' )
 
     % Plot Nino 3.4 lifecycle
@@ -540,8 +554,8 @@ if ifKoopmanLifecycle
     plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
     %xlabel( 'Nino 3.4' )
     %ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    xlim( PlotLim.nino34 )
+    ylim( PlotLim.nino34 )
     title( 'Nino 3.4 lifecycle' )
 
     % Plot Nino 3 lifecycle
@@ -549,8 +563,8 @@ if ifKoopmanLifecycle
     plotLifecycle( Nino3, ElNinos, LaNinas, model.tFormat )
     %xlabel( 'Nino 3' )
     %ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    xlim( PlotLim.nino3 )
+    ylim( PlotLim.nino3 )
     title( 'Nino 3 lifecycle' )
 
     % Plot Nino 1+2 lifecycle
@@ -558,8 +572,8 @@ if ifKoopmanLifecycle
     plotLifecycle( Nino12, ElNinos, LaNinas, model.tFormat )
     %xlabel( 'Nino 3' )
     %ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
-    xlim( [ -4.5 4.5 ] )
-    ylim( [ -4.5 4.5 ] )
+    xlim( PlotLim.nino12 )
+    ylim( PlotLim.nino12 )
     title( 'Nino 1+2 lifecycle' )
 
 
@@ -664,8 +678,9 @@ if ifNLSAPhases
         Phi.idx', Nino34.idx( 1, : )', nPhase, nSamplePhase );
 
     % Compute ENSO phases based on Nino 3.4 index
-    [ selectIndNino34, anglesNino34, avNino34IndNino34 ] = computeLifecyclePhases( ...
-        Nino34.idx', Nino34.idx(1,:)', nPhase, nSamplePhase );
+    [ selectIndNino34, anglesNino34, avNino34IndNino34 ] = ...
+        computeLifecyclePhases( Nino34.idx', Nino34.idx(1,:)', nPhase, ... 
+                                nSamplePhase );
         
     % Set up figure and axes 
     Fig.units      = 'inches';
@@ -693,8 +708,8 @@ if ifNLSAPhases
     plotPhases( Nino34.idx', selectIndNino34, anglesNino34 ) 
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    xlim( PlotLim.nino34 )
+    ylim( PlotLim.nino34 )
 
     % Plot NLSA phases
     set( gcf, 'currentAxes', ax( 2 ) )
@@ -765,8 +780,8 @@ if ifKoopmanPhases
     plotPhases( Nino34.idx', selectIndNino34, anglesNino34 ) 
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
-    xlim( [ -3 3 ] )
-    ylim( [ -3 3 ] )
+    xlim( PlotLim.nino34 )
+    ylim( PlotLim.nino34 )
 
     % Plot generator phases
     set( gcf, 'currentAxes', ax( 2 ) )
@@ -820,8 +835,8 @@ if ifNLSAEquivariance
         plotPhaseEvolution( Nino34.idx', selectIndNino34, anglesNino34, ...
                             phase0, leads( iLead ) ) 
         xlabel( 'Nino 3.4' )
-        xlim( [ -3 3 ] )
-        ylim( [ -3 3 ] )
+        xlim( PlotLim.nino34 )
+        ylim( PlotLim.nino34 )
         if iLead > 1 
             yticklabels( [] )
         else
@@ -887,8 +902,8 @@ if ifKoopmanEquivariance
         plotPhaseEvolution( Nino34.idx', selectIndNino34, anglesNino34, ...
                             phase0, leads( iLead ) ) 
         xlabel( 'Nino 3.4' )
-        xlim( [ -3 3 ] )
-        ylim( [ -3 3 ] )
+        xlim( PlotLim.nino34 )
+        ylim( PlotLim.nino34 )
         if iLead > 1 
             yticklabels( [] )
         else

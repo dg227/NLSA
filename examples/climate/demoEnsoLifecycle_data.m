@@ -11,7 +11,7 @@ function demoEnsoLifecycle_data( dataset, period, fld )
 %
 % The data is then retrieved and saved on disk using the climateData function. 
 %
-% Modified 2020/04/29
+% Modified 2020/05/06
 
 switch( dataset )
 
@@ -312,8 +312,8 @@ case 'noaa'
 case 'ccsm4Ctrl'
 
     % Input data directory 
-    DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
-    %DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
+    %DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+    DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
 
     % Output data specification
     DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
@@ -550,7 +550,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
-    %% Global convective precipitation data
+    %% Global precipitation data
     case( 'precip' )
 
         % Input data
@@ -561,7 +561,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
         % Output data
-        DataSpecs.Out.fld = 'pratec';      
+        DataSpecs.Out.fld = 'prate';      
 
         % Time specification
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
@@ -577,6 +577,63 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    %% Global zonal wind data
+    case( 'uwind' )
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.U'; 
+        DataSpecs.In.lon  = 'lon';
+        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.var  = 'U';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'uwnd';      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    %% Global meridional wind data
+    case( 'vwind' )
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.V'; 
+        DataSpecs.In.lon  = 'lon';
+        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.var  = 'V';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'vwnd';      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
 
     end
 
