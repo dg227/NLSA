@@ -10,11 +10,15 @@ experiment = 'IPprecip'; % Indo-Pacific precipitation
 
 %% SCRIPT EXECUTION OPTIONS
 % Data extraction
-ifDataPrecip = true;  % extract precipitation data from NetCDF source files  
+ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
 
 % ENSO representations
-ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
-ifKoopman = false; % compute Koopman eigenfunctions
+ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
+ifKoopman = true; % compute Koopman eigenfunctions
+
+%% BATCH PROCESSING
+iProc = 1; % index of batch process for this script
+nProc = 1; % number of batch processes
 
 %% EXTRACT PRECIPITATION RATE DATA
 if ifDataPrecip
@@ -27,7 +31,7 @@ end
 %% BUILD NLSA MODEL, DETERMINE BASIC ARRAY SIZES
 
 disp( 'Building NLSA model...' ); t = tic;
-model = spczRainfall_nlsaModel( dataset, domain, period, inputVars ) 
+model = spczRainfall_nlsaModel( dataset, period, experiment );
 toc( t )
 
 %% PERFORM NLSA

@@ -1,9 +1,8 @@
-function spczRainfall_data( dataset, domain, period, fld )
+function spczRainfall_data( dataset, period, fld )
 % DEMOENSOLIFECYCLE_DATA Helper function to import datasets for ENSO lifecycle
 % analyses.
 %
 % dataset - String identifier for dataset to read. 
-% domain  - String identifier for spatial domain.
 % period  - String identifier for time period. 
 % fld     - String identifier for variable to read. 
 %
@@ -20,8 +19,6 @@ function spczRainfall_data( dataset, domain, period, fld )
 DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data'; 
 % DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
 
-% Input data directory 
-DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, dataset ); 
 
 % Output data specification
 DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
@@ -34,6 +31,9 @@ switch dataset
 
 %%CCSM4 PRE-INDUSTRIAL CONTROL RUN 
 case 'ccsm4Ctrl'
+
+    % Input data directory 
+    DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ccsm4/b40.1850' ); 
 
     % Time specification
     DataSpecs.Time.tStart  = '000101';           % start time in nc file 
@@ -73,13 +73,10 @@ case 'ccsm4Ctrl'
         DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
         DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
-
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifCenterMonth = false;  % remove monthly climatology 
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk

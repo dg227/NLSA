@@ -1,10 +1,12 @@
 function symmetrizeDistances( obj, dist, varargin )
 % SYMMETRIZEDISTANCES Compute symmetric distance matrix from pairwise distances
 % 
-% Modified 2014/01/15
+% Modified 2020/05/09
 
-if ~isa( dist, 'nlsaPairwiseDistance' )
-    error( 'Distance data must be specified as an nlsaPairwiseDistance object' )
+if ~isa( dist, 'nlsaPairwiseDistance' ) || ~isscalar( dist )
+    msgStr = [ 'Distance data must be specified as a scalar ' ...
+               'nlsaPairwiseDistance object. ' ];
+    error( msgStr )
 end
 
 nR   = getNRealization( dist );
@@ -12,6 +14,7 @@ nS   = sum( getNSample( dist ) );
 nB   = getNBatch( dist );
 nNIn = getNNeighbors( dist );
 nN   = getNNeighbors( obj );
+nSN  = nS * nN;
 
 if nN > nNIn
     error( 'Number of nearest neighbors in symmetrized distance cannot exceed the number of source nearest neighbors' )
@@ -42,9 +45,9 @@ fprintf( logId, 'Number of output nearest neighbors = %i \n', nN );
 
 % Allocate distance arrays
 tic
-yVal = zeros( nS * nN, 1 );
-yCol = zeros( nS * nN, 1 );
-yRow = zeros( nS * nN, 1 );
+yVal = zeros( nSN, 1 );
+yCol = zeros( nSN, 1 );
+yRow = zeros( nSN, 1 );
 tWall = toc;
 fprintf( logId, 'ALLOCATE %i nonzero elements \n', nS * nN, tWall );
 
@@ -69,86 +72,68 @@ for iR = 1 : nR
         fprintf( logId, 'READ realization %i/%i, batch %i/%i, samples %i-%i (%i samples) %2.4f \n', ...
                  iR, nR, iB, nB, jLim( 1 ), jLim( 2 ), nSB, tWall );
 
+        % trim nearest neighbors    
         tic  
-        yValSrc         = yValSrc( :, 1 : nN )'; % trim nearest neighbors    
-        yIndSrc         = yIndSrc( :, 1 : nN )';
-        yVal( indLim( 1 ) : indLim( 2 ) ) = reshape( yValSrc, [ nN * nSB, 1 ] );
-        yCol( indLim( 1 ) : indLim( 2 ) ) = double( reshape( yIndSrc, [ nN * nSB, 1 ] ) );
+        nSBN    = nSB * nN;
+        yValTrm = yValSrc( :, 1 : nN )'; 
+        yIndTrm = yIndSrc( :, 1 : nN )';
+        yVal( indLim( 1 ) : indLim( 2 ) ) = reshape( yValTrm, [ nSBN 1 ] );
+        yCol( indLim( 1 ) : indLim( 2 ) ) = reshape( yIndTrm, [ nSBN 1 ] );
         tWall = toc;
         fprintf( logId, 'TRIM realization %i/%i, batch %i/%i, %i -> %i nearest neighbors %2.4f \n', iR, nR, iB, nB, nNIn, nN, tWall );
         iBG = iBG + 1;
     end
 end
-clear yValSrc yIndSrc
+clear yValSrc yIndSrc yValTrm yIndTrm
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Find the nonzero entries in the non-symmetric distances 
+% Find the zero and nonzero entries in the non-symmetric distances.
+% Flag the zero entries with -Inf
 
 tic
 yRow   = ones( nN, 1 ) * ( 1 : nS );
-yRow   = reshape( yRow, nS * nN, 1 );
-ifZero = yVal < 1E-6;
-yRowNZ = yRow( ~ifZero );
-yColNZ = yCol( ~ifZero );
-yValNZ = sqrt( yVal( ~ifZero ) );
-nNZ    = numel( yRowNZ );
-clear yVal
-yRow = yRow( ifZero );
-yCol = yCol( ifZero );
-nZ   = numel( yRow );
+yRow   = reshape( yRow, nSN, 1 );
+ifZero = yVal <= 0;
+nZ     = nnz( ifZero );
+nNZ    = nSN - nZ;
+
+yVal( ifZero ) = 0;
+yVal           = sqrt( yVal );
+yVal( ifZero ) = -Inf;
+
 clear ifZero
 tWall = toc;
 
 fprintf( logId, '----------------------------------------------------------------, \n' );
 fprintf( logId, 'ZEROSCAN (non-symmetric distances) %2.4f \n', tWall );
-fprintf( logId, 'Total number of entries    = %i \n', nS * nN );
+fprintf( logId, 'Total number of entries    = %i \n', nSN );
 fprintf( logId, 'Number of nonzero elements = %i \n', nNZ );
 fprintf( logId, 'Number of zero elements    = %i (%i samples ) \n', nZ, nS ); 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Symmetrize distances using an "OR" operation
-
-% Nonzero elements
 tic
-y = sparse( yRowNZ, yColNZ, yValNZ, nS, nS, nNZ );
-clear yRowNZ yColNZ yValNZ
+y = sparse( yRow, yCol, yVal, nS, nS, nSN );
+clear yRow yCol yVal
 y2 = y .* y.'; % y2 contains the squares of the distances
 y  = y .^ 2;
+y( isinf( y ) ) = -Inf; % keep flagging zero distances by -infinity
 y  = y + y' - y2;
 clear y2 % preserve memory
 t = toc;
-[ yRowNZ yColNZ yValNZ ] = find( y );
+[ yRow, yCol, yVal ] = find( y );
 nNZ = nnz( y );  
+yRow = uint32( yRow ); % preserve memory and disk space
+yCol = uint32( yCol );
+yVal( isinf( yVal ) ) = 0; % restore flagged distances to 0
+
 tWall = toc;
 
 fprintf( logId, 'SYMMETRIZATION (nonzero entries) %2.4f \n', tWall );
 fprintf( logId, 'Number of nonzero elements = %i \n', nNZ );
                                       
-% Zero elements
-y    = sparse( yRow, yCol, ones( nZ, 1 ), nS, nS, nZ );
-y2   = y .* y.';
-y    = y + y' - y2;
-clear y2 % preserve memory
-[ yRow yCol yVal ] = find( y );
-yVal( 1 : end ) = 0;
-nZ = nnz( y );
-tWall = toc;
-
-fprintf( logId, 'SYMMETRIZATION (zero entries) %2.4f \n', tWall );
-fprintf( logId, 'Number of zero elements = %i \n', nZ );
-
-tic
-yRow = int32( [ yRow; yRowNZ ] ); % preserve memory and disk space
-clear yRowNZ
-yCol = int32( [ yCol; yColNZ ] );
-clear yColNZ
-yVal = [ yVal; yValNZ ];
-clear yValNZ
-tWall = toc;
-fprintf( logId, 'MERGE %i nonzero entries, %i zero entries %2.4f \n', nNZ, nZ, tWall );
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Save calculation results
