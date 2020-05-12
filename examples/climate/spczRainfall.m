@@ -3,9 +3,12 @@
 % Modified 2020/05/08
 
 %% DATA SPECIFICATION 
-dataset    = 'ccsm4Ctrl';
-period     = '200yr'; 
-experiment = 'IPprecip'; % Indo-Pacific precipitation
+%dataset    = 'ccsm4Ctrl';
+%period     = '200yr'; 
+dataset    = 'noaa';
+%period     = 'satellite'; 
+%experiment = 'IPPrecip';   % Indo-Pacific precipitation
+experiment = 'PacPrecip'; % Pacific precipitation
 
 
 %% SCRIPT EXECUTION OPTIONS
@@ -24,7 +27,7 @@ nProc = 1; % number of batch processes
 if ifDataPrecip
 
     disp( 'Reading precipitation rate data...' ); t = tic; 
-    spczRainfall_data( dataset, period, 'IPprecip' )
+    spczRainfall_data( dataset, period, experiment )
     toc( t )
 end
 

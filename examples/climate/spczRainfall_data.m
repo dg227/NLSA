@@ -11,7 +11,7 @@ function spczRainfall_data( dataset, period, fld )
 %
 % The data is then retrieved and saved on disk using the climateData function. 
 %
-% Modified 2020/05/08
+% Modified 2020/05/09
 
 %% GLOBAL DATA SPECIFICATIONS
 
@@ -28,6 +28,81 @@ DataSpecs.Time.tFormat = 'yyyymm';              % time format
 
 switch dataset
 
+%% NOAA/CMAP REANALYSIS DATA
+case 'noaa'
+
+    % Input data directory 
+    DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'noaa' ); 
+
+    % Time specification
+    DataSpecs.Time.tStart  = '197901';           % start time in nc file 
+
+    switch( period )
+
+    % Satellite era
+    case 'satellite' 
+
+        DataSpecs.Time.tLim    = { '197901' '201912' }; % time limits
+        DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
+
+    otherwise
+        error( 'Invalid period.' )
+    end
+
+    switch( fld )
+
+    %% Indo-Pacific precipitation
+    case 'IPPrecip'
+
+        % Input data
+        DataSpecs.In.file = 'CMAP_extended.nc'; 
+        DataSpecs.In.lon  = 'lon';
+        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.var  = 'precip';
+
+        % Output data
+        DataSpecs.Out.fld = 'prate';      
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
+        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = false;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    %% Pacific precipitation
+    case 'PacPrecip'
+
+        % Input data
+        DataSpecs.In.file = 'CMAP_extended.nc'; 
+        DataSpecs.In.lon  = 'lon';
+        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.var  = 'precip';
+
+        % Output data
+        DataSpecs.Out.fld = 'prate';      
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 135 270 ]; % longitude limits
+        DataSpecs.Domain.yLim = [ -35 35 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = false;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    otherwise
+        error( 'Invalid variable.' )
+
+    end
 
 %%CCSM4 PRE-INDUSTRIAL CONTROL RUN 
 case 'ccsm4Ctrl'
@@ -51,13 +126,17 @@ case 'ccsm4Ctrl'
 
         DataSpecs.Time.tLim    = { '000101' '130012' }; % time limits
         DataSpecs.Time.tClim   = DataSpecs.Time.tLim;   % climatology 
+
+    otherwise
+        error( 'Invalid period.' )
+
     end
 
 
     switch( fld )
 
     %% Indo-Pacific precipitation
-    case 'IPprecip'
+    case 'IPPrecip'
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.PREC'; 
@@ -81,7 +160,40 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+    %% Pacific precipitation
+    case 'PacPrecip'
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.PREC'; 
+        DataSpecs.In.lon  = 'lon';
+        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.var  = 'PREC';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'prate';      
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 135 270 ]; % longitude limits
+        DataSpecs.Domain.yLim = [ -35 35 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = false;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+    otherwise
+
+        error( 'Invalid variable.' )
+
     end
+
+otherwise
+
+    error( 'Invalid dataset.' )
 end
 
 % Read data
