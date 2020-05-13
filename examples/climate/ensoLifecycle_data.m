@@ -39,6 +39,10 @@ case 'noaa'
 
         DataSpecs.Time.tLim    = { '197001' '201906' }; % time limits
         DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
+
+    otherwise
+
+        error( 'Invalid period' )
     end
 
     switch( fld )
@@ -333,6 +337,9 @@ case 'ccsm4Ctrl'
 
         DataSpecs.Time.tLim    = { '000101' '130012' }; % time limits
         DataSpecs.Time.tClim   = DataSpecs.Time.tLim;   % climatology 
+
+    otherwise
+        error( 'Invalid period' )
     end
 
 
@@ -490,11 +497,41 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+    %% Global SST
+    case( 'SST' )
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.lon  = 'TLONG';
+        DataSpecs.In.lat  = 'TLAT';
+        DataSpecs.In.area = 'TAREA';
+        DataSpecs.In.msk  = 'REGION_MASK';
+        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'sst';
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
     %% Global SSH
     case( 'SSH' )
 
         % Input data
-        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SSH'; 
         DataSpecs.In.lon  = 'TLONG';
         DataSpecs.In.lat  = 'TLAT';
         DataSpecs.In.area = 'TAREA';
@@ -519,6 +556,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+
 
     %% Global SAT
     case( 'SAT' )
@@ -582,11 +621,11 @@ case 'ccsm4Ctrl'
     case( 'uwind' )
 
         % Input data
-        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.U'; 
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.USurf'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
-        DataSpecs.In.var  = 'USur';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.var  = 'U';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'USurf' ); 
 
         % Output data
         DataSpecs.Out.fld = 'uwnd';      
@@ -610,11 +649,11 @@ case 'ccsm4Ctrl'
     case( 'vwind' )
 
         % Input data
-        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.V'; 
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.VSurf'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
-        DataSpecs.In.var  = 'VSurf';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.var  = 'V';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'VSurf' ); 
 
         % Output data
         DataSpecs.Out.fld = 'vwnd';      

@@ -1,7 +1,7 @@
 % RECONSTRUCT THE LIFECYCLE OF THE EL NINO SOUTHERN OSCILLATION (ENSO) 
 % USING DATA-DRIVEN SPECTRAL ANALYSIS OF KOOPMAN/TRANSFER OPERATORS
 %
-% Modified 2020/05/12
+% Modified 2020/05/13
 
 %% DATA SPECIFICATION 
 dataset   = 'ccsm4Ctrl';    % CCSM4 pre-industrial control run
@@ -21,7 +21,7 @@ ifDataSST    = false;  % extract SST data from NetCDF source files
 ifDataSSH    = false;  % extract SSH data from NetCDF source files
 ifDataSAT    = false;  % extract SAT data from NetCDF source files
 ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
-ifDataWind   = true;   % extract 10m wind data from NetCDF source files  
+ifDataWind   = false;   % extract 10m wind data from NetCDF source files  
 
 % ENSO representations
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
@@ -29,26 +29,30 @@ ifKoopman = false; % compute Koopman eigenfunctions
 ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
 ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
 ifNLSAComposites    = true; % compute phase composites based on NLSA
 ifKoopmanComposites = true; % compute phase composites based on Koopman
 
-% Output options
-ifPlotWind = true; % overlay composites with quiver plot of surface winds 
-ifPrintFig = true;  % print figures to file
+% Output/plotting options
+ifPlotWind       = true;    % overlay quiver plot of surface winds 
+ifPrintFig       = true;    % print figures to file
+compositesDomain = 'globe'; % global domain
+compositesDomain = 'Pacific'; % Pacific
+
 
 %% GLOBAL PARAMETERS
-% The following parameters are defined:
+% The following variables are defined:
+% experiment:   String identifier for data analysis experiment
 % nShiftNino:   Temporal shift to obtain 2D Nino index
 % phase0:       Start phase in equivariance plots
 % leads:        Leads (in months) for equivariance plots
@@ -57,36 +61,14 @@ ifPrintFig = true;  % print figures to file
 % idxZEnso:     ENSO eigenfunction fro generator      
 % phaseZ:       Phase multpiplication factor (for consistency with Nino)
 % nSamplePhase: Number of samples per ENSO phase
-% period:       String identifier for time period
-% pRateScl:     Unit conversion for precipitation plots
+% figDir:       Output directory for plots
 
 nShiftNino   = 11;        
 phase0       = 4;         
 leads        = [ 0 6 12 18 24 ]; 
 
 experiment = { dataset period sourceVar };
-experiment = strjoin_e( experiment );
-
-switch dataset
-    
-% NOAA 20th century reanalysis 
-case 'noaa'
-
-    PlotLim.nino4  = [ -3 3 ];
-    PlotLim.nino34 = [ -3 3 ];
-    PlotLim.nino3  = [ -3 3 ];
-    PlotLim.nino12 = [ -4 4 ];
-
-case 'ccsm4Ctrl'
-
-    PlotLim.nino4  = [ -3.5 3.5 ];
-    PlotLim.nino34 = [ -4 4 ];
-    PlotLim.nino3  = [ -4 4 ];
-    PlotLim.nino12 = [ -4.5 4.5 ];
-
-otherwise
-    error( 'Invalid dataset' )
-end
+experiment = strjoin_e( experiment, '_' );
 
 
 switch experiment
@@ -101,8 +83,7 @@ case 'noaa_industrial_IPSST_4yrEmb'
     phaseZ        = -1;        
     nPhase       = 8;         
     nSamplePhase = 100;       
-    period       = 'industrial';
-    pRateScl     = 1E5; 
+    PRate.scl     = 1E5; 
 
 % NOAA 20th Century Reanalysis, approximate satellite era, Indo-Pacific SST 
 % input, 4-year delay embeding window  
@@ -114,8 +95,7 @@ case 'noaa_satellite_IPSST_4yrEmb'
     phaseZ       = -1 * exp( i * pi / 4 );        
     nPhase       = 8;         
     nSamplePhase = 30;       
-    period       = 'satellite';
-    pRateScl     = 1E5; 
+    PRate.scl     = 1E5; 
 
 
 % CCSM4 pre-industrial control, 200-year period, Indo-Pacific SST input, 
@@ -128,8 +108,6 @@ case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
     phaseZ       = i;        
     nPhase       = 8;         
     nSamplePhase = 100;       
-    period       = 'industrial';
-    pRateScl     = 1E8; 
 
 % CCSM4 pre-industrial control, 1300-year period, Indo-Pacific SST input, 
 % 4-year delay embeding window  
@@ -141,33 +119,18 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
     phaseZ       = exp( i * pi * ( 17 / 32 + 1 ) );        
     nPhase       = 8;         
     nSamplePhase = 200;       
-    period       = 'millenial';
-    pRateScl     = 1E8; 
 
 otherwise
-    error( 'Invalid dataset' )
+    error( 'Invalid experiment' )
 
 end
 
+% Figure directory
+figDir = fullfile( pwd, 'figs', experiment );
+if ~isdir( figDir )
+    mkdir( figDir )
+end
 
-%% EL NINO/LA NINA EVENTS
-% El Nino/La Nina events to mark up in lifecycle plots (in yyyymm format)
-ElNinos = { { '201511' '201603' } ... 
-            { '199711' '199803' } ...
-            { '199111' '199203' } ...
-            { '198711' '198803' } ...
-            { '198211' '198303' } ...
-            { '197211' '197303' } ...
-            { '196511' '196603' } ...
-            { '195711' '195803' } };
-
-LaNinas = { { '201011' '201103' } ... 
-            { '200711' '200803' } ...
-            { '199911' '200003' } ...
-            { '199811' '199903' } ...
-            { '198811' '198903' } ...
-            { '197511' '197603' } ...
-            { '197311' '197403' } };
 
 
 %% BATCH PROCESSING
@@ -253,7 +216,7 @@ end
 % center of the Takens embedding window eployed in the NLSA kernel. 
 
 disp( 'Building NLSA model...' ); t = tic;
-[ model, In ] = climateNLSAModel( dataset, experiment ); 
+[ model, In ] = ensoLifecycle_nlsaModel( experiment ); 
 toc( t )
 
 nSE          = getNTotalSample( model.embComponent );
@@ -261,20 +224,16 @@ nSB          = getNXB( model.embComponent );
 nShiftTakens = floor( getEmbeddingWindow( model.embComponent ) / 2 );
 
 % Specify the NLSA model components corresponding to the analyzed observables
-iCNino34 = 1; % Nino 3.4 index
-iCNino4  = 2; % Nino 4 index
-iCNino3  = 3; % Nino 3 index
-iCNino12 = 4; % Nino 1+2 index
-iCSST    = 5; % global SST
-iCSAT    = 6; % global SAT
-iCPRate  = 7; % global precipitation rate
-iCUWnd   = 8; % global surface meridional winds
-iCVWnd   = 9; % global surface zonal winds
-
-figDir = fullfile( pwd, 'figs', dataset, experiment );
-if ~isdir( figDir )
-    mkdir( figDir )
-end
+iCNino34 = 1;  % Nino 3.4 index
+iCNino4  = 2;  % Nino 4 index
+iCNino3  = 3;  % Nino 3 index
+iCNino12 = 4;  % Nino 1+2 index
+iCSST    = 5;  % global SST
+iCSSH    = 6;  % global SSH
+iCSAT    = 7;  % global SAT
+iCPRate  = 8;  % global precipitation rate
+iCUWnd   = 9;  % global surface meridional winds
+iCVWnd   = 10; % global surface zonal winds
 
 %% PERFORM NLSA
 if ifNLSA
@@ -369,6 +328,48 @@ if ifNinoIdx
 
     toc( t );
 end
+
+%% PARAMETERS FOR ENSO LIFEYCLE PLOTS
+
+% Plot limits for Nino indices
+switch dataset
+    
+case 'noaa'
+
+    PlotLim.nino4  = [ -3 3 ];
+    PlotLim.nino34 = [ -3 3 ];
+    PlotLim.nino3  = [ -3 3 ];
+    PlotLim.nino12 = [ -4 4 ];
+
+case 'ccsm4Ctrl'
+
+    PlotLim.nino4  = [ -3.5 3.5 ];
+    PlotLim.nino34 = [ -4 4 ];
+    PlotLim.nino3  = [ -4 4 ];
+    PlotLim.nino12 = [ -4.5 4.5 ];
+
+otherwise
+    error( 'Invalid dataset' )
+end
+
+% El Nino/La Nina events to mark up in lifecycle plots (in yyyymm format)
+ElNinos = { { '201511' '201603' } ... 
+            { '199711' '199803' } ...
+            { '199111' '199203' } ...
+            { '198711' '198803' } ...
+            { '198211' '198303' } ...
+            { '197211' '197303' } ...
+            { '196511' '196603' } ...
+            { '195711' '195803' } };
+
+LaNinas = { { '201011' '201103' } ... 
+            { '200711' '200803' } ...
+            { '199911' '200003' } ...
+            { '199811' '199903' } ...
+            { '198811' '198903' } ...
+            { '197511' '197603' } ...
+            { '197311' '197403' } };
+
 
 %% PLOT ENSO LIFECYCLE BASED ON NLSA EIGENFUNCTIONS
 if ifNLSALifecycle
@@ -515,7 +516,7 @@ if ifNLSALifecycle
     if ifPrintFig
         set( gcf, 'invertHardCopy', 'off' )
         figFile = fullfile( figDir, 'figEnsoLifecycleKernel.png' );
-        print( figFile, '-dpng', '-r300' ) 
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
 
@@ -665,7 +666,7 @@ if ifKoopmanLifecycle
     if ifPrintFig
         figFile = fullfile( figDir, 'figEnsoLifecycleGenerator.png' );
         set( gcf, 'invertHardCopy', 'off' )
-        print( figFile, '-dpng', '-r300' ) 
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
 
@@ -736,7 +737,7 @@ if ifNLSAPhases
     % Print figure
     if ifPrintFig
         figFile = fullfile( figDir, 'figEnsoPhasesKernel.png' );
-        print( figFile, '-dpng', '-r300' ) 
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 
 end
@@ -808,7 +809,7 @@ if ifKoopmanPhases
     % Print figure
     if ifPrintFig
         figFile = fullfile( figDir, 'figEnsoPhasesKoopman.png' );
-        print( figFile, '-dpng', '-r300' ) 
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 
 
@@ -877,7 +878,7 @@ if ifNLSAEquivariance
     if ifPrintFig
         figFile = sprintf( 'figEnsoEquivarianceKernel_phase%i.png', phase0 );
         figFile = fullfile( figDir, figFile );
-        print( figFile, '-dpng', '-r300' ) 
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
 
@@ -944,9 +945,111 @@ if ifKoopmanEquivariance
     if ifPrintFig
         figFile = sprintf( 'figEnsoEquivarianceGenerator_phase%i.png', phase0);
         figFile = fullfile( figDir, figFile );
-        print( figFile, '-dpng', '-r300' ) 
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
+
+%% GENERAL PARAMETERS FOR PHASE COMPOSITES
+
+% Parameters that depend on plot domain
+switch compositesDomain
+case 'globe'
+    xLim    = [ 0 359 ]; % longitudde limits
+    yLim    = 70;        %  latitude limits are +/- of this value    
+    aspectR = ( 3 / 4 ) ^ 3; % axis aspect ratio
+case 'tropics'
+    xLim    = [ 0 359 ]; % longitudde limits
+    yLim    = 30;        %  latitude limits are +/- of this value    
+    aspectR = ( 3 / 4 ) ^ 4; % axis aspect ratio
+case 'Pacific'
+    xLim    = [ 100 290 ]; % longitudde limits
+    yLim    = 40;        %  latitude limits are +/- of this value    
+    aspectR = ( 3 / 4 ) ^ 3; % axis aspect ratio
+otherwise
+    error( 'Invalid composites domain' )
+end
+
+
+
+% Figure and axes parameters 
+Fig.units      = 'inches';
+Fig.figWidth   = 13; 
+Fig.deltaX     = .55;
+Fig.deltaX2    = .7;
+Fig.deltaY     = .5;
+Fig.deltaY2    = .5;
+Fig.gapX       = .20;
+Fig.gapY       = .2;
+Fig.gapT       = .25; 
+Fig.nTileX     = 4;
+Fig.nTileY     = nPhase;
+Fig.aspectR    = aspectR;
+Fig.fontName   = 'helvetica';
+Fig.fontSize   = 6;
+Fig.tickLength = [ 0.02 0 ];
+Fig.visible    = 'on';
+Fig.nextPlot   = 'add'; 
+
+% SST field
+% SST.ifXY is logical mask for valid ocean gridpoints
+SST = load( fullfile( model.trgComponent( iCSST ).path, ...
+                      'dataGrid.mat' ) ); 
+SST.xLim = xLim; % longitude plot limits
+SST.yLim = yLim; % latitude plot limits
+SST.cLim    = [ -2 2 ]; % color range
+SST.cOffset = .035; % horizontal offset of colorbar
+SST.cScale  = .4;  % scaling factor for colorbar width  
+SST.ifXTickLabels = true;  
+SST.ifYTickLabels = true;
+    
+% SSH field
+% SSH.ifXY is logical mask for valid ocean gridpoints
+SSH = load( fullfile( model.trgComponent( iCSSH ).path, ...
+                      'dataGrid.mat' ) ); 
+SSH.xLim = xLim; % longitude plot limits
+SSH.yLim = yLim; % latitude plot limits
+SSH.cLim    = [ -15 15 ]; % color range
+SSH.cOffset = .035; % horizontal offset of colorbar
+SSH.cScale  = .4;  % scaling factor for colorbar width  
+SSH.ifXTickLabels = true;  
+SSH.ifYTickLabels = false;
+ 
+
+% SAT field
+% SAT.ifXY is logical mask for valid gridpoints
+SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
+                      'dataGrid.mat' ) ); 
+SAT.xLim = xLim; % longitude plot limits
+SAT.yLim = yLim; % latitude plot limits
+SAT.cLim    = [ -2 2 ]; % color range
+SAT.cOffset = .035; % horizontal offset of colorbar
+SAT.cScale  = .4;  % scaling factor for colorbar width  
+SAT.ifXTickLabels = true;  
+SAT.ifYTickLabels = false;
+ 
+% Precipitation rate field
+% PRate.ifXY is logical mask for valid gridpoints
+PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
+                        'dataGrid.mat' ) ); 
+PRate.xLim = xLim; % longitude plot limits
+PRate.yLim = yLim; % latitude plot limits
+PRate.cLim    = [ -2 2 ]; % color range
+PRate.cOffset = .035; % horizontal offset of colorbar
+PRate.cScale  = .4;  % scaling factor for colorbar width  
+PRate.ifXTickLabels = true;  
+PRate.ifYTickLabels = false;
+switch dataset
+case 'ccsm4Ctrl'
+    PRate.scl     = 1000 * 3600 * 24; % convert from m/s to mm/day 
+    PRate.title   = 'Precip. anomaly (mm/day)';
+end
+
+% Surface wind field
+UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+              'dataGrid.mat' ) ); 
+UVWnd.nSkipX = 10; % zonal downsampling factor for quiver plots
+UVWnd.nSkipY = 10; % meridional downsampling factor for quiver plots
+ 
 
 %% COMPOSITES BASED ON NINO 3.4 INDEX
 % Create a cell array compPhi of size [ 1 nC ] where nC is the number of 
@@ -969,73 +1072,11 @@ if ifNinoComposites
 
     toc( t )
 
-    % Set up figure and axes 
-    Fig.units      = 'inches';
-    Fig.figWidth   = 10; 
-    Fig.deltaX     = .55;
-    Fig.deltaX2    = .7;
-    Fig.deltaY     = .5;
-    Fig.deltaY2    = .5;
-    Fig.gapX       = .20;
-    Fig.gapY       = .2;
-    Fig.gapT       = .25; 
-    Fig.nTileX     = 3;
-    Fig.nTileY     = nPhase;
-    Fig.aspectR    = ( 3 / 4 ) ^ 3;
-    Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 6;
-    Fig.tickLength = [ 0.02 0 ];
-    Fig.visible    = 'on';
-    Fig.nextPlot   = 'add'; 
-
     [ fig, ax, axTitle ] = tileAxes( Fig );
 
     colormap( redblue )
 
-    % Retrieve grid data for SST field
-    % SST.ifXY is logical mask for valid ocean gridpoints
-    SST = load( fullfile( model.trgComponent( iCSST ).path, ...
-                          'dataGrid.mat' ) ); 
-    SST.xLim = [ min( SST.lon ) max( SST.lon ) ]; % longitude plot limits
-    SST.yLim = [ min( SST.lat ) max( SST.lat ) ]; % latitude plot limits
-    SST.cLim    = [ -2 2 ]; % color range
-    SST.cOffset = .05; % horizontal offset of colorbar
-    SST.cScale  = .4;  % scaling factor for colorbar width  
-    SST.ifXTickLabels = true;  
-    SST.ifYTickLabels = true;
-    
-    % Retrieve grid data for SAT field
-    % SAT.ifXY is logical mask for valid gridpoints
-    SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
-                          'dataGrid.mat' ) ); 
-    SAT.xLim = [ min( SAT.lon ) max( SAT.lon ) ]; % longitude plot limits
-    SAT.yLim = [ min( SAT.lat ) max( SAT.lat ) ]; % latitude plot limits
-    SAT.cLim    = [ -2 2 ]; % color range
-    SAT.cOffset = .05; % horizontal offset of colorbar
-    SAT.cScale  = .4;  % scaling factor for colorbar width  
-    SAT.ifXTickLabels = true;  
-    SAT.ifYTickLabels = false;
- 
-    % Retrieve grid data for precipitation rate field
-    % PRate.ifXY is logical mask for valid gridpoints
-    PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
-                            'dataGrid.mat' ) ); 
-    PRate.xLim = [ min( PRate.lon ) max( PRate.lon ) ]; % longitude plot limits
-    PRate.yLim = [ min( PRate.lat ) max( PRate.lat ) ]; % latitude plot limits
-    PRate.cLim    = [ -2 2 ]; % color range
-    PRate.cOffset = .05; % horizontal offset of colorbar
-    PRate.cScale  = .4;  % scaling factor for colorbar width  
-    PRate.ifXTickLabels = true;  
-    PRate.ifYTickLabels = false;
- 
-    % Retrieve grid data for surface wind field
-    if ifPlotWind
-        UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
-                      'dataGrid.mat' ) ); 
-        UVWnd.nSkipX = 5;
-        UVWnd.nSkipY = 5;
-    end
- 
+
     % Loop over the phases
     for iPhase = 1 : nPhase
 
@@ -1059,8 +1100,24 @@ if ifNinoComposites
         lblPos( 1 ) = lblPos( 1 ) - .4;
         set( lbl, 'position', lblPos )
 
-        % SAT phase composites
+        % SSH phase composites
         set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SSH.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( compNino34{ iCSSH }( :, iPhase ), SSH, ...
+                                compNino34{ iCUWnd }( :, iPhase ), ...
+                                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SSH anomaly (cm), surface wind';
+        else
+            plotPhaseComposite( compNino34{ iCSSH }( :, iPhase ), SSH )
+            titleStr = 'SSH anomaly (cm)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % SAT phase composites
+        set( fig, 'currentAxes', ax( 3, iPhase ) )
         SAT.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
             plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT, ...
@@ -1076,18 +1133,18 @@ if ifNinoComposites
         end
 
         % Precipitation rate phase composites
-        set( fig, 'currentAxes', ax( 3, iPhase ) )
+        set( fig, 'currentAxes', ax( 4, iPhase ) )
         PRate.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
             plotPhaseComposite( ...
-                compNino34{ iCPRate }( :, iPhase ) * pRateScl, PRate, ...
+                compNino34{ iCPRate }( :, iPhase ) * PRate.scl, PRate, ...
                 compNino34{ iCUWnd }( :, iPhase ), ...
                 compNino34{ iCVWnd }( :, iPhase ), UVWnd )
-            titleStr = 'PRate anomaly (cg/m^2/s), surface wind';
+            titleStr = [ PRate.title, ', surface wind' ]; 
         else
             plotPhaseComposite( ...
-                compNino34{ iCPRate }( :, iPhase ) * pRateScl, PRate )
-            titleStr = 'PRate anomaly (cg/m^2/s)';
+                compNino34{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+            titleStr = PRate.title;
         end
         if iPhase == 1
             title( titleStr  )
@@ -1098,8 +1155,9 @@ if ifNinoComposites
 
     % Print figure
     if ifPrintFig
-        figFile = fullfile( figDir, 'figEnsoCompositesNino.png' );
-        print( figFile, '-dpng', '-r300' ) 
+        figFile = [ 'figEnsoCompositesNino_' compositesDomain '.png' ];
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
 
@@ -1125,73 +1183,10 @@ if ifNLSAComposites
 
     toc( t )
 
-    % Set up figure and axes 
-    Fig.units      = 'inches';
-    Fig.figWidth   = 10; 
-    Fig.deltaX     = .55;
-    Fig.deltaX2    = .7;
-    Fig.deltaY     = .5;
-    Fig.deltaY2    = .5;
-    Fig.gapX       = .20;
-    Fig.gapY       = .2;
-    Fig.gapT       = .25; 
-    Fig.nTileX     = 3;
-    Fig.nTileY     = nPhase;
-    Fig.aspectR    = ( 3 / 4 ) ^ 3;
-    Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 6;
-    Fig.tickLength = [ 0.02 0 ];
-    Fig.visible    = 'on';
-    Fig.nextPlot   = 'add'; 
-
     [ fig, ax, axTitle ] = tileAxes( Fig );
 
     colormap( redblue )
 
-    % Retrieve grid data for SST field
-    % SST.ifXY is logical mask for valid ocean gridpoints
-    SST = load( fullfile( model.trgComponent( iCSST ).path, ...
-                'dataGrid.mat' ) ); 
-    SST.xLim = [ min( SST.lon ) max( SST.lon ) ]; % longitude plot limits
-    SST.yLim = [ min( SST.lat ) max( SST.lat ) ]; % latitude plot limits
-    SST.cLim    = [ -2 2 ]; % color range
-    SST.cOffset = .05; % horizontal offset of colorbar
-    SST.cScale  = .4;  % scaling factor for colorbar width  
-    SST.ifXTickLabels = true;  
-    SST.ifYTickLabels = true;
-    
-    % Retrieve grid data for SAT field
-    % SAT.ifXY is logical mask for valid gridpoints
-    SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
-                'dataGrid.mat' ) ); 
-    SAT.xLim = [ min( SAT.lon ) max( SAT.lon ) ]; % longitude plot limits
-    SAT.yLim = [ min( SAT.lat ) max( SAT.lat ) ]; % latitude plot limits
-    SAT.cLim    = [ -2 2 ]; % color range
-    SAT.cOffset = .05; % horizontal offset of colorbar
-    SAT.cScale  = .4;  % scaling factor for colorbar width  
-    SAT.ifXTickLabels = true;  
-    SAT.ifYTickLabels = false;
- 
-    % Retrieve grid data for precipitation rate field
-    % PRate.ifXY is logical mask for valid gridpoints
-    PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
-                  'dataGrid.mat' ) ); 
-    PRate.xLim = [ min( PRate.lon ) max( PRate.lon ) ]; % longitude plot limits
-    PRate.yLim = [ min( PRate.lat ) max( PRate.lat ) ]; % latitude plot limits
-    PRate.cLim    = [ -2 2 ]; % color range
-    PRate.cOffset = .05; % horizontal offset of colorbar
-    PRate.cScale  = .4;  % scaling factor for colorbar width  
-    PRate.ifXTickLabels = true;  
-    PRate.ifYTickLabels = false;
- 
-    % Retrieve grid data for surface wind field
-    if ifPlotWind
-        UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
-                      'dataGrid.mat' ) ); 
-        UVWnd.nSkipX = 5;
-        UVWnd.nSkipY = 5;
-    end
- 
     % Loop over the phases
     for iPhase = 1 : nPhase
 
@@ -1215,8 +1210,26 @@ if ifNLSAComposites
         lblPos( 1 ) = lblPos( 1 ) - .4;
         set( lbl, 'position', lblPos )
 
-        % SAT phase composites
+        % SSH phase composites
         set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SSH.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( compPhi{ iCSSH }( :, iPhase ), SSH, ...
+                                compPhi{ iCUWnd }( :, iPhase ), ...
+                                compPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SSH anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compPhi{ iCSSH }( :, iPhase ), SSH );
+            titleStr = 'SSH anomaly (cm)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+
+
+        % SAT phase composites
+        set( fig, 'currentAxes', ax( 3, iPhase ) )
         SAT.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
             plotPhaseComposite( compPhi{ iCSAT }( :, iPhase ), SAT, ...
@@ -1232,18 +1245,18 @@ if ifNLSAComposites
         end
 
         % Precipitation rate phase composites
-        set( fig, 'currentAxes', ax( 3, iPhase ) )
+        set( fig, 'currentAxes', ax( 4, iPhase ) )
         PRate.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
             plotPhaseComposite( ...
-                compPhi{ iCPRate }( :, iPhase ) * pRateScl, PRate, ...
+                compPhi{ iCPRate }( :, iPhase ) * PRate.scl, PRate, ...
                 compPhi{ iCUWnd }( :, iPhase ), ...
                 compPhi{ iCVWnd }( :, iPhase ), UVWnd )
-            titleStr = 'PRate anomaly (cg/m^2/s), surface wind';
+            titleStr = [ PRate.title, ', surface wind' ]; 
         else
             plotPhaseComposite( ...
-                compPhi{ iCPRate }( :, iPhase ) * pRateScl, PRate )
-            titleStr = 'PRate anomaly (cg/m^2/s)';
+                compPhi{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+            titleStr = PRate.title;
         end
         if iPhase == 1
             title( titleStr  )
@@ -1254,8 +1267,9 @@ if ifNLSAComposites
 
     % Print figure
     if ifPrintFig
-        figFile = fullfile( figDir, 'figEnsoCompositesKernel.png' );
-        print( figFile, '-dpng', '-r300' ) 
+        figFile = [ 'figEnsoCompositesKernel_' compositesDomain '.png' ];
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
 
@@ -1280,73 +1294,10 @@ if ifKoopmanComposites
 
     toc( t )
 
-    % Set up figure and axes 
-    Fig.units      = 'inches';
-    Fig.figWidth   = 10; 
-    Fig.deltaX     = .55;
-    Fig.deltaX2    = .7;
-    Fig.deltaY     = .5;
-    Fig.deltaY2    = .5;
-    Fig.gapX       = .20;
-    Fig.gapY       = .2;
-    Fig.gapT       = .25; 
-    Fig.nTileX     = 3;
-    Fig.nTileY     = nPhase;
-    Fig.aspectR    = ( 3 / 4 ) ^ 3;
-    Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 6;
-    Fig.tickLength = [ 0.02 0 ];
-    Fig.visible    = 'on';
-    Fig.nextPlot   = 'add'; 
-
     [ fig, ax, axTitle ] = tileAxes( Fig );
 
     colormap( redblue )
 
-    % Retrieve grid data for SST field
-    % SST.ifXY is logical mask for valid ocean gridpoints
-    SST = load( fullfile( model.trgComponent( iCSST ).path, ...
-                          'dataGrid.mat' ) ); 
-    SST.xLim = [ min( SST.lon ) max( SST.lon ) ]; % longitude plot limits
-    SST.yLim = [ min( SST.lat ) max( SST.lat ) ]; % latitude plot limits
-    SST.cLim    = [ -2 2 ]; % color range
-    SST.cOffset = .05; % horizontal offset of colorbar
-    SST.cScale  = .4;  % scaling factor for colorbar width  
-    SST.ifXTickLabels = true;  
-    SST.ifYTickLabels = true;
-    
-    % Retrieve grid data for SAT field
-    % SAT.ifXY is logical mask for valid gridpoints
-    SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
-                          'dataGrid.mat' ) ); 
-    SAT.xLim = [ min( SAT.lon ) max( SAT.lon ) ]; % longitude plot limits
-    SAT.yLim = [ min( SAT.lat ) max( SAT.lat ) ]; % latitude plot limits
-    SAT.cLim    = [ -2 2 ]; % color range
-    SAT.cOffset = .05; % horizontal offset of colorbar
-    SAT.cScale  = .4;  % scaling factor for colorbar width  
-    SAT.ifXTickLabels = true;  
-    SAT.ifYTickLabels = false;
- 
-    % Retrieve grid data for precipitation rate field
-    % PRate.ifXY is logical mask for valid gridpoints
-    PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
-                            'dataGrid.mat' ) ); 
-    PRate.xLim = [ min( PRate.lon ) max( PRate.lon ) ]; % longitude plot limits
-    PRate.yLim = [ min( PRate.lat ) max( PRate.lat ) ]; % latitude plot limits
-    PRate.cLim    = [ -2 2 ]; % color range
-    PRate.cOffset = .05; % horizontal offset of colorbar
-    PRate.cScale  = .4;  % scaling factor for colorbar width  
-    PRate.ifXTickLabels = true;  
-    PRate.ifYTickLabels = false;
- 
-    % Retrieve grid data for surface wind field
-    if ifPlotWind
-        UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
-                      'dataGrid.mat' ) ); 
-        UVWnd.nSkipX = 5;
-        UVWnd.nSkipY = 5;
-    end
- 
     % Loop over the phases
     for iPhase = 1 : nPhase
 
@@ -1370,8 +1321,24 @@ if ifKoopmanComposites
         lblPos( 1 ) = lblPos( 1 ) - .4;
         set( lbl, 'position', lblPos )
 
-        % SAT phase composites
+        % SSH phase composites
         set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SSH.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSSH }( :, iPhase ), SSH, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SSH anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZ{ iCSSH }( :, iPhase ), SSH );
+            titleStr = 'SSH anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % SAT phase composites
+        set( fig, 'currentAxes', ax( 3, iPhase ) )
         SAT.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
             plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT, ...
@@ -1387,18 +1354,18 @@ if ifKoopmanComposites
         end
 
         % Precipitation rate phase composites
-        set( fig, 'currentAxes', ax( 3, iPhase ) )
+        set( fig, 'currentAxes', ax( 4, iPhase ) )
         PRate.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
             plotPhaseComposite( ...
-                compZ{ iCPRate }( :, iPhase ) * pRateScl, PRate, ...
+                compZ{ iCPRate }( :, iPhase ) * PRate.scl, PRate, ...
                 compZ{ iCUWnd }( :, iPhase ), ... 
                 compZ{ iCVWnd }( :, iPhase ), UVWnd )
-            titleStr = 'PRate anomaly (cg/m^2/s), surface wind';
+            titleStr = [ PRate.title, ', surface wind' ]; 
         else
             plotPhaseComposite( ...
-                compZ{ iCPRate }( :, iPhase ) * pRateScl, PRate )
-            titleStr = 'PRate anomaly (cg/m^2/s)';
+                compZ{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+            titleStr = PRate.title;
         end
         if iPhase == 1
             title( titleStr  )
@@ -1409,8 +1376,9 @@ if ifKoopmanComposites
 
     % Print figure
     if ifPrintFig
-        figFile = fullfile( figDir, 'figEnsoCompositesGenerator.png' );
-        print( figFile, '-dpng', '-r300' ) 
+        figFile = [ 'figEnsoCompositesGenerator_' compositesDomain '.png' ];
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
 
@@ -1552,7 +1520,7 @@ if SGrd.ifYTickLabels
 else
     yTickLabelsArg = { 'yTickLabels' [] };
 end
-m_proj( 'Miller cylindrical', 'lat',  70, 'long', [ 0 359 ] );
+m_proj( 'Miller cylindrical', 'long',  SGrd.xLim, 'lat', SGrd.yLim );
 if ~isvector( SGrd.lon )
     SGrd.lon = SGrd.lon';
     SGrd.lat = SGrd.lat';

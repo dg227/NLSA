@@ -27,6 +27,8 @@ function [ model, In, Out ] = ensoLifecycle_nlsaModel( experiment )
 % Component 8:  Global precipitation rates
 % Component 9:  Global surface zonal winds
 % Component 10: Global surface meridional winds
+% 
+% Modified 2020/05/13
 
 if nargin == 0
     experiment = 'noaa_industrial_IPSST_4yrEmb';
@@ -154,7 +156,7 @@ case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
     % Time specification
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '000101' '019912' }; % time limit  
-    In.Res( 1 ).tCLim = In.Res( 1 ).tClim;     % climatology limits 
+    In.Res( 1 ).tClim = In.Res( 1 ).tLim;     % climatology limits 
 
     % Source data specification 
     In.Src( 1 ).field = 'sstw';      % physical field
@@ -213,7 +215,7 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
     % Time specification
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '000101' '130012' }; % time limit  
-    In.Res( 1 ).tCLim = In.Res( 1 ).tClim;     % climatology limits 
+    In.Res( 1 ).tClim = In.Res( 1 ).tLim;     % climatology limits 
 
     % Source data specification 
     In.Src( 1 ).field = 'sstw';      % physical field
@@ -300,32 +302,32 @@ In.Trg( 4 ).field = [ 'sstmawav' climStr ]; % physical field
 In.Trg( 4 ).xLim  = [ 270 280 ];            % longitude limits
 In.Trg( 4 ).yLim  = [ -10 0 ];              % latitude limits
 
-% Global SST field
+% Global SST anomalies
 In.Trg( 5 ).field = [ 'sstma' climStr ]; % physical field
 In.Trg( 5 ).xLim  = [ 0 359 ];           % longitude limits
 In.Trg( 5 ).yLim  = [ -89 89 ];          % latitude limits
 
-% Global SSH field
-In.Trg( 6 ).field = [ 'ssh' climStr ]; % physical field
-In.Trg( 6 ).xLim  = [ 0 359 ];         % longitude limits
-In.Trg( 6 ).yLim  = [ -89 89 ];        % latitude limits
+% Global SSH anomalies
+In.Trg( 6 ).field = [ 'sshma' climStr ]; % physical field
+In.Trg( 6 ).xLim  = [ 0 359 ];          % longitude limits
+In.Trg( 6 ).yLim  = [ -89 89 ] ;        % latitude limits
 
-% Global SAT field
+% Global SAT anomalies
 In.Trg( 7 ).field = [ 'airma' climStr ]; % physical field
 In.Trg( 7 ).xLim  = [ 0 359 ];           % longitude limits
 In.Trg( 7 ).yLim  = [ -89 89 ];          % latitude limits
         
-% Global precipitation field
+% Global precipitation anomalies
 In.Trg( 8 ).field = [ 'pratema' climStr ]; % physical field
 In.Trg( 8 ).xLim  = [ 0 359 ];             % longitude limits
 In.Trg( 8 ).yLim  = [ -89 89 ];            % latitude limits
 
-% Global surface zonal wind field 
+% Global surface zonal wind anomalies 
 In.Trg( 9 ).field = [ 'uwndma' climStr ]; % physical field
 In.Trg( 9 ).xLim  = [ 0 359 ];            % longitude limits
 In.Trg( 9 ).yLim  = [ -89 89 ];           % latitude limits
 
-% Global surface meridional wind field
+% Global surface meridional wind anomalies
 In.Trg( 10 ).field = [ 'vwndma' climStr ]; % physical field
 In.Trg( 10 ).xLim  = [ 0 359 ];            % longitude limits
 In.Trg( 10 ).yLim  = [ -89 89 ];           % latitude limits
@@ -337,12 +339,12 @@ In.targetRealizationName = '187001-201906';
 % Prepare dalay-embedding parameters for target data
 for iCT = 1 : numel( In.Trg )
         
-    In.Trg( 1 ).idxE      = 1 : nETrg;  % delay embedding indices 
-    In.Trg( 1 ).nXB       = 1;          % before main interval
-    In.Trg( 1 ).nXA       = 0;          % samples after main interval
-    In.Trg( 1 ).fdOrder   = 0;          % finite-difference order 
-    In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
-    In.Trg( 1 ).embFormat = 'overlap';  % storage format
+    In.Trg( iCT ).idxE      = 1 : nETrg;  % delay embedding indices 
+    In.Trg( iCT ).nXB       = 1;          % before main interval
+    In.Trg( iCT ).nXA       = 0;          % samples after main interval
+    In.Trg( iCT ).fdOrder   = 0;          % finite-difference order 
+    In.Trg( iCT ).fdType    = 'backward'; % finite-difference type
+    In.Trg( iCT ).embFormat = 'overlap';  % storage format
 end
 
 
