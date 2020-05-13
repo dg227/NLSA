@@ -37,11 +37,12 @@ ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
 ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
 ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
 ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+ifKoopmanSpectrum     = true;  % plot generator spectrum
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = false;     % weigh composites by adjacent phases
@@ -63,6 +64,8 @@ compositesDomain  = 'Pacific'; % Pacific
 % phaseZ:       Phase multpiplication factor (for consistency with Nino)
 % nSamplePhase: Number of samples per ENSO phase
 % figDir:       Output directory for plots
+% markSpec:     Marked eigenvalues in Koopman spectral plots
+% specLegend:   Legend text for marked eigenvalues
 
 nShiftNino   = 11;        
 phase0       = 4;         
@@ -109,6 +112,18 @@ case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
     phaseZ       = i;        
     nPhase       = 8;         
     nSamplePhase = 100;       
+
+    markSpec = { 1          ... % constant
+                 [ 2 3 ]    ... % annual
+                 [ 4 5 ]    ... % semiannual
+                 [ 6 7 ]    ... % ENSO
+                 [ 8 : 13 ] ... % ENSO combination
+                 };
+    specLegend = { 'mean' ... 
+                   'annual' ...
+                   'semiannual' ...
+                   'ENSO' ...
+                   'ENSO combination' };
 
 % CCSM4 pre-industrial control, 1300-year period, Indo-Pacific SST input, 
 % 4-year delay embeding window  
@@ -951,6 +966,68 @@ if ifKoopmanEquivariance
         print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
+
+%% PLOT OF GENERATOR SPECTRUM
+if ifKoopmanSpectrum
+
+    nLead = numel( leads );  
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 4; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .5;
+    Fig.gapX       = .20;
+    Fig.gapY       = .5;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = 1;
+    Fig.nTileY     = 1;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    c = distinguishable_colors( 5 );
+    c = c( [ 4 1 2 3 5 ], : );
+
+    % Get generator eigenfrequencies in units of 1 / year
+    gamma = getEigenvalues( model.koopmanOp ) * 12 / 2 / pi; 
+
+    % Plot marked eigenvalues
+    ifMarked = false( size( gamma ) );
+    for iMark = 1 : numel( markSpec )
+        ifMarked( markSpec{ iMark } ) = true;
+        plot( real( gamma( markSpec{ iMark } ) ), ...
+              imag( gamma( markSpec{ iMark } ) ), '.', 'markersize', 15, ...
+              'color', c( iMark, : ) )
+    end
+    
+    % Plot unmarked eigenvalues
+    plot( real( gamma( ~ifMarked ) ), imag( gamma( ~ifMarked ) ), ...
+          '.', 'markerSize', 10, 'color', [ .5 .5 .5 ] )
+
+    grid on
+    xlim( [ -3 .1 ] )
+    title( 'Generator spectrum' )
+    ylabel( 'frequency (1/y)' )
+    xlabel( 'decay rate (arbitrary units)' )
+    legend( specLegend, 'location', 'northWest' )
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figGeneratorSpectrum.png'  );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+
+end
+
+
 
 %% GENERAL PARAMETERS FOR PHASE COMPOSITES
 
