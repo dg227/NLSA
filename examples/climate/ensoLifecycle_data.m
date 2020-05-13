@@ -11,7 +11,7 @@ function demoEnsoLifecycle_data( dataset, period, fld )
 %
 % The data is then retrieved and saved on disk using the climateData function. 
 %
-% Modified 2020/05/06
+% Modified 2020/05/11
 
 switch( dataset )
 
@@ -312,8 +312,8 @@ case 'noaa'
 case 'ccsm4Ctrl'
 
     % Input data directory 
-    %DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
-    DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
+    DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+    %DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
 
     % Output data specification
     DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
@@ -323,13 +323,13 @@ case 'ccsm4Ctrl'
     switch( period )
 
     % Time period comparable to industrial era
-    case 'industrial' 
+    case '200yr' 
 
         DataSpecs.Time.tLim    = { '000101' '019912' }; % time limits
         DataSpecs.Time.tClim   = DataSpecs.Time.tLim;  % climatology 
 
     % Full 1300-yr control integration
-    case 'millenial'
+    case '1300yr'
 
         DataSpecs.Time.tLim    = { '000101' '130012' }; % time limits
         DataSpecs.Time.tClim   = DataSpecs.Time.tLim;   % climatology 
@@ -490,8 +490,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-    %% Global SST
-    case( 'SST' )
+    %% Global SSH
+    case( 'SSH' )
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
@@ -499,11 +499,11 @@ case 'ccsm4Ctrl'
         DataSpecs.In.lat  = 'TLAT';
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
-        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.var  = 'SSH';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
         % Output data
-        DataSpecs.Out.fld = 'sst';
+        DataSpecs.Out.fld = 'ssh';
 
         % Time specification
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
@@ -585,7 +585,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.U'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
-        DataSpecs.In.var  = 'U';
+        DataSpecs.In.var  = 'USur';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
         % Output data
@@ -613,7 +613,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.V'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
-        DataSpecs.In.var  = 'V';
+        DataSpecs.In.var  = 'VSurf';
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
 
         % Output data
@@ -640,4 +640,4 @@ case 'ccsm4Ctrl'
 end
 
 % Read data
-climateData( dataset, DataSpecs ) 
+importData( dataset, DataSpecs ) 

@@ -1,5 +1,5 @@
-function Data = climateData( dataset, DataSpecs )
-% CLIMATEDATA Read climate datasets and output in Matlab format appropriate for
+function Data = importData( dataset, DataSpecs )
+% IMPORTDATA Read climate datasets and output in Matlab format appropriate for
 % NLSA code. 
 %
 % Input arguments:
@@ -23,38 +23,38 @@ function Data = climateData( dataset, DataSpecs )
 % Data:         A data structure containing the data retrived along with 
 %               associated attributes.
 %
-% Modified 2020/04/29
+% Modified 2020/05/12
 
 switch dataset
 case 'noaa'
     if nargout > 0 
-        Data = noaaData( DataSpecs );
+        Data = importData_noaa( DataSpecs );
     else
-        noaaData( DataSpecs )
+        importData_noaa( DataSpecs )
     end
 case 'hadisst'
     if nargout > 0
-        Data = hadisstData( DataSpecs );
+        Data = importData_hadisst( DataSpecs );
     else
-        hadisstData( DataSpecs )
+        importData_hadisst( DataSpecs )
     end
 case 'ccsm4Ctrl'
     if nargout > 0 
-        Data = ccsm4CtrlData( DataSpecs );
+        Data = importData_ccsm4Ctrl( DataSpecs );
     else
-        ccsm4CtrlData( DataSpecs )
+        importData_ccsm4Ctrl( DataSpecs )
     end
 case 'gpcp'
     if nargout > 0 
-        Data = gpcpData( DataSpecs );
+        Data = importData_gpcp( DataSpecs );
     else
-        gpcpData( DataSpecs )
+        importData_gpcp( DataSpecs )
     end
 case 'claus'
     if nargout > 0 
-        Data = clausData( DataSpecs );
+        Data = importData_claus( DataSpecs );
     else
-        clausData( DataSpecs )
+        importData_claus( DataSpecs )
     end
 otherwise
     error( 'Invalid dataset' )

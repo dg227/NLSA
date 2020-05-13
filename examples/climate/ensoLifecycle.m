@@ -1,22 +1,27 @@
 % RECONSTRUCT THE LIFECYCLE OF THE EL NINO SOUTHERN OSCILLATION (ENSO) 
 % USING DATA-DRIVEN SPECTRAL ANALYSIS OF KOOPMAN/TRANSFER OPERATORS
 %
-% Modified 2020/05/06
+% Modified 2020/05/12
 
 %% DATA SPECIFICATION 
-dataset    = 'ccsm4Ctrl';                 % CCSM4 pre-industrial control run
-%dataset    = 'noaa';                     % NOAA 20th Century Reanalysis 
-%experiment = 'enso_lifecycle_industrial'; % 200-yr analysis
-%experiment = 'enso_lifecycle_satellite'; % 50-yr  analysis 
-experiment = 'enso_lifecycle_millenial'; % 1300-yr analysis 
+dataset   = 'ccsm4Ctrl';    % CCSM4 pre-industrial control run
+period    = '200yr';        % 200-year analysis 
+%period  = '1300yr';        % 1300-year analysis
+sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
+
+%dataset    = 'noaa';                      % NOAA 20th Century Reanalysis 
+%period    = 'satellite';                  % 1970-present
+%experiment = 'enso_lifecycle_satellite';  % 1870-present 
+%sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
 
 %% SCRIPT EXECUTION OPTIONS
 
 % Data extraction
 ifDataSST    = false;  % extract SST data from NetCDF source files
+ifDataSSH    = false;  % extract SSH data from NetCDF source files
 ifDataSAT    = false;  % extract SAT data from NetCDF source files
 ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
-ifDataWind   = true; % extract 10m wind data from NetCDF source files  
+ifDataWind   = true;   % extract 10m wind data from NetCDF source files  
 
 % ENSO representations
 ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
@@ -42,7 +47,6 @@ ifKoopmanComposites = true; % compute phase composites based on Koopman
 ifPlotWind = true; % overlay composites with quiver plot of surface winds 
 ifPrintFig = true;  % print figures to file
 
-
 %% GLOBAL PARAMETERS
 % The following parameters are defined:
 % nShiftNino:   Temporal shift to obtain 2D Nino index
@@ -60,6 +64,9 @@ nShiftNino   = 11;
 phase0       = 4;         
 leads        = [ 0 6 12 18 24 ]; 
 
+experiment = { dataset period sourceVar };
+experiment = strjoin_e( experiment );
+
 switch dataset
     
 % NOAA 20th century reanalysis 
@@ -70,37 +77,6 @@ case 'noaa'
     PlotLim.nino3  = [ -3 3 ];
     PlotLim.nino12 = [ -4 4 ];
 
-    switch experiment
-        
-    % ENSO recovered from industrial-era Indo-Pacific SST
-    case 'enso_lifecycle_industrial'
-
-        idxPhiEnso   = [ 10 9 ];  
-        signPhi      = [ -1 -1 ]; 
-        idxZEnso     = 9;         
-        phaseZ        = -1;        
-        nPhase       = 8;         
-        nSamplePhase = 100;       
-        period       = 'industrial';
-        pRateScl     = 1E5; 
-
-    % ENSO recovered from satellite-era Indo-Pacific SST
-    case 'enso_lifecycle_satellite'
-
-        idxPhiEnso   = [ 8 7 ];  
-        signPhi      = [ 1 -1 ]; 
-        idxZEnso     = 7;         
-        phaseZ       = -1 * exp( i * pi / 4 );        
-        nPhase       = 8;         
-        nSamplePhase = 30;       
-        period       = 'satellite';
-        pRateScl     = 1E5; 
-
-    otherwise
-        error( 'Invalid experiment' )
-
-    end
-
 case 'ccsm4Ctrl'
 
     PlotLim.nino4  = [ -3.5 3.5 ];
@@ -108,37 +84,65 @@ case 'ccsm4Ctrl'
     PlotLim.nino3  = [ -4 4 ];
     PlotLim.nino12 = [ -4.5 4.5 ];
 
-    switch experiment
+otherwise
+    error( 'Invalid dataset' )
+end
 
-    % ENSO recovered from 200-yr dataset (comparable in timespan to industrial
-    % era)
-    case 'enso_lifecycle_industrial'
 
-        idxPhiEnso   = [ 7 6 ];  
-        signPhi      = [ 1 1 ]; 
-        idxZEnso     = 6;         
-        phaseZ       = i;        
-        nPhase       = 8;         
-        nSamplePhase = 100;       
-        period       = 'industrial';
-        pRateScl     = 1E8; 
+switch experiment
+        
+% NOAA 20th Century Reanalysis, industrial era, Indo-Pacific SST input,
+% 4-year delay embeding window  
+case 'noaa_industrial_IPSST_4yrEmb'
 
-    % ENSO recovered from full 1300-yr control run
-    case 'enso_lifecycle_millenial'
+    idxPhiEnso   = [ 10 9 ];  
+    signPhi      = [ -1 -1 ]; 
+    idxZEnso     = 9;         
+    phaseZ        = -1;        
+    nPhase       = 8;         
+    nSamplePhase = 100;       
+    period       = 'industrial';
+    pRateScl     = 1E5; 
 
-        idxPhiEnso   = [ 9 8 ];  
-        signPhi      = [ -1 1 ]; 
-        idxZEnso     = 8;         
-        phaseZ       = exp( i * pi * ( 17 / 32 + 1 ) );        
-        nPhase       = 8;         
-        nSamplePhase = 200;       
-        period       = 'millenial';
-        pRateScl     = 1E8; 
+% NOAA 20th Century Reanalysis, approximate satellite era, Indo-Pacific SST 
+% input, 4-year delay embeding window  
+case 'noaa_satellite_IPSST_4yrEmb'
 
-    otherwise
-        error( 'Invalid experiment' )
+    idxPhiEnso   = [ 8 7 ];  
+    signPhi      = [ 1 -1 ]; 
+    idxZEnso     = 7;         
+    phaseZ       = -1 * exp( i * pi / 4 );        
+    nPhase       = 8;         
+    nSamplePhase = 30;       
+    period       = 'satellite';
+    pRateScl     = 1E5; 
 
-    end
+
+% CCSM4 pre-industrial control, 200-year period, Indo-Pacific SST input, 
+% 4-year delay embeding window  
+case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
+
+    idxPhiEnso   = [ 7 6 ];  
+    signPhi      = [ 1 1 ]; 
+    idxZEnso     = 6;         
+    phaseZ       = i;        
+    nPhase       = 8;         
+    nSamplePhase = 100;       
+    period       = 'industrial';
+    pRateScl     = 1E8; 
+
+% CCSM4 pre-industrial control, 1300-year period, Indo-Pacific SST input, 
+% 4-year delay embeding window  
+case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
+
+    idxPhiEnso   = [ 9 8 ];  
+    signPhi      = [ -1 1 ]; 
+    idxZEnso     = 8;         
+    phaseZ       = exp( i * pi * ( 17 / 32 + 1 ) );        
+    nPhase       = 8;         
+    nSamplePhase = 200;       
+    period       = 'millenial';
+    pRateScl     = 1E8; 
 
 otherwise
     error( 'Invalid dataset' )
@@ -174,35 +178,44 @@ nProc = 1; % number of batch processes
 if ifDataSST
  
     disp( 'Reading Indo-Pacific SST data...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, period, 'IPSST' ) 
+    ensoLifecycle_data( dataset, period, 'IPSST' ) 
     toc( t )
 
     disp( 'Reading Nino 3.4 index...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, period, 'Nino3.4' ) 
+    ensoLifecycle_data( dataset, period, 'Nino3.4' ) 
     toc( t )
 
     disp( 'Reading Nino 3 index...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, period, 'Nino3' ) 
+    ensoLifecycle_data( dataset, period, 'Nino3' ) 
     toc( t )
 
     disp( 'Reading Nino 4 index...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, period, 'Nino4' ) 
+    ensoLifecycle_data( dataset, period, 'Nino4' ) 
     toc( t )
 
     disp( 'Reading Nino 1+2 index...' ); t = tic;
-    demoEnsoLifecycle_data( dataset, period, 'Nino1+2' ) 
+    ensoLifecycle_data( dataset, period, 'Nino1+2' ) 
     toc( t )
 
     disp( 'Reading global SST data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, period, 'SST' ) 
+    ensoLifecycle_data( dataset, period, 'SST' ) 
     toc( t )
 end
+
+%% EXTRACT SAT DATA
+if ifDataSSH
+
+    disp( 'Reading global SSH data...' ); t = tic; 
+    ensoLifecycle_data( dataset, period, 'SSH' )
+    toc( t )
+end
+
 
 %% EXTRACT SAT DATA
 if ifDataSAT
 
     disp( 'Reading global SAT data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, period, 'SAT' )
+    ensoLifecycle_data( dataset, period, 'SAT' )
     toc( t )
 end
 
@@ -210,18 +223,18 @@ end
 if ifDataPrecip
 
     disp( 'Reading global precipitation rate data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, period, 'precip' )
+    ensoLifecycle_data( dataset, period, 'precip' )
     toc( t )
 end
 
 %% EXTRACT SURFACE WIND DATA
 if ifDataWind
     disp( 'Reading global zonal surface wind data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, period, 'uwind' )
+    ensoLifecycle_data( dataset, period, 'uwind' )
     toc( t )
 
     disp( 'Reading global meridional surface wind data...' ); t = tic; 
-    demoEnsoLifecycle_data( dataset, period, 'vwind' )
+    ensoLifecycle_data( dataset, period, 'vwind' )
     toc( t )
 end
 

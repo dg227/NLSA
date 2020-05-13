@@ -8,8 +8,8 @@ dataDir = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850';
 fileBase = 'b40.1850.track1.1deg.006.cam2.h0.';
 
 % Input variables
-varIn    = 'U';
-%varIn    = 'V';
+%varIn    = 'U';
+varIn    = 'V';
 
 % Level to extract (surface)
 levSurf = 26; 

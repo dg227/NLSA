@@ -1,6 +1,6 @@
-function Data = noaaData( DataSpecs )
-% NOAADATA Read NOAA data from NetCDF files, and output in format appropriate 
-% for NLSA code.
+function Data = importData_noaa( DataSpecs )
+% IMPORTDATA_NOAA Read NOAA data from NetCDF files, and output in format 
+% appropriate for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
 % be read. 
@@ -29,7 +29,7 @@ function Data = noaaData( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Modified 2020/05/05
+% Modified 2020/05/12
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 In     = DataSpecs.In;
