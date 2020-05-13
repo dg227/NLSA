@@ -44,10 +44,11 @@ ifNLSAComposites    = true; % compute phase composites based on NLSA
 ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Output/plotting options
-ifPlotWind       = true;    % overlay quiver plot of surface winds 
-ifPrintFig       = true;    % print figures to file
-compositesDomain = 'globe'; % global domain
-compositesDomain = 'Pacific'; % Pacific
+ifWeighComposites = false;     % weigh composites by adjacent phases
+ifPlotWind        = true;      % overlay quiver plot of surface winds 
+ifPrintFig        = true;      % print figures to file
+compositesDomain  = 'globe';   % global domain
+compositesDomain  = 'Pacific'; % Pacific
 
 
 %% GLOBAL PARAMETERS
@@ -688,13 +689,14 @@ end
 if ifNLSAPhases
    
     % Compute ENSO phases based on NLSA
-    [ selectIndPhi, anglesPhi, avNino34IndPhi ] = computeLifecyclePhases( ...
-        Phi.idx', Nino34.idx( 1, : )', nPhase, nSamplePhase );
+    [ selectIndPhi, anglesPhi, avNino34IndPhi, weightsPhi ] = ...
+        computeLifecyclePhasesWeighted( Phi.idx', Nino34.idx( 1, : )', ...
+                                        nPhase, nSamplePhase );
 
     % Compute ENSO phases based on Nino 3.4 index
-    [ selectIndNino34, anglesNino34, avNino34IndNino34 ] = ...
-        computeLifecyclePhases( Nino34.idx', Nino34.idx(1,:)', nPhase, ... 
-                                nSamplePhase );
+    [ selectIndNino34, anglesNino34, avNino34IndNino34, weightsNino34 ] = ...
+        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx(1,:)', ...
+                                        nPhase, nSamplePhase );
         
     % Set up figure and axes 
     Fig.units      = 'inches';
@@ -760,13 +762,14 @@ end
 if ifKoopmanPhases
    
     % Compute ENSO phases based on generator
-    [ selectIndZ, anglesZ, avNino34IndZ ] = computeLifecyclePhases( ...
-        Z.idx', Nino34.idx( 1, : )', nPhase, nSamplePhase );
+    [ selectIndZ, anglesZ, avNino34IndZ, weightsZ ] = ...
+        computeLifecyclePhasesWeighted( Z.idx', Nino34.idx( 1, : )', ...
+                                        nPhase, nSamplePhase );
 
     % Compute ENSO phases based on Nino 3.4 index
-    [ selectIndNino34, anglesNino34, avNino34IndNino34 ] = ...
-        computeLifecyclePhases( Nino34.idx', Nino34.idx( 1, : )', ...
-        nPhase, nSamplePhase );
+    [ selectIndNino34, anglesNino34, avNino34IndNino34, weightsNino34 ] = ...
+        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx( 1, : )', ...
+                                        nPhase, nSamplePhase );
         
     % Set up figure and axes 
     Fig.units      = 'inches';
@@ -969,7 +972,12 @@ otherwise
     error( 'Invalid composites domain' )
 end
 
-
+% Ouput file suffix based on weighted/unweighted composites
+if ifWeighComposites
+    fileSuffix = '_weighted.png';
+else
+    fileSuffix = '.png';
+end
 
 % Figure and axes parameters 
 Fig.units      = 'inches';
@@ -1067,8 +1075,14 @@ if ifNinoComposites
     iStart = 1 + nSB + nShiftTakens;
     iEnd   = iStart + nSE - 1;  
 
-    compNino34 = computePhaseComposites( model, selectIndNino34, ...
-                                         iStart, iEnd );
+
+    if ifWeighComposites
+        compNino34 = computePhaseComposites( model, selectIndNino34, ...
+                                             iStart, iEnd, weightsNino34 );
+    else
+        compNino34 = computePhaseComposites( model, selectIndNino34, ...
+                                             iStart, iEnd );
+    end
 
     toc( t )
 
@@ -1155,7 +1169,7 @@ if ifNinoComposites
 
     % Print figure
     if ifPrintFig
-        figFile = [ 'figEnsoCompositesNino_' compositesDomain '.png' ];
+        figFile = [ 'figEnsoCompositesNino_' compositesDomain fileSuffix ];
         figFile = fullfile( figDir, figFile  );
         print( fig, figFile, '-dpng', '-r300' ) 
     end
@@ -1179,7 +1193,12 @@ if ifNLSAComposites
     iStart = 1 + nSB + nShiftTakens;
     iEnd   = iStart + nSE - 1;  
 
-    compPhi = computePhaseComposites( model, selectIndPhi, iStart, iEnd );
+    if ifWeighComposites
+        compPhi = computePhaseComposites( model, selectIndPhi, ...
+                                          iStart, iEnd, weightsPhi );
+    else
+        compPhi = computePhaseComposites( model, selectIndPhi, iStart, iEnd );
+    end
 
     toc( t )
 
@@ -1267,7 +1286,7 @@ if ifNLSAComposites
 
     % Print figure
     if ifPrintFig
-        figFile = [ 'figEnsoCompositesKernel_' compositesDomain '.png' ];
+        figFile = [ 'figEnsoCompositesKernel_' compositesDomain fileSuffix ];
         figFile = fullfile( figDir, figFile  );
         print( fig, figFile, '-dpng', '-r300' ) 
     end
@@ -1290,7 +1309,12 @@ if ifKoopmanComposites
     iStart = 1 + nSB + nShiftTakens;
     iEnd   = iStart + nSE - 1;  
 
-    compZ = computePhaseComposites( model, selectIndZ, iStart, iEnd );
+    if ifWeighComposites
+        compZ = computePhaseComposites( model, selectIndZ, ...
+                                        iStart, iEnd, weightsZ );
+    else
+        compZ = computePhaseComposites( model, selectIndZ, iStart, iEnd );
+    end
 
     toc( t )
 
@@ -1376,7 +1400,7 @@ if ifKoopmanComposites
 
     % Print figure
     if ifPrintFig
-        figFile = [ 'figEnsoCompositesGenerator_' compositesDomain '.png' ];
+        figFile = [ 'figEnsoCompositesGenerator_' compositesDomain fileSuffix ];
         figFile = fullfile( figDir, figFile  );
         print( fig, figFile, '-dpng', '-r300' ) 
     end
@@ -1471,10 +1495,12 @@ plot( index( ind, 1 ), index( ind, 2 ), ...
 end
 
 %% Function to compute phase composites from target data of NLSA model
-function comp = computePhaseComposites( model, selectInd, iStart, iEnd )
+function comp = computePhaseComposites( model, selectInd, iStart, iEnd, ...
+                                        weights )
 
 nC = size( model.trgComponent, 1 ); % number of observables to be composited
 nPhase = numel( selectInd ); % number of phases       
+ifWeights = nargin == 5; % 
 
 comp = cell( 1, nC );
 
@@ -1492,7 +1518,12 @@ for iC = 1 : nC
         for iPhase = 1 : nPhase
 
             % Compute phase conditional average
-            comp{ iC }( :, iPhase ) = mean( y( :, selectInd{ iPhase } ), 2 );
+            if ifWeights
+                comp{ iC }( :, iPhase ) = y * weights{ iPhase }';
+            else    
+                comp{ iC }( :, iPhase ) = ...
+                    mean( y( :, selectInd{ iPhase } ), 2 );
+            end
 
         end
     end
