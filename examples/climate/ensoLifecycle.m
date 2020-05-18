@@ -5,8 +5,8 @@
 
 %% DATA SPECIFICATION 
 dataset   = 'ccsm4Ctrl';    % CCSM4 pre-industrial control run
-period    = '200yr';        % 200-year analysis 
-%period  = '1300yr';        % 1300-year analysis
+%period    = '200yr';        % 200-year analysis 
+period  = '1300yr';        % 1300-year analysis
 sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
 
 %dataset    = 'noaa';                      % NOAA 20th Century Reanalysis 
@@ -135,6 +135,21 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
     phaseZ       = exp( i * pi * ( 17 / 32 + 1 ) );        
     nPhase       = 8;         
     nSamplePhase = 200;       
+
+    markSpec = { 1          ... % constant
+                 [ 2 3 ]    ... % annual
+                 [ 4 5 ]    ... % semiannual
+                 [ 6 7 ]    ... % triennial
+                 [ 8 9 ]    ... % ENSO
+                 [ 10 : 17 ] ... % ENSO combination
+                 };
+    specLegend = { 'mean' ... 
+                   'annual' ...
+                   'semiannual' ...
+                   'triennial' ...
+                   'ENSO' ...
+                   'ENSO combination' };
+
 
 otherwise
     error( 'Invalid experiment' )
@@ -993,8 +1008,8 @@ if ifKoopmanSpectrum
 
     [ fig, ax ] = tileAxes( Fig );
 
-    c = distinguishable_colors( 5 );
-    c = c( [ 4 1 2 3 5 ], : );
+    c = distinguishable_colors( 6 );
+    c = c( [ 4 1 2 3 5 6 ], : );
 
     % Get generator eigenfrequencies in units of 1 / year
     gamma = getEigenvalues( model.koopmanOp ) * 12 / 2 / pi; 
@@ -1017,7 +1032,7 @@ if ifKoopmanSpectrum
     title( 'Generator spectrum' )
     ylabel( 'frequency (1/y)' )
     xlabel( 'decay rate (arbitrary units)' )
-    legend( specLegend, 'location', 'northWest' )
+    legend( specLegend, 'location', 'west' )
 
     % Print figure
     if ifPrintFig
