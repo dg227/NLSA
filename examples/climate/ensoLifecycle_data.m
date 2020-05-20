@@ -207,7 +207,7 @@ case 'noaa'
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
-        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifDetrend     = false;  % perform linear detrending
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
         DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
@@ -237,7 +237,7 @@ case 'noaa'
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
-        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifDetrend     = false;  % perform linear detrending
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
         DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
@@ -269,7 +269,7 @@ case 'noaa'
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
         DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifDetrend     = false;  % perform linear detrending
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
@@ -286,7 +286,7 @@ case 'noaa'
         DataSpecs.In.var  = 'precip';
 
         % Output data
-        DataSpecs.Out.fld = DataSpecs.In.var;      
+        DataSpecs.Out.fld = 'prate';
 
         % Time specification
         DataSpecs.Time.tStart  = '197901'; % start time in dataset
@@ -299,7 +299,7 @@ case 'noaa'
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
         DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifDetrend     = false;  % perform linear detrending
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
@@ -329,7 +329,7 @@ case 'noaa'
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
         DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifDetrend     = false;  % perform linear detrending
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
@@ -359,7 +359,7 @@ case 'noaa'
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
         DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
-        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifDetrend     = false;  % perform linear detrending
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk

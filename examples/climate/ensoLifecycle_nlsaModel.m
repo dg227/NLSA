@@ -41,17 +41,27 @@ switch experiment
 case '20CR_industrial_IPSST_4yrEmb'
    
     % Dataset specification  
-    In.Res( 1 ).dataset = '20CR';                
+    In.Res( 1 ).experiment = '20CR';                
 
     % Time specification
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '187001' '201906' }; % time limit  
     In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
 
+    trendStr = ''; % string identifier for detrening of target data
+
     % Source data specification 
     In.Src( 1 ).field = 'sstw';      % physical field
     In.Src( 1 ).xLim  = [ 28 290 ];  % longitude limits
     In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
+
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 1;          % samples before main interval
+    In.Src( 1 ).nXA       = 0;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'backward'; % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
 
     % Delay-embedding/finite-difference parameters; in-sample data
     In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
@@ -100,21 +110,31 @@ case '20CR_industrial_IPSST_4yrEmb'
 case '20CR_satellite_IPSST_4yrEmb'
     
     % Dataset specification 
-    In.Res( 1 ).dataset = '20CR';
+    In.Res( 1 ).experiment = '20CR';
     
     % Time specification 
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '197001' '201906' }; % time limit  
-    In.Res( 1 ).tCLim = { '198101' '201012' }; % climatology time limits 
+    In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    trendStr = ''; % string identifier for detrening of target data
 
     % Source data specification 
     In.Src( 1 ).field = 'sstw';      % physical field
     In.Src( 1 ).xLim  = [ 28 290 ];  % longitude limits
     In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
 
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 1;          % samples before main interval
+    In.Src( 1 ).nXA       = 0;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'backward'; % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
     % Batches to partition the in-sample data
-    In.Res( 1 ).nB    = 1;          % partition batches
-    In.Res( 1 ).nBRec = 1;          % batches for reconstructed data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
 
     % NLSA parameters; in-sample data 
     In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
@@ -151,36 +171,46 @@ case '20CR_satellite_IPSST_4yrEmb'
 case 'noaa_satellite_IPSST_4yrEmb'
     
     % Dataset specification 
-    In.Res( 1 ).dataset = 'noaa';
+    In.Res( 1 ).experiment = 'noaa';
     
     % Time specification 
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '197801' '202003' }; % time limit  
-    In.Res( 1 ).tCLim = { '198101' '201012' }; % climatology time limits 
+    In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    trendStr = ''; % string identifier for detrening of target data
 
     % Source data specification 
     In.Src( 1 ).field = 'sstw';      % physical field
     In.Src( 1 ).xLim  = [ 28 290 ];  % longitude limits
     In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
 
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 1;          % samples before main interval
+    In.Src( 1 ).nXA       = 0;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'backward'; % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
     % Batches to partition the in-sample data
-    In.Res( 1 ).nB    = 1;          % partition batches
-    In.Res( 1 ).nBRec = 1;          % batches for reconstructed data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
 
     % NLSA parameters; in-sample data 
     In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
-    In.lDist      = 'cone';     % local distance
+    In.lDist      = 'l2';     % local distance
     In.tol        = 0;          % 0 distance threshold (for cone kernel)
     In.zeta       = 0.995;      % cone kernel parameter 
     In.coneAlpha  = 0;          % velocity exponent in cone kernel
     In.nNS        = In.nN;      % nearest neighbors for symmetric distance
     In.diffOpType = 'gl_mb_bs'; % diffusion operator type
-    In.epsilon    = 2;          % kernel bandwidth parameter 
+    In.epsilon    = 2;        % kernel bandwidth parameter 
     In.epsilonB   = 2;          % kernel bandwidth base
     In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
     In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
     In.alpha      = 0.5;        % diffusion maps normalization 
-    In.nPhi       = 501;        % diffusion eigenfunctions to compute
+    In.nPhi       = 451;        % diffusion eigenfunctions to compute
     In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
     In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
     In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
@@ -198,19 +228,19 @@ case 'noaa_satellite_IPSST_4yrEmb'
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
 
-
-
 % CCSM4 pre-industrial control, 200-year period, Indo-Pacific SST input, 4-year
 % delay embeding window  
 case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
    
     % Dataset specification  
-    In.Res( 1 ).dataset = 'ccsm4Ctrl'; 
+    In.Res( 1 ).experiment = 'ccsm4Ctrl'; 
 
     % Time specification
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '000101' '019912' }; % time limit  
     In.Res( 1 ).tClim = In.Res( 1 ).tLim;     % climatology limits 
+
+    trendStr = ''; % string identifier for detrening of target data
 
     % Source data specification 
     In.Src( 1 ).field = 'sstw';      % physical field
@@ -264,12 +294,14 @@ case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
 case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
    
     % Dataset specification  
-    In.Res( 1 ).dataset = 'ccsm4Ctrl'; 
+    In.Res( 1 ).experiment = 'ccsm4Ctrl'; 
 
     % Time specification
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '000101' '130012' }; % time limit  
     In.Res( 1 ).tClim = In.Res( 1 ).tLim;     % climatology limits 
+
+    trendStr = ''; % string identifier for detrening of target data
 
     % Source data specification 
     In.Src( 1 ).field = 'sstw';      % physical field
@@ -357,38 +389,38 @@ In.Trg( 4 ).xLim  = [ 270 280 ];            % longitude limits
 In.Trg( 4 ).yLim  = [ -10 0 ];              % latitude limits
 
 % Global SST anomalies
-In.Trg( 5 ).field = [ 'sstma' climStr ]; % physical field
-In.Trg( 5 ).xLim  = [ 0 359 ];           % longitude limits
-In.Trg( 5 ).yLim  = [ -89 89 ];          % latitude limits
+In.Trg( 5 ).field = [ 'sstma' trendStr climStr ]; % physical field
+In.Trg( 5 ).xLim  = [ 0 359 ];                    % longitude limits
+In.Trg( 5 ).yLim  = [ -89 89 ];                   % latitude limits
 
 % Global SSH anomalies
-In.Trg( 6 ).field = [ 'sshma' climStr ]; % physical field
-In.Trg( 6 ).xLim  = [ 0 359 ];          % longitude limits
-In.Trg( 6 ).yLim  = [ -89 89 ] ;        % latitude limits
+In.Trg( 6 ).field = [ 'sshma' trendStr climStr ]; % physical field
+In.Trg( 6 ).xLim  = [ 0 359 ];                    % longitude limits
+In.Trg( 6 ).yLim  = [ -89 89 ] ;                  % latitude limits
 
 % Global SAT anomalies
-In.Trg( 7 ).field = [ 'airma' climStr ]; % physical field
-In.Trg( 7 ).xLim  = [ 0 359 ];           % longitude limits
-In.Trg( 7 ).yLim  = [ -89 89 ];          % latitude limits
+In.Trg( 7 ).field = [ 'airma' trendStr climStr ]; % physical field
+In.Trg( 7 ).xLim  = [ 0 359 ];                    % longitude limits
+In.Trg( 7 ).yLim  = [ -89 89 ];                   % latitude limits
         
 % Global precipitation anomalies
-In.Trg( 8 ).field = [ 'pratema' climStr ]; % physical field
-In.Trg( 8 ).xLim  = [ 0 359 ];             % longitude limits
-In.Trg( 8 ).yLim  = [ -89 89 ];            % latitude limits
+In.Trg( 8 ).field = [ 'pratema' trendStr climStr ]; % physical field
+In.Trg( 8 ).xLim  = [ 0 359 ];                      % longitude limits
+In.Trg( 8 ).yLim  = [ -89 89 ];                     % latitude limits
 
 % Global surface zonal wind anomalies 
-In.Trg( 9 ).field = [ 'uwndma' climStr ]; % physical field
-In.Trg( 9 ).xLim  = [ 0 359 ];            % longitude limits
-In.Trg( 9 ).yLim  = [ -89 89 ];           % latitude limits
+In.Trg( 9 ).field = [ 'uwndma' trendStr climStr ]; % physical field
+In.Trg( 9 ).xLim  = [ 0 359 ];                     % longitude limits
+In.Trg( 9 ).yLim  = [ -89 89 ];                    % latitude limits
 
 % Global surface meridional wind anomalies
-In.Trg( 10 ).field = [ 'vwndma' climStr ]; % physical field
-In.Trg( 10 ).xLim  = [ 0 359 ];            % longitude limits
-In.Trg( 10 ).yLim  = [ -89 89 ];           % latitude limits
+In.Trg( 10 ).field = [ 'vwndma' trendStr climStr ]; % physical field
+In.Trg( 10 ).xLim  = [ 0 359 ];                     % longitude limits
+In.Trg( 10 ).yLim  = [ -89 89 ];                    % latitude limits
     
 % Abbreviated target component names
-In.targetComponentName   = [ 'nino_sst_air_prate_uv' ];
-In.targetRealizationName = '187001-201906';
+In.targetComponentName   = [ 'nino_sst_ssh_air_prec_uv' ];
+In.targetRealizationName = '_';
 
 % Prepare dalay-embedding parameters for target data
 for iCT = 1 : numel( In.Trg )
@@ -429,5 +461,4 @@ if ifOse
 else
     args = { In };
 end
-
 [ model, In, Out ] = climateNLSAModel( args{ : } );

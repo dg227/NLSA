@@ -69,7 +69,7 @@ end
 
 % Append 'l' to field string if linearly detrending the data
 if Opts.ifDetrend
-    fldStr = [ Out.fld 'l' ];
+    fldStr = [ fldStr 'l' ];
 end
 
 % Append 'w' if performing area weighting
@@ -207,8 +207,7 @@ if ifClim
     iFiles = unique( [ iFiles idxFileClim1 : idxFileClimEnd ] ); 
 end
 fldRead = zeros( nX, nY, nTReads ); 
-iTRead1 = 1;
-
+iT1 = 1;
 for iFile = iFiles
     
     fileIn = fullfile( In.dir, files( iFile ).name );
@@ -219,10 +218,10 @@ for iFile = iFiles
     nTFile = nTFiles( iFile ); 
 
     % Read data from netCDF file, reshape into 2D array
-    iTRead2 = iTRead1 + nTFile - 1; 
-    fldRead( :, :, iTRead1 : iTRead2 ) = netcdf.getVar( ncId, idFld );
+    iT2 = iT1 + nTFile - 1; 
+    fldRead( :, :, iT1 : iT2 ) = netcdf.getVar( ncId, idFld );
     netcdf.close( ncId ); 
-    iTRead2 = iTRead1 + 1; 
+    iT1 = iT2 + 1; 
 
 end
 
@@ -246,6 +245,7 @@ fldRead = reshape( fldRead, [ nX * nY nTReads ] );
 
 % Prepare output arrays
 iT1 = 1;
+jT1 = 1;
 fld = zeros( nXY, nT );
 if ifClim
     iTClim1 = 1;
@@ -258,6 +258,7 @@ for iFile = iFiles
     
     % Number of samples in current file
     nTFile = nTFiles( iFile ); 
+    jT2 = jT1 + nTFile - 1;
 
     % Number of samples to read into output data array
     if iFile >= idxFile1 && iFile < idxFileEnd
@@ -286,18 +287,18 @@ for iFile = iFiles
     if nTRead > 0 
         iT2 = iT1 + nTRead - 1;
         iTRead2 = iTRead1 + nTRead - 1;
-        fld( :, iT1 : iT2 ) = fldRead( iXY, iTRead1 : iTRead2 );
+        fld( :, iT1 : iT2 ) = fldRead( iXY, jT1 : jT1 + nTRead - 1 );
         iT1 = iT2 + 1;
-        iTRead1 = iTRead2 + 1;
     end
 
     % Read data into climatology array, update time indices
     if ifClim && nTClimRead > 0
         cliData( :, iTClim1 : iTClim2 ) = ...
-            fldRead( iXY, iTClimRead1 : iTClimRead2 );
+            fldRead( iXY, jT1 : jT1 + nTClimRead - 1 );
         iTClim1 = iTClim2 + 1;
-        iTClimRead1 = iTClimRead2 + 1;
     end
+    
+    jT1 = jT2 + 1;
 end
 
 % If requested, weigh the data by the (normalized) grid cell surface areas. 
@@ -357,10 +358,10 @@ if Opts.ifDetrend
     t = [ 0 : nT - 1 ] / 12; % time in years
     beta = zeros( nXY, 2 ); 
     for j = 1 : nXY
-        [ p, S ] = polyfit( t, fld( j, : ), 1 );
+        p = polyfit( t, fld( j, : ), 1 );
         beta( j, : ) = p;
     end
-    fld = fld - beta( :, 1 ) - beta( :, 2 ) * t;
+    fld = fld - beta( :, 2 ) - beta( :, 1 ) * t;
 end 
 
     

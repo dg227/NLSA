@@ -62,7 +62,7 @@ end
 
 % Append 'l' to field string if linearly detrending the data
 if Opts.ifDetrend
-    fldStr = [ Out.fld 'l' ];
+    fldStr = [ fldStr 'l' ];
 end
 
 % Append 'w' if performing area weighting
@@ -241,10 +241,10 @@ if Opts.ifDetrend
     t = [ 0 : nT - 1 ] / 12; % time in years
     beta = zeros( nXY, 2 ); 
     for j = 1 : nXY
-        [ p, S ] = polyfit( t, fld( j, : ), 1 );
+        p = polyfit( t, fld( j, : ), 1 );
         beta( j, : ) = p;
     end
-    fld = fld - beta( :, 1 ) - beta( :, 2 ) * t;
+    fld = fld - beta( :, 2 ) - beta( :, 1 ) * t;
 end 
 
 

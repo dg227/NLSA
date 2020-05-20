@@ -31,7 +31,7 @@ function Data = importData_ncep( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Modified 2020/05/19
+% Modified 2020/05/20
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 In     = DataSpecs.In;
@@ -63,7 +63,7 @@ end
 
 % Append 'l' to field string if linearly detrending the data
 if Opts.ifDetrend
-    fldStr = [ Out.fld 'l' ];
+    fldStr = [ fldStr 'l' ];
 end
 
 % Append 'w' if performing area weighting
@@ -260,10 +260,10 @@ if Opts.ifDetrend
     t = [ 0 : nT - 1 ] / 12; % time in years
     beta = zeros( nXY * nL, 2 ); 
     for j = 1 : nXY * nL 
-        [ p, S ] = polyfit( t, fld( j, : ), 1 );
+        p = polyfit( t, fld( j, : ), 1 );
         beta( j, : ) = p;
     end
-    fld = fld - beta( :, 1 ) - beta( :, 2 ) * t;
+    fld = fld - beta( :, 2 ) - beta( :, 1 ) * t;
 end 
 
 

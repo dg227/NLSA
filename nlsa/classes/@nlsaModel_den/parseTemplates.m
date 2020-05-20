@@ -77,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/01/28 
+%   Modified 2020/05/20 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -1115,13 +1115,18 @@ if isempty( propVal{ iDiffOp } )
     propVal{ iDiffOp } = nlsaDiffusionOperator_gl();
     ifProp( iDiffOp ) = true;
 end
+nPhi   = getNEigenfunction( propVal{ iDiffOp } );
+if nPhi > getNTotalSample( partition )
+    msgStr = [ 'Number of diffusion eigenfunctions cannot exceed ' ...
+               'the number of available samples.' ]; 
+    error( msgStr )
+end
 propVal{ iDiffOp } = setPartition( propVal{ iDiffOp }, partition );
 propVal{ iDiffOp } = setPartitionTest( propVal{ iDiffOp }, partition );
 if isa( propVal{ iDiffOp }, 'nlsaDiffusionOperator_batch' )
     propVal{ iDiffOp } = setNNeighbors( propVal{ iDiffOp }, ...
                                         getNNeighborsMax( propVal{ iSDistance } ) );
 end
-nPhi   = getNEigenfunction( propVal{ iDiffOp } );
 tag = getTag( propVal{ iDiffOp } );
 if ~isempty( tag )
     tag = [ tag '_' ];

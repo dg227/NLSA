@@ -2,7 +2,7 @@ classdef nlsaKernelOperator
 %NLSAKERNELOPERATOR Class definition and constructor of generic kernel 
 % operators
 %  
-% Modified 2020/04/10
+% Modified 2020/05/20
 
     %% PROPERTIES
     properties
@@ -44,25 +44,31 @@ classdef nlsaKernelOperator
             end
 
             % Set caller defined values
-            if ~isempty( iNEig )
-                if ~ispsi( varargin{ iNEig } )
-                    error( 'Number of eigenfunctions must be a positive scalar integer' )
-                end
-                obj.nEig = varargin{ iNEig };
-            end
             if ~isempty( iPartition )
                 if ~isa( varargin{ iPartition }, 'nlsaPartition' ) ...
                         || ~isrow( varargin{ iPartition } )
-                    error( 'Partition must be specified as a row vector of nlsaPartition objects' )
+                    msgStr = [ 'Partition must be specified as a row ' ...
+                               'vector of nlsaPartition objects.' ];
+                    error( msgStr  )
                 end
                 obj.partition = varargin{ iPartition };
             end
             if ~isempty( iPartitionT )
                 if ~isa( varargin{ iPartitionT }, 'nlsaPartition' ) ...
                         || ~isrow( varargin{ iPartitionT } )
-                    error( 'Test partition must be specified as a vector of nlsaPartition object' )
+                    msgStr = [ 'Test partition must be specified as a row ' ...
+                               'vector of nlsaPartition objects.' ];
+                    error( msgStr )
                 end
                 obj.partitionT = varargin{ iPartitionT };
+            end
+            if ~isempty( iNEig )
+                if ~ispsi( varargin{ iNEig } )
+                    msgStr = [ 'Number of eigenfunctions must be a ' ...
+                               'positive scalar integer.' ]; 
+                    error( msgStr )
+                end
+                obj.nEig = varargin{ iNEig };
             end
             if ~isempty( iPath )
                 if ~isrowstr( varargin{ iPath } )

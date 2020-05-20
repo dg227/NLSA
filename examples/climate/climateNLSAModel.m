@@ -32,7 +32,7 @@ function [ model, In, Out ] = climateNLSAModel( In, Out )
 %
 %  Structure field Res represents different realizations (ensemble members)
 %
-% Modified 2020/05/12
+% Modified 2020/05/20
  
 %% PRELIMINARY CHECKS
 % Check number of input arguments, and if we are doing out-of-sample extension
@@ -199,7 +199,7 @@ fList = nlsaFilelist( 'file', 'dataX.mat' ); % filename for source data
 for iR = In.nR : -1 : 1
 
     tStr = [ In.Res( iR ).tLim{ 1 } '-' In.Res( iR ).tLim{ 2 } ]; 
-    tagR = [ In.Res( iR ).dataset '_' tStr ];
+    tagR = [ In.Res( iR ).experiment '_' tStr ];
                                     
     % Source data assumed to be stored in a single batch
     partition = nlsaPartition( 'nSample', In.Res( iR ).nS ); 
@@ -213,7 +213,7 @@ for iR = In.nR : -1 : 1
                                           In.Src( iC ).yLim( 2 ) );
 
         pathC = fullfile( inPath,  ...
-                          In.Res( iR ).dataset, ...
+                          In.Res( iR ).experiment, ...
                           In.Src( iC ).field,  ...
                           [ xyStr '_' tStr ] );
                                                    
@@ -240,7 +240,7 @@ for iR = In.nR : -1 : 1
                                           In.Trg( iC ).yLim( 2 ) );
 
         pathC = fullfile( inPath,  ...
-                          In.Res( iR ).dataset, ...
+                          In.Res( iR ).experiment, ...
                           In.Trg( iC ).field,  ...
                           [ xyStr '_' tStr ] );
                                                    
@@ -266,7 +266,7 @@ if ifOse
     for iR = Out.nR : -1 : 1
 
         tStr = [ Out.Res( iR ).tLim{ 1 } '-' Out.Res( iR ).tLim{ 2 } ];
-        tagR = [ Out.Res( 1 ).dataset '_' tStr ];
+        tagR = [ Out.Res( 1 ).experiment '_' tStr ];
 
         % Source data assumed to be stored in a single batch
         partition = nlsaPartition( 'nSample', Out.Res( iR ).nS ); 
@@ -280,7 +280,7 @@ if ifOse
                                               Out.Src( iC ).yLim( 2 ) );
 
             pathC = fullfile( outPath,  ...
-                              Out.Res( iR ).dataset, ...
+                              Out.Res( iR ).experiment, ...
                               Out.Src( iC ).field,  ...
                               [ xyStr '_' tStr ] );
 
@@ -309,7 +309,7 @@ if ifOse
                                                   Out.Trg( iC ).yLim( 2 ) );
 
                 pathC = fullfile( outPath,  ...
-                                  Out.Res( iR ).dataset, ...
+                                  Out.Res( iR ).experiment, ...
                                   Out.Trg( iC ).field,  ...
                                   [ xyStr '_' tStr ] );
 

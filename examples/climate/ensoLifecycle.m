@@ -29,33 +29,33 @@ ifDataSST    = false;  % extract SST data from NetCDF source files
 ifDataSSH    = false;  % extract SSH data from NetCDF source files
 ifDataSAT    = false;  % extract SAT data from NetCDF source files
 ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
-ifDataWind   = false;   % extract 10m wind data from NetCDF source files  
+ifDataWind   = false;  % extract 10m wind data from NetCDF source files  
 
 % ENSO representations
-ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
-ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
+ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
+ifKoopman = true; % compute Koopman eigenfunctions
+ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
-ifKoopmanSpectrum     = false;  % plot generator spectrum
+ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
+ifKoopmanSpectrum     = true;  % plot generator spectrum
 
 % Composite plots
-ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = false; % compute phase composites based on NLSA
-ifKoopmanComposites = false; % compute phase composites based on Koopman
+ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = true; % compute phase composites based on NLSA
+ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Output/plotting options
-ifWeighComposites = false;     % weigh composites by adjacent phases
-ifPlotWind        = false;      % overlay quiver plot of surface winds 
-ifPrintFig        = false;      % print figures to file
+ifWeighComposites = true;     % weigh composites by adjacent phases
+ifPlotWind        = true;      % overlay quiver plot of surface winds 
+ifPrintFig        = true;      % print figures to file
 compositesDomain  = 'globe';   % global domain
 compositesDomain  = 'Pacific'; % Pacific
 
@@ -114,13 +114,28 @@ case '20CR_satellite_IPSST_4yrEmb'
 % embeding window  
 case 'noaa_satellite_IPSST_4yrEmb'
 
-    idxPhiEnso   = [ 8 7 ];  
-    signPhi      = [ 1 -1 ]; 
+    %idxPhiEnso   = [ 7 6 ];  
     idxZEnso     = 7;         
-    phaseZ       = -1 * exp( i * pi / 4 );        
+    signPhi      = [ 1 -1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 11 12 ];
+    idxZEnso     = 10;
+    phaseZ       = exp( -i * pi / 8 );        
+
     nPhase       = 8;         
     nSamplePhase = 30;       
-    PRate.scl     = 1E5; 
+
+    markSpec = { 1          ... % constant
+                 [ 2 3 ]    ... % annual
+                 [ 4 5 ]    ... % semiannual
+                 [ 6 7 ]    ... % ENSO
+                 [ 8 : 13 ] ... % ENSO combination
+                 };
+    specLegend = { 'mean' ... 
+                   'annual' ...
+                   'semiannual' ...
+                   'ENSO' ...
+                   'ENSO combination' };
 
 
 % CCSM4 pre-industrial control, 200-year period, Indo-Pacific SST input, 
@@ -1163,13 +1178,23 @@ switch dataset
 case 'ccsm4Ctrl'
     PRate.scl     = 1000 * 3600 * 24; % convert from m/s to mm/day 
     PRate.title   = 'Precip. anomaly (mm/day)';
+case 'noaa'
+    PRate.scl    = 1; 
+    PRate.title  = 'Precip. anomaly (mm/day)';
 end
 
 % Surface wind field
 UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
               'dataGrid.mat' ) ); 
-UVWnd.nSkipX = 10; % zonal downsampling factor for quiver plots
-UVWnd.nSkipY = 10; % meridional downsampling factor for quiver plots
+switch dataset
+case 'ccsm4Ctrl'
+    UVWnd.nSkipX = 10; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 10; % meridional downsampling factor for quiver plots
+case 'noaa'
+    UVWnd.nSkipX = 3; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 3; % meridional downsampling factor for quiver plots
+end
+
  
 
 %% COMPOSITES BASED ON NINO 3.4 INDEX
@@ -1632,7 +1657,7 @@ for iC = 1 : nC
 
             % Compute phase conditional average
             if ifWeights
-                comp{ iC }( :, iPhase ) = y * weights{ iPhase }';
+                comp{ iC }( :, iPhase ) = y * weights{ iPhase };
             else    
                 comp{ iC }( :, iPhase ) = ...
                     mean( y( :, selectInd{ iPhase } ), 2 );
