@@ -1,6 +1,6 @@
-function Data = importData_noaa( DataSpecs )
-% IMPORTDATA_NOAA Read NOAA data from NetCDF files, and output in format 
-% appropriate for NLSA code.
+function Data = importData_ncep( DataSpecs )
+% IMPORTDATA_NCEP Read NCEP/NCAR reanalysis data from NetCDF files, and 
+% output in format appropriate for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
 % be read. 
@@ -19,9 +19,11 @@ function Data = importData_noaa( DataSpecs )
 % Time.tClim:         Cell array of strings with time limits for climatology 
 % Domain.xLim:        Longitude limits
 % Domain.yLim:        Latitude limits
+% Domain.levels:      Vertical levels
 % Opts.ifCenter:      Remove global climatology if true 
 % Opts.ifWeight:      Perform area weighting if true 
 % Opts.ifCenterMonth: Remove monthly climatology if true 
+% Opts.ifDetrend:     Remove linear trend if true
 % Opts.ifNormalize:   Standardize data to unit L2 norm if true
 % Opts.ifWrite:       Write data to disk
 % Opts.ifOutputData:  Only data attributes are returned if set to false
@@ -29,7 +31,7 @@ function Data = importData_noaa( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Modified 2020/05/12
+% Modified 2020/05/19
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 In     = DataSpecs.In;
@@ -57,6 +59,11 @@ if Opts.ifCenterMonth
     fldStr = [ Out.fld 'ma' ];
 else
     fldStr = Out.fld;
+end
+
+% Append 'l' to field string if linearly detrending the data
+if Opts.ifDetrend
+    fldStr = [ Out.fld 'l' ];
 end
 
 % Append 'w' if performing area weighting
@@ -104,6 +111,7 @@ ncId   = netcdf.open( fullfile( In.dir, In.file ) );
 idTime = netcdf.inqVarID( ncId, 'time' );
 idLon  = netcdf.inqVarID( ncId, 'lon' );
 idLat  = netcdf.inqVarID( ncId, 'lat' );
+idLev  = netcdf.inqVarID( ncId, 'level' );
 idFld  = netcdf.inqVarID( ncId, In.var );
 
 % Get timestamps and total number of available samples
@@ -134,12 +142,17 @@ nTRead = nT - preDeficit - postDeficit;
 % Create longitude-latitude grid
 lon = netcdf.getVar( ncId, idLon );
 lat = netcdf.getVar( ncId, idLat );
+lev = netcdf.getVar( ncId, idLev );
 nX  = length( lon );
 nY  = length( lat );
+nZ  = length( lev );
 [ X, Y ] = ndgrid( lon, lat );
+lev = lev( Domain.levels );
 
 %  Retrieve data
-fldRead = netcdf.getVar( ncId, idFld, [ 0 0 idxT0Read ], [ nX nY nTRead ] );
+fldRead = netcdf.getVar( ncId, idFld, [ 0 0 0 idxT0Read ], ...
+                                      [ nX nY nZ nTRead ] );
+fldRead = fldRead( :, :, Domain.levels, : );
 
 % Create region mask. Here, we are being conservative and
 % only retain grid points with physical values for the entire temporal
@@ -151,27 +164,30 @@ rng = netcdf.getAtt( ncId, idFld, 'valid_range' );
 %     & fldRef >= rng( 1 ) & fldRef <= rng( 2 );
 ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
      & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 ) ...
-     & all( fldRead >= rng( 1 ) & fldRead <= rng( 2 ), 3 );
+     & all( fldRead >= rng( 1 ) & fldRead <= rng( 2 ), [ 3  4 ] );
 iXY = find( ifXY( : ) );
 iXY = find( ifXY( : ) );
 nXY = length( iXY );
+nL  = length( Domain.levels );
 
 % Create output array
-fldRead = reshape( fldRead, [ nX * nY nTRead ] );
-fld = zeros( nXY, nT );
-fld( :, 1 + preDeficit : nTRead + preDeficit ) = fldRead( iXY, : );
+fldRead = reshape( fldRead, [ nX * nY, nL nTRead ] );
+fld = zeros( nXY, nL, nT );
+fld( :, :, 1 + preDeficit : nTRead + preDeficit ) = fldRead( iXY, :, : );
 
 % If requested, weigh the data by the (normalized) grid cell surface areas. 
 % Surface area calculation is approximate as it treats Earth as spherical
 if Opts.ifWeight
 
     % Convert to radians and augment grid periodically 
-    dLon = [ -2; lon; 360 ] * pi / 180; 
-    dLat = [ 90; lat; -90 ] * pi / 180;
+    resLon = lon( 2 ) - lon( 1 );
+    resLat = lat( 2 ) - lat( 1 );
+    dLon = [ lon( 1 ) - resLon; lon; lon( end ) + resLon ] * pi / 180; 
+    dLat = [ lat( 1 ) - resLat; lat; lat( end ) + resLat ] * pi / 180;
 
     % Compute grid coordinate differences
     dLon = ( dLon( 1 : end - 1 ) + dLon( 2 : end ) ) / 2;
-    dLon = dLon( 2 : end ) - dLon( 1 : end - 1 );
+    dLon = abs( dLon( 2 : end ) - dLon( 1 : end - 1 ) );
     dLat = ( dLat( 1 : end - 1 ) + dLat( 2 :end ) ) / 2;
     dLat = dLat( 2 : end ) - dLat( 1 : end - 1 );
     dLat = abs( dLat ) .* cos( dLat );
@@ -185,17 +201,23 @@ if Opts.ifWeight
     fld = fld .* w;
 end
 
+% Reshape output into rank-2 array
+fld = reshape( fld, [ nXY * nL, nT ] );
+
 % If requested, subtract climatology.
 % We do this only for the samples within the available date range in the 
 % NetCDF file. In other words, zero-padded samples have zero anomaly relative
 % to global climatology. 
 if Opts.ifCenter
-    cli = netcdf.getVar( ncId, idFld, [ 0 0 idxTClim0 ], [ nX nY nTClim ] );
-    cli = reshape( cli, [ nX * nY nTClim ] );
-    cli = cli( iXY, : );
+    cli = netcdf.getVar( ncId, idFld, [ 0 0 0 idxTClim0 ], ...
+                                      [ nX nY nZ nTClim ] );
+    cli = cli( :, :, Domain.levels, : );
+    cli = reshape( cli, [ nX * nY, nL, nTClim ] );
+    cli = cli( iXY, :, : );
     if Opts.ifWeight
         cli = cli .* w;
     end
+    cli = reshape( cli, [ nXY * nL, nTClim ] );
     cli = mean( cli, 2 );
     fld( :, 1 + preDeficit : end - postDeficit ) = ...
         fld( :, 1 + preDeficit : end - postDeficit ) - cli;
@@ -206,13 +228,16 @@ end
 % NetCDF file. In other words, zero-padded samples have zero anomaly relative
 % to monthly climatology. 
 if Opts.ifCenterMonth
-    cliData = netcdf.getVar( ncId, idFld, [ 0 0 idxTClim0 ], [ nX nY nTClim ] );
-    cliData = reshape( cliData, [ nX * nY nTClim ] );
-    cliData = cliData( iXY, : );
+    cliData = netcdf.getVar( ncId, idFld, [ 0 0 0 idxTClim0 ], ...
+                                          [ nX nY nZ nTClim ] );
+    cliData = cliData( :, :, Domain.levels, : );
+    cliData = reshape( cliData, [ nX * nY, nL nTClim ] );
+    cliData = cliData( iXY, :, : );
     if Opts.ifWeight
         cliData = cliData .* w;
     end
-    cli = zeros( nXY, 12 );
+    cliDdata = reshape( cliData, [ nXY * nL, nTClim ] );
+    cli = zeros( nXY * nL, 12 );
     for iM = 1 : 12
         cli( :, iM ) = mean( cliData( :, iM : 12 : end ), 2 );
     end
@@ -220,7 +245,7 @@ if Opts.ifCenterMonth
     for iM = 1 : 12
         idxM = mod( idxM0 + iM - 2, 12 ) + 1; 
         fld( :, iM + preDeficit : 12 : end - postDeficit ) = ...
-              fld( :,  iM + preDeficit : 12 : end - postDeficit ) ...
+              fld( :, iM + preDeficit : 12 : end - postDeficit ) ...
             - cli( :, idxM ); 
     end  
 end
@@ -228,11 +253,27 @@ end
 % NetCDF file no longer needed
 netcdf.close( ncId );
 
+% If requested, perform linear detrending
+% beta is an [ nXY 2 ]-sized array such that b( i, 1 ) and b( i, 2 ) contain
+% the mean and linear trend coefficients of the data. 
+if Opts.ifDetrend
+    t = [ 0 : nT - 1 ] / 12; % time in years
+    beta = zeros( nXY * nL, 2 ); 
+    for j = 1 : nXY * nL 
+        [ p, S ] = polyfit( t, fld( j, : ), 1 );
+        beta( j, : ) = p;
+    end
+    fld = fld - beta( :, 1 ) - beta( :, 2 ) * t;
+end 
+
+
 % If requested, perform area averaging
 if Opts.ifAverage
-    fld = mean( fld, 1 );
+    fld = reshape( fld, [ nXY nL nT ] );
+    fld = squeeze( mean( fld, 1 ) );
     if Opts.ifCenter || Opts.ifCenterMonth
-        cli = mean( cli, 1 );
+        cli = reshape( cli, [ nXY nL size( cli, 2 ) ] ); 
+        cli = squeeze( mean( cli, 1 ) );
     end
 end
 
@@ -247,7 +288,7 @@ end
 
 %% RETURN AND WRITE DATA
 % Coordinates and area mask
-gridVarList = { 'lat', 'lon', 'ifXY', 'fldStr', 'nD' };
+gridVarList = { 'lat', 'lon', 'lev', 'ifXY', 'fldStr', 'nD' };
 if Opts.ifWeight
     gridVarList = [ gridVarList 'w' ];
 end

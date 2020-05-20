@@ -1,5 +1,5 @@
-function Data = importData_ccsm4Ctrl( DataSpecs )
-% IMPORTDATA_CCSM4CTRL Read monthly CCSM4 control data from NetCDF files, and 
+function Data = importData_ersst( DataSpecs )
+% IMPORTDATA_ERSST Read monthly data from ERSST reanalysis netCDF files, and 
 % output in format appropriate for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
@@ -22,6 +22,7 @@ function Data = importData_ccsm4Ctrl( DataSpecs )
 % Opts.ifCenter:      Remove global climatology if true 
 % Opts.ifWeight:      Perform area weighting if true 
 % Opts.ifCenterMonth: Remove monthly climatology if true 
+% Opts.ifDetrend:     Remove linear trend if true
 % Opts.ifNormalize:   Standardize data to unit L2 norm if true
 % Opts.ifWrite:       Write data to disk
 % Opts.ifOutputData:  Only data attributes are returned if set to false
@@ -29,10 +30,10 @@ function Data = importData_ccsm4Ctrl( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Longitude range is [ 0 359 ] 
-% Latitude range is [ -89 89 ] 
+% Longitude range is [ 0 358 ] 
+% Latitude range is [ -88 88 ] 
 %
-% Modified 2020/05/18
+% Modified 2020/05/19
 
 
 
@@ -64,6 +65,11 @@ if Opts.ifCenterMonth
     fldStr = [ Out.fld 'ma' ];
 else
     fldStr = Out.fld;
+end
+
+% Append 'l' to field string if linearly detrending the data
+if Opts.ifDetrend
+    fldStr = [ Out.fld 'l' ];
 end
 
 % Append 'w' if performing area weighting
@@ -121,49 +127,20 @@ end
 % Create partition representing how samples are distributed among files 
 partitionT = nlsaPartition( 'idx', cumsum( nTFiles ) ); 
 
-% Retrieve longitude/latitude grid, grid cell area, region mask, and variable
-% (field) to be read. 
+% Open netCDF file, find variable IDs
 ncId   = netcdf.open( fullfile( In.dir, files( 1 ).name ) );
-idLon  = netcdf.inqVarID( ncId, In.lon );
-idLat  = netcdf.inqVarID( ncId, In.lat );
-if ifArea
-    idArea = netcdf.inqVarID( ncId, In.area );
-end
-if ifMsk
-    idMsk  = netcdf.inqVarID( ncId, In.msk );
-end
+idLon  = netcdf.inqVarID( ncId, 'lon' );
+idLat  = netcdf.inqVarID( ncId, 'lat' );
 idFld  = netcdf.inqVarID( ncId, In.var );
 
 % Read longitude/latitude data, create region mask
 lon  = netcdf.getVar( ncId, idLon );
 lat  = netcdf.getVar( ncId, idLat );
-if isvector( lon )
-    [ X, Y ] = ndgrid( lon, lat );
-else
-    X    = lon;
-    Y    = lat;
-end
-ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
-     & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 );
-if ifMsk
-    % nonzero mask values are ocean gridpoints
-    ifXY = ifXY & ( netcdf.getVar( ncId, idMsk ) ~= 0 );
-end
-nXY = numel( ifXY );   % number of gridpoints 
-iXY = find( ifXY( : ) ); % extract linear indices from area mask
-[ nX, nY  ] = size( X );
-nXY  = nnz( ifXY ); % number if gridpoints in mask
-disp( sprintf( '%i unmasked gridpoints ', nXY ) )
-
-% If needed, compute area weights
-if Opts.ifWeight
-    %dlon=mod( (circshift(lon,-1)-circshift(lon,0))*pi/180, 2*pi);
-    w = netcdf.getVar( ncId, idArea ); 
-    w  = w( ifXY );
-    w  = sqrt( w / sum( w ) * nXY );
-    disp( sprintf( '%1.3g max area weight', max( w ) ) )
-    disp( sprintf( '%1.3g min area weight', min( w ) ) )
-end
+nX  = length( lon );
+nY  = length( lat );
+[ X, Y ] = ndgrid( lon, lat );
+rngMin = netcdf.getAtt( ncId, idFld, 'valid_min' );
+rngMax = netcdf.getAtt( ncId, idFld, 'valid_max' );
 
 % Close currently open netCDF file
 netcdf.close( ncId );
@@ -178,7 +155,6 @@ if ~isdir( dataDir )
     mkdir( dataDir )
 end
 
-
 % Prepare local and global indices for data retrieval
 startNum = datenum( Time.tStart, Time.tFormat );
 limNum = datenum( Time.tLim, Time.tFormat );
@@ -187,10 +163,8 @@ idxT1 = months( startNum, limNum( 1 ) ) + 1;   % first global index
 idxTEnd = months( startNum, limNum( 2 ) ) + 1; % last global index
 idxFile1 = findBatch( partitionT, idxT1 );       % first file
 idxFileEnd = findBatch( partitionT, idxTEnd );   % last file
-iTFile1 = idxT1 + 1 - getLowerBatchLimit( partitionT, idxFile1 ); 
-iTFileEnd = idxTEnd + 1 - getLowerBatchLimit( partitionT, idxFileEnd );
-iT1 = 1;
-fld = zeros( nXY, nT );
+iTRead1 = idxT1 + 1 - getLowerBatchLimit( partitionT, idxFile1 ); 
+iTReadEnd = idxTEnd + 1 - getLowerBatchLimit( partitionT, idxFileEnd );
 
 % Prepare local and global indices for climatology
 if ifClim
@@ -200,25 +174,68 @@ if ifClim
     idxTClimEnd = months( startNum, climNum( 2 ) ) + 1;
     idxFileClim1 = findBatch( partitionT, idxTClim1 );
     idxFileClimEnd = findBatch( partitionT, idxTClimEnd );
-    iTClimFile1 = idxTClim1 + 1 ...
+    iTClimRead1 = idxTClim1 + 1 ...
                      - getLowerBatchLimit( partitionT, idxFileClim1 ); 
-    iTClimFileEnd = idxTClimEnd + 1 ...
+    iTClimReadEnd = idxTClimEnd + 1 ...
                      - getLowerBatchLimit( partitionT, idxFileClimEnd );
+end
+
+% Loop over the netCDF files, read data
+iFiles = idxFile1 : idxFileEnd;
+nTReads = sum( nTFiles( iFiles ) );
+if ifClim
+    iFiles = unique( [ iFiles idxFileClim1 : idxFileClimEnd ] ); 
+end
+fldRead = zeros( nX, nY, nTReads ); 
+iTRead1 = 1;
+
+for iFile = iFiles
+    
+    fileIn = fullfile( In.dir, files( iFile ).name );
+    %disp( sprintf( 'Extracting data from file %s', fileIn ) )
+    ncId   = netcdf.open( fileIn  );
+
+    % Number of samples in current file
+    nTFile = nTFiles( iFile ); 
+
+    % Read data from netCDF file, reshape into 2D array
+    iTRead2 = iTRead1 + nTFile - 1; 
+    fldRead( :, :, iTRead1 : iTRead2 ) = netcdf.getVar( ncId, idFld );
+    netcdf.close( ncId ); 
+    iTRead2 = iTRead1 + 1; 
+
+end
+
+
+% Create region mask. Here, we are being conservative and
+% only retain grid points with physical values for the entire temporal
+% extent of the dataset. 
+%fldRef = netcdf.getVar( ncId, idFld, [ 0 0 0 ], [ nX nY 1 ] ); 
+%ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
+%     & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 ) ...
+%     & fldRef >= rng( 1 ) & fldRef <= rng( 2 );
+ifXY = X >= Domain.xLim( 1 ) & X <= Domain.xLim( 2 ) ...
+     & Y >= Domain.yLim( 1 ) & Y <= Domain.yLim( 2 ) ...
+     & all( fldRead >= rngMin & fldRead <= rngMax, 3 );
+iXY = find( ifXY( : ) );
+iXY = find( ifXY( : ) );
+nXY = length( iXY );
+
+% Reshape read data into rank-2 array
+fldRead = reshape( fldRead, [ nX * nY nTReads ] );
+
+% Prepare output arrays
+iT1 = 1;
+fld = zeros( nXY, nT );
+if ifClim
     iTClim1 = 1;
     cliData = zeros( nXY, nTClim );
 end
 
-% Loop over the netCDF files, read output data and climatology data
-iFiles = idxFile1 : idxFileEnd;
-if ifClim
-    iFiles = unique( [ iFiles idxFileClim1 : idxFileClimEnd ] ); 
-end
+
+% Put unmasked data into output arrays
 for iFile = iFiles
     
-    fileIn = fullfile( In.dir, files( iFile ).name );
-    disp( sprintf( 'Extracting data from file %s', fileIn ) )
-    ncId   = netcdf.open( fileIn  );
-
     % Number of samples in current file
     nTFile = nTFiles( iFile ); 
 
@@ -226,7 +243,7 @@ for iFile = iFiles
     if iFile >= idxFile1 && iFile < idxFileEnd
         nTRead = nTFile;
     elseif iFile == idxFileEnd
-        nTRead = iTFileEnd - iTFile1 + 1;
+        nTRead = iTReadEnd - iTRead1 + 1;
     else
         nTRead = 0;
     end
@@ -237,42 +254,61 @@ for iFile = iFiles
         if iFile >= idxFileClim1 && iFile < idxFileClimEnd
             nTClimRead = nTFile;
         elseif iFile == idxFileClimEnd
-            nTClimRead = iTClimFileEnd - iTClimFile1 + 1;
+            nTClimRead = iTClimReadEnd - iTClimRead1 + 1;
         else
             nTClimRead = 0;
         end
         iTClim2 = iTClim1 + nTClimRead - 1;
+        iTClimRead2 = iTClimRead1 + nTClimRead - 1;
     end
-        
-    % Read data from netCDF file, reshape into 2D array
-    fldFile = netcdf.getVar( ncId, idFld );
-    netcdf.close( ncId ); 
-    fldFile = reshape( fldFile, [ nX * nY, nTFile ] );
 
     % Read data into output data array, update time indices 
     if nTRead > 0 
         iT2 = iT1 + nTRead - 1;
-        fld( :, iT1 : iT2 ) = fldFile( iXY, iTFile1 : iTFile1 + nTRead - 1 );
+        iTRead2 = iTRead1 + nTRead - 1;
+        fld( :, iT1 : iT2 ) = fldRead( iXY, iTRead1 : iTRead2 );
         iT1 = iT2 + 1;
-        iTFile1 = 1;
+        iTRead1 = iTRead2 + 1;
     end
 
     % Read data into climatology array, update time indices
     if ifClim && nTClimRead > 0
         cliData( :, iTClim1 : iTClim2 ) = ...
-            fldFile( iXY, iTClimFile1 : iTClimFile1 + nTClimRead - 1 );
+            fldRead( iXY, iTClimRead1 : iTClimRead2 );
         iTClim1 = iTClim2 + 1;
-        iTClimFile1 = 1;
+        iTClimRead1 = iTClimRead2 + 1;
     end
 end
 
 % If requested, weigh the data by the (normalized) grid cell surface areas. 
+% Surface area calculation is approximate as it treats Earth as spherical
 if Opts.ifWeight
-    fld = fld .* w;  
-    if ifClim
-        cliData = cliData .* w;
-    end
+
+    % Convert to radians and augment grid periodically 
+    resLon = lon( 2 ) - lon( 1 );
+    resLat = lat( 2 ) - lat( 1 );
+    dLon = [ lon( 1 ) - resLon; lon; lon( end ) + resLon ] * pi / 180; 
+    dLat = [ lat( 1 ) - resLat; lat; lat( end ) + resLat ] * pi / 180;
+
+    % Compute grid coordinate differences
+    dLon = ( dLon( 1 : end - 1 ) + dLon( 2 : end ) ) / 2;
+    dLon = abs( dLon( 2 : end ) - dLon( 1 : end - 1 ) );
+    dLat = ( dLat( 1 : end - 1 ) + dLat( 2 :end ) ) / 2;
+    dLat = dLat( 2 : end ) - dLat( 1 : end - 1 );
+    dLat = abs( dLat ) .* cos( dLat );
+
+    % Compute surface area weights
+    w = dLon .* dLat';
+    w = w( ifXY );
+    w = sqrt( w / sum( w ) * nXY );
+      
+    disp( sprintf( '%1.3g max area weight', max( w ) ) )
+    disp( sprintf( '%1.3g min area weight', min( w ) ) )
+
+    % Weigh the data
+    fld = fld .* w;
 end
+
 
 
 % If requested, subtract global climatology
@@ -294,7 +330,20 @@ if Opts.ifCenterMonth
     end  
 end
 
+% If requested, perform linear detrending
+% beta is an [ nXY 2 ]-sized array such that b( i, 1 ) and b( i, 2 ) contain
+% the mean and linear trend coefficients of the data. 
+if Opts.ifDetrend
+    t = [ 0 : nT - 1 ] / 12; % time in years
+    beta = zeros( nXY, 2 ); 
+    for j = 1 : nXY
+        [ p, S ] = polyfit( t, fld( j, : ), 1 );
+        beta( j, : ) = p;
+    end
+    fld = fld - beta( :, 1 ) - beta( :, 2 ) * t;
+end 
 
+    
 % If requested, perform area averaging
 if Opts.ifAverage
     fld = mean( fld, 1 );

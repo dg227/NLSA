@@ -15,8 +15,362 @@ function demoEnsoLifecycle_data( dataset, period, fld )
 
 switch( dataset )
 
-%% NOAA 20th CENTURY REANALYSIS
+%% NOAA REANALYSIS (VARIOUS PRODUCTS)
 case 'noaa'
+
+    % Input data directory 
+    %DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/noaa'; 
+    DataSpecs.In.dir = '/Users/dg227/GoogleDrive/physics/climate/data'; 
+
+    % Output data specification
+    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
+
+    % Time specification
+    DataSpecs.Time.tFormat = 'yyyymm';              % time format
+    switch( period )
+
+    % Satellite era
+    case 'satellite'
+
+        DataSpecs.Time.tLim    = { '197801' '202003' }; % time limits
+        DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
+
+    otherwise
+
+        error( 'Invalid period' )
+    end
+
+    switch( fld )
+
+    %% Indo-Pacific SST (from ERSST)
+    case 'IPSST'
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.file = 'ersst.v5'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '188001';           % start time in nc file 
+
+        % Spatial domain
+        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
+        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+    
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = false; % don't detrend
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ersst( DataSpecs )
+
+    %% Nino 4 index (from ERSST)
+    case 'Nino4'
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.file = 'ersst.v5'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '188001';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 160 210 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = false; % don't detrend
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ersst( DataSpecs )
+
+    %% Nino 3.4 index (from ERSST)
+    case 'Nino3.4'
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.file = 'ersst.v5'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '188001';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 190 240 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = false; % don't detrend
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ersst( DataSpecs )
+
+    %% Nino 3 index (from ERSST)
+    case 'Nino3'
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.file = 'ersst.v5'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '188001';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 210 270 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = false; % don't detrend
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ersst( DataSpecs )
+
+    %% Nino 1+2 index (from ERSST)
+    case 'Nino1+2'
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.file = 'ersst.v5'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '188001';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 270 280 ]; % longitude limits 
+        DataSpecs.Domain.yLim = [ -10 0 ];    % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = false; % don't detrend
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = true;  % perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ersst( DataSpecs )
+
+    %% Global SST (from ERSST)
+    case 'SST' 
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.file = 'ersst.v5'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '188001';           % start time in nc file 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ersst( DataSpecs )
+
+    % Global SSH (from GODAS)
+    case 'SSH'
+
+        % Input data 
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'godas' );
+        DataSpecs.In.file = 'sshg'; % input filename
+        DataSpecs.In.var  = 'sshg';
+
+        % Output data
+        DataSpecs.Out.fld = 'ssh';      
+
+        % Time specification
+        DataSpecs.Time.tStart = '198001'; % start time in dataset
+        DataSpecs.Time.tEnd   = '202004'; % end time in dataset
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_godas( DataSpecs )
+
+    %% Global SAT (from NCEP/NCAR)
+    case( 'SAT' )
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.file = 'air.mon.mean.nc'; % input filename
+        DataSpecs.In.var  = 'air';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '194801';  % start time in dataset
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.levels = 17;         % levels  
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+
+        importData_ncep( DataSpecs ) 
+
+    %% Global precipitation rate (from CMAP)
+    case 'precip'
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'cmap' );
+        DataSpecs.In.file = 'precip.mon.mean.nc'; % input filename
+        DataSpecs.In.var  = 'precip';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '197901'; % start time in dataset
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_cmap( DataSpecs )
+
+    %% Global zonal wind (from NCEP/NCAR)
+    case 'uwind' 
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.file = 'uwnd.mon.mean.nc'; % input filename
+        DataSpecs.In.var  = 'uwnd';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart = '194801'; % start time in dataset
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.levels = 17;         % levels  
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ncep( DataSpecs ) 
+
+    %% Global meridional wind (from NCEP/NCAR)
+    case 'vwind' 
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.file = 'vwnd.mon.mean.nc'; % input filename
+        DataSpecs.In.var  = 'vwnd';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '194801'; % start time in dataset 
+
+        % Spatial domain 
+        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
+        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.levels = 17;       % levels  
+
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
+        DataSpecs.Opts.ifCenterMonth = true;  % remove monthly climatology 
+        DataSpecs.Opts.ifDetrend     = true;  % perform linear detrending
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ncep( DataSpecs ) 
+
+    end
+
+
+%% NOAA 20th CENTURY REANALYSIS
+case '20CR'
 
     % Input data directory 
     DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/noaa'; 
@@ -72,6 +426,8 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_noaa( DataSpecs )
+
     %% Nino 4 index
     case 'Nino4'
 
@@ -97,6 +453,7 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_noaa( DataSpecs )
 
     %% Nino 3.4 index
     case 'Nino3.4'
@@ -123,6 +480,8 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_noaa( DataSpecs )
+
     %% Nino 3 index
     case 'Nino3'
 
@@ -147,6 +506,8 @@ case 'noaa'
         DataSpecs.Opts.ifAverage     = true;  % perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_noaa( DataSpecs )
 
     %% Nino 1+2 index
     case 'Nino1+2'
@@ -173,6 +534,8 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_noaa( DataSpecs )
+
     %% Global SST
     case( 'SST' )
 
@@ -198,6 +561,7 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_noaa( DataSpecs )
 
     %% Global SAT
     % Start dates/end dates for possible source files are as follows:
@@ -229,8 +593,7 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-
-        climateData( dataset, DataSpecs ) % read global SAT data
+        importData_noaa( DataSpecs )
 
     %% Global precipitation rate
     case( 'precip' )
@@ -255,6 +618,8 @@ case 'noaa'
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_noaa( DataSpecs )
 
     %% Global zonal wind
     % Start dates/end dates for possible source files are as follows:
@@ -283,6 +648,8 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_noaa( DataSpecs )
+
     %% Global meridional wind
     % Start dates/end dates for possible source files are as follows:
     % 
@@ -310,6 +677,7 @@ case 'noaa'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_noaa( DataSpecs )
     end
 
 %%CCSM4 PRE-INDUSTRIAL CONTROL RUN 
@@ -341,7 +709,6 @@ case 'ccsm4Ctrl'
     otherwise
         error( 'Invalid period' )
     end
-
 
 
     switch( fld )
@@ -376,6 +743,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+
     %% Nino 4 index
     case 'Nino4'
 
@@ -406,6 +775,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
 
     %% Nino 3.4 index
     case 'Nino3.4'
@@ -437,6 +807,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+
     %% Nino 3 index
     case 'Nino3'
 
@@ -466,6 +838,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifAverage     = true;  % perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
 
     %% Nino 1+2 index
     case 'Nino1+2'
@@ -497,6 +871,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+
     %% Global SST
     case( 'SST' )
 
@@ -526,6 +902,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
 
     %% Global SSH
     case( 'SSH' )
@@ -558,6 +936,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
 
     %% Global SAT
     case( 'SAT' )
@@ -589,6 +968,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+
     %% Global precipitation data
     case( 'precip' )
 
@@ -616,6 +997,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
 
     %% Global zonal wind data
     case( 'uwind' )
@@ -645,6 +1028,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+
     %% Global meridional wind data
     case( 'vwind' )
 
@@ -673,10 +1058,10 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+
 
     end
 
 end
 
-% Read data
-importData( dataset, DataSpecs ) 

@@ -1,15 +1,23 @@
 % RECONSTRUCT THE LIFECYCLE OF THE EL NINO SOUTHERN OSCILLATION (ENSO) 
 % USING DATA-DRIVEN SPECTRAL ANALYSIS OF KOOPMAN/TRANSFER OPERATORS
 %
-% Modified 2020/05/13
+% Modified 2020/05/18
 
 %% DATA SPECIFICATION 
-dataset   = 'ccsm4Ctrl';    % CCSM4 pre-industrial control run
+% CCSM4 pre-industrial control run
+%dataset   = 'ccsm4Ctrl';    
 %period    = '200yr';        % 200-year analysis 
-period  = '1300yr';        % 1300-year analysis
+%period  = '1300yr';        % 1300-year analysis
+%sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
+
+% NOAA reanalysis (various products)
+dataset    = 'noaa';                                     
+period    = 'satellite';                  % 1970-present
+experiment = 'enso_lifecycle_satellite';  % 1870-present 
 sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
 
-%dataset    = 'noaa';                      % NOAA 20th Century Reanalysis 
+% NOAA 20th century reanalysis
+%dataset    = '20CR';                                     
 %period    = 'satellite';                  % 1970-present
 %experiment = 'enso_lifecycle_satellite';  % 1870-present 
 %sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
@@ -37,7 +45,7 @@ ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
 ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
 ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
 ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
-ifKoopmanSpectrum     = true;  % plot generator spectrum
+ifKoopmanSpectrum     = false;  % plot generator spectrum
 
 % Composite plots
 ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
@@ -46,8 +54,8 @@ ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = false;     % weigh composites by adjacent phases
-ifPlotWind        = true;      % overlay quiver plot of surface winds 
-ifPrintFig        = true;      % print figures to file
+ifPlotWind        = false;      % overlay quiver plot of surface winds 
+ifPrintFig        = false;      % print figures to file
 compositesDomain  = 'globe';   % global domain
 compositesDomain  = 'Pacific'; % Pacific
 
@@ -77,9 +85,9 @@ experiment = strjoin_e( experiment, '_' );
 
 switch experiment
         
-% NOAA 20th Century Reanalysis, industrial era, Indo-Pacific SST input,
-% 4-year delay embeding window  
-case 'noaa_industrial_IPSST_4yrEmb'
+% NOAA reanalysis data, industrial era, Indo-Pacific SST input, 4-year delay 
+% embeding window  
+case '20CR_industrial_IPSST_4yrEmb'
 
     idxPhiEnso   = [ 10 9 ];  
     signPhi      = [ -1 -1 ]; 
@@ -89,8 +97,21 @@ case 'noaa_industrial_IPSST_4yrEmb'
     nSamplePhase = 100;       
     PRate.scl     = 1E5; 
 
-% NOAA 20th Century Reanalysis, approximate satellite era, Indo-Pacific SST 
-% input, 4-year delay embeding window  
+% NOAA 20th century reanalysis data, industrial era, Indo-Pacific SST input, 
+% 4-year delay embeding window  
+case '20CR_satellite_IPSST_4yrEmb'
+
+    idxPhiEnso   = [ 8 7 ];  
+    signPhi      = [ 1 -1 ]; 
+    idxZEnso     = 7;         
+    phaseZ       = -1 * exp( i * pi / 4 );        
+    nPhase       = 8;         
+    nSamplePhase = 30;       
+    PRate.scl     = 1E5; 
+
+
+% NOAA reanalysis data, industrial era, Indo-Pacific SST input, 4-year delay 
+% embeding window  
 case 'noaa_satellite_IPSST_4yrEmb'
 
     idxPhiEnso   = [ 8 7 ];  
