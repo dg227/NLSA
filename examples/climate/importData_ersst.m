@@ -294,7 +294,7 @@ if Opts.ifWeight
     dLon = abs( dLon( 2 : end ) - dLon( 1 : end - 1 ) );
     dLat = ( dLat( 1 : end - 1 ) + dLat( 2 :end ) ) / 2;
     dLat = dLat( 2 : end ) - dLat( 1 : end - 1 );
-    dLat = abs( dLat ) .* cos( dLat );
+    dLat = abs( dLat .* cos( lat * pi / 180 ) );
 
     % Compute surface area weights
     w = dLon .* dLat';

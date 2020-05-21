@@ -8,28 +8,33 @@
 %dataset   = 'ccsm4Ctrl';    
 %period    = '200yr';        % 200-year analysis 
 %period  = '1300yr';        % 1300-year analysis
-%sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
+sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'globalSST'; % global SST
+embWindow  = '4yr';       % 4-year embedding
 
 % NOAA reanalysis (various products)
 dataset    = 'noaa';                                     
-period    = 'satellite';                  % 1970-present
-experiment = 'enso_lifecycle_satellite';  % 1870-present 
-sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
+period     = 'satellite'; % 1978-present
+sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'globalSST'; % global SST
+embWindow  = '4yr';       % 4-year embedding
 
 % NOAA 20th century reanalysis
 %dataset    = '20CR';                                     
 %period    = 'satellite';                  % 1970-present
-%experiment = 'enso_lifecycle_satellite';  % 1870-present 
-%sourceVar = 'IPSST_4yrEmb'; % Indo-Pacific SST, 4-year delay embedding 
+sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'globalSST'; % global SST
+embWindow  = '4yr';       % 4-year embedding
 
 %% SCRIPT EXECUTION OPTIONS
 
 % Data extraction
-ifDataSST    = false;  % extract SST data from NetCDF source files
-ifDataSSH    = false;  % extract SSH data from NetCDF source files
-ifDataSAT    = false;  % extract SAT data from NetCDF source files
-ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
-ifDataWind   = false;  % extract 10m wind data from NetCDF source files  
+ifDataSource = false;   % extract source data fron NetCDF files
+ifDataSST    = false;  % extract SST target data from NetCDF files
+ifDataSSH    = false;  % extract SSH target data from NetCDF files
+ifDataSAT    = false;   % extract SAT target data from NetCDF files
+ifDataPrecip = false;  % extract precipitation target data from NetCDF files  
+ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
 ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
@@ -48,16 +53,16 @@ ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
 ifKoopmanSpectrum     = true;  % plot generator spectrum
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
 ifPlotWind        = true;      % overlay quiver plot of surface winds 
 ifPrintFig        = true;      % print figures to file
 compositesDomain  = 'globe';   % global domain
-compositesDomain  = 'Pacific'; % Pacific
+%compositesDomain  = 'Pacific'; % Pacific
 
 
 %% GLOBAL PARAMETERS
@@ -76,12 +81,11 @@ compositesDomain  = 'Pacific'; % Pacific
 % specLegend:   Legend text for marked eigenvalues
 
 nShiftNino   = 11;        
-phase0       = 4;         
+phase0       = 1;         
 leads        = [ 0 6 12 18 24 ]; 
 
-experiment = { dataset period sourceVar };
+experiment = { dataset period sourceVar [ embWindow 'Emb' ] };
 experiment = strjoin_e( experiment, '_' );
-
 
 switch experiment
         
@@ -123,7 +127,31 @@ case 'noaa_satellite_IPSST_4yrEmb'
     phaseZ       = exp( -i * pi / 8 );        
 
     nPhase       = 8;         
-    nSamplePhase = 30;       
+    nSamplePhase = 20;       
+
+    markSpec = { 1          ... % constant
+                 [ 2 3 ]    ... % annual
+                 [ 4 5 ]    ... % semiannual
+                 [ 6 7 ]    ... % ENSO
+                 [ 8 : 13 ] ... % ENSO combination
+                 };
+    specLegend = { 'mean' ... 
+                   'annual' ...
+                   'semiannual' ...
+                   'ENSO' ...
+                   'ENSO combination' };
+
+case 'noaa_satellite_globalSST_4yrEmb'
+
+    %idxPhiEnso   = [ 7 6 ];  
+    signPhi      = [ 1 -1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 12 11 ];
+    idxZEnso     = 11;
+    phaseZ       = exp( - i * 5 * pi / 8 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
 
     markSpec = { 1          ... % constant
                  [ 2 3 ]    ... % annual
@@ -138,10 +166,11 @@ case 'noaa_satellite_IPSST_4yrEmb'
                    'ENSO combination' };
 
 
+
 % CCSM4 pre-industrial control, 200-year period, Indo-Pacific SST input, 
 % 4-year delay embeding window  
 case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
-
+    
     idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 1 ]; 
     idxZEnso     = 6;         
@@ -204,13 +233,17 @@ end
 iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
 
-%% EXTRACT SST DATA
+
+%% EXTRACT SOURCE DATA
+if ifDataSource
+    disp( sprintf( 'Reading source data %s...', sourceVar ) ); t = tic;
+    ensoLifecycle_data( dataset, period, sourceVar ) 
+    toc( t )
+end
+
+%% EXTRACT SST TARGET DATA
 if ifDataSST
  
-    disp( 'Reading Indo-Pacific SST data...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'IPSST' ) 
-    toc( t )
-
     disp( 'Reading Nino 3.4 index...' ); t = tic;
     ensoLifecycle_data( dataset, period, 'Nino3.4' ) 
     toc( t )
@@ -227,7 +260,7 @@ if ifDataSST
     ensoLifecycle_data( dataset, period, 'Nino1+2' ) 
     toc( t )
 
-    disp( 'Reading global SST data...' ); t = tic; 
+    disp( 'Reading global SST anomaly data...' ); t = tic; 
     ensoLifecycle_data( dataset, period, 'SST' ) 
     toc( t )
 end
@@ -235,7 +268,7 @@ end
 %% EXTRACT SAT DATA
 if ifDataSSH
 
-    disp( 'Reading global SSH data...' ); t = tic; 
+    disp( 'Reading global SSH anomaly data...' ); t = tic; 
     ensoLifecycle_data( dataset, period, 'SSH' )
     toc( t )
 end
@@ -244,7 +277,7 @@ end
 %% EXTRACT SAT DATA
 if ifDataSAT
 
-    disp( 'Reading global SAT data...' ); t = tic; 
+    disp( 'Reading global SAT anomaly data...' ); t = tic; 
     ensoLifecycle_data( dataset, period, 'SAT' )
     toc( t )
 end
@@ -252,18 +285,18 @@ end
 %% EXTRACT PRECIPITATION RATE DATA
 if ifDataPrecip
 
-    disp( 'Reading global precipitation rate data...' ); t = tic; 
+    disp( 'Reading global precipitation anomaly data...' ); t = tic; 
     ensoLifecycle_data( dataset, period, 'precip' )
     toc( t )
 end
 
 %% EXTRACT SURFACE WIND DATA
 if ifDataWind
-    disp( 'Reading global zonal surface wind data...' ); t = tic; 
+    disp( 'Reading global zonal surface wind anomaly data...' ); t = tic; 
     ensoLifecycle_data( dataset, period, 'uwind' )
     toc( t )
 
-    disp( 'Reading global meridional surface wind data...' ); t = tic; 
+    disp( 'Reading global meridional surface wind anomaly data...' ); t = tic; 
     ensoLifecycle_data( dataset, period, 'vwind' )
     toc( t )
 end
@@ -1064,7 +1097,7 @@ if ifKoopmanSpectrum
           '.', 'markerSize', 10, 'color', [ .5 .5 .5 ] )
 
     grid on
-    xlim( [ -3 .1 ] )
+    xlim( [ -5 .1 ] )
     title( 'Generator spectrum' )
     ylabel( 'frequency (1/y)' )
     xlabel( 'decay rate (arbitrary units)' )
@@ -1149,8 +1182,15 @@ SSH.cOffset = .035; % horizontal offset of colorbar
 SSH.cScale  = .4;  % scaling factor for colorbar width  
 SSH.ifXTickLabels = true;  
 SSH.ifYTickLabels = false;
- 
-
+switch dataset
+case 'ccsm4Ctrl'
+    SSH.title = 'SSH anomaly (cm)';
+    SSH.scl = 1;
+case 'noaa'
+    SSH.title = 'SSH anomaly (100 m)';
+    SSH.scl = 1E-2;
+end
+   
 % SAT field
 % SAT.ifXY is logical mask for valid gridpoints
 SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
@@ -1259,10 +1299,10 @@ if ifNinoComposites
             plotPhaseComposite( compNino34{ iCSSH }( :, iPhase ), SSH, ...
                                 compNino34{ iCUWnd }( :, iPhase ), ...
                                 compNino34{ iCVWnd }( :, iPhase ), UVWnd )
-            titleStr = 'SSH anomaly (cm), surface wind';
+            titleStr = [ SSH.title ', surface wind' ];
         else
             plotPhaseComposite( compNino34{ iCSSH }( :, iPhase ), SSH )
-            titleStr = 'SSH anomaly (cm)';
+            titleStr = SSH.title;  
         end
         if iPhase == 1
             title( titleStr  )
@@ -1288,14 +1328,12 @@ if ifNinoComposites
         set( fig, 'currentAxes', ax( 4, iPhase ) )
         PRate.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
-            plotPhaseComposite( ...
-                compNino34{ iCPRate }( :, iPhase ) * PRate.scl, PRate, ...
-                compNino34{ iCUWnd }( :, iPhase ), ...
-                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            plotPhaseComposite( compNino34{ iCPRate }( :, iPhase ), PRate, ... 
+                                compNino34{ iCUWnd }( :, iPhase ), ...
+                                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
             titleStr = [ PRate.title, ', surface wind' ]; 
         else
-            plotPhaseComposite( ...
-                compNino34{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+            plotPhaseComposite( compNino34{ iCPRate }( :, iPhase ), PRate )
             titleStr = PRate.title;
         end
         if iPhase == 1
@@ -1374,10 +1412,10 @@ if ifNLSAComposites
             plotPhaseComposite( compPhi{ iCSSH }( :, iPhase ), SSH, ...
                                 compPhi{ iCUWnd }( :, iPhase ), ...
                                 compPhi{ iCVWnd }( :, iPhase ), UVWnd )
-            titleStr = 'SSH anomaly (K), surface wind';
+            titleStr = [ SSH.title ', surface wind' ];
         else
             plotPhaseComposite( compPhi{ iCSSH }( :, iPhase ), SSH );
-            titleStr = 'SSH anomaly (cm)';
+            titleStr = SSH.title;  
         end
         if iPhase == 1
             title( titleStr  )
@@ -1405,10 +1443,9 @@ if ifNLSAComposites
         set( fig, 'currentAxes', ax( 4, iPhase ) )
         PRate.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
-            plotPhaseComposite( ...
-                compPhi{ iCPRate }( :, iPhase ) * PRate.scl, PRate, ...
-                compPhi{ iCUWnd }( :, iPhase ), ...
-                compPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            plotPhaseComposite( compPhi{ iCPRate }( :, iPhase ), PRate, ...
+                                compPhi{ iCUWnd }( :, iPhase ), ...
+                                compPhi{ iCVWnd }( :, iPhase ), UVWnd )
             titleStr = [ PRate.title, ', surface wind' ]; 
         else
             plotPhaseComposite( ...
@@ -1490,10 +1527,10 @@ if ifKoopmanComposites
             plotPhaseComposite( compZ{ iCSSH }( :, iPhase ), SSH, ...
                                 compZ{ iCUWnd }( :, iPhase ), ...
                                 compZ{ iCVWnd }( :, iPhase ), UVWnd )
-            titleStr = 'SSH anomaly (K), surface wind';
+            titleStr = [ SSH.title ', surface wind' ];
         else
             plotPhaseComposite( compZ{ iCSSH }( :, iPhase ), SSH );
-            titleStr = 'SSH anomaly (K)';
+            titleStr = SSH.title;  
         end
         if iPhase == 1
             title( titleStr  )
@@ -1519,10 +1556,9 @@ if ifKoopmanComposites
         set( fig, 'currentAxes', ax( 4, iPhase ) )
         PRate.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
-            plotPhaseComposite( ...
-                compZ{ iCPRate }( :, iPhase ) * PRate.scl, PRate, ...
-                compZ{ iCUWnd }( :, iPhase ), ... 
-                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            plotPhaseComposite( compZ{ iCPRate }( :, iPhase ), PRate, ...
+                                compZ{ iCUWnd }( :, iPhase ), ... 
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
             titleStr = [ PRate.title, ', surface wind' ]; 
         else
             plotPhaseComposite( ...
@@ -1678,6 +1714,9 @@ function plotPhaseComposite( s, SGrd, u, v, VGrd )
 sData = zeros( size( SGrd.ifXY ) );
 sData( ~SGrd.ifXY ) = NaN;
 sData( SGrd.ifXY ) = s;
+if isfield( SGrd, 'scl' )
+    sData = SGrd.scl * sData; % apply scaling factor
+end
 
 if SGrd.ifXTickLabels
     xTickLabelsArg = { };

@@ -43,6 +43,35 @@ case 'noaa'
     switch( fld )
 
     %% Indo-Pacific SST (from ERSST)
+    case 'globalSST'
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.file = 'ersst.v5'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '188001';           % start time in nc file 
+
+        % Spatial domain
+        DataSpecs.Domain.xLim = [ 0 359 ]; % longitude limits
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+    
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = false; % don't detrend
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ersst( DataSpecs )
+
+    %% Indo-Pacific SST (from ERSST)
     case 'IPSST'
 
         % Input data
@@ -263,7 +292,7 @@ case 'noaa'
         % Spatial domain 
         DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
         DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
-        DataSpecs.Domain.levels = 17;         % levels  
+        DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -323,7 +352,7 @@ case 'noaa'
         % Spatial domain 
         DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
         DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
-        DataSpecs.Domain.levels = 17;         % levels  
+        DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -353,7 +382,7 @@ case 'noaa'
         % Spatial domain 
         DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
         DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
-        DataSpecs.Domain.levels = 17;       % levels  
+        DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
