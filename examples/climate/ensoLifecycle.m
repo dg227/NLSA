@@ -1,4 +1,4 @@
-% RECONSTRUCT THE LIFECYCLE OF THE EL NINO SOUTHERN OSCILLATION (ENSO) 
+%% RECONSTRUCT THE LIFECYCLE OF THE EL NINO SOUTHERN OSCILLATION (ENSO) 
 % USING DATA-DRIVEN SPECTRAL ANALYSIS OF KOOPMAN/TRANSFER OPERATORS
 %
 % Modified 2020/05/18
@@ -37,19 +37,19 @@ ifDataPrecip = false;  % extract precipitation target data from NetCDF files
 ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
-ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
-ifKoopman = true; % compute Koopman eigenfunctions
-ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
+ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
+ifKoopman = false; % compute Koopman eigenfunctions
+ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 ifKoopmanSpectrum     = true;  % plot generator spectrum
 
 % Composite plots
@@ -57,12 +57,17 @@ ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
 ifNLSAComposites    = false; % compute phase composites based on NLSA
 ifKoopmanComposites = false; % compute phase composites based on Koopman
 
+% Composite difference plots
+ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = false; % difference composites based on NLSA
+ifKoopmanDiffComposites = false; % difference composites based on Koopman
+
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
 ifPlotWind        = true;      % overlay quiver plot of surface winds 
 ifPrintFig        = true;      % print figures to file
-compositesDomain  = 'globe';   % global domain
-%compositesDomain  = 'Pacific'; % Pacific
+%compositesDomain  = 'globe';   % global domain
+compositesDomain  = 'Pacific'; % Pacific
 
 
 %% GLOBAL PARAMETERS
@@ -71,18 +76,19 @@ compositesDomain  = 'globe';   % global domain
 % nShiftNino:   Temporal shift to obtain 2D Nino index
 % phase0:       Start phase in equivariance plots
 % leads:        Leads (in months) for equivariance plots
+% nDiff:        Temporal shift for difference composites 
 % idxPhiEnso:   ENSO eigenfunctions from NLSA (kernel operator)
 % signPhi:      Multiplication factor (for consistency with Nino)
 % idxZEnso:     ENSO eigenfunction fro generator      
 % phaseZ:       Phase multpiplication factor (for consistency with Nino)
 % nSamplePhase: Number of samples per ENSO phase
 % figDir:       Output directory for plots
-% markSpec:     Marked eigenvalues in Koopman spectral plots
-% specLegend:   Legend text for marked eigenvalues
+% Spec:         Parameters for Koopman spectral plots
 
-nShiftNino   = 11;        
-phase0       = 1;         
-leads        = [ 0 6 12 18 24 ]; 
+nShiftNino = 11;        
+phase0     = 1;         
+leads      = [ 0 6 12 18 24 ]; 
+nDiff      = 1; 
 
 experiment = { dataset period sourceVar [ embWindow 'Emb' ] };
 experiment = strjoin_e( experiment, '_' );
@@ -96,7 +102,7 @@ case '20CR_industrial_IPSST_4yrEmb'
     idxPhiEnso   = [ 10 9 ];  
     signPhi      = [ -1 -1 ]; 
     idxZEnso     = 9;         
-    phaseZ        = -1;        
+    phaseZ       = -1;        
     nPhase       = 8;         
     nSamplePhase = 100;       
     PRate.scl     = 1E5; 
@@ -129,17 +135,22 @@ case 'noaa_satellite_IPSST_4yrEmb'
     nPhase       = 8;         
     nSamplePhase = 20;       
 
-    markSpec = { 1          ... % constant
-                 [ 2 3 ]    ... % annual
-                 [ 4 5 ]    ... % semiannual
-                 [ 6 7 ]    ... % ENSO
-                 [ 8 : 13 ] ... % ENSO combination
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % ENSO
+                  [ 8 : 13 ] ... % ENSO combination
                  };
-    specLegend = { 'mean' ... 
-                   'annual' ...
-                   'semiannual' ...
-                   'ENSO' ...
-                   'ENSO combination' };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'ENSO' ...
+                    'ENSO combination' };
+    Spec.xLim = [ -5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 6 );
+    Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
 
 case 'noaa_satellite_globalSST_4yrEmb'
 
@@ -153,18 +164,29 @@ case 'noaa_satellite_globalSST_4yrEmb'
     nPhase       = 8;         
     nSamplePhase = 20;       
 
-    markSpec = { 1          ... % constant
-                 [ 2 3 ]    ... % annual
-                 [ 4 5 ]    ... % semiannual
-                 [ 6 7 ]    ... % ENSO
-                 [ 8 : 13 ] ... % ENSO combination
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
                  };
-    specLegend = { 'mean' ... 
-                   'annual' ...
-                   'semiannual' ...
-                   'ENSO' ...
-                   'ENSO combination' };
-
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
 
 % CCSM4 pre-industrial control, 200-year period, Indo-Pacific SST input, 
@@ -178,17 +200,21 @@ case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
     nPhase       = 8;         
     nSamplePhase = 100;       
 
-    markSpec = { 1          ... % constant
-                 [ 2 3 ]    ... % annual
-                 [ 4 5 ]    ... % semiannual
-                 [ 6 7 ]    ... % ENSO
-                 [ 8 : 13 ] ... % ENSO combination
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % ENSO
+                  [ 8 : 13 ] ... % ENSO combination
                  };
-    specLegend = { 'mean' ... 
-                   'annual' ...
-                   'semiannual' ...
-                   'ENSO' ...
-                   'ENSO combination' };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'ENSO' ...
+                    'ENSO combination' };
+    Spec.xLim = [ -5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 6 );
+    Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
 % CCSM4 pre-industrial control, 1300-year period, Indo-Pacific SST input, 
 % 4-year delay embeding window  
@@ -201,19 +227,24 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
     nPhase       = 8;         
     nSamplePhase = 200;       
 
-    markSpec = { 1          ... % constant
-                 [ 2 3 ]    ... % annual
-                 [ 4 5 ]    ... % semiannual
-                 [ 6 7 ]    ... % triennial
-                 [ 8 9 ]    ... % ENSO
-                 [ 10 : 17 ] ... % ENSO combination
-                 };
-    specLegend = { 'mean' ... 
-                   'annual' ...
-                   'semiannual' ...
-                   'triennial' ...
-                   'ENSO' ...
-                   'ENSO combination' };
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  [ 8 9 ]    ... % ENSO
+                  [ 10 : 17 ] ... % ENSO combination
+                  };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'ENSO' ...
+                    'ENSO combination' };
+    Spec.xLim = [ -5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 6 );
+    Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
 
 
 otherwise
@@ -1058,11 +1089,11 @@ if ifKoopmanSpectrum
 
     % Set up figure and axes 
     Fig.units      = 'inches';
-    Fig.figWidth   = 4; 
+    Fig.figWidth   = 6; 
     Fig.deltaX     = .5;
-    Fig.deltaX2    = .1;
+    Fig.deltaX2    = 2.1;
     Fig.deltaY     = .48;
-    Fig.deltaY2    = .5;
+    Fig.deltaY2    = .2;
     Fig.gapX       = .20;
     Fig.gapY       = .5;
     Fig.gapT       = .25; 
@@ -1077,19 +1108,17 @@ if ifKoopmanSpectrum
 
     [ fig, ax ] = tileAxes( Fig );
 
-    c = distinguishable_colors( 6 );
-    c = c( [ 4 1 2 3 5 6 ], : );
 
     % Get generator eigenfrequencies in units of 1 / year
     gamma = getEigenvalues( model.koopmanOp ) * 12 / 2 / pi; 
 
     % Plot marked eigenvalues
     ifMarked = false( size( gamma ) );
-    for iMark = 1 : numel( markSpec )
-        ifMarked( markSpec{ iMark } ) = true;
-        plot( real( gamma( markSpec{ iMark } ) ), ...
-              imag( gamma( markSpec{ iMark } ) ), '.', 'markersize', 15, ...
-              'color', c( iMark, : ) )
+    for iMark = 1 : numel( Spec.mark )
+        ifMarked( Spec.mark{ iMark } ) = true;
+        plot( real( gamma( Spec.mark{ iMark } ) ), ...
+              imag( gamma( Spec.mark{ iMark } ) ), '.', 'markersize', 15, ...
+              'color', Spec.c( iMark, : ) )
     end
     
     % Plot unmarked eigenvalues
@@ -1097,11 +1126,14 @@ if ifKoopmanSpectrum
           '.', 'markerSize', 10, 'color', [ .5 .5 .5 ] )
 
     grid on
-    xlim( [ -5 .1 ] )
+    xlim( Spec.xLim )
+    ylim( Spec.yLim )
     title( 'Generator spectrum' )
     ylabel( 'frequency (1/y)' )
     xlabel( 'decay rate (arbitrary units)' )
-    legend( specLegend, 'location', 'west' )
+    axPos = get( gca, 'position' );
+    hL = legend( Spec.legend, 'location', 'eastOutside' );
+    set( gca, 'position', axPos )
 
     % Print figure
     if ifPrintFig
@@ -1580,6 +1612,364 @@ if ifKoopmanComposites
     end
 end
 
+% DIFFERENCE COMPOSITES BASED ON NINO 3.4 INDEX
+% Create a cell array compPhi of size [ 1 nC ] where nC is the number of 
+% observables to be composited. nC is equal to the number of target 
+% components in the NLSA model. 
+%
+% diffNino34{ iC } is an array of size [ nD nPhase ], where nD is the dimension
+% of component iC. diffNino34{ iC }( :, iPhase ) contains the phase difference 
+% composite for observable iC and phase iPhase. 
+if ifNinoDiffComposites
+
+    disp( 'Nino 3.4-based difference composites...' ); t = tic;
+    
+    % Start and end time indices in data arrays
+    iStart = 1 + nSB + nShiftTakens;
+    iEnd   = iStart + nSE - 1;  
+
+
+    if ifWeighComposites
+        diffNino34 = computeDifferenceComposites( model, selectIndNino34, ...
+                                                  iStart, iEnd, nDiff, ...
+                                                  weightsNino34 );
+    else
+        diffNino34 = computeDifferenceComposites( model, selectIndNino34, ...
+                                                  iStart, iEnd, nDiff );
+    end
+
+    toc( t )
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    colormap( redblue )
+
+
+    % Loop over the phases
+    for iPhase = 1 : nPhase
+
+        % SST phase composites
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        SST.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( diffNino34{ iCSST }( :, iPhase ), SST, ...
+                                diffNino34{ iCUWnd }( :, iPhase ), ...
+                                diffNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SST anomaly (K), surface wind';
+        else
+            plotPhaseComposite( diffNino34{ iCSST }( :, iPhase ), SST )
+            titleStr = 'SST anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr )
+        end
+        lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        lblPos = get( lbl, 'position' );
+        lblPos( 1 ) = lblPos( 1 ) - .4;
+        set( lbl, 'position', lblPos )
+
+        % SSH phase composites
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SSH.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( diffNino34{ iCSSH }( :, iPhase ), SSH, ...
+                                diffNino34{ iCUWnd }( :, iPhase ), ...
+                                diffNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ SSH.title ', surface wind' ];
+        else
+            plotPhaseComposite( diffNino34{ iCSSH }( :, iPhase ), SSH )
+            titleStr = SSH.title;  
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % SAT phase composites
+        set( fig, 'currentAxes', ax( 3, iPhase ) )
+        SAT.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( diffNino34{ iCSAT }( :, iPhase ), SAT, ...
+                                diffNino34{ iCUWnd }( :, iPhase ), ...
+                                diffNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SAT anomaly (K), surface wind';
+        else
+            plotPhaseComposite( diffNino34{ iCSAT }( :, iPhase ), SAT )
+            titleStr = 'SAT anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % Precipitation rate phase composites
+        set( fig, 'currentAxes', ax( 4, iPhase ) )
+        PRate.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( diffNino34{ iCPRate }( :, iPhase ), PRate, ... 
+                                diffNino34{ iCUWnd }( :, iPhase ), ...
+                                diffNino34{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ PRate.title, ', surface wind' ]; 
+        else
+            plotPhaseComposite( diffNino34{ iCPRate }( :, iPhase ), PRate )
+            titleStr = PRate.title;
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+    end
+
+    titleStr = sprintf( [ 'ENSO difference composites -- Nino 3.4 index, ' ...
+                          '%i months lead, Nino 3.4 index' ], nDiff );
+    title( axTitle, titleStr )
+
+    % Print figure
+    if ifPrintFig
+        figFile = [ 'figEnsoDiffCompositesNino_' compositesDomain fileSuffix ];
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+
+%% DIFFERENCE COMPOSITES BASED ON NLSA
+% Create a cell array compPhi of size [ 1 nC ] where nC is the number of 
+% observables to be composited. nC is equal to the number of target 
+% components in the NLSA model. 
+%
+% diffPhi{ iC } is an array of size [ nD nPhase ], where nD is the dimension
+% of component iC. diffPhi{ iC }( :, iPhase ) contains the phase differenecc
+% composite for observable iC and phase iPhase. 
+if ifNLSADiffComposites
+
+    disp( 'NLSA-based difference composites...' ); t = tic;
+    
+    % Start and end time indices in data arrays
+    iStart = 1 + nSB + nShiftTakens;
+    iEnd   = iStart + nSE - 1;  
+
+    if ifWeighComposites
+        diffPhi = computeDifferenceComposites( model, selectIndPhi,  ...
+                                               iStart, iEnd, nDiff, ...
+                                               weightsPhi );
+    else
+        diffPhi = computeDifferenceComposites( model, selectIndPhi, ...
+                                               iStart, iEnd, nDiff );
+    end
+
+    toc( t )
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    colormap( redblue )
+
+    % Loop over the phases
+    for iPhase = 1 : nPhase
+
+        % SST phase composites
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        SST.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( diffPhi{ iCSST }( :, iPhase ), SST, ...
+                                diffPhi{ iCUWnd }( :, iPhase ), ...
+                                diffPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SST anomaly (K), surface wind';
+        else
+            plotPhaseComposite( diffPhi{ iCSST }( :, iPhase ), SST )
+            titleStr = 'SST anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+        lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        lblPos = get( lbl, 'position' );
+        lblPos( 1 ) = lblPos( 1 ) - .4;
+        set( lbl, 'position', lblPos )
+
+        % SSH phase composites
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SSH.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( diffPhi{ iCSSH }( :, iPhase ), SSH, ...
+                                diffPhi{ iCUWnd }( :, iPhase ), ...
+                                diffPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ SSH.title ', surface wind' ];
+        else
+            plotPhaseComposite( diffPhi{ iCSSH }( :, iPhase ), SSH );
+            titleStr = SSH.title;  
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+
+
+        % SAT phase composites
+        set( fig, 'currentAxes', ax( 3, iPhase ) )
+        SAT.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( diffPhi{ iCSAT }( :, iPhase ), SAT, ...
+                                diffPhi{ iCUWnd }( :, iPhase ), ...
+                                diffPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SAT anomaly (K), surface wind';
+        else
+            plotPhaseComposite( diffPhi{ iCSAT }( :, iPhase ), SAT );
+            titleStr = 'SAT anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % Precipitation rate phase composites
+        set( fig, 'currentAxes', ax( 4, iPhase ) )
+        PRate.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( diffPhi{ iCPRate }( :, iPhase ), PRate, ...
+                                diffPhi{ iCUWnd }( :, iPhase ), ...
+                                diffPhi{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ PRate.title, ', surface wind' ]; 
+        else
+            plotPhaseComposite( ...
+                diffPhi{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+            titleStr = PRate.title;
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+    end
+
+    titleStr = sprintf( [ 'ENSO difference composites -- ' ...
+                          'kernel integral operator, ' ...
+                          '%i months lead, Nino 3.4 index' ], nDiff );
+    title( axTitle, titleStr )
+
+    % Print figure
+    if ifPrintFig
+        figFile = [ 'figEnsoDiffCompositesKernel_' compositesDomain ...
+                    fileSuffix ];
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+
+%% DIFFERENCE COMPOSITES BASED ON GENERATOR
+% Create a cell array diffZ of size [ 1 nC ] where nC is the number of 
+% observables to be composited. nC is equal to the number of target 
+% components in the NLSA model. 
+%
+% diffZ{ iC } is an array of size [ nD nPhase ], where nD is the dimension
+% of component iC. diffZ{ iC }( :, iPhase ) contains the phase difference 
+% composite for observable iC and phase iPhase. 
+if ifKoopmanDiffComposites
+
+    disp( 'Generator-based difference composites...' ); t = tic;
+    
+    % Start and end time indices in data arrays
+    iStart = 1 + nSB + nShiftTakens;
+    iEnd   = iStart + nSE - 1;  
+
+    if ifWeighComposites
+        compZ = computeDifferenceComposites( model, selectIndZ, ...
+                                             iStart, iEnd, nDiff, ...
+                                             weightsZ );
+    else
+        compZ = computePhaseComposites( model, selectIndZ, ...
+                                        iStart, iEnd, nDiff );
+    end
+
+    toc( t )
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    colormap( redblue )
+
+    % Loop over the phases
+    for iPhase = 1 : nPhase
+
+        % SST phase composites
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        SST.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SST anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST )
+            titleStr = 'SST anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+        lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        lblPos = get( lbl, 'position' );
+        lblPos( 1 ) = lblPos( 1 ) - .4;
+        set( lbl, 'position', lblPos )
+
+        % SSH phase composites
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SSH.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSSH }( :, iPhase ), SSH, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ SSH.title ', surface wind' ];
+        else
+            plotPhaseComposite( compZ{ iCSSH }( :, iPhase ), SSH );
+            titleStr = SSH.title;  
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % SAT phase composites
+        set( fig, 'currentAxes', ax( 3, iPhase ) )
+        SAT.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SAT anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT );
+            titleStr = 'SAT anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % Precipitation rate phase composites
+        set( fig, 'currentAxes', ax( 4, iPhase ) )
+        PRate.ifXTickLabels = iPhase == nPhase;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCPRate }( :, iPhase ), PRate, ...
+                                compZ{ iCUWnd }( :, iPhase ), ... 
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ PRate.title, ', surface wind' ]; 
+        else
+            plotPhaseComposite( ...
+                compZ{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+            titleStr = PRate.title;
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+    end
+
+
+    titleStr = sprintf( [ 'ENSO difference composites -- ' ...
+                          'generator, ' ...
+                          '%i months lead, Nino 3.4 index' ], nDiff );
+    title( axTitle, titleStr )
+
+    % Print figure
+    if ifPrintFig
+        figFile = [ 'figEnsoDiffCompositesGenerator_' compositesDomain ...
+                    fileSuffix ];
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
 
 
 % AUXILIARY FUNCTIONS
@@ -1768,5 +2158,44 @@ vData( VGrd.ifXY ) = v;
 m_quiver( lon( 1 : VGrd.nSkipY : end, 1 : VGrd.nSkipX : end ), ...
           lat( 1 : VGrd.nSkipY : end, 1 : VGrd.nSkipX : end ), ...
           uData( 1 : VGrd.nSkipX : end, 1 : VGrd.nSkipY : end )', ...
-          vData( 1 : VGrd.nSkipX : end, 1 : VGrd.nSkipY : end )', 'g-' ) 
+          vData( 1 : VGrd.nSkipX : end, 1 : VGrd.nSkipY : end )', ...
+          'g-', 'lineWidth', 1 ) 
 end
+
+%% Function to compute difference composites from target data of NLSA model
+function comp = computeDifferenceComposites( model, selectInd, iStart, iEnd, ...
+                                             nDiff, weights )
+
+nC = size( model.trgComponent, 1 ); % number of observables to be composited
+nPhase = numel( selectInd ); % number of phases       
+ifWeights = nargin == 6; % 
+
+comp = cell( 1, nC );
+
+% Loop over the components
+for iC = 1 : nC
+
+    % Read data from NLSA model, compute difference 
+    y = getData( model.trgComponent( iC ) );
+    y = y( :, iStart - nDiff : iEnd ); 
+    y = y( :, nDiff + 1 : end ) - y( :, 1 : end - nDiff );
+        
+    nD = size( y, 1 ); % data dimension
+    comp{ iC } = zeros( nD, nPhase );
+
+        % Loop over the phases
+        for iPhase = 1 : nPhase
+
+            % Compute phase conditional average
+            if ifWeights
+                comp{ iC }( :, iPhase ) = y * weights{ iPhase };
+            else    
+                comp{ iC }( :, iPhase ) = ...
+                    mean( y( :, selectInd{ iPhase } ), 2 );
+            end
+
+        end
+    end
+end
+
+

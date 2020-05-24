@@ -742,6 +742,39 @@ case 'ccsm4Ctrl'
 
     switch( fld )
 
+    %% Global SST
+    case 'globalSST'
+
+        % Input data
+        DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
+        DataSpecs.In.lon  = 'TLONG';
+        DataSpecs.In.lat  = 'TLAT';
+        DataSpecs.In.area = 'TAREA';
+        DataSpecs.In.msk  = 'REGION_MASK';
+        DataSpecs.In.var  = 'SST';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+
+        % Output data
+        DataSpecs.Out.fld = 'sst';      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
+        % Spatial domain
+        DataSpecs.Domain.xLim = [ 0 359 ]; % longitude limits
+        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+    
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+
+
     %% Indo-Pacific SST
     case 'IPSST'
 
