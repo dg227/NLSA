@@ -5,19 +5,20 @@
 
 %% DATA SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset   = 'ccsm4Ctrl';    
+%dataset   = 'ccsm4Ctrl';    
 %period    = '200yr';        % 200-year analysis 
-period  = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
-
-% NOAA reanalysis (various products)
-%dataset    = 'noaa';                                     
-%period     = 'satellite'; % 1978-present
+%period  = '1300yr';        % 1300-year analysis
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
+
+% NOAA reanalysis (various products)
+dataset    = 'noaa';                                     
+period     = 'satellite'; % 1978-present
+period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'globalSST'; % global SST
+embWindow  = '4yr';       % 4-year embedding
 
 % NOAA 20th century reanalysis
 %dataset    = '20CR';                                     
@@ -37,8 +38,8 @@ ifDataPrecip = false;  % extract precipitation target data from NetCDF files
 ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
-ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
-ifKoopman = false; % compute Koopman eigenfunctions
+ifNLSA    = true;  % compute kernel (NLSA) eigenfunctions
+ifKoopman = true; % compute Koopman eigenfunctions
 ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
@@ -46,21 +47,21 @@ ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
 ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
-ifKoopmanSpectrum     = true;  % plot generator spectrum
+ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+ifKoopmanSpectrum     = false;  % plot generator spectrum
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = true; % difference composites based on NLSA
-ifKoopmanDiffComposites = true; % difference composites based on Koopman
+ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = false; % difference composites based on NLSA
+ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
@@ -88,7 +89,7 @@ compositesDomain  = 'Pacific'; % Pacific
 nShiftNino = 11;        
 phase0     = 1;         
 leads      = [ 0 6 12 18 24 ]; 
-nDiff      = 1; 
+nDiff      = 6; 
 
 experiment = { dataset period sourceVar [ embWindow 'Emb' ] };
 experiment = strjoin_e( experiment, '_' );
@@ -153,6 +154,42 @@ case 'noaa_satellite_IPSST_4yrEmb'
 
 
 case 'noaa_satellite_globalSST_4yrEmb'
+
+    %idxPhiEnso   = [ 7 6 ];  
+    signPhi      = [ 1 -1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 12 11 ];
+    idxZEnso     = 11;
+    phaseZ       = exp( - i * 5 * pi / 8 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
+                 };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+case 'noaa_50yr_globalSST_4yrEmb'
 
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
