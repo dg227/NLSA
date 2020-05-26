@@ -39,13 +39,13 @@ ifDataPrecip = false;  % extract precipitation target data from NetCDF files
 ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
-ifNLSA    = true;  % compute kernel (NLSA) eigenfunctions
-ifKoopman = true; % compute Koopman eigenfunctions
-ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
+ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
+ifKoopman = false; % compute Koopman eigenfunctions
+ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
 ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
@@ -1715,7 +1715,17 @@ if ifKoopmanComposites
     end
 end
 
-% DIFFERENCE COMPOSITES BASED ON NINO 3.4 INDEX
+%% DIFFERENCE COMPOSITES
+% Adjust color limits depending on the lead time
+if nDiff == 1
+    SST.cLim   = SST.cLim / 5;
+    SSH.cLim   = SSH.cLim / 5;
+    SAT.cLim   = SAT.cLim / 5;
+    PRate.cLim = PRate.cLim / 5;
+end
+
+
+%% DIFFERENCE COMPOSITES BASED ON NINO 3.4 INDEX
 % Create a cell array compPhi of size [ 1 nC ] where nC is the number of 
 % observables to be composited. nC is equal to the number of target 
 % components in the NLSA model. 
@@ -1821,7 +1831,7 @@ if ifNinoDiffComposites
     end
 
     titleStr = sprintf( [ 'ENSO difference composites -- Nino 3.4 index, ' ...
-                          '%i months lead, Nino 3.4 index' ], nDiff );
+                          '%i months lead' ], nDiff );
     title( axTitle, titleStr )
 
     % Print figure
@@ -1942,7 +1952,7 @@ if ifNLSADiffComposites
 
     titleStr = sprintf( [ 'ENSO difference composites -- ' ...
                           'kernel integral operator, ' ...
-                          '%i months lead, Nino 3.4 index' ], nDiff );
+                          '%i months lead' ], nDiff );
     title( axTitle, titleStr )
 
     % Print figure
@@ -2061,8 +2071,7 @@ if ifKoopmanDiffComposites
 
 
     titleStr = sprintf( [ 'ENSO difference composites -- ' ...
-                          'generator, ' ...
-                          '%i months lead, Nino 3.4 index' ], nDiff );
+                          'generator, %i months lead' ], nDiff );
     title( axTitle, titleStr )
 
     % Print figure
