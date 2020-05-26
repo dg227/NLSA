@@ -713,8 +713,8 @@ case '20CR'
 case 'ccsm4Ctrl'
 
     % Input data directory 
-    DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
-    %DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
+    %DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/ccsm4/b40.1850'; 
+    DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
 
     % Output data specification
     DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
@@ -772,7 +772,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
 
     %% Indo-Pacific SST
@@ -805,7 +805,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Nino 4 index
     case 'Nino4'
@@ -837,7 +837,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Nino 3.4 index
     case 'Nino3.4'
@@ -869,7 +869,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Nino 3 index
     case 'Nino3'
@@ -901,7 +901,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Nino 1+2 index
     case 'Nino1+2'
@@ -933,7 +933,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Global SST
     case( 'SST' )
@@ -965,7 +965,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Global SSH
     case( 'SSH' )
@@ -1030,7 +1030,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Global precipitation data
     case( 'precip' )
@@ -1060,7 +1060,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Global zonal wind data
     case( 'uwind' )
@@ -1090,7 +1090,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     %% Global meridional wind data
     case( 'vwind' )
@@ -1120,7 +1120,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( dataset, DataSpecs ) 
+        importData_ccsm4Ctrl( DataSpecs ) 
 
 
     end

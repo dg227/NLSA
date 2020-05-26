@@ -414,7 +414,7 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
 
 % CCSM4 pre-industrial control, 1300-year period, global SST input, 4-year
 % delay embeding window  
-case 'ccsm4Ctrl_1300yr_globalIPSST_4yrEmb'
+case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb'
    
     % Dataset specification  
     In.Res( 1 ).experiment = 'ccsm4Ctrl'; 
