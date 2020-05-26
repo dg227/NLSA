@@ -39,28 +39,28 @@ ifDataWind   = false;   % extract 10m wind target data from NetCDF files
 % ENSO representations
 ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
+ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = true;  % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 ifKoopmanSpectrum     = true;  % plot generator spectrum
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = true; % difference composites based on NLSA
-ifKoopmanDiffComposites = true; % difference composites based on Koopman
+ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = false; % difference composites based on NLSA
+ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
@@ -1639,7 +1639,17 @@ if ifKoopmanComposites
     end
 end
 
-% DIFFERENCE COMPOSITES BASED ON NINO 3.4 INDEX
+%% DIFFERENCE COMPOSITES
+% Adjust color limits depending on the lead time
+if nDiff == 1
+    SST.cLim   = SST.cLim / 5;
+    SSH.cLim   = SSH.cLim / 5;
+    SAT.cLim   = SAT.cLim / 5;
+    PRate.cLim = PRate.cLim / 5;
+end
+
+
+%% DIFFERENCE COMPOSITES BASED ON NINO 3.4 INDEX
 % Create a cell array compPhi of size [ 1 nC ] where nC is the number of 
 % observables to be composited. nC is equal to the number of target 
 % components in the NLSA model. 
@@ -1745,7 +1755,7 @@ if ifNinoDiffComposites
     end
 
     titleStr = sprintf( [ 'ENSO difference composites -- Nino 3.4 index, ' ...
-                          '%i months lead, Nino 3.4 index' ], nDiff );
+                          '%i months lead' ], nDiff );
     title( axTitle, titleStr )
 
     % Print figure
@@ -1866,7 +1876,7 @@ if ifNLSADiffComposites
 
     titleStr = sprintf( [ 'ENSO difference composites -- ' ...
                           'kernel integral operator, ' ...
-                          '%i months lead, Nino 3.4 index' ], nDiff );
+                          '%i months lead' ], nDiff );
     title( axTitle, titleStr )
 
     % Print figure
@@ -1985,8 +1995,7 @@ if ifKoopmanDiffComposites
 
 
     titleStr = sprintf( [ 'ENSO difference composites -- ' ...
-                          'generator, ' ...
-                          '%i months lead, Nino 3.4 index' ], nDiff );
+                          'generator, %i months lead' ], nDiff );
     title( axTitle, titleStr )
 
     % Print figure
