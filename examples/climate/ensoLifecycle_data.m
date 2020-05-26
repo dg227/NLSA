@@ -35,6 +35,13 @@ case 'noaa'
         DataSpecs.Time.tLim    = { '197801' '202003' }; % time limits
         DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
 
+    % Last 50 years
+    case '50yr'
+
+        DataSpecs.Time.tLim    = { '197001' '202003' }; % time limits
+        DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
+
+
     otherwise
 
         error( 'Invalid period' )
