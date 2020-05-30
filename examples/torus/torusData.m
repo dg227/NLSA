@@ -17,13 +17,13 @@ aTheta = 1;            % velocity variation parameter for theta
 r1     = .5;           % azimuthal (phi) radius
 r2     = .5;           % polar (theta) radius
 nST    = 128;          % (approximate) samples per period
-nT     = 32;           % number of periods
+nT     = 5;           % number of periods
 nTSpin = 0;            % spinup periods
 nEL    = 5;            % extra samples for time-lagged embedding  
 nXB    = 1;            % additional samples before main interval (for FD) 
 nXA    = 1;            % additional samples after main interval (for FD)
-idxX   = [ 1 : 3 ];    % coordinates to retain
-obsMap = 'r3';         % observation map
+idxX   = [ 1 : 4 ];    % coordinates to retain
+obsMap = 'r4';         % observation map
 idxP   = 3;            % coordinates to apply deformation
 p      = 0;            % deformation parameter 
 ifCent = false;        % data centering
@@ -71,9 +71,9 @@ switch obsMap
         end
 
     case 'r4' % Flat embedding in R^4
-        x = [ cos( phi ) ...
-              sin( phi ) ...
-              cos( theta ) ...
+        x = [ cos( phi ) 
+              sin( phi ) 
+              cos( theta ) 
               sin( theta ) ];
 end
 x = x( idxX, : );

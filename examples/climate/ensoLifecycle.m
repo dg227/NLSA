@@ -5,15 +5,15 @@
 
 %% DATA SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset   = 'ccsm4Ctrl';    
+%dataset   = 'ccsm4Ctrl';    
 %period    = '200yr';        % 200-year analysis 
-period  = '1300yr';        % 1300-year analysis
+%period  = '1300yr';        % 1300-year analysis
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
-sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
+%sourceVar  = 'globalSST'; % global SST
+%embWindow  = '4yr';       % 4-year embedding
 
 % NOAA reanalysis (various products)
-%dataset    = 'noaa';                                     
+dataset    = 'noaa';                                     
 %period     = 'satellite'; % 1978-present
 %period     = '50yr';      % 1970-present
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
@@ -41,10 +41,13 @@ ifDataWind   = false;   % extract 10m wind target data from NetCDF files
 % ENSO representations
 ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
+ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
+
+% Koopman spectrum
+ifKoopmanSpectrum     = false;  % plot generator spectrum
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = false;  % plot ENSO lifecycle from kernel eigenfunctions
+ifNLSALifecycle    = false; % plot ENSO lifecycle from kernel eigenfunctions
 ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
@@ -52,7 +55,6 @@ ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
 ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
 ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
 ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
-ifKoopmanSpectrum     = false;  % plot generator spectrum
 
 % Composite plots
 ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
@@ -63,6 +65,14 @@ ifKoopmanComposites = true; % compute phase composites based on Koopman
 ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
 ifNLSADiffComposites    = true; % difference composites based on NLSA
 ifKoopmanDiffComposites = true; % difference composites based on Koopman
+
+% Low-frequency phases
+ifNLSALF    = true; % decadal/trend phases from kernel eigenfunctions 
+ifKoopmanLF = true; % decadal/trend phases from generator eigenfunctions
+
+% Low-frequency composite plots
+ifNLSALFComposites = true; % decadal/trend composites based on NLSA
+ifKoopmanLFComposites = true; % decadal/trend composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
@@ -81,9 +91,11 @@ compositesDomain  = 'globe';   % global domain
 % nDiff:        Temporal shift for difference composites 
 % idxPhiEnso:   ENSO eigenfunctions from NLSA (kernel operator)
 % signPhi:      Multiplication factor (for consistency with Nino)
-% idxZEnso:     ENSO eigenfunction fro generator      
+% idxZEnso:     ENSO eigenfunction from generator      
 % phaseZ:       Phase multpiplication factor (for consistency with Nino)
 % nSamplePhase: Number of samples per ENSO phase
+% idxPhiLF:     Low-frequency eigenfunctions from NLSA
+% idxZLF:       Low-frequency eigenfunctions from Koopman
 % figDir:       Output directory for plots
 % Spec:         Parameters for Koopman spectral plots
 
@@ -162,6 +174,11 @@ case 'noaa_satellite_globalSST_4yrEmb'
     idxPhiEnso   = [ 12 11 ];
     idxZEnso     = 11;
     phaseZ       = exp( - i * 5 * pi / 8 );        
+
+    idxPhiLF = [ 8 15 ];
+    signPhiLF = [ 1 1 ];
+    idxZLF = [ 8 15 ];
+    signZLF = [ 1 1 ];
 
     nPhase       = 8;         
     nSamplePhase = 20;       
