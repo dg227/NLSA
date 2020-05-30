@@ -17,8 +17,9 @@ embWindow  = '4yr';       % 4-year embedding
 %period     = 'satellite'; % 1978-present
 %period     = '50yr';      % 1970-present
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
-%sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
+sourceVar  = 'globalSST'; % global SST
+embWindow  = '4yr';       % 4-year embedding
+%embWindow  = '5yr';       % 5-year embedding
 
 % NOAA 20th century reanalysis
 %dataset    = '20CR';                                     
@@ -194,9 +195,10 @@ case 'noaa_50yr_globalSST_4yrEmb'
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
     %phaseZ       = -1 * exp( i * pi / 4 );        
-    idxPhiEnso   = [ 12 11 ];
+    idxPhiEnso   = [ 17 18 ];
     idxZEnso     = 11;
-    phaseZ       = exp( - i * 5 * pi / 8 );        
+    idxZEnso     = 17;
+    phaseZ       = exp( i * pi / 2 );        
 
     nPhase       = 8;         
     nSamplePhase = 20;       
@@ -220,7 +222,44 @@ case 'noaa_50yr_globalSST_4yrEmb'
                     'ENSO' ...
                     'ENSO combination' ...
                     'decadal' };
-    Spec.xLim = [ -5 .1 ];
+    Spec.xLim = [ -1.5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+case 'noaa_50yr_globalSST_5yrEmb'
+
+    %idxPhiEnso   = [ 7 6 ];  
+    signPhi      = [ 1 -1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 17 18 ];
+    idxZEnso     = 11;
+    idxZEnso     = 16;
+    phaseZ       = exp( i * pi / 2 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
+                 };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -1.5 .1 ];
     Spec.yLim = [ -3 3 ]; 
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
