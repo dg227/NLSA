@@ -5,20 +5,20 @@
 
 %% DATA SPECIFICATION 
 % CCSM4 pre-industrial control run
-%dataset   = 'ccsm4Ctrl';    
+dataset   = 'ccsm4Ctrl';    
 %period    = '200yr';        % 200-year analysis 
-%period  = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-%sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
-
-% NOAA reanalysis (various products)
-dataset    = 'noaa';                                     
-period     = 'satellite'; % 1978-present
-period     = '50yr';      % 1970-present
+period  = '1300yr';        % 1300-year analysis
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 sourceVar  = 'globalSST'; % global SST
 embWindow  = '4yr';       % 4-year embedding
+
+% NOAA reanalysis (various products)
+%dataset    = 'noaa';                                     
+%period     = 'satellite'; % 1978-present
+%period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+%sourceVar  = 'globalSST'; % global SST
+%embWindow  = '4yr';       % 4-year embedding
 
 % NOAA 20th century reanalysis
 %dataset    = '20CR';                                     
@@ -51,24 +51,24 @@ ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
 ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
 ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
 ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
-ifKoopmanSpectrum     = true;  % plot generator spectrum
+ifKoopmanSpectrum     = false;  % plot generator spectrum
 
 % Composite plots
-ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = false; % compute phase composites based on NLSA
-ifKoopmanComposites = false; % compute phase composites based on Koopman
+ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = true; % compute phase composites based on NLSA
+ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = false; % difference composites based on NLSA
-ifKoopmanDiffComposites = false; % difference composites based on Koopman
+ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = true; % difference composites based on NLSA
+ifKoopmanDiffComposites = true; % difference composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
 ifPlotWind        = true;      % overlay quiver plot of surface winds 
 ifPrintFig        = true;      % print figures to file
-%compositesDomain  = 'globe';   % global domain
-compositesDomain  = 'Pacific'; % Pacific
+compositesDomain  = 'globe';   % global domain
+%compositesDomain  = 'Pacific'; % Pacific
 
 
 %% GLOBAL PARAMETERS
