@@ -5,20 +5,20 @@
 
 %% DATA SPECIFICATION 
 % CCSM4 pre-industrial control run
-%dataset   = 'ccsm4Ctrl';    
+dataset   = 'ccsm4Ctrl';    
 %period    = '200yr';        % 200-year analysis 
-%period  = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-%sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
-
-% NOAA reanalysis (various products)
-dataset    = 'noaa';                                     
-%period     = 'satellite'; % 1978-present
-period     = '50yr';      % 1970-present
+period  = '1300yr';        % 1300-year analysis
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 sourceVar  = 'globalSST'; % global SST
 embWindow  = '4yr';       % 4-year embedding
+
+% NOAA reanalysis (various products)
+%dataset    = 'noaa';                                     
+%period     = 'satellite'; % 1978-present
+%period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+%sourceVar  = 'globalSST'; % global SST
+%embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '5yr';       % 5-year embedding
 
 % NOAA 20th century reanalysis
@@ -40,8 +40,8 @@ ifDataWind   = false;   % extract 10m wind target data from NetCDF files
 
 % ENSO representations
 ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
-ifKoopman = false; % compute Koopman eigenfunctions
-ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
+ifKoopman = true; % compute Koopman eigenfunctions
+ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
 
 % Koopman spectrum
 ifKoopmanSpectrum     = true;  % plot generator spectrum
@@ -67,12 +67,12 @@ ifNLSADiffComposites    = false; % difference composites based on NLSA
 ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Low-frequency phases
-ifNLSALFPhases   = true; % decadal/trend phases from kernel eigenfunctions 
-ifKoopmanLFPhases = true; % decadal/trend phases from generator eigenfunctions
+ifNLSALFPhases   = false; % decadal/trend phases from kernel eigenfunctions 
+ifKoopmanLFPhases = false; % decadal/trend phases from generator eigenfunctions
 
 % Low-frequency composite plots
-ifNLSALFComposites = true; % decadal/trend composites based on NLSA
-ifKoopmanLFComposites = true; % decadal/trend composites based on Koopman
+ifNLSALFComposites = false; % decadal/trend composites based on NLSA
+ifKoopmanLFComposites = false; % decadal/trend composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
@@ -372,23 +372,28 @@ case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb'
     nPhase       = 8;         
     nSamplePhase = 200;       
 
-    Spec.mark = { 1          ... % constant
-                  [ 2 3 ]    ... % annual
-                  [ 4 5 ]    ... % semiannual
-                  [ 6 7 ]    ... % triennial
-                  [ 8 9 ]    ... % ENSO
-                  [ 10 : 17 ] ... % ENSO combination
+    Spec.mark = { 1          ...      % constant
+                  [ 2 3 ]    ...      % annual
+                  [ 4 5 ]    ...      % semiannual
+                  [ 6 7 ]    ...      % triennial
+                  [ 14 15  ] ...      % quartenial
+                  [ 8 9 ]    ...      % ENSO
+                  [ 10 : 13 ] ...     % ENSO-annual
+                  [ 16 : 19 ] ...     % ENSO-semiannnual
                   };
     Spec.legend = { 'mean' ... 
                     'annual' ...
                     'semiannual' ...
                     'triennial' ...
+                    'quartenial' ...
                     'ENSO' ...
-                    'ENSO combination' };
-    Spec.xLim = [ -5 .1 ];
+                    'ENSO-annual combination' ...
+                    'ENSO-semiannual combination' ...
+                    };
+    Spec.xLim = [ -1 .1 ];
     Spec.yLim = [ -3 3 ]; 
-    Spec.c = distinguishable_colors( 6 );
-    Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+    Spec.c = distinguishable_colors( 8 );
+    Spec.c = Spec.c( [ 4 1 2 3 5 6 7 8 ], : );
 
 
 

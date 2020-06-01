@@ -590,7 +590,7 @@ case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb'
     In.koopmanFDOrder = 4;         % finite-difference order
     In.koopmanDt      = 1;         % sampling interval (in months)
     In.koopmanAntisym = true;      % enforce antisymmetrization
-    In.koopmanEpsilon = 1E-3;      % regularization parameter
+    In.koopmanEpsilon = 7E-4;      % regularization parameter
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
