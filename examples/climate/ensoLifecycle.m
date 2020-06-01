@@ -5,20 +5,20 @@
 
 %% DATA SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset   = 'ccsm4Ctrl';    
+%dataset   = 'ccsm4Ctrl';    
 %period    = '200yr';        % 200-year analysis 
-period  = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
-
-% NOAA reanalysis (various products)
-%dataset    = 'noaa';                                     
-%period     = 'satellite'; % 1978-present
-%period     = '50yr';      % 1970-present
+%period  = '1300yr';        % 1300-year analysis
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
+
+% NOAA reanalysis (various products)
+dataset    = 'noaa';                                     
+%period     = 'satellite'; % 1978-present
+period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'globalSST'; % global SST
+embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '5yr';       % 5-year embedding
 
 % NOAA 20th century reanalysis
@@ -40,31 +40,31 @@ ifDataWind   = false;   % extract 10m wind target data from NetCDF files
 
 % ENSO representations
 ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
-ifKoopman = true; % compute Koopman eigenfunctions
-ifNinoIdx = false; % compute two-dimensional (lead/lag) Nino indices  
+ifKoopman = false; % compute Koopman eigenfunctions
+ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
 
 % Koopman spectrum
-ifKoopmanSpectrum     = true;  % plot generator spectrum
+ifKoopmanSpectrum = true;  % plot generator spectrum
 
 % ENSO 2D lifecycle plots
-ifNLSALifecycle    = false; % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % plot ENSO lifecycle from generator eigenfuncs. 
+ifNLSALifecycle    = true; % plot ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = false; % compute phase composites based on NLSA
-ifKoopmanComposites = false; % compute phase composites based on Koopman
+ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = true; % compute phase composites based on NLSA
+ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = false; % difference composites based on NLSA
-ifKoopmanDiffComposites = false; % difference composites based on Koopman
+ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = true; % difference composites based on NLSA
+ifKoopmanDiffComposites = true; % difference composites based on Koopman
 
 % Low-frequency phases
 ifNLSALFPhases   = false; % decadal/trend phases from kernel eigenfunctions 
@@ -86,6 +86,7 @@ compositesDomain  = 'globe';   % global domain
 % The following variables are defined:
 % experiment:   String identifier for data analysis experiment
 % nShiftNino:   Temporal shift to obtain 2D Nino index
+% decayFactor:  Decay factor for weighted composites
 % phase0:       Start phase in equivariance plots
 % leads:        Leads (in months) for equivariance plots
 % nDiff:        Temporal shift for difference composites 
@@ -102,11 +103,12 @@ compositesDomain  = 'globe';   % global domain
 % figDir:       Output directory for plots
 % Spec:         Parameters for Koopman spectral plots
 
-nShiftNino = 11;        
-phase0     = 1;         
-leads      = [ 0 6 12 18 24 ]; 
-nDiff      = 6; 
-nPhaseLF   = 2;
+nShiftNino  = 11;        
+decayFactor = 4; 
+phase0      = 1;         
+leads       = [ 0 6 12 18 24 ]; 
+nDiff       = 6; 
+nPhaseLF    = 2;
 
 experiment = { dataset period sourceVar [ embWindow 'Emb' ] };
 experiment = strjoin_e( experiment, '_' );
@@ -971,12 +973,12 @@ if ifNLSAPhases
     % Compute ENSO phases based on NLSA
     [ selectIndPhi, anglesPhi, avNino34IndPhi, weightsPhi ] = ...
         computeLifecyclePhasesWeighted( Phi.idx', Nino34.idx( 1, : )', ...
-                                        nPhase, nSamplePhase );
+                                        nPhase, nSamplePhase, decayFactor );
 
     % Compute ENSO phases based on Nino 3.4 index
     [ selectIndNino34, anglesNino34, avNino34IndNino34, weightsNino34 ] = ...
         computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx(1,:)', ...
-                                        nPhase, nSamplePhase );
+                                        nPhase, nSamplePhase, decayFactor );
         
     % Set up figure and axes 
     Fig.units      = 'inches';
@@ -1044,12 +1046,12 @@ if ifKoopmanPhases
     % Compute ENSO phases based on generator
     [ selectIndZ, anglesZ, avNino34IndZ, weightsZ ] = ...
         computeLifecyclePhasesWeighted( Z.idx', Nino34.idx( 1, : )', ...
-                                        nPhase, nSamplePhase );
+                                        nPhase, nSamplePhase, decayFactor );
 
     % Compute ENSO phases based on Nino 3.4 index
     [ selectIndNino34, anglesNino34, avNino34IndNino34, weightsNino34 ] = ...
         computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx( 1, : )', ...
-                                        nPhase, nSamplePhase );
+                                        nPhase, nSamplePhase, decayFactor );
         
     % Set up figure and axes 
     Fig.units      = 'inches';

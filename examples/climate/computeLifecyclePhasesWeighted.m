@@ -1,5 +1,5 @@
 function [ selectind, angles, avbindex, weight ] = computeLifecyclePhasesWeighted( ...
-    phi, refI, nPhase, num, skipfraction )
+    phi, refI, nPhase, num, decayfactor, skipfraction, ifPlot )
 % Compute lifecycle phase based on eigenfunction data phi. refI is a reference
 % index used to align the phases such that the first phase corresponds to the
 % largest phase-average nino value.
@@ -9,11 +9,16 @@ function [ selectind, angles, avbindex, weight ] = computeLifecyclePhasesWeighte
 % representing the weight of each data point.  The sum of each of these
 % vectors is 1 (they are probability vectors).
 
+%decayfactor is the linear decay rate for weights outside the central wedge. 
+%Decay factor of k means full decay to 0 after fraction 1/k into the adjacent wedge
+%Total weight (1/2k)/(1+1/k) is applied to each adjacent wedge and weight 1/(1+1/k) to
+%the central wedge
+
 % default input arguments
-if nargin < 6
+if nargin < 7
     ifPlot = false;
 end
-if nargin < 5
+if nargin < 6
     skipfraction = 1 / 120;
 end
 
@@ -75,7 +80,7 @@ for theta=angles,
     nSort = min( num, numel( sorti ) );
     %put the largest magnitude indices in a cell
     selectind{count}=ind(sorti(1:nSort));
-    weight{count}(selectind{count})=(1/2)/length(selectind{count});
+    weight{count}(selectind{count})=1/(1+1/decayfactor)/length(selectind{count});
     %compute the average Nino34 index for the wedge.
     avbindex(count)=mean(refI(selectind{count}));
 end
@@ -102,10 +107,10 @@ for theta=angles,
     angledown=min([abs(angle(complex(phi(selectind{countdown},1),phi(selectind{countdown},2)))-thetadown) abs(angle(complex(phi(selectind{countdown},1),phi(selectind{countdown},2)))+2*pi-thetadown) abs(angle(complex(phi(selectind{countdown},1),phi(selectind{countdown},2)))-2*pi-thetadown)],[],2);
     %apply weights so that the total weight of the points in the advanced
     %wedge is 1/4, similarly for the previous wedge.
-    weight{count}(selectind{countup})=1-angleup/(wedgefraction*2*pi);
-    weight{count}(selectind{countup})=weight{count}(selectind{countup})/sum(weight{count}(selectind{countup}))*(1/4);
-    weight{count}(selectind{countdown})=1-angledown/(wedgefraction*2*pi);
-    weight{count}(selectind{countdown})=weight{count}(selectind{countdown})/sum(weight{count}(selectind{countdown}))*(1/4);
+    weight{count}(selectind{countup})=max(0,1-angleup*decayfactor/(wedgefraction*2*pi));
+    weight{count}(selectind{countup})=weight{count}(selectind{countup})/sum(weight{count}(selectind{countup}))*(1/(2*decayfactor))/(1+1/decayfactor);
+    weight{count}(selectind{countdown})=max(0,1-angledown*decayfactor/(wedgefraction*2*pi));
+    weight{count}(selectind{countdown})=weight{count}(selectind{countdown})/sum(weight{count}(selectind{countdown}))*(1/(2*decayfactor))/(1+1/decayfactor);
 end
 
 if ifPlot
