@@ -75,20 +75,20 @@ disp( 'Takens delay embedding' ); computeDelayEmbedding( model )
 
 % The next step is only needed for velocity-dependent distances such as 
 % the "at" and "cone" distances
-disp( 'Phase space velocity' ); computeVelocity( model )
+%disp( 'Phase space velocity' ); computeVelocity( model )
 
 % The next step is only needed if the target data are different from the 
 % source data
-disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
+%disp( 'Takens delay embedding, target data' ); computeTrgDelayEmbedding( model )
 
 % The next step is only needed if the density estimation data are different
 % from the source data
-disp( 'Takens delay embedding, density data' ); computeDenDelayEmbedding( model )
+%disp( 'Takens delay embedding, density data' ); computeDenDelayEmbedding( model )
 
 % The next step is only needed if the density estimatmion data are different
 % from the source data and velocity dependent distances are used for kernel
 % density estimation
-disp( 'Phase space velocity for density data' ); computeDenVelocity( model );
+%disp( 'Phase space velocity for density data' ); computeDenVelocity( model );
  
 fprintf( 'Pairwise distances for density data, %i/%i\n', iProc, nProc ); 
 computeDenPairwiseDistances( model, iProc, nProc )

@@ -32,10 +32,10 @@ switch experiment
         In.nEL     = 0;          % Takens embedding window 
         In.nXB     = 1;          % samples to leave out before main interval
         In.nXA     = 1;          % samples to leave out after main interval
-        In.obsMap  = 'r3';       % embedding map 
+        In.obsMap  = 'r4';       % embedding map 
         In.r1      = .5;         % tube radius along phi angle
         In.r2      = .5;         % tube radius along theta angle
-        In.idxX    = [ 1 : 3 ];  % data vector components to observe
+        In.idxX    = [ 1 : 4 ];  % data vector components to observe
         In.p       = 0;          % deformation parameter (in R^3) 
         In.idxP    = 3;          % component to apply deformation
         In.ifCent  = false;      % data centering
@@ -47,7 +47,7 @@ switch experiment
         In.nB           = 3;         % batches to partition the in-sample data
         In.nBRec        = In.nB;     % batches for reconstructed data
         In.nN           = 400;       % nearest neighbors for pairwise distances
-        In.lDist        = 'at';      % local distance
+        In.lDist        = 'l2';      % local distance
         In.tol          = 0;         % 0 distance threshold (for cone kernel)
         In.zeta         = 0;         % cone kernel parameter 
         In.coneAlpha    = 0;         % velocity exponent in cone kernel

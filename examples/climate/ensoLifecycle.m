@@ -15,7 +15,7 @@
 % NOAA reanalysis (various products)
 dataset    = 'noaa';                                     
 %period     = 'satellite'; % 1978-present
-%period     = '50yr';      % 1970-present
+period     = '50yr';      % 1970-present
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 sourceVar  = 'globalSST'; % global SST
 embWindow  = '4yr';       % 4-year embedding
@@ -44,7 +44,7 @@ ifKoopman = false; % compute Koopman eigenfunctions
 ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
 
 % Koopman spectrum
-ifKoopmanSpectrum     = false;  % plot generator spectrum
+ifKoopmanSpectrum     = true;  % plot generator spectrum
 
 % ENSO 2D lifecycle plots
 ifNLSALifecycle    = false; % plot ENSO lifecycle from kernel eigenfunctions
@@ -57,18 +57,18 @@ ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
 ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = true; % difference composites based on NLSA
-ifKoopmanDiffComposites = true; % difference composites based on Koopman
+ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = false; % difference composites based on NLSA
+ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Low-frequency phases
-ifNLSALF    = true; % decadal/trend phases from kernel eigenfunctions 
-ifKoopmanLF = true; % decadal/trend phases from generator eigenfunctions
+ifNLSALFPhases   = true; % decadal/trend phases from kernel eigenfunctions 
+ifKoopmanLFPhases = true; % decadal/trend phases from generator eigenfunctions
 
 % Low-frequency composite plots
 ifNLSALFComposites = true; % decadal/trend composites based on NLSA
@@ -93,9 +93,12 @@ compositesDomain  = 'globe';   % global domain
 % signPhi:      Multiplication factor (for consistency with Nino)
 % idxZEnso:     ENSO eigenfunction from generator      
 % phaseZ:       Phase multpiplication factor (for consistency with Nino)
+% nPhase:       Number of ENSO phases
 % nSamplePhase: Number of samples per ENSO phase
 % idxPhiLF:     Low-frequency eigenfunctions from NLSA
 % idxZLF:       Low-frequency eigenfunctions from Koopman
+% LF:           Parameters for low-frequency plots
+% nPhaseLF:     Number of low-frequency phases 
 % figDir:       Output directory for plots
 % Spec:         Parameters for Koopman spectral plots
 
@@ -103,6 +106,7 @@ nShiftNino = 11;
 phase0     = 1;         
 leads      = [ 0 6 12 18 24 ]; 
 nDiff      = 6; 
+nPhaseLF   = 2;
 
 experiment = { dataset period sourceVar [ embWindow 'Emb' ] };
 experiment = strjoin_e( experiment, '_' );
@@ -175,13 +179,21 @@ case 'noaa_satellite_globalSST_4yrEmb'
     idxZEnso     = 11;
     phaseZ       = exp( - i * 5 * pi / 8 );        
 
-    idxPhiLF = [ 8 15 ];
-    signPhiLF = [ 1 1 ];
-    idxZLF = [ 8 15 ];
-    signZLF = [ 1 1 ];
-
     nPhase       = 8;         
     nSamplePhase = 20;       
+
+    idxPhiLF = [ 8 16 ];
+    signPhiLF = [ -1 1 ];
+    idxZLF = [ 8 14 ];
+    signZLF = [ 1 1 ];
+    
+    LF.tLim  = { '198001' '201802' }; % date range to plot
+    LF.tSkip = 60;                    % interval between tickmarks
+    LF.phiLabel = { 'trend' 'TBD' };
+    LF.zLabel   = { 'trend' 'TBD' };
+
+
+    nSamplePhaseLF = 30;
 
     Spec.mark = { 1          ... % constant
                   [ 2 3 ]    ... % annual
@@ -219,6 +231,19 @@ case 'noaa_50yr_globalSST_4yrEmb'
 
     nPhase       = 8;         
     nSamplePhase = 20;       
+
+    idxPhiLF = [ 8 17 ];
+    signPhiLF = [ -1 1 ];
+    idxZLF = [ 8 16 ];
+    signZLF = [ 1 1 ];
+    
+    LF.tLim  = { '197401' '201802' }; % date range to plot
+    LF.tSkip = 60;                    % interval between tickmarks
+    LF.phiLabel = { 'trend' 'TBD' };
+    LF.zLabel   = { 'trend' 'TBD' };
+
+    nSamplePhaseLF = 50;
+
 
     Spec.mark = { 1          ... % constant
                   [ 2 3 ]    ... % annual
@@ -2100,6 +2125,432 @@ if ifKoopmanDiffComposites
     end
 end
 
+%% LOW-FREQUENCY PHASES BASED ON NLA
+if ifNLSALFPhases
+
+    nPhiLF = numel( idxPhiLF ); % number of low-frequency eigenfunctions
+
+    % Retrieve NLSA eigenfunctions
+    phi = getDiffusionEigenfunctions( model );
+    PhiLF.idx = ( signPhiLF .* phi( :, idxPhiLF ) )';
+    PhiLF.time = getTrgTime( model );
+    PhiLF.time = PhiLF.time( nSB + 1 + nShiftTakens : end );
+    PhiLF.time = PhiLF.time( 1 : nSE );
+
+    % Compute low-frequency phases based on NLSA
+    selectIndPhiLF = computeLowFrequencyPhases( PhiLF.idx, nSamplePhaseLF );
+    
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 5; 
+    Fig.deltaX     = .6;
+    Fig.deltaX2    = .2;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .40;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0; 
+    Fig.nTileX     = 1;
+    Fig.nTileY     = nPhiLF;
+    Fig.aspectR    = 9/16;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % Find x-axis limits
+    tLimLF = datenum( LF.tLim, model.tFormat ); 
+    iTLimLF( 1 ) = find( PhiLF.time == tLimLF( 1 ) );
+    iTLimLF( 2 ) = find( PhiLF.time == tLimLF( 2 ) );
+
+    % Loop over the phases
+    for iPhi = 1 : nPhiLF 
+
+        set( gcf, 'currentAxes', ax( iPhi ) )
+
+        % plot temporal evolution of index
+        plot( PhiLF.time, PhiLF.idx( iPhi, : ), 'g-' )
+
+        % plot positive phase
+        plot( PhiLF.time( selectIndPhiLF{ iPhi }{ 1 } ), ...
+              PhiLF.idx( iPhi, selectIndPhiLF{ iPhi }{ 1 } ), ...
+              'r.', 'markerSize', 15 )
+
+        % plot negative phase
+        plot( PhiLF.time( selectIndPhiLF{ iPhi }{ 2 } ), ...
+              PhiLF.idx( iPhi, selectIndPhiLF{ iPhi }{ 2 } ), ...
+              'b.', 'markerSize', 15 )
+
+        xlim( tLimLF )
+        set( gca, 'xTick', ...
+              PhiLF.time( iTLimLF( 1 ) : LF.tSkip : iTLimLF( 2 ) ) )
+        if iPhi < nPhiLF
+            set( gca, 'xTickLabel', [] )
+        else
+            set( gca, 'xTickLabel', ...
+             datestr( PhiLF.time( iTLimLF( 1 ) : LF.tSkip : iTLimLF( 2 ) ), ...
+             'yy-mm' ) )
+        end 
+        ylabel( sprintf( '\\phi_{%i} -- %s', idxPhiLF( iPhi ), ...
+                         LF.phiLabel{ iPhi } ) )
+        
+        if iPhi == 1
+            titleStr = [ 'Low-frequency eigenfunctions -- ' ... 
+                         'kernel integral operator' ];
+            title( titleStr )
+        end
+    end
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figLFPhasesKernel.png' );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+%% LOW-FREQUENCY PHASES BASED ON GENERATOR
+if ifKoopmanLFPhases
+
+    nZLF = numel( idxZLF ); % number of low-frequency eigenfunctions
+
+    % Retrieve NLSA eigenfunctions
+    z = getEigenfunctions( model.koopmanOp );
+    ZLF.idx = ( signZLF .* z( :, idxZLF ) )';
+    ZLF.time = getTrgTime( model );
+    ZLF.time = ZLF.time( nSB + 1 + nShiftTakens : end );
+    ZLF.time = ZLF.time( 1 : nSE );
+
+    % Compute low-frequency phases based on NLSA
+    selectIndZLF = computeLowFrequencyPhases( ZLF.idx, nSamplePhaseLF );
+    
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 5; 
+    Fig.deltaX     = .6;
+    Fig.deltaX2    = .2;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .40;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0; 
+    Fig.nTileX     = 1;
+    Fig.nTileY     = nZLF;
+    Fig.aspectR    = 9/16;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % Find x-axis limits
+    tLimLF = datenum( LF.tLim, model.tFormat ); 
+    iTLimLF( 1 ) = find( ZLF.time == tLimLF( 1 ) );
+    iTLimLF( 2 ) = find( ZLF.time == tLimLF( 2 ) );
+
+    % Loop over the phases
+    for iZ = 1 : nZLF 
+
+        set( gcf, 'currentAxes', ax( iZ ) )
+
+        % plot temporal evolution of index
+        plot( ZLF.time, ZLF.idx( iZ, : ), 'g-' )
+
+        % plot positive phase
+        plot( ZLF.time( selectIndZLF{ iZ }{ 1 } ), ...
+              ZLF.idx( iZ, selectIndZLF{ iZ }{ 1 } ), ...
+              'r.', 'markerSize', 15 )
+
+        % plot negative phase
+        plot( ZLF.time( selectIndZLF{ iZ }{ 2 } ), ...
+              ZLF.idx( iZ, selectIndZLF{ iZ }{ 2 } ), ...
+              'b.', 'markerSize', 15 )
+
+        xlim( tLimLF )
+        set( gca, 'xTick', ...
+              ZLF.time( iTLimLF( 1 ) : LF.tSkip : iTLimLF( 2 ) ) )
+        if iZ < nZLF
+            set( gca, 'xTickLabel', [] )
+        else
+            set( gca, 'xTickLabel', ...
+             datestr( ZLF.time( iTLimLF( 1 ) : LF.tSkip : iTLimLF( 2 ) ), ...
+             'yy-mm' ) )
+        end 
+        ylabel( sprintf( 'z_{%i} -- %s', idxZLF( iZ ), LF.zLabel{ iZ } ) )
+        
+        if iZ == 1
+            titleStr = [ 'Low-frequency eigenfunctions -- generator' ];
+            title( titleStr )
+        end
+    end
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figLFPhasesGenerator.png' );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+
+%% GENERAL PARAMETERS FOR PHASE COMPOSITES
+% Figure and axes parameters 
+Fig.units      = 'inches';
+Fig.figWidth   = 13; 
+Fig.deltaX     = .55;
+Fig.deltaX2    = .7;
+Fig.deltaY     = .5;
+Fig.deltaY2    = .5;
+Fig.gapX       = .20;
+Fig.gapY       = .2;
+Fig.gapT       = .25; 
+Fig.nTileX     = 4;
+Fig.nTileY     = 2;
+Fig.aspectR    = aspectR;
+Fig.fontName   = 'helvetica';
+Fig.fontSize   = 6;
+Fig.tickLength = [ 0.02 0 ];
+Fig.visible    = 'on';
+Fig.nextPlot   = 'add'; 
+
+
+
+%% LOW-FREQUENCY COMPOSITES BASED ON NLSA
+if ifNLSALFComposites
+    disp( 'NLSA-based low-frequency composites...' ); t = tic;
+    
+    % Start and end time indices in data arrays
+    iStart = 1 + nSB + nShiftTakens;
+    iEnd   = iStart + nSE - 1;  
+
+    compPhiLF = cell( 1, nPhiLF );
+    for iLF = 1 : nPhiLF
+        compPhiLF{ iLF } = computePhaseComposites( ...
+            model, selectIndPhiLF{ iLF }, iStart, iEnd );
+    end
+
+    toc( t )
+
+    for iLF = 1 : nPhiLF 
+        [ fig, ax, axTitle ] = tileAxes( Fig );
+
+        colormap( redblue )
+
+        % Loop over the phases
+        for iPhase = 1 : nPhaseLF   
+
+            % SST phase composites
+            set( fig, 'currentAxes', ax( 1, iPhase ) )
+            SST.ifXTickLabels = iPhase == nPhaseLF;
+            if ifPlotWind
+                plotPhaseComposite( ...
+                    compPhiLF{ iLF }{ iCSST }( :, iPhase ), SST, ...
+                    compPhiLF{ iLF }{ iCUWnd }( :, iPhase ), ...
+                    compPhiLF{ iLF }{ iCVWnd }( :, iPhase ), UVWnd )
+                titleStr = 'SST anomaly (K), surface wind';
+            else
+                plotPhaseComposite( ...
+                    compPhiLF{ iLF }{ iCSST }( :, iPhase ), SST )
+                titleStr = 'SST anomaly (K)';
+            end
+            if iPhase == 1
+                title( titleStr  )
+            end
+            lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+            lblPos = get( lbl, 'position' );
+            lblPos( 1 ) = lblPos( 1 ) - .4;
+            set( lbl, 'position', lblPos )
+
+            % SSH phase composites
+            set( fig, 'currentAxes', ax( 2, iPhase ) )
+            SSH.ifXTickLabels = iPhase == nPhaseLF;
+            if ifPlotWind
+                plotPhaseComposite( ...
+                    compPhiLF{ iLF }{ iCSSH }( :, iPhase ), SSH, ...
+                    compPhiLF{ iLF }{ iCUWnd }( :, iPhase ), ...
+                    compPhiLF{ iLF }{ iCVWnd }( :, iPhase ), UVWnd )
+                titleStr = [ SSH.title ', surface wind' ];
+            else
+                plotPhaseComposite( ...
+                    compPhi{ iLF }{ iCSSH }( :, iPhase ), SSH );
+                titleStr = SSH.title;  
+            end
+            if iPhase == 1
+                title( titleStr  )
+            end
+
+            % SAT phase composites
+            set( fig, 'currentAxes', ax( 3, iPhase ) )
+            SAT.ifXTickLabels = iPhase == nPhaseLF;
+            if ifPlotWind
+                plotPhaseComposite( ...
+                    compPhiLF{ iLF }{ iCSAT }( :, iPhase ), SAT, ...
+                    compPhiLF{ iLF }{ iCUWnd }( :, iPhase ), ...
+                    compPhiLF{ iLF }{ iCVWnd }( :, iPhase ), UVWnd )
+                titleStr = 'SAT anomaly (K), surface wind';
+            else
+                plotPhaseComposite( ...
+                    compPhiLF{ iLF }{ iCSAT }( :, iPhase ), SAT );
+                titleStr = 'SAT anomaly (K)';
+            end
+            if iPhase == 1
+                title( titleStr  )
+            end
+
+            % Precipitation rate phase composites
+            set( fig, 'currentAxes', ax( 4, iPhase ) )
+            PRate.ifXTickLabels = iPhase == nPhaseLF;
+            if ifPlotWind
+                plotPhaseComposite( ...
+                    compPhiLF{ iLF }{ iCPRate }( :, iPhase ), PRate, ...
+                    compPhiLF{ iLF }{ iCUWnd }( :, iPhase ), ...
+                    compPhiLF{ iLF }{ iCVWnd }( :, iPhase ), UVWnd )
+                titleStr = [ PRate.title, ', surface wind' ]; 
+            else
+                plotPhaseComposite( ...
+                    compPhiLF{ iLF }{ iCPRate }( :, iPhase ), PRate )
+                titleStr = PRate.title;
+            end
+            if iPhase == 1
+                title( titleStr  )
+            end
+        end
+
+        titleStr = sprintf( '%s composites -- kernel integral operator', ...
+                            LF.phiLabel{ iLF } );
+        title( axTitle, titleStr )
+
+        % Print figure
+        if ifPrintFig
+            figFile = sprintf( 'fig%sCompositesKernel_', LF.phiLabel{ iLF } ); 
+            figFile = [ figFile compositesDomain '.png' ];
+            figFile = fullfile( figDir, figFile  );
+            print( fig, figFile, '-dpng', '-r300' ) 
+        end
+    end
+end
+
+
+%% LOW-FREQUENCY COMPOSITES BASED ON GENERATOR
+if ifKoopmanLFComposites
+    disp( 'Koopman-based low-frequency composites...' ); t = tic;
+    
+    % Start and end time indices in data arrays
+    iStart = 1 + nSB + nShiftTakens;
+    iEnd   = iStart + nSE - 1;  
+
+    compZLF = cell( 1, nZLF );
+    for iLF = 1 : nZLF
+        compZLF{ iLF } = computePhaseComposites( ...
+            model, selectIndZLF{ iLF }, iStart, iEnd );
+    end
+
+    toc( t )
+
+    for iLF = 1 : nZLF 
+        [ fig, ax, axTitle ] = tileAxes( Fig );
+
+        colormap( redblue )
+
+        % Loop over the phases
+        for iPhase = 1 : nPhaseLF   
+
+            % SST phase composites
+            set( fig, 'currentAxes', ax( 1, iPhase ) )
+            SST.ifXTickLabels = iPhase == nPhaseLF;
+            if ifPlotWind
+                plotPhaseComposite( ...
+                    compZLF{ iLF }{ iCSST }( :, iPhase ), SST, ...
+                    compZLF{ iLF }{ iCUWnd }( :, iPhase ), ...
+                    compZLF{ iLF }{ iCVWnd }( :, iPhase ), UVWnd )
+                titleStr = 'SST anomaly (K), surface wind';
+            else
+                plotPhaseComposite( ...
+                    compZLF{ iLF }{ iCSST }( :, iPhase ), SST )
+                titleStr = 'SST anomaly (K)';
+            end
+            if iPhase == 1
+                title( titleStr  )
+            end
+            lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+            lblPos = get( lbl, 'position' );
+            lblPos( 1 ) = lblPos( 1 ) - .4;
+            set( lbl, 'position', lblPos )
+
+            % SSH phase composites
+            set( fig, 'currentAxes', ax( 2, iPhase ) )
+            SSH.ifXTickLabels = iPhase == nPhaseLF;
+            if ifPlotWind
+                plotPhaseComposite( ...
+                    compZLF{ iLF }{ iCSSH }( :, iPhase ), SSH, ...
+                    compZLF{ iLF }{ iCUWnd }( :, iPhase ), ...
+                    compZLF{ iLF }{ iCVWnd }( :, iPhase ), UVWnd )
+                titleStr = [ SSH.title ', surface wind' ];
+            else
+                plotPhaseComposite( ...
+                    compZ{ iLF }{ iCSSH }( :, iPhase ), SSH );
+                titleStr = SSH.title;  
+            end
+            if iPhase == 1
+                title( titleStr  )
+            end
+
+            % SAT phase composites
+            set( fig, 'currentAxes', ax( 3, iPhase ) )
+            SAT.ifXTickLabels = iPhase == nPhaseLF;
+            if ifPlotWind
+                plotPhaseComposite( ...
+                    compZLF{ iLF }{ iCSAT }( :, iPhase ), SAT, ...
+                    compZLF{ iLF }{ iCUWnd }( :, iPhase ), ...
+                    compZLF{ iLF }{ iCVWnd }( :, iPhase ), UVWnd )
+                titleStr = 'SAT anomaly (K), surface wind';
+            else
+                plotPhaseComposite( ...
+                    compZLF{ iLF }{ iCSAT }( :, iPhase ), SAT );
+                titleStr = 'SAT anomaly (K)';
+            end
+            if iPhase == 1
+                title( titleStr  )
+            end
+
+            % Precipitation rate phase composites
+            set( fig, 'currentAxes', ax( 4, iPhase ) )
+            PRate.ifXTickLabels = iPhase == nPhaseLF;
+            if ifPlotWind
+                plotPhaseComposite( ...
+                    compZLF{ iLF }{ iCPRate }( :, iPhase ), PRate, ...
+                    compZLF{ iLF }{ iCUWnd }( :, iPhase ), ...
+                    compZLF{ iLF }{ iCVWnd }( :, iPhase ), UVWnd )
+                titleStr = [ PRate.title, ', surface wind' ]; 
+            else
+                plotPhaseComposite( ...
+                    compZLF{ iLF }{ iCPRate }( :, iPhase ), PRate )
+                titleStr = PRate.title;
+            end
+            if iPhase == 1
+                title( titleStr  )
+            end
+        end
+
+        titleStr = sprintf( '%s composites -- generator', ...
+                            LF.zLabel{ iLF } );
+        title( axTitle, titleStr )
+
+        % Print figure
+        if ifPrintFig
+            figFile = sprintf( 'fig%sCompositesGenerator_', ...
+                                LF.zLabel{ iLF } ); 
+            figFile = [ figFile compositesDomain '.png' ];
+            figFile = fullfile( figDir, figFile  );
+            print( fig, figFile, '-dpng', '-r300' ) 
+        end
+    end
+end
+
+
 
 
 % AUXILIARY FUNCTIONS
@@ -2327,5 +2778,21 @@ for iC = 1 : nC
         end
     end
 end
+
+%% Function to compute phases for low-frequency modes
+function selectInd = computeLowFrequencyPhases( idx, nSamplePhase );
+
+nIdx = size( idx, 1 );
+selectInd = cell( 1, nIdx );
+
+for iIdx = 1 : nIdx
+    selectInd{ iIdx } = cell( 1, 2 ); 
+    [ ~, selectInd{ iIdx }{ 1 } ] = maxk( idx( iIdx, : ), nSamplePhase );
+    [ ~, selectInd{ iIdx }{ 2 } ] = mink( idx( iIdx, : ), nSamplePhase );
+end
+
+end
+
+
 
 

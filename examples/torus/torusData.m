@@ -8,7 +8,7 @@
 %
 % The parameter values aPhi = aTheta = 1 correspond to linear flow on the torus
 % 
-% Modified 2016/02/02
+% Modified 2020/05/30
 
 %% DATASET PARAMETERS
 f      = sqrt( 30 );   % frequency along theta coordinate
@@ -17,11 +17,11 @@ aTheta = 1;            % velocity variation parameter for theta
 r1     = .5;           % azimuthal (phi) radius
 r2     = .5;           % polar (theta) radius
 nST    = 128;          % (approximate) samples per period
-nT     = 5;           % number of periods
+nT     = 32;           % number of periods
 nTSpin = 0;            % spinup periods
-nEL    = 5;            % extra samples for time-lagged embedding  
-nXB    = 1;            % additional samples before main interval (for FD) 
-nXA    = 1;            % additional samples after main interval (for FD)
+nEL    = 0;            % extra samples for time-lagged embedding  
+nXB    = 0;            % additional samples before main interval (for FD) 
+nXA    = 0;            % additional samples after main interval (for FD)
 idxX   = [ 1 : 4 ];    % coordinates to retain
 obsMap = 'r4';         % observation map
 idxP   = 3;            % coordinates to apply deformation
