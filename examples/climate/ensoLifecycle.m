@@ -398,6 +398,39 @@ case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb'
     Spec.c = distinguishable_colors( 8 );
     Spec.c = Spec.c( [ 4 1 2 3 5 6 7 8 ], : );
 
+case 'ccsm4Ctrl_1300yr_globalSST_10yrEmb'
+
+    idxPhiEnso   = [ 9 8 ];  
+    signPhi      = [ -1 1 ]; 
+    idxZEnso     = 8;         
+    phaseZ       = exp( i * pi * ( 17 / 32 ) );        
+    nPhase       = 8;         
+    nSamplePhase = 200;       
+
+    Spec.mark = { 1          ...      % constant
+                  [ 2 3 ]    ...      % annual
+                  [ 4 5 ]    ...      % semiannual
+                  [ 6 7 ]    ...      % triennial
+                  [ 14 15  ] ...      % quartenial
+                  [ 8 9 ]    ...      % ENSO
+                  [ 10 : 13 ] ...     % ENSO-annual
+                  [ 16 : 19 ] ...     % ENSO-semiannnual
+                  };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'quartenial' ...
+                    'ENSO' ...
+                    'ENSO-annual combination' ...
+                    'ENSO-semiannual combination' ...
+                    };
+    Spec.xLim = [ -1 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 8 );
+    Spec.c = Spec.c( [ 4 1 2 3 5 6 7 8 ], : );
+
+
 
 
 otherwise
