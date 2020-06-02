@@ -10,8 +10,8 @@ dataset   = 'ccsm4Ctrl';
 period  = '1300yr';        % 1300-year analysis
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
-embWindow  = '10yr';       % 4-year embedding
+embWindow  = '4yr';       % 4-year embedding
+%embWindow  = '10yr';       % 4-year embedding
 
 % NOAA reanalysis (various products)
 %dataset    = 'noaa';                                     
@@ -1011,7 +1011,7 @@ if ifNLSAPhases
 
     % Compute ENSO phases based on Nino 3.4 index
     [ selectIndNino34, anglesNino34, avNino34IndNino34, weightsNino34 ] = ...
-        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx(1,:)', ...
+        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx( 1, : )', ...
                                         nPhase, nSamplePhase, decayFactor );
         
     % Set up figure and axes 
