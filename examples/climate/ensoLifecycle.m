@@ -5,20 +5,21 @@
 
 %% DATA SPECIFICATION 
 % CCSM4 pre-industrial control run
-%dataset   = 'ccsm4Ctrl';    
+dataset   = 'ccsm4Ctrl';    
 %period    = '200yr';        % 200-year analysis 
-%period  = '1300yr';        % 1300-year analysis
+period  = '1300yr';        % 1300-year analysis
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'globalSST'; % global SST
+%embWindow  = '4yr';       % 4-year embedding
+embWindow  = '10yr';       % 4-year embedding
+
+% NOAA reanalysis (various products)
+%dataset    = 'noaa';                                     
+%period     = 'satellite'; % 1978-present
+%period     = '50yr';      % 1970-present
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
-
-% NOAA reanalysis (various products)
-dataset    = 'noaa';                                     
-%period     = 'satellite'; % 1978-present
-period     = '50yr';      % 1970-present
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '5yr';       % 5-year embedding
 
 % NOAA 20th century reanalysis
@@ -39,8 +40,8 @@ ifDataPrecip = false;  % extract precipitation target data from NetCDF files
 ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
-ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
-ifKoopman = false; % compute Koopman eigenfunctions
+ifNLSA    = true;  % compute kernel (NLSA) eigenfunctions
+ifKoopman = true; % compute Koopman eigenfunctions
 ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
 
 % Koopman spectrum
@@ -51,20 +52,20 @@ ifNLSALifecycle    = true; % plot ENSO lifecycle from kernel eigenfunctions
 ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
+ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = true; % difference composites based on NLSA
-ifKoopmanDiffComposites = true; % difference composites based on Koopman
+ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = false; % difference composites based on NLSA
+ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Low-frequency phases
 ifNLSALFPhases   = false; % decadal/trend phases from kernel eigenfunctions 
@@ -78,8 +79,8 @@ ifKoopmanLFComposites = false; % decadal/trend composites based on Koopman
 ifWeighComposites = true;     % weigh composites by adjacent phases
 ifPlotWind        = true;      % overlay quiver plot of surface winds 
 ifPrintFig        = true;      % print figures to file
-compositesDomain  = 'globe';   % global domain
-%compositesDomain  = 'Pacific'; % Pacific
+%compositesDomain  = 'globe';   % global domain
+compositesDomain  = 'Pacific'; % Pacific
 
 
 %% GLOBAL PARAMETERS
