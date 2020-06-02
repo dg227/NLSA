@@ -1,5 +1,5 @@
-function Data = importData_cmap( DataSpecs )
-% IMPORTDATA_CMAP Read CMAP reanalysis data from NetCDF files, and 
+function Data = importData_errsstV4( DataSpecs )
+% IMPORTDATA_ERSSTV4 Read ERSSTV4 reanalysis data from NetCDF files, and 
 % output in format appropriate for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
@@ -30,7 +30,7 @@ function Data = importData_cmap( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Modified 2020/05/19
+% Modified 2020/06/01
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 In     = DataSpecs.In;

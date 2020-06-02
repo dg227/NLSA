@@ -31,7 +31,7 @@ function [ model, In, Out ] = ensoLifecycle_nlsaModel( experiment )
 % Modified 2020/05/19
 
 if nargin == 0
-    experiment = 'noaa_industrial_IPSST_4yrEmb';
+    experiment = 'ersstV5_industrial_IPSST_4yrEmb';
 end
 
 switch experiment
@@ -166,12 +166,12 @@ case '20CR_satellite_IPSST_4yrEmb'
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
-% NOAA reanalysis data (various products), satellite era, Indo-Pacific SST 
+% ERSSTv5 data (and various NOAA products), satellite era, Indo-Pacific SST 
 % input, 4-year delay embeding window  
-case 'noaa_satellite_IPSST_4yrEmb'
+case 'ersstV5_satellite_IPSST_4yrEmb'
     
     % Dataset specification 
-    In.Res( 1 ).experiment = 'noaa';
+    In.Res( 1 ).experiment = 'ersstV5';
     
     % Time specification 
     In.tFormat        = 'yyyymm';              % time format
@@ -227,12 +227,12 @@ case 'noaa_satellite_IPSST_4yrEmb'
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
-% NOAA reanalysis data (various products), satellite era, Global SST 
+% ERSSTv5 data (and various NOAA products), satellite era, global SST 
 % input, 4-year delay embeding window  
-case 'noaa_satellite_globalSST_4yrEmb'
+case 'ersstV5_satellite_globalSST_4yrEmb'
     
     % Dataset specification 
-    In.Res( 1 ).experiment = 'noaa';
+    In.Res( 1 ).experiment = 'ersstV5';
     
     % Time specification 
     In.tFormat        = 'yyyymm';              % time format
@@ -288,12 +288,12 @@ case 'noaa_satellite_globalSST_4yrEmb'
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
-% NOAA reanalysis data (various products), last 50 years, Global SST input, 
+% ERSSTv5 data (and various NOAA products), last 50 years, Global SST input, 
 % 4-year delay embeding window  
-case 'noaa_50yr_globalSST_4yrEmb'
+case 'ersstV5_50yr_globalSST_4yrEmb'
     
     % Dataset specification 
-    In.Res( 1 ).experiment = 'noaa';
+    In.Res( 1 ).experiment = 'ersstV5';
     
     % Time specification 
     In.tFormat        = 'yyyymm';              % time format
@@ -349,12 +349,12 @@ case 'noaa_50yr_globalSST_4yrEmb'
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
-% NOAA reanalysis data (various products), last 50 years, Global SST input, 
+% ERSSTV5 data (and various NOAA products), last 50 years, Global SST input, 
 % 5-year delay embeding window  
-case 'noaa_50yr_globalSST_5yrEmb'
+case 'ersstV5_50yr_globalSST_5yrEmb'
     
     % Dataset specification 
-    In.Res( 1 ).experiment = 'noaa';
+    In.Res( 1 ).experiment = 'ersstV5';
     
     % Time specification 
     In.tFormat        = 'yyyymm';              % time format
@@ -409,6 +409,68 @@ case 'noaa_50yr_globalSST_5yrEmb'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+
+% ERSSTV4 data (and various NOAA products), last 50 years, Global SST input, 
+% 4-year delay embeding window  
+case 'ersstV4_satellite_globalSST_4yrEmb'
+    
+    % Dataset specification 
+    In.Res( 1 ).experiment = 'ersstV4';
+    
+    % Time specification 
+    In.tFormat        = 'yyyymm';              % time format
+    In.Res( 1 ).tLim  = { '197801' '202002' }; % time limit  
+    In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    trendStr = ''; % string identifier for detrening of target data
+
+    % Source data specification 
+    In.Src( 1 ).field = 'sstw';      % physical field
+    In.Src( 1 ).xLim  = [ 0 359 ];  % longitude limits
+    In.Src( 1 ).yLim  = [ -89 89 ]; % latitude limits
+
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 2;          % samples before main interval
+    In.Src( 1 ).nXA       = 2;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'central';  % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
+    % Batches to partition the in-sample data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
+
+    % NLSA parameters; in-sample data 
+    In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
+    In.lDist      = 'cone';     % local distance
+    In.tol        = 0;          % 0 distance threshold (for cone kernel)
+    In.zeta       = 0.995;      % cone kernel parameter 
+    In.coneAlpha  = 0;          % velocity exponent in cone kernel
+    In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+    In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+    In.epsilon    = 1.5;          % kernel bandwidth parameter 
+    In.epsilonB   = 2;          % kernel bandwidth base
+    In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+    In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
+    In.alpha      = 0.5;        % diffusion maps normalization 
+    In.nPhi       = 451;        % diffusion eigenfunctions to compute
+    In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
+    In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
+    In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
+    In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
+
+    % Koopman generator parameters; in-sample data
+    In.koopmanOpType = 'diff';     % Koopman generator type
+    In.koopmanFDType  = 'central'; % finite-difference type
+    In.koopmanFDOrder = 4;         % finite-difference order
+    In.koopmanDt      = 1;         % sampling interval (in months)
+    In.koopmanAntisym = true;      % enforce antisymmetrization
+    In.koopmanEpsilon = 1.0E-3;      % regularization parameter
+    In.koopmanRegType = 'inv';     % regularization type
+    In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
+    In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+
 
 
 

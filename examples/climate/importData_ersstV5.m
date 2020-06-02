@@ -1,6 +1,6 @@
-function Data = importData_ersst( DataSpecs )
-% IMPORTDATA_ERSST Read monthly data from ERSST reanalysis netCDF files, and 
-% output in format appropriate for NLSA code.
+function Data = importData_ersstV5( DataSpecs )
+% IMPORTDATA_ERSSTV5 Read monthly data from ERSST V5 reanalysis netCDF files, 
+% and output in format appropriate for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
 % be read. 
