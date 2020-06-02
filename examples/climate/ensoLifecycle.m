@@ -5,26 +5,33 @@
 
 %% DATA SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset   = 'ccsm4Ctrl';    
-%period    = '200yr';        % 200-year analysis 
-period  = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
-embWindow  = '10yr';       % 4-year embedding
-
-% NOAA reanalysis (various products)
-%dataset    = 'noaa';                                     
-%period     = 'satellite'; % 1978-present
-%period     = '50yr';      % 1970-present
+%dataset    = 'ccsm4Ctrl';    
+%period     = '200yr';        % 200-year analysis 
+%period     = '1300yr';        % 1300-year analysis
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
+%embWindow  = '10yr';       % 4-year embedding
+
+% ERSSTv5 reanalysis (and various NOAA products)
+dataset    = 'ersstV4';                                     
+period     = 'satellite'; % 1978-present
+%period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'globalSST'; % global SST
+embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '5yr';       % 5-year embedding
+
+% ERSSTv4 reanalysis (and various NOAA products)
+%dataset    = 'ersstV4';                                     
+%period     = 'satellite'; % 1978-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+%sourceVar  = 'globalSST'; % global SST
+%embWindow  = '4yr';       % 4-year embedding
 
 % NOAA 20th century reanalysis
 %dataset    = '20CR';                                     
-%period    = 'satellite';                  % 1970-present
+%period     = 'satellite';                  % 1970-present
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
@@ -32,12 +39,12 @@ embWindow  = '10yr';       % 4-year embedding
 %% SCRIPT EXECUTION OPTIONS
 
 % Data extraction
-ifDataSource = false;   % extract source data fron NetCDF files
-ifDataSST    = false;  % extract SST target data from NetCDF files
-ifDataSSH    = false;  % extract SSH target data from NetCDF files
-ifDataSAT    = false;   % extract SAT target data from NetCDF files
-ifDataPrecip = false;  % extract precipitation target data from NetCDF files  
-ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
+ifDataSource = true;   % extract source data fron NetCDF files
+ifDataSST    = true;  % extract SST target data from NetCDF files
+ifDataSSH    = true;  % extract SSH target data from NetCDF files
+ifDataSAT    = true;   % extract SAT target data from NetCDF files
+ifDataPrecip = true;  % extract precipitation target data from NetCDF files  
+ifDataWind   = true;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
 ifNLSA    = true;  % compute kernel (NLSA) eigenfunctions
@@ -68,7 +75,7 @@ ifNLSADiffComposites    = false; % difference composites based on NLSA
 ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Low-frequency phases
-ifNLSALFPhases   = false; % decadal/trend phases from kernel eigenfunctions 
+ifNLSALFPhases    = false; % decadal/trend phases from kernel eigenfunctions 
 ifKoopmanLFPhases = false; % decadal/trend phases from generator eigenfunctions
 
 % Low-frequency composite plots
@@ -79,8 +86,8 @@ ifKoopmanLFComposites = false; % decadal/trend composites based on Koopman
 ifWeighComposites = true;     % weigh composites by adjacent phases
 ifPlotWind        = true;      % overlay quiver plot of surface winds 
 ifPrintFig        = true;      % print figures to file
-%compositesDomain  = 'globe';   % global domain
-compositesDomain  = 'Pacific'; % Pacific
+compositesDomain  = 'globe';   % global domain
+%compositesDomain  = 'Pacific'; % Pacific
 
 
 %% GLOBAL PARAMETERS
@@ -141,9 +148,9 @@ case '20CR_satellite_IPSST_4yrEmb'
     PRate.scl     = 1E5; 
 
 
-% NOAA reanalysis data, industrial era, Indo-Pacific SST input, 4-year delay 
-% embeding window  
-case 'noaa_satellite_IPSST_4yrEmb'
+% ERSSTv5 reanalysis data, satellite era, Indo-Pacific SST input, 
+% 4-year delay embeding window  
+case 'ersstV5_satellite_IPSST_4yrEmb'
 
     %idxPhiEnso   = [ 7 6 ];  
     idxZEnso     = 7;         
@@ -173,7 +180,9 @@ case 'noaa_satellite_IPSST_4yrEmb'
     Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
 
-case 'noaa_satellite_globalSST_4yrEmb'
+% ERSSTv5 reanalysis data, satellite era, global SST input, 4-year delay 
+% embeding window  
+case 'ersstV5_satellite_globalSST_4yrEmb'
 
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
@@ -222,7 +231,7 @@ case 'noaa_satellite_globalSST_4yrEmb'
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
-case 'noaa_50yr_globalSST_4yrEmb'
+case 'ersstV5_50yr_globalSST_4yrEmb'
 
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
@@ -272,7 +281,7 @@ case 'noaa_50yr_globalSST_4yrEmb'
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
-case 'noaa_50yr_globalSST_5yrEmb'
+case 'ersstV5_50yr_globalSST_5yrEmb'
 
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
@@ -305,6 +314,57 @@ case 'noaa_50yr_globalSST_5yrEmb'
                     'ENSO combination' ...
                     'decadal' };
     Spec.xLim = [ -1.5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+% ERSSTv4 reanalysis data, satellite era, global SST input, 4-year delay 
+% embeding window  
+case 'ersstV4_satellite_globalSST_4yrEmb'
+
+    %idxPhiEnso   = [ 7 6 ];  
+    signPhi      = [ 1 -1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 12 11 ];
+    idxZEnso     = 11;
+    phaseZ       = exp( - i * 5 * pi / 8 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
+
+    idxPhiLF = [ 8 16 ];
+    signPhiLF = [ -1 1 ];
+    idxZLF = [ 8 14 ];
+    signZLF = [ 1 1 ];
+    
+    LF.tLim  = { '198001' '201802' }; % date range to plot
+    LF.tSkip = 60;                    % interval between tickmarks
+    LF.phiLabel = { 'trend' 'TBD' };
+    LF.zLabel   = { 'trend' 'TBD' };
+
+
+    nSamplePhaseLF = 30;
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
+                 };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -5 .1 ];
     Spec.yLim = [ -3 3 ]; 
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
@@ -651,7 +711,7 @@ end
 % Plot limits for Nino indices
 switch dataset
     
-case 'noaa'
+case 'ersstV5'
 
     PlotLim.nino4  = [ -3 3 ];
     PlotLim.nino34 = [ -3 3 ];
@@ -1404,7 +1464,7 @@ switch dataset
 case 'ccsm4Ctrl'
     SSH.title = 'SSH anomaly (cm)';
     SSH.scl = 1;
-case 'noaa'
+case 'ersstV5'
     SSH.title = 'SSH anomaly (100 m)';
     SSH.scl = 1E-2;
 end
@@ -1436,7 +1496,7 @@ switch dataset
 case 'ccsm4Ctrl'
     PRate.scl     = 1000 * 3600 * 24; % convert from m/s to mm/day 
     PRate.title   = 'Precip. anomaly (mm/day)';
-case 'noaa'
+case 'ersstV5'
     PRate.scl    = 1; 
     PRate.title  = 'Precip. anomaly (mm/day)';
 end
@@ -1448,7 +1508,7 @@ switch dataset
 case 'ccsm4Ctrl'
     UVWnd.nSkipX = 10; % zonal downsampling factor for quiver plots
     UVWnd.nSkipY = 10; % meridional downsampling factor for quiver plots
-case 'noaa'
+case 'ersstV5'
     UVWnd.nSkipX = 3; % zonal downsampling factor for quiver plots
     UVWnd.nSkipY = 3; % meridional downsampling factor for quiver plots
 end
