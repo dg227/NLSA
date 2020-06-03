@@ -27,12 +27,13 @@
 
 % ERSSTv4 reanalysis (and various NOAA products)
 dataset    = 'ersstV4';                                     
-period     = 'satellite'; % 1978-present
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-sourceVar  = 'globalSST'; % global SST
+%period     = 'satellite'; % 1978-present
+period     = '50yr';      % 1970-present
+sourceVar  = 'IPSST';     % Indo-Pacific SST
+%sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
 embWindow  = '4yr';       % 4-year embedding
-kernel      = 'cone';      % cone kernel
+kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -54,41 +55,41 @@ ifDataPrecip = false;  % extract precipitation target data from NetCDF files
 ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
-ifNLSA    = true;  % compute kernel (NLSA) eigenfunctions
-ifKoopman = true; % compute Koopman eigenfunctions
+ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
+ifKoopman = false; % compute Koopman eigenfunctions
 
 % Koopman spectrum
 ifKoopmanSpectrum = true;  % plot generator spectrum
 
 % ENSO lifecycle plots
-ifNinoLifecycle    = true; % ENSO lifecycle from Nino indices
-ifNLSALifecycle    = true; % ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % ENSO lifecycle from generator eigenfuncs. 
+ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
+ifNLSALifecycle    = false; % ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNinoPhases          = true; % ENSO phases from Nino 3.4 index
-ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
+ifNinoPhases          = false; % ENSO phases from Nino 3.4 index
+ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = true; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = false; % compute phase composites based on NLSA
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = true; % difference composites based on NLSA
-ifKoopmanDiffComposites = true; % difference composites based on Koopman
+ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = false; % difference composites based on NLSA
+ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Low-frequency phases
 ifNLSALFPhases    = false; % decadal/trend phases from kernel eigenfunctions 
-ifKoopmanLFPhases = false; % decadal/trend phases from generator eigenfunctions
+ifKoopmanLFPhases = true; % decadal/trend phases from generator eigenfunctions
 
 % Low-frequency composite plots
 ifNLSALFComposites = false; % decadal/trend composites based on NLSA
-ifKoopmanLFComposites = false; % decadal/trend composites based on Koopman
+ifKoopmanLFComposites = true; % decadal/trend composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
@@ -123,7 +124,7 @@ nShiftNino  = 11;
 decayFactor = 4; 
 phase0      = 7;         
 leads       = [ 0 6 12 18 24 ]; 
-nDiff       = 1; 
+nDiff       = 6; 
 nPhaseLF    = 2;
 
 experiment = { dataset period sourceVar [ embWindow 'Emb' ] ...
@@ -327,8 +328,92 @@ case 'ersstV5_50yr_globalSST_5yrEmb_coneKernel'
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
+case 'ersstV4_50yr_globalSST_4yrEmb_coneKernel'
+
+    %idxPhiEnso   = [ 7 6 ];  
+    signPhi      = [ 1 -1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 17 18 ];
+    idxZEnso     = 16;
+    phaseZ       = exp( i * pi / 2 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
+                 };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -1.5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
+
+    %idxPhiEnso   = [ 7 6 ];  
+    signPhi      = [ 1 1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 8 7 ];
+    idxZEnso     = 7;
+    phaseZ       = exp( i * 5 * pi / 32 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
+                 };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -1.5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+    idxPhiLF = [ 8 16 ];
+    signPhiLF = [ -1 1 ];
+    idxZLF = [ 6 15 ];
+    signZLF = [ 1 1 ];
+
+    LF.tLim  = { '197206' '201801' }; % date range to plot
+    LF.tSkip = 60;                   % interval between tickmarks
+    LF.phiLabel = { 'trend' 'TBD' };
+    LF.zLabel   = { 'trend' 'PDO' };
+
+
+
 % ERSSTv4 reanalysis data, satellite era, global SST input, 4-year delay 
-% embeding window  
+% embeding window, cone kernel  
 case 'ersstV4_satellite_globalSST_4yrEmb_coneKernel'
 
     signPhi      = [ 1 1 ]; 
@@ -378,7 +463,7 @@ case 'ersstV4_satellite_globalSST_4yrEmb_coneKernel'
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
 % ERSSTv4 reanalysis data, satellite era, global SST input, 4-year delay 
-% embeding window  
+% embeding window, L2 kernel  
 case 'ersstV4_satellite_globalSST_4yrEmb_l2Kernel'
 
     %idxPhiEnso   = [ 7 6 ];  
@@ -477,6 +562,57 @@ case 'ersstV4_satellite_subglobalSST_4yrEmb_coneKernel'
     Spec.yLim = [ -3 3 ]; 
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+% ERSSTv4 reanalysis data, satellite era, Indo-Pacific SST input, 4-year delay 
+% embeding window, cone kernel  
+case 'ersstV4_satellite_IPSST_4yrEmb_coneKernel'
+
+    signPhi      = [ 1 1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 17 16 ];
+    idxZEnso     = 9;
+    phaseZ       = 1; exp( i * pi * 7 / 16 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
+
+    idxPhiLF = [ 8 16 ];
+    signPhiLF = [ -1 1 ];
+    idxZLF = [ 8 22 27 30 ];
+    signZLF = [ -1 1 1 1 ];
+    
+    LF.tLim  = { '198003' '201801' }; % date range to plot
+    LF.tSkip = 60;                    % interval between tickmarks
+    LF.phiLabel = { 'trend' 'TBD' 'TBD' 'TBD' };
+    LF.zLabel   = { 'trend' 'TBD' 'TBD' 'TBD' };
+
+
+    nSamplePhaseLF = 50;
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
+                 };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -2 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
 
 
 % CCSM4 pre-industrial control, 200-year period, Indo-Pacific SST input, 

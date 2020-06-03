@@ -503,7 +503,7 @@ case 'ersstV4'
 
         % Input data
         DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
-        DataSpecs.In.file = 'st.mnmean.v4.nc'; % input filename
+        DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
         % Output data
