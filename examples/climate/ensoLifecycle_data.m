@@ -439,7 +439,7 @@ case 'ersstV4'
 
     switch( fld )
 
-    %% Indo-Pacific SST (from ERSST)
+    %% Global SST (from ERSST)
     case 'globalSST'
 
         % Input data
@@ -467,6 +467,36 @@ case 'ersstV4'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
         importData_ersstV4( DataSpecs )
+
+    %% Sub-global SST (from ERSST)
+    case 'subglobalSST'
+
+        % Input data
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
+        DataSpecs.In.var  = 'sst';
+
+        % Output data
+        DataSpecs.Out.fld = DataSpecs.In.var;      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '185401';           % start time in nc file 
+
+        % Spatial domain
+        DataSpecs.Domain.xLim = [ 0 359 ]; % longitude limits
+        DataSpecs.Domain.yLim = [ -67 67 ]; % latitude limits
+    
+        % Output options
+        DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
+        DataSpecs.Opts.ifDetrend     = false; % don't detrend
+        DataSpecs.Opts.ifWeight      = true;  % perform area weighting
+        DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
+        DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
+        DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
+        DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ersstV4( DataSpecs )
+
 
     %% Indo-Pacific SST (from ERSST)
     case 'IPSST'
@@ -791,6 +821,9 @@ case 'ersstV4'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
         importData_ncep( DataSpecs ) 
+
+    otherwise
+        error( 'Invalid data' )
 
     end
 

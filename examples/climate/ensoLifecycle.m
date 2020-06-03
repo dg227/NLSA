@@ -5,15 +5,15 @@
 
 %% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset    = 'ccsm4Ctrl';    
+%dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-period     = '1300yr';        % 1300-year analysis
+%period     = '1300yr';        % 1300-year analysis
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
-sourceVar  = 'globalSST'; % global SST
+%ourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
-embWindow  = '20yr';       % 4-year embedding
-kernel     = 'cone';       % cone kernel      
+%mbWindow  = '20yr';       % 4-year embedding
+%ernel     = 'cone';       % cone kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -26,12 +26,14 @@ kernel     = 'cone';       % cone kernel
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-%dataset    = 'ersstV4';                                     
-%period     = 'satellite'; % 1978-present
+dataset    = 'ersstV4';                                     
+period     = 'satellite'; % 1978-present
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
-%sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
-%kernel      = 'cone';      % cone kernel
+sourceVar  = 'globalSST'; % global SST
+%sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
+embWindow  = '4yr';       % 4-year embedding
+kernel      = 'cone';      % cone kernel
+%kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
 %dataset    = '20CR';                                     
@@ -39,7 +41,7 @@ kernel     = 'cone';       % cone kernel
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
-kernel      = 'cone';      % cone kernel
+%kernel      = 'cone';      % cone kernel
 
 %% SCRIPT EXECUTION OPTIONS
 
@@ -59,26 +61,26 @@ ifKoopman = true; % compute Koopman eigenfunctions
 ifKoopmanSpectrum = true;  % plot generator spectrum
 
 % ENSO lifecycle plots
-ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
-ifNLSALifecycle    = false; % ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % ENSO lifecycle from generator eigenfuncs. 
+ifNinoLifecycle    = true; % ENSO lifecycle from Nino indices
+ifNLSALifecycle    = true; % ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = true; % ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNinoPhases          = false; % ENSO phases from Nino 3.4 index
-ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
-ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+ifNinoPhases          = true; % ENSO phases from Nino 3.4 index
+ifNLSAPhases          = true; % ENSO phases fron kerenel eigenfunctions
+ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
+ifNLSAEquivariance    = true; % ENSO equivariance plots based on NLSA
+ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
-ifNLSAComposites    = false; % compute phase composites based on NLSA
-ifKoopmanComposites = false; % compute phase composites based on Koopman
+ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
+ifNLSAComposites    = true; % compute phase composites based on NLSA
+ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = false; % difference composites based on NLSA
-ifKoopmanDiffComposites = false; % difference composites based on Koopman
+ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = true; % difference composites based on NLSA
+ifKoopmanDiffComposites = true; % difference composites based on Koopman
 
 % Low-frequency phases
 ifNLSALFPhases    = false; % decadal/trend phases from kernel eigenfunctions 
@@ -329,11 +331,61 @@ case 'ersstV5_50yr_globalSST_5yrEmb_coneKernel'
 % embeding window  
 case 'ersstV4_satellite_globalSST_4yrEmb_coneKernel'
 
+    signPhi      = [ 1 1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 17 16 ];
+    idxZEnso     = 16;
+    phaseZ       = exp( i * pi * 7 / 16 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
+
+    idxPhiLF = [ 8 16 ];
+    signPhiLF = [ -1 1 ];
+    idxZLF = [ 8 22 27 30 ];
+    signZLF = [ -1 1 1 1 ];
+    
+    LF.tLim  = { '198003' '201801' }; % date range to plot
+    LF.tSkip = 60;                    % interval between tickmarks
+    LF.phiLabel = { 'trend' 'TBD' 'TBD' 'TBD' };
+    LF.zLabel   = { 'trend' 'TBD' 'TBD' 'TBD' };
+
+
+    nSamplePhaseLF = 50;
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
+                 };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -2 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+% ERSSTv4 reanalysis data, satellite era, global SST input, 4-year delay 
+% embeding window  
+case 'ersstV4_satellite_globalSST_4yrEmb_l2Kernel'
+
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
     %phaseZ       = -1 * exp( i * pi / 4 );        
     idxPhiEnso   = [ 13 14 ];
-    idxZEnso     = 13;
+    idxZEnso     = 20;
     phaseZ       = exp( i * pi / 2 );        
 
     nPhase       = 8;         
@@ -371,7 +423,57 @@ case 'ersstV4_satellite_globalSST_4yrEmb_coneKernel'
                     'ENSO' ...
                     'ENSO combination' ...
                     'decadal' };
-    Spec.xLim = [ -5 .1 ];
+    Spec.xLim = [ -2 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 9 );
+    %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+% ERSSTv4 reanalysis data, satellite era, sub-global SST input, 4-year delay 
+% embeding window  
+case 'ersstV4_satellite_subglobalSST_4yrEmb_coneKernel'
+
+    signPhi      = [ 1 1 ]; 
+    %phaseZ       = -1 * exp( i * pi / 4 );        
+    idxPhiEnso   = [ 17 16 ];
+    idxZEnso     = 14;
+    phaseZ       = exp( i * pi * 7 / 16 );        
+
+    nPhase       = 8;         
+    nSamplePhase = 20;       
+
+    idxPhiLF = [ 8 16 ];
+    signPhiLF = [ -1 1 ];
+    idxZLF = [ 8 22 27 30 ];
+    signZLF = [ -1 1 1 1 ];
+    
+    LF.tLim  = { '198003' '201801' }; % date range to plot
+    LF.tSkip = 60;                    % interval between tickmarks
+    LF.phiLabel = { 'trend' 'TBD' 'TBD' 'TBD' };
+    LF.zLabel   = { 'trend' 'TBD' 'TBD' 'TBD' };
+
+
+    nSamplePhaseLF = 50;
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  8          ... % trend
+                  [ 9 10 ]   ... % trend combination
+                  [ 11 12 ]  ... % ENSO 
+                  [ 13 14 ]  ... % ENSO combination 
+                  15         ... % decadal
+                 };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'trend' ...
+                    'trend combination' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -2 .1 ];
     Spec.yLim = [ -3 3 ]; 
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
@@ -1567,9 +1669,14 @@ switch dataset
 case 'ccsm4Ctrl'
     SSH.title = 'SSH anomaly (cm)';
     SSH.scl = 1;
-case 'ersstV5'
-    SSH.title = 'SSH anomaly (100 m)';
+case 'ersstV4'
+    SSH.title = 'SSH anomaly rel. geoid (100 m)';
     SSH.scl = 1E-2;
+case 'ersstV5'
+    SSH.title = 'SSH anomaly rel. geoid (100 m)';
+    SSH.scl = 1E-2;
+otherwise
+    error( 'Invalid dataset' )
 end
    
 % SAT field
@@ -1599,9 +1706,14 @@ switch dataset
 case 'ccsm4Ctrl'
     PRate.scl     = 1000 * 3600 * 24; % convert from m/s to mm/day 
     PRate.title   = 'Precip. anomaly (mm/day)';
+case 'ersstV4'
+    PRate.scl    = 1; 
+    PRate.title  = 'Precip. anomaly (mm/day)';
 case 'ersstV5'
     PRate.scl    = 1; 
     PRate.title  = 'Precip. anomaly (mm/day)';
+otherwise
+    error( 'Invalid dataset' )
 end
 
 % Surface wind field
@@ -1611,9 +1723,14 @@ switch dataset
 case 'ccsm4Ctrl'
     UVWnd.nSkipX = 10; % zonal downsampling factor for quiver plots
     UVWnd.nSkipY = 10; % meridional downsampling factor for quiver plots
+case 'ersstV4'
+    UVWnd.nSkipX = 5; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 5; % meridional downsampling factor for quiver plots
 case 'ersstV5'
-    UVWnd.nSkipX = 3; % zonal downsampling factor for quiver plots
-    UVWnd.nSkipY = 3; % meridional downsampling factor for quiver plots
+    UVWnd.nSkipX = 5; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 5; % meridional downsampling factor for quiver plots
+otherwise
+    error( 'Invalid dataset' )
 end
 
  
@@ -2228,12 +2345,12 @@ if ifKoopmanDiffComposites
     iEnd   = iStart + nSE - 1;  
 
     if ifWeighComposites
-        compZ = computeDifferenceComposites( model, Z.selectInd, ...
+        diffZ = computeDifferenceComposites( model, Z.selectInd, ...
                                              iStart, iEnd, nDiff, ...
                                              Z.weights );
     else
-        compZ = computePhaseComposites( model, Z.selectInd, ...
-                                        iStart, iEnd, nDiff );
+        diffZ = computeDifferenceComposites( model, Z.selectInd, ...
+                                             iStart, iEnd, nDiff );
     end
 
     toc( t )
@@ -2249,12 +2366,12 @@ if ifKoopmanDiffComposites
         set( fig, 'currentAxes', ax( 1, iPhase ) )
         SST.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
-            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST, ...
-                                compZ{ iCUWnd }( :, iPhase ), ...
-                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            plotPhaseComposite( diffZ{ iCSST }( :, iPhase ), SST, ...
+                                diffZ{ iCUWnd }( :, iPhase ), ...
+                                diffZ{ iCVWnd }( :, iPhase ), UVWnd )
             titleStr = 'SST anomaly (K), surface wind';
         else
-            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST )
+            plotPhaseComposite( diffZ{ iCSST }( :, iPhase ), SST )
             titleStr = 'SST anomaly (K)';
         end
         if iPhase == 1
@@ -2269,12 +2386,12 @@ if ifKoopmanDiffComposites
         set( fig, 'currentAxes', ax( 2, iPhase ) )
         SSH.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
-            plotPhaseComposite( compZ{ iCSSH }( :, iPhase ), SSH, ...
-                                compZ{ iCUWnd }( :, iPhase ), ...
-                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            plotPhaseComposite( diffZ{ iCSSH }( :, iPhase ), SSH, ...
+                                diffZ{ iCUWnd }( :, iPhase ), ...
+                                diffZ{ iCVWnd }( :, iPhase ), UVWnd )
             titleStr = [ SSH.title ', surface wind' ];
         else
-            plotPhaseComposite( compZ{ iCSSH }( :, iPhase ), SSH );
+            plotPhaseComposite( diffZ{ iCSSH }( :, iPhase ), SSH );
             titleStr = SSH.title;  
         end
         if iPhase == 1
@@ -2285,12 +2402,12 @@ if ifKoopmanDiffComposites
         set( fig, 'currentAxes', ax( 3, iPhase ) )
         SAT.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
-            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT, ...
-                                compZ{ iCUWnd }( :, iPhase ), ...
-                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            plotPhaseComposite( diffZ{ iCSAT }( :, iPhase ), SAT, ...
+                                diffZ{ iCUWnd }( :, iPhase ), ...
+                                diffZ{ iCVWnd }( :, iPhase ), UVWnd )
             titleStr = 'SAT anomaly (K), surface wind';
         else
-            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT );
+            plotPhaseComposite( diffZ{ iCSAT }( :, iPhase ), SAT );
             titleStr = 'SAT anomaly (K)';
         end
         if iPhase == 1
@@ -2301,13 +2418,13 @@ if ifKoopmanDiffComposites
         set( fig, 'currentAxes', ax( 4, iPhase ) )
         PRate.ifXTickLabels = iPhase == nPhase;
         if ifPlotWind
-            plotPhaseComposite( compZ{ iCPRate }( :, iPhase ), PRate, ...
-                                compZ{ iCUWnd }( :, iPhase ), ... 
-                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+            plotPhaseComposite( diffZ{ iCPRate }( :, iPhase ), PRate, ...
+                                diffZ{ iCUWnd }( :, iPhase ), ... 
+                                diffZ{ iCVWnd }( :, iPhase ), UVWnd )
             titleStr = [ PRate.title, ', surface wind' ]; 
         else
             plotPhaseComposite( ...
-                compZ{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+                diffZ{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
             titleStr = PRate.title;
         end
         if iPhase == 1
