@@ -422,13 +422,13 @@ case 'ersstV4'
     % Satellite era
     case 'satellite'
 
-        DataSpecs.Time.tLim    = { '197801' '202003' }; % time limits
+        DataSpecs.Time.tLim    = { '197801' '202002' }; % time limits
         DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
 
     % Last 50 years
     case '50yr'
 
-        DataSpecs.Time.tLim    = { '197001' '202003' }; % time limits
+        DataSpecs.Time.tLim    = { '197001' '202002' }; % time limits
         DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
 
 
@@ -501,7 +501,7 @@ case 'ersstV4'
     case 'Nino4'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -530,7 +530,7 @@ case 'ersstV4'
     case 'Nino3.4'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -559,7 +559,7 @@ case 'ersstV4'
     case 'Nino3'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -588,7 +588,7 @@ case 'ersstV4'
     case 'Nino1+2'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -617,15 +617,15 @@ case 'ersstV4'
     case 'SST' 
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
-        DataSpecs.In.file = 'ersst.v5'; % input filename
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
         % Output data
         DataSpecs.Out.fld = DataSpecs.In.var;      
 
         % Time specification
-        DataSpecs.Time.tStart  = '188001';           % start time in nc file 
+        DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
         DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 

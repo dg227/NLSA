@@ -39,12 +39,12 @@ embWindow  = '4yr';       % 4-year embedding
 %% SCRIPT EXECUTION OPTIONS
 
 % Data extraction
-ifDataSource = true;   % extract source data fron NetCDF files
-ifDataSST    = true;  % extract SST target data from NetCDF files
-ifDataSSH    = true;  % extract SSH target data from NetCDF files
-ifDataSAT    = true;   % extract SAT target data from NetCDF files
-ifDataPrecip = true;  % extract precipitation target data from NetCDF files  
-ifDataWind   = true;   % extract 10m wind target data from NetCDF files  
+ifDataSource = false;   % extract source data fron NetCDF files
+ifDataSST    = false;  % extract SST target data from NetCDF files
+ifDataSSH    = false;  % extract SSH target data from NetCDF files
+ifDataSAT    = false;   % extract SAT target data from NetCDF files
+ifDataPrecip = false;  % extract precipitation target data from NetCDF files  
+ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
 ifNLSA    = true;  % compute kernel (NLSA) eigenfunctions
@@ -325,9 +325,9 @@ case 'ersstV4_satellite_globalSST_4yrEmb'
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
     %phaseZ       = -1 * exp( i * pi / 4 );        
-    idxPhiEnso   = [ 12 11 ];
-    idxZEnso     = 11;
-    phaseZ       = exp( - i * 5 * pi / 8 );        
+    idxPhiEnso   = [ 13 14 ];
+    idxZEnso     = 13;
+    phaseZ       = exp( i * pi / 2 );        
 
     nPhase       = 8;         
     nSamplePhase = 20;       
@@ -712,6 +712,13 @@ end
 switch dataset
     
 case 'ersstV5'
+
+    PlotLim.nino4  = [ -3 3 ];
+    PlotLim.nino34 = [ -3 3 ];
+    PlotLim.nino3  = [ -3 3 ];
+    PlotLim.nino12 = [ -4 4 ];
+
+case 'ersstV4'
 
     PlotLim.nino4  = [ -3 3 ];
     PlotLim.nino34 = [ -3 3 ];
