@@ -3,24 +3,27 @@
 %
 % Modified 2020/05/18
 
-%% DATA SPECIFICATION 
+%% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-%dataset    = 'ccsm4Ctrl';    
+dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-%period     = '1300yr';        % 1300-year analysis
+period     = '1300yr';        % 1300-year analysis
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'globalSST'; % global SST
+%embWindow  = '4yr';       % 4-year embedding
+%embWindow  = '10yr';       % 4-year embedding
+embWindow  = '20yr';       % 4-year embedding
+kernel     = 'cone';       % cone kernel      
+
+% ERSSTv5 reanalysis (and various NOAA products)
+%dataset    = 'ersstV5';                                     
+%period     = 'satellite'; % 1978-present
+%period     = '50yr';      % 1970-present
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
-%embWindow  = '10yr';       % 4-year embedding
-
-% ERSSTv5 reanalysis (and various NOAA products)
-dataset    = 'ersstV4';                                     
-period     = 'satellite'; % 1978-present
-%period     = '50yr';      % 1970-present
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '5yr';       % 5-year embedding
+%kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
 %dataset    = 'ersstV4';                                     
@@ -28,6 +31,7 @@ embWindow  = '4yr';       % 4-year embedding
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
+%kernel      = 'cone';      % cone kernel
 
 % NOAA 20th century reanalysis
 %dataset    = '20CR';                                     
@@ -35,6 +39,7 @@ embWindow  = '4yr';       % 4-year embedding
 %sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %embWindow  = '4yr';       % 4-year embedding
+kernel      = 'cone';      % cone kernel
 
 %% SCRIPT EXECUTION OPTIONS
 
@@ -49,16 +54,17 @@ ifDataWind   = false;   % extract 10m wind target data from NetCDF files
 % ENSO representations
 ifNLSA    = true;  % compute kernel (NLSA) eigenfunctions
 ifKoopman = true; % compute Koopman eigenfunctions
-ifNinoIdx = true; % compute two-dimensional (lead/lag) Nino indices  
 
 % Koopman spectrum
 ifKoopmanSpectrum = true;  % plot generator spectrum
 
-% ENSO 2D lifecycle plots
-ifNLSALifecycle    = true; % plot ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % plot ENSO lifecycle from generator eigenfuncs. 
+% ENSO lifecycle plots
+ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
+ifNLSALifecycle    = false; % ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
+ifNinoPhases          = false; % ENSO phases from Nino 3.4 index
 ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
 ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
 ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
@@ -113,19 +119,20 @@ compositesDomain  = 'globe';   % global domain
 
 nShiftNino  = 11;        
 decayFactor = 4; 
-phase0      = 1;         
+phase0      = 7;         
 leads       = [ 0 6 12 18 24 ]; 
-nDiff       = 6; 
+nDiff       = 1; 
 nPhaseLF    = 2;
 
-experiment = { dataset period sourceVar [ embWindow 'Emb' ] };
+experiment = { dataset period sourceVar [ embWindow 'Emb' ] ...
+               [ kernel 'Kernel' ] };
 experiment = strjoin_e( experiment, '_' );
 
 switch experiment
         
 % NOAA reanalysis data, industrial era, Indo-Pacific SST input, 4-year delay 
 % embeding window  
-case '20CR_industrial_IPSST_4yrEmb'
+case '20CR_industrial_IPSST_4yrEmb_coneKernel'
 
     idxPhiEnso   = [ 10 9 ];  
     signPhi      = [ -1 -1 ]; 
@@ -137,7 +144,7 @@ case '20CR_industrial_IPSST_4yrEmb'
 
 % NOAA 20th century reanalysis data, industrial era, Indo-Pacific SST input, 
 % 4-year delay embeding window  
-case '20CR_satellite_IPSST_4yrEmb'
+case '20CR_satellite_IPSST_4yrEmb_coneKernel'
 
     idxPhiEnso   = [ 8 7 ];  
     signPhi      = [ 1 -1 ]; 
@@ -150,7 +157,7 @@ case '20CR_satellite_IPSST_4yrEmb'
 
 % ERSSTv5 reanalysis data, satellite era, Indo-Pacific SST input, 
 % 4-year delay embeding window  
-case 'ersstV5_satellite_IPSST_4yrEmb'
+case 'ersstV5_satellite_IPSST_4yrEmb_coneKernel'
 
     %idxPhiEnso   = [ 7 6 ];  
     idxZEnso     = 7;         
@@ -182,7 +189,7 @@ case 'ersstV5_satellite_IPSST_4yrEmb'
 
 % ERSSTv5 reanalysis data, satellite era, global SST input, 4-year delay 
 % embeding window  
-case 'ersstV5_satellite_globalSST_4yrEmb'
+case 'ersstV5_satellite_globalSST_4yrEmb_coneKernel'
 
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
@@ -231,7 +238,7 @@ case 'ersstV5_satellite_globalSST_4yrEmb'
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
-case 'ersstV5_50yr_globalSST_4yrEmb'
+case 'ersstV5_50yr_globalSST_4yrEmb_coneKernel'
 
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
@@ -281,7 +288,7 @@ case 'ersstV5_50yr_globalSST_4yrEmb'
     Spec.c = distinguishable_colors( 9 );
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
-case 'ersstV5_50yr_globalSST_5yrEmb'
+case 'ersstV5_50yr_globalSST_5yrEmb_coneKernel'
 
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
@@ -320,7 +327,7 @@ case 'ersstV5_50yr_globalSST_5yrEmb'
 
 % ERSSTv4 reanalysis data, satellite era, global SST input, 4-year delay 
 % embeding window  
-case 'ersstV4_satellite_globalSST_4yrEmb'
+case 'ersstV4_satellite_globalSST_4yrEmb_coneKernel'
 
     %idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 -1 ]; 
@@ -372,7 +379,7 @@ case 'ersstV4_satellite_globalSST_4yrEmb'
 
 % CCSM4 pre-industrial control, 200-year period, Indo-Pacific SST input, 
 % 4-year delay embeding window  
-case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
+case 'ccsm4Ctrl_200yr_IPSST_4yrEmb_coneKernel'
     
     idxPhiEnso   = [ 7 6 ];  
     signPhi      = [ 1 1 ]; 
@@ -399,7 +406,7 @@ case 'ccsm4Ctrl_200yr_IPSST_4yrEmb'
 
 % CCSM4 pre-industrial control, 1300-year period, Indo-Pacific SST input, 
 % 4-year delay embeding window  
-case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
+case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
 
     idxPhiEnso   = [ 9 8 ];  
     signPhi      = [ -1 1 ]; 
@@ -426,7 +433,7 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb'
     Spec.c = distinguishable_colors( 6 );
     Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
-case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb'
+case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb_coneKernel'
 
     idxPhiEnso   = [ 9 8 ];  
     signPhi      = [ -1 1 ]; 
@@ -458,12 +465,13 @@ case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb'
     Spec.c = distinguishable_colors( 8 );
     Spec.c = Spec.c( [ 4 1 2 3 5 6 7 8 ], : );
 
-case 'ccsm4Ctrl_1300yr_globalSST_10yrEmb'
+case 'ccsm4Ctrl_1300yr_globalSST_10yrEmb_coneKernel'
 
-    idxPhiEnso   = [ 9 8 ];  
-    signPhi      = [ -1 1 ]; 
-    idxZEnso     = 8;         
-    phaseZ       = exp( i * pi * ( 17 / 32 ) );        
+    idxPhiEnso   = [ 12 11 ];  
+    signPhi      = [ 1 -1 ]; 
+    idxZEnso     = 11;         
+    %idxZEnso     = 21;         
+    phaseZ       = exp( i * 21 * pi / 32 );
     nPhase       = 8;         
     nSamplePhase = 200;       
 
@@ -485,10 +493,44 @@ case 'ccsm4Ctrl_1300yr_globalSST_10yrEmb'
                     'ENSO-annual combination' ...
                     'ENSO-semiannual combination' ...
                     };
-    Spec.xLim = [ -1 .1 ];
+    Spec.xLim = [ -5 .1 ];
     Spec.yLim = [ -3 3 ]; 
     Spec.c = distinguishable_colors( 8 );
     Spec.c = Spec.c( [ 4 1 2 3 5 6 7 8 ], : );
+
+case 'ccsm4Ctrl_1300yr_globalSST_20yrEmb_coneKernel'
+
+    idxPhiEnso   = [ 12 11 ];  
+    signPhi      = [ 1 -1 ]; 
+    idxZEnso     = 11;         
+    %idxZEnso     = 21;         
+    phaseZ       = exp( i * 21 * pi / 32 );
+    nPhase       = 8;         
+    nSamplePhase = 200;       
+
+    Spec.mark = { 1          ...      % constant
+                  [ 2 3 ]    ...      % annual
+                  [ 4 5 ]    ...      % semiannual
+                  [ 6 7 ]    ...      % triennial
+                  [ 14 15  ] ...      % quartenial
+                  [ 8 9 ]    ...      % ENSO
+                  [ 10 : 13 ] ...     % ENSO-annual
+                  [ 16 : 19 ] ...     % ENSO-semiannnual
+                  };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'quartenial' ...
+                    'ENSO' ...
+                    'ENSO-annual combination' ...
+                    'ENSO-semiannual combination' ...
+                    };
+    Spec.xLim = [ -5 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 8 );
+    Spec.c = Spec.c( [ 4 1 2 3 5 6 7 8 ], : );
+
 
 
 
@@ -649,62 +691,6 @@ if ifKoopman
     toc( t )
 end
 
-%% CONSTRUCT TWO-DIMENSIONAL NINO INDEX
-% Build a data structure Nino34 such that:
-% 
-% Nino34.idx is an array of size [ 2 nSE ], where nSE is the number of samples 
-% after delay embedding. Nino34.idx( 1, : ) contains the values of the 
-% Nino 3.4 index at the current time. Nino34( 2, : ) contains the values of 
-% the Nino 3.4 index at nShiftNino timesteps (months) in the past.
-% 
-% Nino34.time is an array of size [ 1 nSE ] containing the timestamps in
-% Matlab serial date number format. 
-%
-% Data stuctures Nino4, Nino3, Nino12 are constructed analogously for the 
-% Nino 4, Nino 3, and Nino 1+2 indices, respectively. 
-if ifNinoIdx
-
-    disp( 'Constructing lagged Nino indices...' ); t = tic;
-
-    % Timestamps
-    Nino34.time = getTrgTime( model ); 
-    Nino34.time = Nino34.time( nSB + 1 + nShiftTakens : end );
-    Nino34.time = Nino34.time( 1 : nSE );
-
-    % Nino 3.4 index
-    nino = getData( model.trgComponent( iCNino34 ) );
-    Nino34.idx = [ nino( nShiftNino + 1 : end ) 
-                 nino( 1 : end - nShiftNino ) ];
-    Nino34.idx = Nino34.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
-    Nino34.idx = Nino34.idx( :, 1 : nSE );
-
-
-    % Nino 4 index
-    Nino4.time = Nino34.time;
-    nino = getData( model.trgComponent( iCNino4 ) );
-    Nino4.idx = [ nino( nShiftNino + 1 : end ) 
-                 nino( 1 : end - nShiftNino ) ];
-    Nino4.idx = Nino4.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
-    Nino4.idx = Nino4.idx( :, 1 : nSE );
-
-    % Nino 3 index
-    Nino3.time = Nino34.time;
-    nino = getData( model.trgComponent( iCNino3 ) );
-    Nino3.idx = [ nino( nShiftNino + 1 : end ) 
-                 nino( 1 : end - nShiftNino ) ];
-    Nino3.idx = Nino3.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
-    Nino3.idx = Nino3.idx( :, 1 : nSE );
-
-    % Nino 1+2 index
-    Nino12.time = Nino34.time;
-    nino = getData( model.trgComponent( iCNino12 ) );
-    Nino12.idx = [ nino( nShiftNino + 1 : end ) 
-                 nino( 1 : end - nShiftNino ) ];
-    Nino12.idx = Nino12.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
-    Nino12.idx = Nino12.idx( :, 1 : nSE );
-
-    toc( t );
-end
 
 %% PARAMETERS FOR ENSO LIFEYCLE PLOTS
 
@@ -755,7 +741,65 @@ LaNinas = { { '201011' '201103' } ...
             { '197311' '197403' } };
 
 
-%% PLOT ENSO LIFECYCLE BASED ON NLSA EIGENFUNCTIONS
+%% CONSTRUCT NINO-BASED ENSO LIFECYCLE
+% Build a data structure Nino34 such that:
+% 
+% Nino34.idx is an array of size [ 2 nSE ], where nSE is the number of samples 
+% after delay embedding. Nino34.idx( 1, : ) contains the values of the 
+% Nino 3.4 index at the current time. Nino34( 2, : ) contains the values of 
+% the Nino 3.4 index at nShiftNino timesteps (months) in the past.
+% 
+% Nino34.time is an array of size [ 1 nSE ] containing the timestamps in
+% Matlab serial date number format. 
+%
+% Data stuctures Nino4, Nino3, Nino12 are constructed analogously for the 
+% Nino 4, Nino 3, and Nino 1+2 indices, respectively. 
+if ifNinoLifecycle
+
+    disp( 'Constructing lagged Nino indices...' ); t = tic;
+
+    % Timestamps
+    Nino34.time = getTrgTime( model ); 
+    Nino34.time = Nino34.time( nSB + 1 + nShiftTakens : end );
+    Nino34.time = Nino34.time( 1 : nSE );
+
+    % Nino 3.4 index
+    nino = getData( model.trgComponent( iCNino34 ) );
+    Nino34.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino34.idx = Nino34.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino34.idx = Nino34.idx( :, 1 : nSE );
+
+
+    % Nino 4 index
+    Nino4.time = Nino34.time;
+    nino = getData( model.trgComponent( iCNino4 ) );
+    Nino4.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino4.idx = Nino4.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino4.idx = Nino4.idx( :, 1 : nSE );
+
+    % Nino 3 index
+    Nino3.time = Nino34.time;
+    nino = getData( model.trgComponent( iCNino3 ) );
+    Nino3.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino3.idx = Nino3.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino3.idx = Nino3.idx( :, 1 : nSE );
+
+    % Nino 1+2 index
+    Nino12.time = Nino34.time;
+    nino = getData( model.trgComponent( iCNino12 ) );
+    Nino12.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino12.idx = Nino12.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino12.idx = Nino12.idx( :, 1 : nSE );
+
+    toc( t );
+end
+
+
+%% CONSTRUCT AND PLOT ENSO LIFECYCLE BASED ON NLSA EIGENFUNCTIONS
 if ifNLSALifecycle
 
     % Retrieve NLSA eigenfunctions
@@ -1054,33 +1098,68 @@ if ifKoopmanLifecycle
     end
 end
 
-%% COMPUTE AND PLOT ENSO PHASES BASED ON NLSA EIGENFUNCTIONS
+%% COMPUTE ENSO PHASES BASED ON NINO 3.4 INDEX
+% Nino34.selectInd is a cell array of size [ 1 nPhase ]. 
+% Nino34.selectInd{ iPhase } is a row vector containing the indices 
+% (timestamps) of the data affiliated with ENSO phase iPHase. 
 %
-% selectIndPhi is a cell array of size [ 1 nPhase ]. selectIndNLSA{ iPhase } 
-% is a row vector containing the indices (timestamps) of the data affiliated
-% with ENSO phase iPHase. 
-%
-% anglesPhi is a row vector of size [ 1 nPhase ] containing the polar angles
+% Nino34.angles is a row vector of size [ 1 nPhase ] containing the polar angles
 % in the 2D plane of the phase boundaries.
 % 
-% avNino34IndPhi is a row vector of size [ 1 nPhase ] containing the average
-% Nino 3.4 index for each NLSA phase. 
+% Nino34.avNino34 is a row vector of size [ 1 nPhase ] containing the average
+% Nino 3.4 index for each phase. 
+if ifNinoPhases
+
+    disp( 'Nino 3.4-based ENSO phases...' ); t = tic;
+
+    % Compute ENSO phases based on Nino 3.4 index
+    [ Nino34.selectInd, Nino34.angles, Nino34.avNino34, Nino34.weights ] = ...
+        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx( 1, : )', ...
+                                        nPhase, nSamplePhase, decayFactor );
+                                        
+    toc( t )
+end
+
+%% COMPUTE AND PLOT ENSO PHASES BASED ON NLSA EIGENFUNCTIONS
 %
-% selectIndNino34, anglesNino34, and avNino34IndNino34 are defined analogously to
-% selectIndPhi, anglesPhi, and avNino34IndPhi, respectively, using the Nino 3.4
-% index. 
+% Phi.selectInd is a cell array of size [ 1 nPhase ]. Phi.selectInd{ iPhase } 
+% is a row vector containing the indices (timestamps) of the data affiliated
+% with ENSO phase iPHase. 
+% 
+% Phi.selectInd34 and Phi.selectIndNot34 are cell arrays of size [ 1 nPhase ]
+% containing the indices of the data common to, or distinct from, respectively,
+% the corresponding Nino-3.4-based phases.
+%
+% Phi.angles is a row vector of size [ 1 nPhase ] containing the polar angles
+% in the 2D plane of the phase boundaries.
+% 
+% Phi.avNino34 is a row vector of size [ 1 nPhase ] containing the average
+% Nino 3.4 index for each NLSA phase. 
 if ifNLSAPhases
-   
+    
+    disp( 'NLSA-based ENSO phases...' ); t = tic;
+
     % Compute ENSO phases based on NLSA
-    [ selectIndPhi, anglesPhi, avNino34IndPhi, weightsPhi ] = ...
+    [ Phi.selectInd, Phi.angles, Phi.avNino34, Phi.weights ] = ...
         computeLifecyclePhasesWeighted( Phi.idx', Nino34.idx( 1, : )', ...
                                         nPhase, nSamplePhase, decayFactor );
 
-    % Compute ENSO phases based on Nino 3.4 index
-    [ selectIndNino34, anglesNino34, avNino34IndNino34, weightsNino34 ] = ...
-        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx(1,:)', ...
-                                        nPhase, nSamplePhase, decayFactor );
-        
+    % Find common/unique samples with Nino 3.4 phases
+    Phi.selectInd34    = cell( 1, nPhase );
+    Phi.selectIndNot34 = cell( 1, nPhase );
+    Phi.nInd34 = zeros( 1, nPhase );
+    Phi.nIndNot34 = zeros( 1, nPhase );
+    for iPhase = 1 : nPhase
+        Phi.selectInd34{ iPhase } = intersect( Phi.selectInd{ iPhase }, ...
+                                         Nino34.selectInd{ iPhase } ); 
+        Phi.selectIndNot34{ iPhase } = setdiff( Phi.selectInd{ iPhase }, ...
+                                      Nino34.selectInd{ iPhase } );
+        Phi.nInd34( iPhase ) = numel( Phi.selectInd34{ iPhase } );
+        Phi.nIndNot34( iPhase ) = numel( Phi.selectIndNot34{ iPhase } );
+    end
+
+    toc( t )
+                                          
     % Set up figure and axes 
     Fig.units      = 'inches';
     Fig.figWidth   = 8; 
@@ -1104,7 +1183,7 @@ if ifNLSAPhases
 
     % Plot Nino 3.4 phases
     set( gcf, 'currentAxes', ax( 1 ) )
-    plotPhases( Nino34.idx', selectIndNino34, anglesNino34 ) 
+    plotPhases( Nino34.idx', Nino34.selectInd, Nino34.angles ) 
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( PlotLim.nino34 )
@@ -1112,7 +1191,7 @@ if ifNLSAPhases
 
     % Plot NLSA phases
     set( gcf, 'currentAxes', ax( 2 ) )
-    plotPhases( Phi.idx', selectIndPhi, anglesPhi )
+    plotPhases( Phi.idx', Phi.selectInd, Phi.angles )
     xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
     ylabel( sprintf( '\\phi_{%i}', idxPhiEnso( 2 ) ) )
     xlim( [ -3 3 ] )
@@ -1129,30 +1208,47 @@ end
 
 %% COMPUTE AND PLOT ENSO PHASES BASED ON GENERATOR EIGENFUNCTIONS
 %
-% selectIndZ is a cell array of size [ 1 nPhase ]. selectIndZ{ iPhase } 
+% Z.selectInd is a cell array of size [ 1 nPhase ]. Z.selectInd{ iPhase } 
 % is a row vector containing the indices (timestamps) of the data affiliated
 % with ENSO phase iPHase. 
 %
-% anglesZ is a row vector of size [ 1 nPhase ] containing the polar angles
+% Z.selectInd34 and Z.selectIndNot34 are cell arrays of size [ 1 nPhase ]
+% containing the indices of the data common to, or distinct from, respectively,
+% the corresponding Nino-3.4-based phases.
+%
+% Z.angles is a row vector of size [ 1 nPhase ] containing the polar angles
 % in the 2D plane of the phase boundaries.
 % 
-% avNino34IndZ is a row vector of size [ 1 nPhase ] containing the average
+% Z.avNino34 is a row vector of size [ 1 nPhase ] containing the average
 % Nino 3.4 index for each NLSA generator. 
 %
-% selectIndNino34, anglesNino34, and avNino34IndNino34 are defined analogously to
-% selectIndZ, anglesZ, and avNino34IndZ, respectively, using the Nino 3.4
+% Nino34.selectInd, Nino34.angles, and Nino34.avNino34 are defined analogously to
+% Z.selectInd, Z.angles, and Z.avNino34, respectively, using the Nino 3.4
 % index. 
 if ifKoopmanPhases
    
+    disp( 'Generator-based ENSO phases...' ); t = tic;
+
     % Compute ENSO phases based on generator
-    [ selectIndZ, anglesZ, avNino34IndZ, weightsZ ] = ...
+    [ Z.selectInd, Z.angles, Z.avNino34, Z.weights ] = ...
         computeLifecyclePhasesWeighted( Z.idx', Nino34.idx( 1, : )', ...
                                         nPhase, nSamplePhase, decayFactor );
 
-    % Compute ENSO phases based on Nino 3.4 index
-    [ selectIndNino34, anglesNino34, avNino34IndNino34, weightsNino34 ] = ...
-        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx( 1, : )', ...
-                                        nPhase, nSamplePhase, decayFactor );
+    % Find common/unique samples with Nino 3.4 phases
+    Z.selectInd34    = cell( 1, nPhase );
+    Z.selectIndNot34 = cell( 1, nPhase );
+    Z.nInd34 = zeros( 1, nPhase );
+    Z.nIndNot34 = zeros( 1, nPhase );
+    for iPhase = 1 : nPhase
+        Z.selectInd34{ iPhase } = intersect( Z.selectInd{ iPhase }, ...
+                                     Nino34.selectInd{ iPhase } ); 
+        Z.selectIndNot34{ iPhase } = setdiff( Z.selectInd{ iPhase }, ...
+                                      Nino34.selectInd{ iPhase } );
+        Z.nInd34( iPhase ) = numel( Z.selectInd34{ iPhase } );
+        Z.nIndNot34( iPhase ) = numel( Z.selectIndNot34{ iPhase } );
+    end
+
+    toc( t )
         
     % Set up figure and axes 
     Fig.units      = 'inches';
@@ -1177,7 +1273,7 @@ if ifKoopmanPhases
 
     % Plot Nino 3.4 phases
     set( gcf, 'currentAxes', ax( 1 ) )
-    plotPhases( Nino34.idx', selectIndNino34, anglesNino34 ) 
+    plotPhases( Nino34.idx', Nino34.selectInd, Nino34.angles ) 
     xlabel( 'Nino 3.4' )
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( PlotLim.nino34 )
@@ -1185,7 +1281,7 @@ if ifKoopmanPhases
 
     % Plot generator phases
     set( gcf, 'currentAxes', ax( 2 ) )
-    plotPhases( Z.idx', selectIndZ, anglesZ )
+    plotPhases( Z.idx', Z.selectInd, Z.angles )
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
@@ -1232,7 +1328,7 @@ if ifNLSAEquivariance
 
         % Plot Nino 3.4 phases
         set( gcf, 'currentAxes', ax( iLead, 1 ) )
-        plotPhaseEvolution( Nino34.idx', selectIndNino34, anglesNino34, ...
+        plotPhaseEvolution( Nino34.idx', Nino34.selectInd, Nino34.angles, ...
                             phase0, leads( iLead ) ) 
         xlabel( 'Nino 3.4' )
         xlim( PlotLim.nino34 )
@@ -1246,7 +1342,7 @@ if ifNLSAEquivariance
         
         % Plot NLSA phases 
         set( gcf, 'currentAxes', ax( iLead, 2 ) )
-        plotPhaseEvolution( Phi.idx', selectIndPhi, anglesPhi, ...
+        plotPhaseEvolution( Phi.idx', Phi.selectInd, Phi.angles, ...
                             phase0, leads( iLead ) )
         xlabel( sprintf( '\\phi_{%i}', idxPhiEnso( 1 ) ) )
         if iLead > 1
@@ -1299,7 +1395,7 @@ if ifKoopmanEquivariance
 
         % Plot Nino 3.4 phases
         set( gcf, 'currentAxes', ax( iLead, 1 ) )
-        plotPhaseEvolution( Nino34.idx', selectIndNino34, anglesNino34, ...
+        plotPhaseEvolution( Nino34.idx', Nino34.selectInd, Nino34.angles, ...
                             phase0, leads( iLead ) ) 
         xlabel( 'Nino 3.4' )
         xlim( PlotLim.nino34 )
@@ -1313,7 +1409,7 @@ if ifKoopmanEquivariance
         
         % Plot Koopman phases 
         set( gcf, 'currentAxes', ax( iLead, 2 ) )
-        plotPhaseEvolution( Z.idx', selectIndZ, anglesZ, ...
+        plotPhaseEvolution( Z.idx', Z.selectInd, Z.angles, ...
                             phase0, leads( iLead ) )
         xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
         if iLead > 1
@@ -1540,10 +1636,10 @@ if ifNinoComposites
 
 
     if ifWeighComposites
-        compNino34 = computePhaseComposites( model, selectIndNino34, ...
-                                             iStart, iEnd, weightsNino34 );
+        compNino34 = computePhaseComposites( model, Nino34.selectInd, ...
+                                             iStart, iEnd, Nino34.weights );
     else
-        compNino34 = computePhaseComposites( model, selectIndNino34, ...
+        compNino34 = computePhaseComposites( model, Nino34.selectInd, ...
                                              iStart, iEnd );
     end
 
@@ -1655,10 +1751,10 @@ if ifNLSAComposites
     iEnd   = iStart + nSE - 1;  
 
     if ifWeighComposites
-        compPhi = computePhaseComposites( model, selectIndPhi, ...
-                                          iStart, iEnd, weightsPhi );
+        compPhi = computePhaseComposites( model, Phi.selectInd, ...
+                                          iStart, iEnd, Phi.weights );
     else
-        compPhi = computePhaseComposites( model, selectIndPhi, iStart, iEnd );
+        compPhi = computePhaseComposites( model, Phi.selectInd, iStart, iEnd );
     end
 
     toc( t )
@@ -1770,10 +1866,10 @@ if ifKoopmanComposites
     iEnd   = iStart + nSE - 1;  
 
     if ifWeighComposites
-        compZ = computePhaseComposites( model, selectIndZ, ...
-                                        iStart, iEnd, weightsZ );
+        compZ = computePhaseComposites( model, Z.selectInd, ...
+                                        iStart, iEnd, Z.weights );
     else
-        compZ = computePhaseComposites( model, selectIndZ, iStart, iEnd );
+        compZ = computePhaseComposites( model, Z.selectInd, iStart, iEnd );
     end
 
     toc( t )
@@ -1893,11 +1989,11 @@ if ifNinoDiffComposites
 
 
     if ifWeighComposites
-        diffNino34 = computeDifferenceComposites( model, selectIndNino34, ...
+        diffNino34 = computeDifferenceComposites( model, Nino34.selectInd, ...
                                                   iStart, iEnd, nDiff, ...
-                                                  weightsNino34 );
+                                                  Nino34.weights );
     else
-        diffNino34 = computeDifferenceComposites( model, selectIndNino34, ...
+        diffNino34 = computeDifferenceComposites( model, Nino34.selectInd, ...
                                                   iStart, iEnd, nDiff );
     end
 
@@ -2011,11 +2107,11 @@ if ifNLSADiffComposites
     iEnd   = iStart + nSE - 1;  
 
     if ifWeighComposites
-        diffPhi = computeDifferenceComposites( model, selectIndPhi,  ...
+        diffPhi = computeDifferenceComposites( model, Phi.selectInd,  ...
                                                iStart, iEnd, nDiff, ...
-                                               weightsPhi );
+                                               Phi.weights );
     else
-        diffPhi = computeDifferenceComposites( model, selectIndPhi, ...
+        diffPhi = computeDifferenceComposites( model, Phi.selectInd, ...
                                                iStart, iEnd, nDiff );
     end
 
@@ -2132,11 +2228,11 @@ if ifKoopmanDiffComposites
     iEnd   = iStart + nSE - 1;  
 
     if ifWeighComposites
-        compZ = computeDifferenceComposites( model, selectIndZ, ...
+        compZ = computeDifferenceComposites( model, Z.selectInd, ...
                                              iStart, iEnd, nDiff, ...
-                                             weightsZ );
+                                             Z.weights );
     else
-        compZ = computePhaseComposites( model, selectIndZ, ...
+        compZ = computePhaseComposites( model, Z.selectInd, ...
                                         iStart, iEnd, nDiff );
     end
 
