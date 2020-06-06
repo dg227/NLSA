@@ -12,11 +12,8 @@ function Data = l63Data( DataSpecs )
 % Pars.beta:         L63 parameter beta
 % Pars.rho:          L63 parameter rho
 % Pars.sigma:        L63 parameter sigma
-% Time.nSProd:       Number of production samples
+% Time.nS:           Number of production samples
 % Time.nSSpin        Spinup samples
-% Time.nEL:          Embedding window length( additional samples)
-% Time.nXB:          Additional samples before production interval 
-% Time.nXA:          Additional samples after production interval 
 % Time.dt            Sampling interval
 % Ode.x0:            Initial condition
 % Ode.relTol         Relative tolerance for ODE solver
@@ -32,10 +29,10 @@ function Data = l63Data( DataSpecs )
 % Modified 2020/06/05
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
-Pars   = DataSpecs.In;
-Out    = DataSpecs.Out; 
+Pars   = DataSpecs.Pars;
 Time   = DataSpecs.Time;
-Domain = DataSpecs.Domain;
+Ode    = DataSpecs.Ode; 
+Opts   = DataSpecs.Opts;
 
 %% NUMBER OF PRODUCTION SAMPLES AND OUTPUT PATH
 strDir = [ 'beta'    num2str( Pars.beta, '%1.3g' ) ...
@@ -46,11 +43,11 @@ strDir = [ 'beta'    num2str( Pars.beta, '%1.3g' ) ...
            '_nS'     int2str( Time.nS ) ...
            '_nSSpin' int2str( Time.nSSpin ) ...
            '_relTol' num2str( Ode.relTol, '%1.3g' ) ...
-           '_ifCent' int2str( Opts.ifCent ) ];
+           '_ifCent' int2str( Opts.ifCenter ) ];
 
 
 %% INTEGRATE THE L63 SYSTEM
-nS = nSProd + nEL + nXB + nXA; % number of production samples
+% nS is the number of samples that will finally be retained 
 odeH = @( T, X ) l63( T, X, Pars.sigma, Pars.rho, Pars.beta  );
 t = ( 0 : Time.nS + Time.nSSpin - 1 ) * Time.dt;
 [ tOut, x ] = ode45( odeH, t, Ode.x0, odeset( 'relTol', Ode.relTol, ...
@@ -72,9 +69,9 @@ if Opts.ifWrite
     if ~isdir( pth )
         mkdir( pth )
     end
-
+    
     filenameOut = fullfile( pth, 'dataX.mat' );
-    save( filenameOut, '-v7.3', 'x', 'mu', 'Pars', 'x0', 'Time', 'Ode' ) 
+    save( filenameOut, '-v7.3', 'x', 'mu', 'Pars', 'Time', 'Ode' ) 
 end
 Data.x = x;
 Data.mu = mu;
@@ -83,8 +80,8 @@ Data.mu = mu;
 if isfield( Opts, 'idxX' )
     for iObs = 1 : numel( idxX )
         x = Data.x( Opts.idxX{ iObs }, : );
-        filenameOut = strcat( 'dataX_idxX', sprintf( '_%i', Opts.idxX{ iObs } );
-        filenameOut = fullfile( pth, filenameOut, '.mat' ) );  
+        filenameOut = [ 'dataX_idxX' sprintf( '_%i', Opts.idxX{ iObs } ) ];
+        filenameOut = fullfile( pth, [ filenameOut '.mat' ] );  
         save( filenameOut, '-v7.3', 'x' )
     end
 end

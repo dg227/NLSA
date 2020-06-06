@@ -4,6 +4,8 @@
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
 experiment = '6.4k_dt0.01_nEL0'; % 6400 samples, sampling interval 0.01, 0 delays 
+experiment = '6.4k_dt0.01_nEL100'; % 6400 samples, sampling interval 0.01, 100 delays 
+experiment = '6.4k_dt0.01_nEL200'; % 6400 samples, sampling interval 0.01, 200 delays 
 ifSourceData   = true; % generate source data
 ifNLSA         = true; % run NLSA
 ifPlotPhi      = true; % plot eigenfunctions
@@ -19,15 +21,35 @@ nProc = 1; % number of batch processes
 % idxPhiPlt:   Eigenfunctions to plot
 % idxTPlt:     Time interval to plot
 % figDir:      Output directory for plots
+% markerSize:  For eigenfunction scatterplots
 
 switch experiment
 
 % 6400 samples, sampling interval 0.01, no delay embedding 
 case '6.4k_dt0.01_nEL0'
 
-    idxPhiPlt = [ 2 3 4 ];
-    nShiftPlt = [ 0 100 ];     % approx 1 Lyapunov timescale
-    idxTPlt   = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    idxPhiPlt  = [ 2 3 5 ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 7;         
+
+% 6400 samples, sampling interval 0.01, 100 delays
+case '6.4k_dt0.01_nEL100'
+
+    idxPhiPlt  = [ 2 3 4 5 ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 7;         
+
+% 6400 samples, sampling interval 0.01, 100 delays
+case '6.4k_dt0.01_nEL200'
+
+    idxPhiPlt  = [ 2 3 4 5 ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 7;         
+
+
 end
 
 % Figure directory
@@ -37,9 +59,9 @@ if ~isdir( figDir )
 end
 
 %% EXTRACT SOURCE DATA
-if ifDataSource
-    disp( 'Generating source data...' ) ); t = tic;
-    demoL63_data( experiment ) 
+if ifSourceData
+    disp( 'Generating source data...' ); t = tic;
+    demoNLSA_data( experiment ) 
     toc( t )
 end
 
@@ -52,7 +74,7 @@ end
 % nSB is the number of samples left out in the start of the time interval (for
 % temporal finite differnences employed in the kerenl).
 %
-% nEL is the Takens embedding window length (in timesteps ).
+% nEL is the Takens embedding window length (in number of timesteps)
 %
 % nShiftTakens is the temporal shift applied to align eigenfunction data with 
 % the center of the Takens embedding window. 
@@ -63,8 +85,8 @@ toc( t )
 
 nSE          = getNTotalSample( model.embComponent );
 nSB          = getNXB( model.embComponent );
-nEL          = getEmbeddingWindow( model.embComponent );
-nShiftTakens = floor( nEL / 2 );
+nEL          = getEmbeddingWindow( model.embComponent ) - 1;
+nShiftTakens = round( nEL / 2 );
 
 %% PERFORM NLSA
 if ifNLSA
@@ -83,19 +105,19 @@ if ifNLSA
 
     disp( 'Distance normalization for KDE...' ); t = tic;
     computeDenBandwidthNormalization( model );
-    toc
+    toc( t )
 
     disp( 'Kernel tuning for KDE...' ); t = tic;
     computeDenKernelDoubleSum( model );
-    toc
+    toc( t )
 
     disp( 'Kernel density estimation...' ); t = tic;
     computeDensity( model );
-    toc
+    toc( t )
 
     disp( 'Takens delay embedding for density data...' ); t = tic;
     computeDensityDelayEmbedding( model );
-    toc
+    toc( t )
 
     fprintf( 'Pairwise distances (%i/%i)...\n', iProc, nProc ); t = tic;
     computePairwiseDistances( model, iProc, nProc )
@@ -121,25 +143,25 @@ if ifPlotPhi
     % Retrieve source data and NLSA eigenfunctions. Assign timestamps.
     x = getData( model.srcComponent );
     x = x( :, 1 + nShiftTakens : nSE + nShiftTakens );
-    [ phi, lambda ] = getDiffusionEigenfunctions( model );
+    [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
     t = ( 0 : nSE - 1 ) * In.dt;  
 
 
     % Set up figure and axes 
+    Fig.nTileX     = numel( nShiftPlt ) + 1;
+    Fig.nTileY     = numel( idxPhiPlt );
     Fig.units      = 'inches';
-    Fig.figWidth   = 15; 
-    Fig.deltaX     = .5;
-    Fig.deltaX2    = .65;
+    Fig.figWidth   = 15 / 4 * Fig.nTileX; 
+    Fig.deltaX     = .2;
+    Fig.deltaX2    = .2;
     Fig.deltaY     = .48;
     Fig.deltaY2    = .3;
     Fig.gapX       = .40;
-    Fig.gapY       = .3;
-    Fig.gapT       = 0; 
-    Fig.nTileX     = numel( nShiftPlt ) + 1;
-    Fig.nTileY     = numel( idxPhiPlt );
-    Fig.aspectR    = 1;
+    Fig.gapY       = 0.4;
+    Fig.gapT       = 0.4; 
+    Fig.aspectR    = 3 / 4;
     Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 6;
+    Fig.fontSize   = 12;
     Fig.tickLength = [ 0.02 0 ];
     Fig.visible    = 'on';
     Fig.nextPlot   = 'add'; 
@@ -159,7 +181,8 @@ if ifPlotPhi
             phiPlt = phi( 1 + nShiftPlt( iShift ) : end, idxPhiPlt( iPhi ) );
 
             set( gcf, 'currentAxes', ax( iShift, iPhi ) )
-            scatter3( xPlt( 1, : ), xPlt( 2, : ), xPlt( 3, : ), 5, phiPlt, '.' )
+            scatter3( xPlt( 1, : ), xPlt( 2, : ), xPlt( 3, : ), markerSize, ...
+                      phiPlt, 'filled'  )
             axis off
             view( 0, 0 )
             set( gca, 'cLim', max( abs( phiPlt ) ) * [ -1 1 ] )
@@ -167,9 +190,9 @@ if ifPlotPhi
             if iShift == 1
                 titleStr = sprintf( '\\phi_{%i}, \\lambda_{%i} = %1.3g', ...
                                     idxPhiPlt( iPhi ), idxPhiPlt( iPhi ), ...
-                                    lambda( idxPhiPlt( iPhi ) ) ) );
+                                    lambda( idxPhiPlt( iPhi ) ) );
             else
-                titleStr = sprintf( 'U^t\\phi_{%i}, t = %1.2f', ...
+                titleStr = sprintf( 'U^t\\phi_{%i},   t = %1.2f', ...
                                     idxPhiPlt( iPhi ), ...
                                     nShiftPlt( iShift ) * In.dt ); 
             end
@@ -180,13 +203,13 @@ if ifPlotPhi
 
     % EIGENFUNCTION TIME SERIES PLOTS
 
-    tPlt = t( idxTPlt );
+    tPlt = t( idxTPlt( 1 ) : idxTPlt( 2 ) );
     tPlt = tPlt - tPlt( 1 ); % set time origin to 1st plotted point
 
     % Loop over the eigenfunctions
     for iPhi = 1 : Fig.nTileY
 
-        phitPlt = phi( idxTPlt, idxPhiPlt( iPhi ) );
+        phiPlt = phi( idxTPlt( 1 ) : idxTPlt( 2 ), idxPhiPlt( iPhi ) );
 
         set( gcf, 'currentAxes', ax( Fig.nTileX, iPhi ) )
         plot( tPlt, phiPlt, '-' )
@@ -194,12 +217,15 @@ if ifPlotPhi
         xlim( [ tPlt( 1 ) tPlt( end ) ] )
         ylim( [ -3 3 ] )
 
+        if iPhi == 1
+            title( 'Time series along orbit' )
+        end
         if iPhi == Fig.nTileY
             xlabel( 't' )
         end
     end
 
-    titleStr = [ sprintf( 'Sampling interval \\Delta t = %1.2f, ', In.dt ) ...
+    titleStr = [ sprintf( 'Sampling interval \\Deltat = %1.2f, ', In.dt ) ...
                  sprintf( 'Delay embedding window T = %1.2f', In.dt * nEL ) ]; 
     title( axTitle, titleStr )
 

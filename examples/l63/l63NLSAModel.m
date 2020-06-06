@@ -1,11 +1,13 @@
-function [ model, In, Out ] = l63NLSAModel( experiment )
+function [ model, In, Out ] = l63NLSAModel( In, Out )
 % L63NLSAModel Build NLSA model for Lorenz 63 system
 %
-%  [ model, In, Out ] = l63NLSAModel( experiment ) builds an NLSA model based 
-%  on the string identifier experiment.  
-%
-%  The model parameters for the in-sample (training) and, optionally, 
-%  out-of-sample (test) data are specified in the structures In and Out. 
+%  [ model, In ] = l63NLSAModel( In ) builds an NLSA model based on the
+%  parameters specified in the structure In. 
+
+%  [ model, In, Out ] = l63NLSAModel( In, Out ) builds an NLSA model
+%  with support for out-of-sample (test) data. The model parameters for the
+%  in-sample (training) and out-of-sample (test) data are specified in the 
+%  structures In and Out, respectively. 
 %
 %  l63NLSAModel uses the parameter values in In and Out to create arrays of 
 %  nlsaComponent objects representing the in-sample and out-of-sample data, 
