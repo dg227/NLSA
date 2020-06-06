@@ -1,19 +1,19 @@
-function demoEnsoLifecycle_data( dataset, period, fld )
-% DEMOENSOLIFECYCLE_DATA Helper function to import datasets for ENSO lifecycle
+function ensoLifecycle_data( dataset, period, fld )
+% ENSOLIFECYCLE_DATA Helper function to import datasets for ENSO lifecycle
 % analyses.
 %
 % dataset - String identifier for dataset to read. 
 % period  - String identifier for time period. 
 % fld     - String identifier for variable to read. 
 %
-% This function creates a data structure with input data specifications as 
-% appropriate for the dataset and fld arguments. 
+% This function creates a parameter structure with input data specifications 
+% as appropriate for the dataset and fld arguments. 
 %
 % The data is then retrieved and saved on disk using the climateData function. 
 %
 % Modified 2020/06/01
 
-switch( dataset )
+switch dataset 
 
 %% ERSSTv5 AND OTHER NOAA REANALYSIS PRODUCTS
 case 'ersstV5'
@@ -47,7 +47,7 @@ case 'ersstV5'
         error( 'Invalid period' )
     end
 
-    switch( fld )
+    switch fld 
 
     %% Indo-Pacific SST (from ERSST)
     case 'globalSST'

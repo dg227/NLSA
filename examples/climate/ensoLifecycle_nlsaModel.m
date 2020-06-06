@@ -11,8 +11,8 @@ function [ model, In, Out ] = ensoLifecycle_nlsaModel( experiment )
 % In:    Data structure with in-sample model parameters. 
 % Out:   Data structure with out-of-sample model parameters (optional). 
 %
-% This function creates the data structures In and Out, which are then passed 
-% to function climateNLSAModel_base to build the model.
+% This function creates the parameter structures In and Out, which are then 
+% passed to function climateNLSAModel to build the model.
 %
 % The constructed NLSA models have the following target components (used for
 % composite lifecycle analysis):

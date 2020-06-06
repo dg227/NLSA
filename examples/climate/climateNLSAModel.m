@@ -17,7 +17,7 @@ function [ model, In, Out ] = climateNLSAModel( In, Out )
 %  constructors to build the model.
 %
 %  climateNLSAModel is meant to be called by higher-level functions tailored to 
-%  specific climate datasets. 
+%  specific data analysis/forecasting experiments. 
 %
 %  For additional information see:
 %
@@ -32,7 +32,7 @@ function [ model, In, Out ] = climateNLSAModel( In, Out )
 %
 %  Structure field Res represents different realizations (ensemble members)
 %
-% Modified 2020/05/20
+% Modified 2020/06/07
  
 %% PRELIMINARY CHECKS
 % Check number of input arguments, and if we are doing out-of-sample extension
@@ -298,7 +298,7 @@ if ifOse
                                         'realizationTag', tagR  );
         end
 
-        if ifOutT
+        if ifOutTrg
 
             % Loop over out-of-sample target components
             for iC = Out.nCT : -1 : 1
