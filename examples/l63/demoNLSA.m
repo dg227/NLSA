@@ -3,9 +3,13 @@
 % Modified 2020/06/06
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = '6.4k_dt0.01_nEL0'; % 6400 samples, sampling interval 0.01, 0 delays 
-experiment = '6.4k_dt0.01_nEL100'; % 6400 samples, sampling interval 0.01, 100 delays 
-experiment = '6.4k_dt0.01_nEL200'; % 6400 samples, sampling interval 0.01, 200 delays 
+%experiment = '6.4k_dt0.01_nEL0'; % 6400 samples, sampling interval 0.01, 0 delays 
+%experiment = '6.4k_dt0.01_nEL80'; % 6400 samples, sampling interval 0.01, 80 delays 
+%experiment = '6.4k_dt0.01_nEL100'; % 6400 samples, sampling interval 0.01, 100 delays 
+%experiment = '6.4k_dt0.01_nEL150'; % 6400 samples, sampling interval 0.01, 150 delays 
+%experiment = '6.4k_dt0.01_nEL200'; % 6400 samples, sampling interval 0.01, 200 delays 
+%experiment = '6.4k_dt0.01_nEL300'; % 6400 samples, sampling interval 0.01, 200 delays 
+experiment = '6.4k_dt0.01_nEL400'; % 6400 samples, sampling interval 0.01, 200 delays 
 ifSourceData   = true; % generate source data
 ifNLSA         = true; % run NLSA
 ifPlotPhi      = true; % plot eigenfunctions
@@ -33,6 +37,15 @@ case '6.4k_dt0.01_nEL0'
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
     markerSize = 7;         
 
+% 6400 samples, sampling interval 0.01, no delay embedding 
+case '6.4k_dt0.01_nEL80'
+
+    idxPhiPlt  = [ 4 5 8 9 ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 7;         
+
+
 % 6400 samples, sampling interval 0.01, 100 delays
 case '6.4k_dt0.01_nEL100'
 
@@ -42,6 +55,14 @@ case '6.4k_dt0.01_nEL100'
     markerSize = 7;         
 
 % 6400 samples, sampling interval 0.01, 100 delays
+case '6.4k_dt0.01_nEL150'
+
+    idxPhiPlt  = [ 2 3 4 5 ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 7;         
+
+% 6400 samples, sampling interval 0.01, 200 delays
 case '6.4k_dt0.01_nEL200'
 
     idxPhiPlt  = [ 2 3 4 5 ];     
@@ -49,6 +70,53 @@ case '6.4k_dt0.01_nEL200'
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
     markerSize = 7;         
 
+% 6400 samples, sampling interval 0.01, 300 delays
+case '6.4k_dt0.01_nEL300'
+
+    idxPhiPlt  = [ 2 3 4 5  ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 7;         
+
+% 6400 samples, sampling interval 0.01, 400 delays
+case '6.4k_dt0.01_nEL400'
+
+    idxPhiPlt  = [ 2 3 4 5  ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 7;         
+
+% 64000 samples, sampling interval 0.01, no delay embedding 
+case '64k_dt0.01_nEL0'
+
+    idxPhiPlt  = [ 2 3 4 ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 5;         
+
+% 64000 samples, sampling interval 0.01, 400 delays
+case '64k_dt0.01_nEL400'
+
+    idxPhiPlt  = [ 2 3 4 5  ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 5;         
+
+% 64000 samples, sampling interval 0.01, 800 delays
+case '64k_dt0.01_nEL800'
+
+    idxPhiPlt  = [ 2 3 4 5  ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 5;         
+
+% 64000 samples, sampling interval 0.01, 1600 delays
+case '64k_dt0.01_nEL1600'
+
+    idxPhiPlt  = [ 2 3 4 5  ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 5;         
 
 end
 
