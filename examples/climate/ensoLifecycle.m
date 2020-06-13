@@ -8,8 +8,8 @@
 dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
 period     = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
-ourceVar  = 'globalSST'; % global SST
+sourceVar  = 'IPSST';     % Indo-Pacific SST
+%sourceVar  = 'globalSST'; % global SST
 embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
@@ -26,14 +26,14 @@ kernel     = 'cone';       % cone kernel
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-dataset    = 'ersstV4';                                     
+%dataset    = 'ersstV4';                                     
 %period     = 'satellite'; % 1978-present
-period     = '50yr';      % 1970-present
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
-embWindow  = '4yr';       % 4-year embedding
-kernel     = 'cone';      % cone kernel
+%embWindow  = '4yr';       % 4-year embedding
+%kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -59,7 +59,7 @@ ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
 
 % Koopman spectrum
-ifKoopmanSpectrum = true;  % plot generator spectrum
+ifKoopmanSpectrum = false;  % plot generator spectrum
 
 % ENSO lifecycle plots
 ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
@@ -79,17 +79,17 @@ ifNLSAComposites    = false; % compute phase composites based on NLSA
 ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = false; % difference composites based on NLSA
-ifKoopmanDiffComposites = false; % difference composites based on Koopman
+ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = true; % difference composites based on NLSA
+ifKoopmanDiffComposites = true; % difference composites based on Koopman
 
 % Low-frequency phases
 ifNLSALFPhases    = false; % decadal/trend phases from kernel eigenfunctions 
-ifKoopmanLFPhases = true; % decadal/trend phases from generator eigenfunctions
+ifKoopmanLFPhases = false; % decadal/trend phases from generator eigenfunctions
 
 % Low-frequency composite plots
 ifNLSALFComposites = false; % decadal/trend composites based on NLSA
-ifKoopmanLFComposites = true; % decadal/trend composites based on Koopman
+ifKoopmanLFComposites = false; % decadal/trend composites based on Koopman
 
 % Output/plotting options
 ifWeighComposites = true;     % weigh composites by adjacent phases
@@ -698,7 +698,7 @@ case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb_coneKernel'
                     'ENSO-annual combination' ...
                     'ENSO-semiannual combination' ...
                     };
-    Spec.xLim = [ -1 .1 ];
+    Spec.xLim = [ -2 .1 ];
     Spec.yLim = [ -3 3 ]; 
     Spec.c = distinguishable_colors( 8 );
     Spec.c = Spec.c( [ 4 1 2 3 5 6 7 8 ], : );
