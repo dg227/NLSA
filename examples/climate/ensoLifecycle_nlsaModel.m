@@ -37,7 +37,7 @@ end
 switch experiment
 
 % NOAA 20th Century Reanalysis, industrial era, Indo-Pacific SST input,
-% 4-year delay embeding window  
+% 4-year delay embeding window, cone kernel  
 case '20CR_industrial_IPSST_4yrEmb_coneKernel'
    
     % Dataset specification  
@@ -1101,15 +1101,12 @@ end
 
 %% PREPARE TARGET COMPONENTS (COMMON TO ALL MODELS)
 %
-% tStr is a string identifier for the analysis time interval.
-%
 % climStr is a string identifier for the climatology period relative to which
 % anomalies are computed. 
 %
 % nETrg is the delay-embedding window for the target data
 
 climStr = [ '_' In.Res( 1 ).tClim{ 1 } '-' In.Res( 1 ).tClim{ 2 } ];
-tStr    = [ '_' In.Res( 1 ).tLim{ 1 } '-' In.Res( 1 ).tLim{ 2 } ];
 nETrg   = 1; 
 
 % Nino 3.4 index

@@ -1,11 +1,8 @@
-function [ model, In, Out ] = spczRainfall_nlsaModel( dataset, period, ...
-    experiment )
+function [ model, In, Out ] = spczRainfall_nlsaModel( experiment )
 % SPCZRAINFALL_NLSAMODEL Construct NLSA model for analysis of SPCZ rainfall
 %
 % Input arguments:
 %
-% dataset:    A string identifier for the dataset analyzed.
-% period:     A string identifier for the analysis period.
 % experiment: A string identifier for the data analysis experiment. 
 %
 % Output arguments:
@@ -14,319 +11,263 @@ function [ model, In, Out ] = spczRainfall_nlsaModel( dataset, period, ...
 % In:    Data structure with in-sample model parameters. 
 % Out:   Data structure with out-of-sample model parameters (optional). 
 %
-% This function creates the data structures In and Out, which are then passed 
-% to function climateNLSAModel_base to construct the model.
+% This function creates the parameter structures In and Out, which are then 
+% passed to function climateNLSAModel to build the model.
 %
-% Possible options for 
-%
-% Modified 2020/05/09
+% Modified 2020/06/16
 
 In.Res( 1 ).experiment = dataset; % data analysis product
 
 In.tFormat = 'yyyymm'; % time format
 
+if nargin == 0
+    experiment = 'cmap_satellite_PacPrecip_4yrEmb_coneKernel';
+end
 
-switch dataset
+switch experiment
 
-%% NOAA/CMAP REANALYSIS DATA
-case 'noaa'
-    switch period
-    case 'satellite'
-        In.Res( 1 ).tLim    = { '197901' '201912' }; % time limits
-    otherwise
-        error( 'Invalid period.' )
-    end
+case 'cmap_satellite_PacPrecip_4yrEmb_coneKernel' 
+% CMAP data, satellite era, Pacific precipitation input, 4-year delay 
+% embeding window, cone kernel  
 
-    switch experiment
+    % Dataset specification  
+    In.Res( 1 ).experiment = 'cmap';                
 
-    % SPCZ analysis using Indo-Pacific precipitation data
-    case 'IPPrecip' 
-        % In-sample data specification 
+    % Time specification
+    In.tFormat        = 'yyyymm';              % time format
+    In.Res( 1 ).tLim  = { '197901' '201912' }; % time limit  
 
-        % Indo-Pacific precip (source)
-        In.Src( 1 ).field      = 'prate';     % physical field
-        In.Src( 1 ).xLim       = [ 28 290 ];  % longitude limits
-        In.Src( 1 ).yLim       = [ -60  20 ]; % latitude limits
+    % Indo-Pacific precip (source)
+    In.Src( 1 ).field      = 'prate';     % physical field
+    In.Src( 1 ).xLim       = [ 135 270 ];  % longitude limits
+    In.Src( 1 ).yLim       = [ -35  35 ]; % latitude limits
 
-        % Indo-Pacifid precip anomalies (target) 
-        In.Trg( 1 ).field      = 'prate';  % physical field
-        In.Trg( 1 ).xLim       = [ 28 290 ];   % longitude limits
-        In.Trg( 1 ).yLim       = [ -60 20 ];  % latitude limits
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 2;          % samples before main interval
+    In.Src( 1 ).nXA       = 2;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'central';  % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
 
-        % Delay-embedding/finite-difference parameters
-        % Indo-Pacific precip source data
-        In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
-        In.Src( 1 ).nXB       = 1;          % samples before main interval
-        In.Src( 1 ).nXA       = 0;          % samples after main interval
-        In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
-        In.Src( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Src( 1 ).embFormat = 'overlap';  % storage format 
+    % Batches to partition the in-sample data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
 
-        % Indo-Pacific precip target data
-        In.Trg( 1 ).idxE      = 1 : 1;      % delay embedding indices 
-        In.Trg( 1 ).nXB       = 1;          % before main interval
-        In.Trg( 1 ).nXA       = 0;          % samples after main interval
-        In.Trg( 1 ).fdOrder   = 0;          % finite-difference order 
-        In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Trg( 1 ).embFormat = 'overlap';  % storage format
+    % NLSA parameters; in-sample data 
+    In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
+    In.lDist      = 'cone';     % local distance
+    In.tol        = 0;          % 0 distance threshold (for cone kernel)
+    In.zeta       = 0.995;      % cone kernel parameter 
+    In.coneAlpha  = 0;          % velocity exponent in cone kernel
+    In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+    In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+    In.epsilon    = 2;          % kernel bandwidth parameter 
+    In.epsilonB   = 2;          % kernel bandwidth base
+    In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+    In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
+    In.alpha      = 0.5;        % diffusion maps normalization 
+    In.nPhi       = 401;        % diffusion eigenfunctions to compute
+    In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
+    In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
+    In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
+    In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
 
-        % Batches to partition the in-sample data
-        In.Res( 1 ).nB        = 1;          % partition batches
-        In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
-
-        % NLSA parameters; in-sample data 
-        In.nN         = 0; % nearest neighbors; defaults to max. value if 0
-        In.lDist      = 'cone'; % local distance
-        In.tol        = 0;      % 0 distance threshold (for cone kernel)
-        In.zeta       = 0.995;  % cone kernel parameter 
-        In.coneAlpha  = 0;      % velocity exponent in cone kernel
-        In.nNS        = In.nN;  % nearest neighbors for symmetric distance
-        In.diffOpType = 'gl_mb_bs'; % diffusion operator type
-        In.epsilon    = 2;        % kernel bandwidth parameter 
-        In.epsilonB   = 2;          % kernel bandwidth base
-        In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
-        In.nEpsilon   = 200;      % number of exponents for bandwidth tuning
-        In.alpha      = 0.5;      % diffusion maps normalization 
-        In.nPhi       = 101;      % diffusion eigenfunctions to compute
-        In.nPhiPrj    = In.nPhi;  % eigenfunctions to project the data
-        In.idxPhiRec  = 1 : 1;    % eigenfunctions for reconstruction
-        In.idxPhiSVD  = 1 : 1;    % eigenfunctions for linear mapping
-        In.idxVTRec   = 1 : 1;    % SVD termporal patterns for reconstruction
-
-        % Koopman generator parameters; in-sample data
-        In.koopmanOpType = 'diff';      % Koopman generator type
-        In.koopmanFDType  = 'central'; % finite-difference type
-        In.koopmanFDOrder = 4;         % finite-difference order
-        In.koopmanDt      = 1;         % sampling interval (in months)
-        In.koopmanAntisym = true;     % enforce antisymmetrization
-        In.koopmanEpsilon = 1E-3;      % regularization parameter
-        In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 1 : 51;    % diffusion eigenfunctions used as basis
-        In.nPhiKoopman    = numel( In.idxPhiKoopman );  % Koopman eigenfunctions to compute
-
-    % SPCZ analysis using Indo-Pacific precipitation data
-    case 'PacPrecip' 
-        % In-sample data specification 
-
-        % Indo-Pacific precip (source)
-        In.Src( 1 ).field      = 'prate';     % physical field
-        In.Src( 1 ).xLim       = [ 135 270 ];  % longitude limits
-        In.Src( 1 ).yLim       = [ -35  35 ]; % latitude limits
-
-        % Indo-Pacifid precip anomalies (target) 
-        In.Trg( 1 ).field      = 'prate';  % physical field
-        In.Trg( 1 ).xLim       = [ 28 290 ];   % longitude limits
-        In.Trg( 1 ).yLim       = [ -60 20 ];  % latitude limits
-
-        % Delay-embedding/finite-difference parameters
-        % Indo-Pacific precip source data
-        In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
-        In.Src( 1 ).nXB       = 1;          % samples before main interval
-        In.Src( 1 ).nXA       = 0;          % samples after main interval
-        In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
-        In.Src( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Src( 1 ).embFormat = 'overlap';  % storage format 
-
-        % Indo-Pacific precip target data
-        In.Trg( 1 ).idxE      = 1 : 1;      % delay embedding indices 
-        In.Trg( 1 ).nXB       = 1;          % before main interval
-        In.Trg( 1 ).nXA       = 0;          % samples after main interval
-        In.Trg( 1 ).fdOrder   = 0;          % finite-difference order 
-        In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Trg( 1 ).embFormat = 'overlap';  % storage format
-
-        % Batches to partition the in-sample data
-        In.Res( 1 ).nB        = 1;          % partition batches
-        In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
-
-        % NLSA parameters; in-sample data 
-        In.nN         = 0; % nearest neighbors; defaults to max. value if 0
-        In.lDist      = 'cone'; % local distance
-        In.tol        = 0;      % 0 distance threshold (for cone kernel)
-        In.zeta       = 0.995;  % cone kernel parameter 
-        In.coneAlpha  = 0;      % velocity exponent in cone kernel
-        In.nNS        = In.nN;  % nearest neighbors for symmetric distance
-        In.diffOpType = 'gl_mb_bs'; % diffusion operator type
-        In.epsilon    = 2;        % kernel bandwidth parameter 
-        In.epsilonB   = 2;          % kernel bandwidth base
-        In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
-        In.nEpsilon   = 200;      % number of exponents for bandwidth tuning
-        In.alpha      = 0.5;      % diffusion maps normalization 
-        In.nPhi       = 101;      % diffusion eigenfunctions to compute
-        In.nPhiPrj    = In.nPhi;  % eigenfunctions to project the data
-        In.idxPhiRec  = 1 : 1;    % eigenfunctions for reconstruction
-        In.idxPhiSVD  = 1 : 1;    % eigenfunctions for linear mapping
-        In.idxVTRec   = 1 : 1;    % SVD termporal patterns for reconstruction
-
-        % Koopman generator parameters; in-sample data
-        In.koopmanOpType = 'diff';      % Koopman generator type
-        In.koopmanFDType  = 'central'; % finite-difference type
-        In.koopmanFDOrder = 4;         % finite-difference order
-        In.koopmanDt      = 1;         % sampling interval (in months)
-        In.koopmanAntisym = true;     % enforce antisymmetrization
-        In.koopmanEpsilon = 1E-3;      % regularization parameter
-        In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 1 : 51;    % diffusion eigenfunctions used as basis
-        In.nPhiKoopman    = numel( In.idxPhiKoopman );  % Koopman eigenfunctions to compute
+    % Koopman generator parameters; in-sample data
+    In.koopmanOpType = 'diff';     % Koopman generator type
+    In.koopmanFDType  = 'central'; % finite-difference type
+    In.koopmanFDOrder = 4;         % finite-difference order
+    In.koopmanDt      = 1;         % sampling interval (in months)
+    In.koopmanAntisym = true;      % enforce antisymmetrization
+    In.koopmanEpsilon = 1.0E-3;      % regularization parameter
+    In.koopmanRegType = 'inv';     % regularization type
+    In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
+    In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
 
-    otherwise
-        error( 'Invalid experiment' )
-    end
+case 'cmap_satellite_IPPrecip_4yrEmb_coneKernel' 
+% CMAP data, satellite era, Indo-Pacific precipitation input, 4-year delay 
+% embeding window, cone kernel  
+
+    % Dataset specification  
+    In.Res( 1 ).experiment = 'cmap';                
+
+    % Time specification
+    In.tFormat        = 'yyyymm';              % time format
+    In.Res( 1 ).tLim  = { '197901' '201912' }; % time limit  
+
+    % Source data specification 
+    In.Src( 1 ).field = 'prate';      % physical field
+    In.Src( 1 ).xLim  = [ 28 290 ];  % longitude limits
+    In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
+
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 2;          % samples before main interval
+    In.Src( 1 ).nXA       = 2;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'central';  % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
+    % Batches to partition the in-sample data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
+
+    % NLSA parameters; in-sample data 
+    In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
+    In.lDist      = 'cone';     % local distance
+    In.tol        = 0;          % 0 distance threshold (for cone kernel)
+    In.zeta       = 0.995;      % cone kernel parameter 
+    In.coneAlpha  = 0;          % velocity exponent in cone kernel
+    In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+    In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+    In.epsilon    = 2;          % kernel bandwidth parameter 
+    In.epsilonB   = 2;          % kernel bandwidth base
+    In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+    In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
+    In.alpha      = 0.5;        % diffusion maps normalization 
+    In.nPhi       = 451;        % diffusion eigenfunctions to compute
+    In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
+    In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
+    In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
+    In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
+
+    % Koopman generator parameters; in-sample data
+    In.koopmanOpType = 'diff';     % Koopman generator type
+    In.koopmanFDType  = 'central'; % finite-difference type
+    In.koopmanFDOrder = 4;         % finite-difference order
+    In.koopmanDt      = 1;         % sampling interval (in months)
+    In.koopmanAntisym = true;      % enforce antisymmetrization
+    In.koopmanEpsilon = 1.0E-3;      % regularization parameter
+    In.koopmanRegType = 'inv';     % regularization type
+    In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
+    In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
 
+case 'ccsm4Ctrl_1300yr_PacPrecip_4yrEmb_coneKernel' 
+% CCSM4 control, 1300 years, Pacific precipitation input, 4-year delay 
+% embeding window, cone kernel  
 
-%% CCSM4 pre-industrial control
-case 'ccsm4Ctrl'
-    switch period
-    case '200yr'
-        In.Res( 1 ).tLim = { '000101' '019912' }; 
-    case '1300yr'
-        In.Res( 1 ).tLim = { '000101' '130012' }; 
-    otherwise
-        error( 'Invalid period' )
-    end
+    % Dataset specification  
+    In.Res( 1 ).experiment = 'ccsm4Ctrl';                
 
-    switch experiment
+    % Time specification
+    In.tFormat        = 'yyyymm';              % time format
+    In.Res( 1 ).tLim  = { '000101' '130012' }; % time limit  
 
-    % SPCZ analysis using Indo-Pacific precipitation data
-    case 'IPPrecip' 
-        % In-sample data specification 
+    % Pacific precip (source)
+    In.Src( 1 ).field      = 'prate';     % physical field
+    In.Src( 1 ).xLim       = [ 135 270 ]; % longitude limits
+    In.Src( 1 ).yLim       = [ -35  35 ]; % latitude limits
 
-        % Indo-Pacific precip (source)
-        In.Src( 1 ).field      = 'prate';     % physical field
-        In.Src( 1 ).xLim       = [ 28 290 ];  % longitude limits
-        In.Src( 1 ).yLim       = [ -60  20 ]; % latitude limits
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 2;          % samples before main interval
+    In.Src( 1 ).nXA       = 2;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'central';  % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
 
-        % Indo-Pacifid precip anomalies (target) 
-        In.Trg( 1 ).field      = 'prate';  % physical field
-        In.Trg( 1 ).xLim       = [ 28 290 ];   % longitude limits
-        In.Trg( 1 ).yLim       = [ -60 20 ];  % latitude limits
+    % Batches to partition the in-sample data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
 
-        % Delay-embedding/finite-difference parameters
-        % Indo-Pacific precip source data
-        In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
-        In.Src( 1 ).nXB       = 1;          % samples before main interval
-        In.Src( 1 ).nXA       = 0;          % samples after main interval
-        In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
-        In.Src( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Src( 1 ).embFormat = 'overlap';  % storage format 
+    % NLSA parameters; in-sample data 
+    In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
+    In.lDist      = 'cone';     % local distance
+    In.tol        = 0;          % 0 distance threshold (for cone kernel)
+    In.zeta       = 0.995;      % cone kernel parameter 
+    In.coneAlpha  = 0;          % velocity exponent in cone kernel
+    In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+    In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+    In.epsilon    = 2;          % kernel bandwidth parameter 
+    In.epsilonB   = 2;          % kernel bandwidth base
+    In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+    In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
+    In.alpha      = 0.5;        % diffusion maps normalization 
+    In.nPhi       = 451;        % diffusion eigenfunctions to compute
+    In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
+    In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
+    In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
+    In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
 
-        % Indo-Pacific precip target data
-        In.Trg( 1 ).idxE      = 1 : 1;      % delay embedding indices 
-        In.Trg( 1 ).nXB       = 1;          % before main interval
-        In.Trg( 1 ).nXA       = 0;          % samples after main interval
-        In.Trg( 1 ).fdOrder   = 0;          % finite-difference order 
-        In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Trg( 1 ).embFormat = 'overlap';  % storage format
+    % Koopman generator parameters; in-sample data
+    In.koopmanOpType = 'diff';     % Koopman generator type
+    In.koopmanFDType  = 'central'; % finite-difference type
+    In.koopmanFDOrder = 4;         % finite-difference order
+    In.koopmanDt      = 1;         % sampling interval (in months)
+    In.koopmanAntisym = true;      % enforce antisymmetrization
+    In.koopmanEpsilon = 1.0E-3;      % regularization parameter
+    In.koopmanRegType = 'inv';     % regularization type
+    In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
+    In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
-        % Batches to partition the in-sample data
-        In.Res( 1 ).nB        = 1;          % partition batches
-        In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
+case 'ccsm4Ctrl_1300yr_IPPrecip_4yrEmb_coneKernel' 
+% CCSM4 control, 1300 years, Indo-Pacific precipitation input, 4-year delay 
+% embeding window, cone kernel  
 
-        % NLSA parameters; in-sample data 
-        In.nN         = 0; % nearest neighbors; defaults to max. value if 0
-        In.lDist      = 'cone'; % local distance
-        In.tol        = 0;      % 0 distance threshold (for cone kernel)
-        In.zeta       = 0.995;  % cone kernel parameter 
-        In.coneAlpha  = 0;      % velocity exponent in cone kernel
-        In.nNS        = In.nN;  % nearest neighbors for symmetric distance
-        In.diffOpType = 'gl_mb_bs'; % diffusion operator type
-        In.epsilon    = 2;        % kernel bandwidth parameter 
-        In.epsilonB   = 2;          % kernel bandwidth base
-        In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
-        In.nEpsilon   = 200;      % number of exponents for bandwidth tuning
-        In.alpha      = 0.5;      % diffusion maps normalization 
-        In.nPhi       = 501;      % diffusion eigenfunctions to compute
-        In.nPhiPrj    = In.nPhi;  % eigenfunctions to project the data
-        In.idxPhiRec  = 1 : 1;    % eigenfunctions for reconstruction
-        In.idxPhiSVD  = 1 : 1;    % eigenfunctions for linear mapping
-        In.idxVTRec   = 1 : 1;    % SVD termporal patterns for reconstruction
+    % Dataset specification  
+    In.Res( 1 ).experiment = 'ccsm4Ctrl';                
 
-        % Koopman generator parameters; in-sample data
-        In.koopmanOpType = 'diff';      % Koopman generator type
-        In.koopmanFDType  = 'central'; % finite-difference type
-        In.koopmanFDOrder = 4;         % finite-difference order
-        In.koopmanDt      = 1;         % sampling interval (in months)
-        In.koopmanAntisym = true;     % enforce antisymmetrization
-        In.koopmanEpsilon = 1E-3;      % regularization parameter
-        In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 1 : 401;    % diffusion eigenfunctions used as basis
-        In.nPhiKoopman    = numel( In.idxPhiKoopman );  % Koopman eigenfunctions to compute
+    % Time specification
+    In.tFormat        = 'yyyymm';              % time format
+    In.Res( 1 ).tLim  = { '000101' '130012' }; % time limit  
 
-    % SPCZ analysis using Indo-Pacific precipitation data
-    case 'PacPrecip' 
-        % In-sample data specification 
+    % Pacific precip (source)
+    In.Src( 1 ).field = 'prate';     % physical field
+    In.Src( 1 ).xLim  = [ 28 290 ];  % longitude limits
+    In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
 
-        % Indo-Pacific precip (source)
-        In.Src( 1 ).field      = 'prate';     % physical field
-        In.Src( 1 ).xLim       = [ 135 270 ];  % longitude limits
-        In.Src( 1 ).yLim       = [ -35  35 ]; % latitude limits
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 2;          % samples before main interval
+    In.Src( 1 ).nXA       = 2;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'central';  % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
 
-        % Indo-Pacifid precip anomalies (target) 
-        In.Trg( 1 ).field      = 'prate';  % physical field
-        In.Trg( 1 ).xLim       = [ 28 290 ];   % longitude limits
-        In.Trg( 1 ).yLim       = [ -60 20 ];  % latitude limits
+    % Batches to partition the in-sample data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
 
-        % Delay-embedding/finite-difference parameters
-        % Indo-Pacific precip source data
-        In.Src( 1 ).idxE      = 1 : 48;     % delay-embedding indices 
-        In.Src( 1 ).nXB       = 1;          % samples before main interval
-        In.Src( 1 ).nXA       = 0;          % samples after main interval
-        In.Src( 1 ).fdOrder   = 1;          % finite-difference order 
-        In.Src( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Src( 1 ).embFormat = 'overlap';  % storage format 
+    % NLSA parameters; in-sample data 
+    In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
+    In.lDist      = 'cone';     % local distance
+    In.tol        = 0;          % 0 distance threshold (for cone kernel)
+    In.zeta       = 0.995;      % cone kernel parameter 
+    In.coneAlpha  = 0;          % velocity exponent in cone kernel
+    In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+    In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+    In.epsilon    = 2;          % kernel bandwidth parameter 
+    In.epsilonB   = 2;          % kernel bandwidth base
+    In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+    In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
+    In.alpha      = 0.5;        % diffusion maps normalization 
+    In.nPhi       = 451;        % diffusion eigenfunctions to compute
+    In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
+    In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
+    In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
+    In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
 
-        % Indo-Pacific precip target data
-        In.Trg( 1 ).idxE      = 1 : 1;      % delay embedding indices 
-        In.Trg( 1 ).nXB       = 1;          % before main interval
-        In.Trg( 1 ).nXA       = 0;          % samples after main interval
-        In.Trg( 1 ).fdOrder   = 0;          % finite-difference order 
-        In.Trg( 1 ).fdType    = 'backward'; % finite-difference type
-        In.Trg( 1 ).embFormat = 'overlap';  % storage format
-
-        % Batches to partition the in-sample data
-        In.Res( 1 ).nB        = 1;          % partition batches
-        In.Res( 1 ).nBRec     = 1;          % batches for reconstructed data
-
-        % NLSA parameters; in-sample data 
-        In.nN         = 0; % nearest neighbors; defaults to max. value if 0
-        In.lDist      = 'cone'; % local distance
-        In.tol        = 0;      % 0 distance threshold (for cone kernel)
-        In.zeta       = 0.995;  % cone kernel parameter 
-        In.coneAlpha  = 0;      % velocity exponent in cone kernel
-        In.nNS        = In.nN;  % nearest neighbors for symmetric distance
-        In.diffOpType = 'gl_mb_bs'; % diffusion operator type
-        In.epsilon    = 2;        % kernel bandwidth parameter 
-        In.epsilonB   = 2;          % kernel bandwidth base
-        In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
-        In.nEpsilon   = 200;      % number of exponents for bandwidth tuning
-        In.alpha      = 0.5;      % diffusion maps normalization 
-        In.nPhi       = 501;      % diffusion eigenfunctions to compute
-        In.nPhiPrj    = In.nPhi;  % eigenfunctions to project the data
-        In.idxPhiRec  = 1 : 1;    % eigenfunctions for reconstruction
-        In.idxPhiSVD  = 1 : 1;    % eigenfunctions for linear mapping
-        In.idxVTRec   = 1 : 1;    % SVD termporal patterns for reconstruction
-
-        % Koopman generator parameters; in-sample data
-        In.koopmanOpType = 'diff';      % Koopman generator type
-        In.koopmanFDType  = 'central'; % finite-difference type
-        In.koopmanFDOrder = 4;         % finite-difference order
-        In.koopmanDt      = 1;         % sampling interval (in months)
-        In.koopmanAntisym = true;     % enforce antisymmetrization
-        In.koopmanEpsilon = 1E-3;      % regularization parameter
-        In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 1 : 401;    % diffusion eigenfunctions used as basis
-        In.nPhiKoopman    = numel( In.idxPhiKoopman );  % Koopman eigenfunctions to compute
-
-
-    otherwise
-        error( 'Invalid experiment' )
-    end
+    % Koopman generator parameters; in-sample data
+    In.koopmanOpType = 'diff';     % Koopman generator type
+    In.koopmanFDType  = 'central'; % finite-difference type
+    In.koopmanFDOrder = 4;         % finite-difference order
+    In.koopmanDt      = 1;         % sampling interval (in months)
+    In.koopmanAntisym = true;      % enforce antisymmetrization
+    In.koopmanEpsilon = 1.0E-3;      % regularization parameter
+    In.koopmanRegType = 'inv';     % regularization type
+    In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
+    In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
 
 otherwise
-    error( 'InValid dataset' )
+
+    error( 'Invalid experiment' )
 end
+
+
+%% PREPARE TARGET COMPONENTS (COMMON TO ALL MODELS)
+In.Trg = In.Src;
 
 %% CHECK IF WE ARE DOING OUT-OF-SAMPLE EXTENSION
 ifOse = exist( 'Out', 'var' );
@@ -355,5 +296,4 @@ if ifOse
 else
     args = { In };
 end
-
-[ model, In, Out ] = climateNLSAModel_base( args{ : } );
+[ model, In, Out ] = climateNLSAModel( args{ : } );

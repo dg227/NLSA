@@ -253,7 +253,7 @@ classdef nlsaModel < nlsaModel_base
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/04/15
+%   Modified 2020/06/16
 
     %% PROPERTIES
     properties
@@ -431,7 +431,9 @@ classdef nlsaModel < nlsaModel_base
                     error( [ msgId 'invalidRecOmponent' ], ...
                         'Reconstructed component must be specified as an array of of nlsaComponent_rec_phi objects.' )        
                 end
-                if ~isCompatible( trgEmbComponent, varargin{ iRecComponent } )
+                if ~isCompatible( trgEmbComponent, ...
+                                  varargin{ iRecComponent }, ...
+                                 'testSamples', false )
                     error( 'Incompatible reconstructed components' )
                 end
                 obj.recComponent = varargin{ iRecComponent };
@@ -466,9 +468,11 @@ classdef nlsaModel < nlsaModel_base
                         'Reconstructed component must be specified as an array of of nlsaComponent_rec_phi objects.' )        
                 end
                 for iA = 1 : numel( obj.linMap )
-                    if ~isCompatible( trgEmbComponent, ...
-                          squeeze( varargin{ iSvdRecComponent }( :, :, iA ) ) )
-                        error( 'Incompatible reconstructed components' )
+                    if ~isCompatible( ...
+                      trgEmbComponent, ...
+                      squeeze( varargin{ iSvdRecComponent }( :, :, iA ) ), ...
+                      'testSamples', false )
+                        error( 'Incompatible reconstructed components.' )
                     end
                 end
                 obj.svdRecComponent = varargin{ iSvdRecComponent };

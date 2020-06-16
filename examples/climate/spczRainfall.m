@@ -1,19 +1,21 @@
 % ANALYSIS OF SPCZ RAINFALL
 %
-% Modified 2020/05/08
+% Modified 2020/06/16
 
 %% DATA SPECIFICATION 
 %dataset    = 'ccsm4Ctrl';
-%period     = '200yr'; 
-dataset    = 'noaa';
-%period     = 'satellite'; 
-%experiment = 'IPPrecip';   % Indo-Pacific precipitation
-experiment = 'PacPrecip'; % Pacific precipitation
+%period     = '1300yr'; 
+dataset    = 'cmap';
+period     = 'satellite'; 
+%sourceVar = 'IPPrecip';   % Indo-Pacific precipitation
+sourceVar = 'PacPrecip'; % Pacific precipitation
+embWindow  = '4yr';       % 4-year embedding
+kernel     = 'cone';       % cone kernel      
 
 
 %% SCRIPT EXECUTION OPTIONS
 % Data extraction
-ifDataPrecip = false;  % extract precipitation data from NetCDF source files  
+ifDataSource = true;  % extract source precipitation data from NetCDF files  
 
 % ENSO representations
 ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
@@ -23,18 +25,22 @@ ifKoopman = true; % compute Koopman eigenfunctions
 iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
 
-%% EXTRACT PRECIPITATION RATE DATA
-if ifDataPrecip
 
-    disp( 'Reading precipitation rate data...' ); t = tic; 
-    spczRainfall_data( dataset, period, experiment )
+%% EXTRACT SOURCE DATA
+if ifDataSource
+    disp( sprintf( 'Reading source data %s...', sourceVar ) ); t = tic;
+    spczRainfall_data( dataset, period, sourceVar ) 
     toc( t )
 end
 
 %% BUILD NLSA MODEL, DETERMINE BASIC ARRAY SIZES
 
+experiment = { dataset period sourceVar [ embWindow 'Emb' ] ...
+               [ kernel 'Kernel' ] };
+experiment = strjoin_e( experiment, '_' );
+
 disp( 'Building NLSA model...' ); t = tic;
-model = spczRainfall_nlsaModel( dataset, period, experiment );
+model = spczRainfall_nlsaModel( experiment );
 toc( t )
 
 %% PERFORM NLSA
