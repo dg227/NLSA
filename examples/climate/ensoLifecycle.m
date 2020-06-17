@@ -1672,8 +1672,6 @@ end
 %% PLOT OF GENERATOR SPECTRUM
 if ifKoopmanSpectrum
 
-    nLead = numel( leads );  
-
     % Set up figure and axes 
     Fig.units      = 'inches';
     Fig.figWidth   = 6; 
@@ -1696,7 +1694,7 @@ if ifKoopmanSpectrum
     [ fig, ax ] = tileAxes( Fig );
 
 
-    % Get generator eigenfrequencies in units of 1 / year
+    % Get generator eigenvalues in units of 1 / year
     gamma = getEigenvalues( model.koopmanOp ) * 12 / 2 / pi; 
 
     % Plot marked eigenvalues

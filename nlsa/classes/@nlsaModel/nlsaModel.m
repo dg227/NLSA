@@ -321,7 +321,7 @@ classdef nlsaModel < nlsaModel_base
                     case 'koopmanOperator'
                         iKoopmanOp = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
-                    case 'koopomanPrjComponent'
+                    case 'koopmanPrjComponent'
                         iKoopmanPrjComponent = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                 end
@@ -462,15 +462,16 @@ classdef nlsaModel < nlsaModel_base
                     nCT = size( trgEmbComponent, 1 );
                     nDE = getEmbeddingSpaceDimension( trgEmbComponent( :, 1 ));
                     nL  = getNEigenfunction( obj.koopmanOp );
-                for iC = nCT : -1 : 1
-                    obj.koopmanPrjComponent( iC ) = nlsaProjectedComponent( ...
-                        'embeddingSpaceDimension', nDE( iC ), ...
-                        'partition', partition, ...
-                        'nBasisFunction', nL );
+                    for iC = nCT : -1 : 1
+                        obj.koopmanPrjComponent( iC ) = ...
+                            nlsaProjectedComponent( ...
+                                'embeddingSpaceDimension', nDE( iC ), ...
+                                'partition', partition, ...
+                                'nBasisFunction', nL );
+                    end
+                    obj.koopmanPrjComponent = obj.koopmanPrjComponent';
                 end
-                obj.koopmanPrjComponent = obj.koopmanPrjComponent';
             end
-
 
             % Reconsructed component
             if ~isempty( iRecComponent )

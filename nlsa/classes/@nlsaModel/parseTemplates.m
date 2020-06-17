@@ -421,7 +421,6 @@ end
 for iC = 1 : nCT
     pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
     isSet = false;
-    isSet = false;
     for i = 1 : 2 : nargin
         if strcmp( varargin{ i }, 'targetRealizationName' )
             if ~isSet
@@ -526,7 +525,6 @@ if ifProp( iKoopmanOp )
     for iC = 1 : nCT
         pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
         isSet = false;
-        isSet = false;
         for i = 1 : 2 : nargin
             if strcmp( varargin{ i }, 'targetRealizationName' )
                 if ~isSet
@@ -535,7 +533,7 @@ if ifProp( iKoopmanOp )
                     break
                 else
                     msgStr = [ 'Target realization name has been already ' ...
-                               'specified.'
+                               'specified.' ];
                     error( msgStr  )
                 end      
             end  

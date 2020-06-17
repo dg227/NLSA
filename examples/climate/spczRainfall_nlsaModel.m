@@ -82,7 +82,8 @@ case 'cmap_satellite_PacPrecip_4yrEmb_coneKernel'
     In.koopmanEpsilon = 1.0E-3;      % regularization parameter
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
-    In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nPhiKoopman    = numel( In.idxPhiKoopman ); % eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % eigenfunctions to project the data 
 
 
 case 'cmap_satellite_IPPrecip_4yrEmb_coneKernel' 
@@ -141,7 +142,8 @@ case 'cmap_satellite_IPPrecip_4yrEmb_coneKernel'
     In.koopmanEpsilon = 1.0E-3;      % regularization parameter
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
-    In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nPhiKoopman    = numel( In.idxPhiKoopman ); % eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % eigenfunctions to project the data 
 
 
 case 'ccsm4Ctrl_1300yr_PacPrecip_4yrEmb_coneKernel' 
@@ -200,7 +202,8 @@ case 'ccsm4Ctrl_1300yr_PacPrecip_4yrEmb_coneKernel'
     In.koopmanEpsilon = 1.0E-3;      % regularization parameter
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
-    In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nPhiKoopman    = numel( In.idxPhiKoopman ); % eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % eigenfunctions to project the data 
 
 case 'ccsm4Ctrl_1300yr_IPPrecip_4yrEmb_coneKernel' 
 % CCSM4 control, 1300 years, Indo-Pacific precipitation input, 4-year delay 
@@ -255,10 +258,11 @@ case 'ccsm4Ctrl_1300yr_IPPrecip_4yrEmb_coneKernel'
     In.koopmanFDOrder = 4;         % finite-difference order
     In.koopmanDt      = 1;         % sampling interval (in months)
     In.koopmanAntisym = true;      % enforce antisymmetrization
-    In.koopmanEpsilon = 1.0E-3;      % regularization parameter
+    In.koopmanEpsilon = 1.0E-3;    % regularization parameter
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % eigenfunctions to project the data 
 
 otherwise
 

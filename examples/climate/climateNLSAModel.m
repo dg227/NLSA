@@ -32,7 +32,7 @@ function [ model, In, Out ] = climateNLSAModel( In, Out )
 %
 %  Structure field Res represents different realizations (ensemble members)
 %
-% Modified 2020/06/07
+% Modified 2020/06/16
  
 %% PRELIMINARY CHECKS
 % Check number of input arguments, and if we are doing out-of-sample extension
@@ -244,8 +244,7 @@ for iR = In.nR : -1 : 1
                           In.Trg( iC ).field,  ...
                           [ xyStr '_' tStr ] );
                                                    
-        tagC = [ In.Trg( iC ).field '_' tStr ];
-
+        tagC = [ In.Trg( iC ).field '_' xyStr ];
 
         load( fullfile( pathC, 'dataGrid.mat' ), 'nD'  )
 
