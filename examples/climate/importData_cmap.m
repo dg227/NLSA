@@ -30,7 +30,7 @@ function Data = importData_cmap( DataSpecs )
 % If the requested date range preceeds/exceeds the available limits, a
 % warning message is displayed and the additional samples are set to 0. 
 % 
-% Modified 2020/05/19
+% Modified 2020/06/16
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 In     = DataSpecs.In;
@@ -45,6 +45,7 @@ if Opts.ifCenter && Opts.ifCenterMonth
     error( [ 'Global and monthly climatology removal cannot be ' ...
              'simultaneously selected' ] )
 end
+ifClim = Opts.ifCenter || Opts.ifCenterMonth;
 
 % Append 'a' to field string if outputting anomalies
 if Opts.ifCenter
@@ -81,7 +82,7 @@ if Opts.ifNormalize
 end
 
 % Append time limits for climatology 
-if Opts.ifCenter || Opts.ifCenterMonth 
+if ifClim 
     fldStr = [ fldStr '_' Time.tClim{ 1 } '-' Time.tClim{ 2 } ];
 end 
 
@@ -98,12 +99,14 @@ end
 % Number of samples and starting time index
 % Indices are based at 0 to conform with NetCDF library
 limNum = datenum( Time.tLim, Time.tFormat );
-climNum = datenum( Time.tClim, Time.tFormat );
 startNum = datenum( Time.tStart, Time.tFormat );
 nT    = months( limNum( 1 ), limNum( 2 ) ) + 1;
-nTClim = months( climNum( 1 ), climNum( 2 ) ) + 1;
 idxT0 = months( startNum, limNum( 1 ) );  
-idxTClim0 = months( startNum, climNum( 1 ) ); 
+if ifClim
+    climNum = datenum( Time.tClim, Time.tFormat );
+    nTClim = months( climNum( 1 ), climNum( 2 ) ) + 1;
+    idxTClim0 = months( startNum, climNum( 1 ) ); 
+end
 
 % Open netCDF file, find variable IDs
 ncId   = netcdf.open( fullfile( In.dir, In.file ) );
@@ -251,7 +254,7 @@ end
 % If requested, perform area averaging
 if Opts.ifAverage
     fld = mean( fld, 1 );
-    if Opts.ifCenter || Opts.ifCenterMonth
+    if ifClim
         cli = mean( cli, 1 );
     end
 end
@@ -279,7 +282,7 @@ end
 % Output data and attributes
 x = double( fld ); % for compatibility with NLSA code
 varList = { 'x' 'idxT0' };
-if Opts.ifCenter || Opts.ifCenterMonth
+if ifClim
     varList = [ varList 'cli' 'idxTClim0' 'nTClim' ];
 end
 if Opts.ifNormalize

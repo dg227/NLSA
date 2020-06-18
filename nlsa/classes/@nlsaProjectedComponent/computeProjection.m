@@ -2,7 +2,7 @@ function a = computeProjection( obj, src, kOp, varargin )
 % COMPUTEPROJECTION Compute projected data from time-lagged embedded data src
 %  and kernel operator kOp 
 % 
-% Modified 2016/04/05
+% Modified 2020/06/16
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  Validate input arguments
@@ -62,10 +62,12 @@ fprintf( logId, 'Min number of basis functions           = %i \n', min( nL ) );
 fprintf( logId, '----------------------------------------- \n' ); 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Read eigenfunctions
+% Read eigenfunctions.
+% Complex conjugation is performed since we will be doing L2 projection.
 tic
 [ phi, mu ] = getEigenfunctions( kOp );
-phi         = bsxfun( @times, phi, mu );
+phi         = phi .* mu;
+phi         = conj( phi ); 
 tWall = toc;
 fprintf( logId, 'READPHI number of samples %i, number of eigenfunctions %i, %2.4f \n', ...
              size( phi, 1 ), size( phi, 2 ), tWall );

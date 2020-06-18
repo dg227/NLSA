@@ -1,9 +1,8 @@
-function a = computeVelocityProjection( obj, src, diffOp, varargin )
-% COMPUTEVELOCITYPROJECTION Compute projected velocity data from 
-% time-lagged embedded data src
-%  and diffusion operator diffOp 
+function a = computeVelocityProjection( obj, src, kOp, varargin )
+% COMPUTEVELOCITYPROJECTION Compute projected velocity data from time-lagged 
+% embedded data src and kernel operator kOp 
 % 
-% Modified 2014/06/25
+% Modified 2020/06/16
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  Validate input arguments
@@ -13,14 +12,14 @@ end
 if ~isa( src, 'nlsaEmbeddedComponent' )
     error( 'Source data must be specified as an array of nlsaEmbeddedComponent objects' )
 end
-if ~isa( diffOp, 'nlsaDiffusionOperator' ) || ~isscalar( diffOp )
-    error( 'Diffusion operator must be specified as a scalar nlsaDiffusionOperator object' )
+if ~isa( kOp, 'nlsaKernelOperator' ) || ~isscalar( kOp )
+    error( 'Diffusion operator must be specified as a scalar nlsaKernelOperator object' )
 end
 if ~isCompatible( obj, src )
     error( 'Incompatible source components' )
 end
-if ~isCompatible( obj, diffOp )
-    error( 'Incompatible diffusion operator' )
+if ~isCompatible( obj, kOp )
+    error( 'Incompatible kernel operator' )
 end
 nDE = getEmbeddingSpaceDimension( obj );
 nL  = getNBasisFunction( obj );
@@ -65,10 +64,9 @@ fprintf( logId, '----------------------------------------- \n' );
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Read eigenfunctions
 tic
-ifMu   = true; % normalize by Riemannian measure
-ifPhi0 = true; % return lambda = 0 eigenfunction
-[ phi, mu ] = getEigenfunctions( diffOp, ifMu, ifPhi0 );
-phi = bsxfun( @times, phi, mu );
+[ phi, mu ] = getEigenfunctions( kOp );
+phi         = phi .* mu;
+phi         = conj( phi ); 
 tWall = toc;
 fprintf( logId, 'READPHI number of samples %i, number of eigenfunctions %i, %2.4f \n', ...
              size( phi, 1 ), size( phi, 2 ), tWall );
