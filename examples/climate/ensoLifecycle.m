@@ -62,9 +62,9 @@ ifKoopman = false; % compute Koopman eigenfunctions
 ifKoopmanSpectrum = false;  % plot generator spectrum
 
 % ENSO lifecycle plots
-ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
-ifNLSALifecycle    = false; % ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % ENSO lifecycle from generator eigenfuncs. 
+ifNinoLifecycle    = true; % ENSO lifecycle from Nino indices
+ifNLSALifecycle    = true; % ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = true; % ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
 ifNinoPhases          = false; % ENSO phases from Nino 3.4 index
@@ -79,9 +79,9 @@ ifNLSAComposites    = false; % compute phase composites based on NLSA
 ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = true; % difference composites based on NLSA
-ifKoopmanDiffComposites = true; % difference composites based on Koopman
+ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = false; % difference composites based on NLSA
+ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Low-frequency phases
 ifNLSALFPhases    = false; % decadal/trend phases from kernel eigenfunctions 
