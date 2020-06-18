@@ -5,15 +5,15 @@
 
 %% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-%dataset    = 'ccsm4Ctrl';    
+dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-%period     = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
+period     = '1300yr';        % 1300-year analysis
+sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
+embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
-%kernel     = 'cone';       % cone kernel      
+kernel     = 'cone';       % cone kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -26,14 +26,14 @@
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-dataset    = 'ersstV4';                                     
+%dataset    = 'ersstV4';                                     
 %period     = 'satellite'; % 1978-present
-period     = '50yr';      % 1970-present
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
-embWindow  = '4yr';       % 4-year embedding
-kernel     = 'cone';      % cone kernel
+%embWindow  = '4yr';       % 4-year embedding
+%kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -62,9 +62,9 @@ ifKoopman = false; % compute Koopman eigenfunctions
 ifKoopmanSpectrum = false;  % plot generator spectrum
 
 % ENSO lifecycle plots
-ifNinoLifecycle    = true; % ENSO lifecycle from Nino indices
-ifNLSALifecycle    = true; % ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = true; % ENSO lifecycle from generator eigenfuncs. 
+ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
+ifNLSALifecycle    = false; % ENSO lifecycle from kernel eigenfunctions
+ifKoopmanLifecycle = false; % ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
 ifNinoPhases          = false; % ENSO phases from Nino 3.4 index
@@ -146,12 +146,13 @@ compositesDomain  = 'globe';   % global domain
 % figDir:       Output directory for plots
 % Spec:         Parameters for Koopman spectral plots
 
-nShiftNino  = 11;        
-decayFactor = 4; 
-phase0      = 7;         
-leads       = [ 0 6 12 18 24 ]; 
-nDiff       = 6; 
-nPhaseLF    = 2;
+nShiftNino   = 11;        
+decayFactor  = 4; 
+phase0       = 7;         
+leads        = [ 0 6 12 18 24 ]; 
+nDiff        = 6; 
+nPhaseLF     = 2;
+nPhaseTrendC = 4;
 
 
 experiment = { dataset period sourceVar [ embWindow 'Emb' ] ...
@@ -445,7 +446,6 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
 
     idxZTrendC   = 9;
     phaseZTrendC = exp( - i * 7 * pi / 8 );
-    nPhaseTrendC = 4;
     nSamplePhaseTrendC = 30; 
     decayFactorTrendC = 4; 
     phase0TrendC = 1;
@@ -718,6 +718,16 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
     Spec.yLim = [ -3 3 ]; 
     Spec.c = distinguishable_colors( 6 );
     Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+
+    idxZEnsoC   = 10;
+    phaseZEnsoC = exp( i * 9 * pi / 16 );
+    nPhaseEnsoC = 8;
+    nSamplePhaseEnsoC = 200; 
+    decayFactorEnsoC = 4; 
+    phase0EnsoC = 1;
+    leadsEnsoC = 0 : 2 : 22;
+
+
 
 case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb_coneKernel'
 
@@ -3770,7 +3780,7 @@ if ifKoopmanEnsoCombiLifecycle
     set( gca, 'clim', [ -1 1 ] )
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
-    title( 'Coloring by cos(month)*sign(trend)' )
+    title( 'Coloring by cos(month)*sign(ENSO)' )
 
 
     titleStr = sprintf( [ 'Enso combination lifecycle (Koopman); ' ...
@@ -3923,7 +3933,7 @@ end
 
 
 
-%% GENERAL PLOT PARAMETERS FOR TREND COMBINATION COMPOSITES
+%% GENERAL PLOT PARAMETERS FOR ENSO COMBINATION COMPOSITES
 
 Fig.units      = 'inches';
 Fig.figWidth   = 13; 
@@ -3949,7 +3959,7 @@ SST = load( fullfile( model.trgComponent( iCSST ).path, ...
                       'dataGrid.mat' ) ); 
 SST.xLim = xLim; % longitude plot limits
 SST.yLim = yLim; % latitude plot limits
-SST.cLim    = [ -2 2 ]; % color range
+SST.cLim    = [ -1 1 ]; % color range
 SST.cOffset = .035; % horizontal offset of colorbar
 SST.cScale  = .4;  % scaling factor for colorbar width  
 SST.ifXTickLabels = true;  
@@ -4036,7 +4046,7 @@ end
 
 
 
-%% TREND COMBINATION COMPOSITES BASED ON GENERATOR
+%% ENSO COMBINATION COMPOSITES BASED ON GENERATOR
 % Create a cell array compZEnsoC of size [ 1 nC ] where nC is the number of 
 % observables to be composited. nC is equal to the number of target 
 % components in the NLSA model. 
