@@ -5,15 +5,15 @@
 
 %% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset    = 'ccsm4Ctrl';    
+%dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-period     = '1300yr';        % 1300-year analysis
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%period     = '1300yr';        % 1300-year analysis
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
+%embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
-kernel     = 'cone';       % cone kernel      
+%kernel     = 'cone';       % cone kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -26,14 +26,14 @@ kernel     = 'cone';       % cone kernel
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-%dataset    = 'ersstV4';                                     
+dataset    = 'ersstV4';                                     
 %period     = 'satellite'; % 1978-present
-%period     = '50yr';      % 1970-present
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
+period     = '50yr';      % 1970-present
+sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
-%embWindow  = '4yr';       % 4-year embedding
-%kernel     = 'cone';      % cone kernel
+embWindow  = '4yr';       % 4-year embedding
+kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -79,9 +79,9 @@ ifNLSAComposites    = false; % compute phase composites based on NLSA
 ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
-ifNinoDiffComposites    = true; % difference composites based on Nino 3.4 index
-ifNLSADiffComposites    = true; % difference composites based on NLSA
-ifKoopmanDiffComposites = true; % difference composites based on Koopman
+ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
+ifNLSADiffComposites    = false; % difference composites based on NLSA
+ifKoopmanDiffComposites = false; % difference composites based on Koopman
 
 % Low-frequency phases
 ifNLSALFPhases    = false; % decadal/trend phases from kernel eigenfunctions 
@@ -91,8 +91,34 @@ ifKoopmanLFPhases = false; % decadal/trend phases from generator eigenfunctions
 ifNLSALFComposites = false; % decadal/trend composites based on NLSA
 ifKoopmanLFComposites = false; % decadal/trend composites based on Koopman
 
+% Trend scatterplots
+ifNLSATrendScatterplots    = false; % global SST/SAT trends based on NLSA
+ifKoopmanTrendScatterplots = false; % global SST/SAT trends based on Koopman
+
+% Lifecycle plots for trend combination modes
+ifKoopmanTrendCombiLifecycle = false; 
+
+% Lifecycle phases and equivariance plots for trend combination modes
+ifKoopmanTrendCombiPhases = false;
+ifKoopmanTrendCombiEquivariance = false; 
+
+% Phase composites for trend combination modes based on Koopman
+ifKoopmanTrendCombiComposites = false;
+
+% Lifecycle plots for ENSO combination modes
+ifKoopmanEnsoCombiLifecycle = true; 
+
+% Lifecycle phases and equivariance plots for ENSO combination modes
+ifKoopmanEnsoCombiPhases = true;
+ifKoopmanEnsoCombiEquivariance = true; 
+
+% Phase composites for trend combination modes based on Koopman
+ifKoopmanEnsoCombiComposites = true;
+
+
+
 % Output/plotting options
-ifWeighComposites = true;     % weigh composites by adjacent phases
+ifWeighComposites = false;     % weigh composites by adjacent phases
 ifPlotWind        = true;      % overlay quiver plot of surface winds 
 ifPrintFig        = true;      % print figures to file
 compositesDomain  = 'globe';   % global domain
@@ -126,6 +152,7 @@ phase0      = 7;
 leads       = [ 0 6 12 18 24 ]; 
 nDiff       = 6; 
 nPhaseLF    = 2;
+
 
 experiment = { dataset period sourceVar [ embWindow 'Emb' ] ...
                [ kernel 'Kernel' ] };
@@ -410,6 +437,27 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
     LF.phiLabel = { 'trend' 'TBD' };
     LF.zLabel   = { 'trend' 'PDO' };
 
+    idxPhiTrend = 6;
+    signPhiTrend = 1;
+
+    idxZTrend = 6;
+    signZTrend = 1;
+
+    idxZTrendC   = 9;
+    phaseZTrendC = exp( - i * 7 * pi / 8 );
+    nPhaseTrendC = 4;
+    nSamplePhaseTrendC = 30; 
+    decayFactorTrendC = 4; 
+    phase0TrendC = 1;
+    leadsTrendC = [ 0 3 6 9 12 ];
+
+    idxZEnsoC   = 11;
+    phaseZEnsoC = exp( - i * 3 * pi / 4 );
+    nPhaseEnsoC = 8;
+    nSamplePhaseEnsoC = 20; 
+    decayFactorEnsoC = 4; 
+    phase0EnsoC = 1;
+    leadsEnsoC = 0 : 2 : 22;
 
 
 % ERSSTv4 reanalysis data, satellite era, global SST input, 4-year delay 
@@ -1458,7 +1506,7 @@ end
 % in the 2D plane of the phase boundaries.
 % 
 % Z.avNino34 is a row vector of size [ 1 nPhase ] containing the average
-% Nino 3.4 index for each NLSA generator. 
+% Nino 3.4 index for each generator phase. 
 %
 % Nino34.selectInd, Nino34.angles, and Nino34.avNino34 are defined analogously to
 % Z.selectInd, Z.angles, and Z.avNino34, respectively, using the Nino 3.4
@@ -3005,6 +3053,1106 @@ if ifKoopmanLFComposites
     end
 end
 
+%% TREND SCATTERPLOTS BASED ON KERNEL EIGENFUNCTIONS
+if ifNLSATrendScatterplots
+    
+    iStart = nSB + 1 + nShiftTakens;
+    iEnd   = iStart + nSE - 1;
+
+    % Retrieve NLSA eigenfunctions
+    phi = getDiffusionEigenfunctions( model );
+    PhiTrend.idx = ( signPhiTrend .* phi( :, idxPhiTrend ) )';
+    PhiTrend.time = getTrgTime( model );
+    PhiTrend.time = PhiTrend.time( iStart  : iEnd );
+    PhiTrend.time = PhiTrend.time( 1 : nSE );
+
+    iTicks = 1 : 60 : nSE;
+
+    % Retrieve SST and compute mean
+    dat = getData( model.trgComponent( iCSST ) );
+    PhiTrend.meanSST = mean( dat( :, iStart : iEnd ), 1 );
+
+    % Retrieve SAT and compute mean
+    dat = getData( model.trgComponent( iCSAT ) );
+    PhiTrend.meanSAT = mean( dat( :, iStart : iEnd ), 1 );
+    
+    clear dat
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 4; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .2;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .4;
+    Fig.gapX       = .20;
+    Fig.gapY       = .4;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = 1;
+    Fig.nTileY     = 2;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % SST scatterplot
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    scatter( PhiTrend.idx, PhiTrend.meanSST, 7, PhiTrend.time, 'filled' )
+    ylabel( 'global mean SST anomaly (K)' )
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'northOutside' );
+    set( gca, 'cLim', [ PhiTrend.time( 1 ) PhiTrend.time( end ) ] )
+    set( hC, 'xTick', PhiTrend.time( iTicks ), ...
+             'xTickLabel', datestr( PhiTrend.time( iTicks ), 'yy' ) )   
+    cPos = get( hC, 'position' );
+    cPos( 2 ) = cPos( 2 ) + .08;
+    cPos( 4 ) = cPos( 4 ) * .5;
+    set( hC, 'position', cPos )
+
+    % SAT scatterplot
+    set( gcf, 'currentAxes', ax( 1, 2 ) )
+    scatter( PhiTrend.idx, PhiTrend.meanSAT, 7, PhiTrend.time, 'filled' )
+    xlabel( sprintf( '\\phi_{%i}', idxPhiTrend ) )
+    ylabel( 'global mean SAT anomaly (K)' )
+
+    % Print figure
+    if ifPrintFig
+        figFile = 'figTrendScatterPlotKernel.png';
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+%% TREND SCATTERPLOTS BASED ON GENERATOR EIGENFUNCTIONS
+if ifKoopmanTrendScatterplots
+    
+    iStart = nSB + 1 + nShiftTakens;
+    iEnd   = iStart + nSE - 1;
+
+    % Retrieve Koopman eigenfunctions
+    z = getKoopmanEigenfunctions( model );
+    ZTrend.idx = ( signZTrend .* phi( :, idxZTrend ) )';
+    ZTrend.time = getTrgTime( model );
+    ZTrend.time = ZTrend.time( iStart  : iEnd );
+    ZTrend.time = ZTrend.time( 1 : nSE );
+
+    iTicks = 1 : 60 : nSE;
+
+    % Retrieve SST and compute mean
+    dat = getData( model.trgComponent( iCSST ) );
+    ZTrend.meanSST = mean( dat( :, iStart : iEnd ), 1 );
+
+    % Retrieve SAT and compute mean
+    dat = getData( model.trgComponent( iCSAT ) );
+    ZTrend.meanSAT = mean( dat( :, iStart : iEnd ), 1 );
+    
+    clear dat
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 4; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .2;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .4;
+    Fig.gapX       = .20;
+    Fig.gapY       = .4;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = 1;
+    Fig.nTileY     = 2;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % SST scatterplot
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    scatter( ZTrend.idx, ZTrend.meanSST, 7, ZTrend.time, 'filled' )
+    ylabel( 'global mean SST anomaly (K)' )
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'northOutside' );
+    set( gca, 'cLim', [ ZTrend.time( 1 ) ZTrend.time( end ) ] )
+    set( hC, 'xTick', ZTrend.time( iTicks ), ...
+             'xTickLabel', datestr( ZTrend.time( iTicks ), 'yy' ) )   
+    cPos = get( hC, 'position' );
+    cPos( 2 ) = cPos( 2 ) + .08;
+    cPos( 4 ) = cPos( 4 ) * .5;
+    set( hC, 'position', cPos )
+
+    % SAT scatterplot
+    set( gcf, 'currentAxes', ax( 1, 2 ) )
+    scatter( ZTrend.idx, ZTrend.meanSAT, 7, ZTrend.time, 'filled' )
+    xlabel( sprintf( 'z_{%i}', idxZTrend ) )
+    ylabel( 'global mean SAT anomaly (K)' )
+
+    % Print figure
+    if ifPrintFig
+        figFile = 'figTrendScatterPlotGenerator.png';
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+
+
+%% PLOT TREND COMBINATION LIFECYCLE BASED ON KOOPMAN EIGENFUNCTIONS
+if ifKoopmanTrendCombiLifecycle
+
+    % Retrieve Koopman eigenfunctions
+    z = getKoopmanEigenfunctions( model );
+    ZTrendC.idx = [ real( phaseZTrendC * z( :, idxZTrendC ) )' 
+                    imag( phaseZTrendC * z( :, idxZTrendC ) )' ];
+    ZTrendC.time = getTrgTime( model );
+    ZTrendC.time = ZTrendC.time( nSB + 1 + nShiftTakens : end );
+    ZTrendC.time = ZTrendC.time( 1 : nSE );
+    T = getKoopmanEigenperiods( model ) / 12;
+    TTrendC = T( idxZTrendC );
+    
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 12; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .65;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .40;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0.3; 
+    Fig.nTileX     = 5;
+    Fig.nTileY     = 1;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Plot trend combination lifecycle
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    plotLifecycle( ZTrendC, ElNinos, LaNinas, model.tFormat )
+    xlabel( sprintf( 'Re(z_{%i})', idxZTrendC ) )
+    ylabel( sprintf( 'Im(z_{%i})', idxZTrendC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+
+    % Make scatterplot of trend combination lifcycle colored by trend 
+    % eigenfunction
+    set( gcf, 'currentAxes', ax( 2, 1 ) )
+    plot( ZTrendC.idx( 1, : ), ZTrendC.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( ZTrendC.idx( 1, : ), ZTrendC.idx( 2, : ), 17, ...
+             ZTrend.idx( 1, : ), 'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZTrendC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    title( 'Coloring by trend eigenfunc.' )
+
+    % Make scatterplot of trend combination lifcycle colored by absolute value 
+    % of trend eigenfunction
+    set( gcf, 'currentAxes', ax( 3, 1 ) )
+    plot( ZTrendC.idx( 1, : ), ZTrendC.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( ZTrendC.idx( 1, : ), ZTrendC.idx( 2, : ), 17, ...
+             abs( ZTrend.idx( 1, : ) ), 'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZTrendC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    title( 'Coloring by abs( trend eigenfunc. )' )
+
+    % Make scatterplot of trend combination lifcycle colored by calendar  
+    % month
+    set( gcf, 'currentAxes', ax( 4, 1 ) )
+    plot( ZTrendC.idx( 1, : ), ZTrendC.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( ZTrendC.idx( 1, : ), ZTrendC.idx( 2, : ), 17, ...
+             month( ZTrendC.time ), 'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZTrendC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ 1 12 ] )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    title( 'Coloring by month' )
+    
+    % Make scatterplot of trend combination lifcycle colored by 
+    % cos( 2 * calendar month )
+    %indRef = cos( 2 * pi * ( month( ZTrendC.time ) - 1 ) / 6 );
+    indRef = cos( 2 * pi * ( month( ZTrendC.time ) - 1 ) / 12 ) ...
+           .* sign( ZTrend.idx );
+    set( gcf, 'currentAxes', ax( 5, 1 ) )
+    plot( ZTrendC.idx( 1, : ), ZTrendC.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( ZTrendC.idx( 1, : ), ZTrendC.idx( 2, : ), 17, indRef, ...
+             'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZTrendC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    title( 'Coloring by cos(month)*sign(trend)' )
+
+
+    titleStr = sprintf( [ 'Trend combination lifecycle (Koopman); ' ...
+                          'eigenperiod = %1.2f y' ], TTrendC );
+    title( axTitle, titleStr  )
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figTrendCombiLifecycleGenerator.png' );
+        set( gcf, 'invertHardCopy', 'off' )
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+%% COMPUTE AND PLOT TREND COMBINATION PHASES BASED ON GENERATOR EIGENFUNCTIONS
+%
+% ZTrendC.selectInd is a cell array of size [ 1 nPhaseTrendC ]. 
+% ZTrendC.selectInd{ iPhase } is a row vector containing the indices 
+% (timestamps) of the data affiliated with trend combination phase iPHase. 
+%
+% ZTrendC.angles is a row vector of size [ 1 nPhase ] containing the polar
+% angles in the 2D plane of the phase boundaries.
+% 
+% ZtrendC.month_ref is a row vector of size [ 1 nPhase ] containing the 
+% average of a reference index given by the cosine of 2 * calendar month
+% for each phase.
+%
+if ifKoopmanTrendCombiPhases
+   
+    disp( 'Generator-based trend combination phases...' ); t = tic;
+
+
+    % Create index to align trend combination phases based on calendar month
+    ZTrendC.indRef = cos( 2 * pi * ( month( ZTrendC.time ) - 1 ) / 12 ) ...
+           .* sign( ZTrend.idx );
+
+    % Compute trend combination phases based on generator
+    [ ZTrendC.selectInd, ZTrendC.angles, ZTrendC.meanIndRef, ...
+      ZTrendC.weights ] = ...
+        computeLifecyclePhasesWeighted( ZTrendC.idx', ZTrendC.indRef', ...
+                        nPhaseTrendC, nSamplePhaseTrendC, decayFactorTrendC );
+    toc( t )
+        
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 5; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .60;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0; 
+    Fig.nTileX     = 1;
+    Fig.nTileY     = 1;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 8;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % Plot generator phases
+    set( gcf, 'currentAxes', ax( 1 ) )
+    plotPhases( ZTrendC.idx', ZTrendC.selectInd, ZTrendC.angles )
+    xlabel( sprintf( 'Re(z_{%i})', idxZTrendC ) )
+    ylabel( sprintf( 'Im(z_{%i})', idxZTrendC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    title( sprintf( 'Trend combination phases; eigenperiod = %1.2f y', ...
+                    TTrendC ) )
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figTrendCombiPhasesKoopman.png' );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+
+
+end
+
+
+%% TREND COMBINATION EQUIVARIANCE PLOTS BASED ON GENERATOR
+if ifKoopmanTrendCombiEquivariance
+
+    nLead = numel( leadsTrendC );  
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 10; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .5;
+    Fig.gapX       = .20;
+    Fig.gapY       = .5;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = nLead;
+    Fig.nTileY     = 1;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Loop over the leads
+    for iLead = 1 : nLead
+
+        % Plot Koopman phases 
+        set( gcf, 'currentAxes', ax( iLead, 1 ) )
+        title( sprintf( 'Lead = %i months', leadsTrendC( iLead ) ) )
+        plotPhaseEvolution( ZTrendC.idx', ZTrendC.selectInd, ZTrendC.angles, ...
+                            phase0TrendC, leadsTrendC( iLead ) )
+        xlabel( sprintf( 'Re(z_{%i})', idxZTrendC ) )
+        if iLead > 1
+            yticklabels( [] )
+        else
+            ylabel( sprintf( 'Im(z_{%i})', idxZTrendC ) )
+        end
+        xlim( [ -2.5 2.5 ] )
+        ylim( [ -2.5 2.5 ] )
+    end
+
+    title( axTitle, sprintf( 'Start phase = %i', phase0TrendC ) )
+
+    % Print figure
+    if ifPrintFig
+        figFile = sprintf( 'figTrendCombiEquivarianceGenerator_phase%i.png', phase0TrendC );
+        figFile = fullfile( figDir, figFile );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+
+
+%% GENERAL PLOT PARAMETERS FOR TREND COMBINATION COMPOSITES
+
+Fig.units      = 'inches';
+Fig.figWidth   = 13; 
+Fig.deltaX     = .55;
+Fig.deltaX2    = .7;
+Fig.deltaY     = .5;
+Fig.deltaY2    = .5;
+Fig.gapX       = .20;
+Fig.gapY       = .2;
+Fig.gapT       = .25; 
+Fig.nTileX     = 4;
+Fig.nTileY     = nPhaseTrendC;
+Fig.aspectR    = aspectR;
+Fig.fontName   = 'helvetica';
+Fig.fontSize   = 6;
+Fig.tickLength = [ 0.02 0 ];
+Fig.visible    = 'on';
+Fig.nextPlot   = 'add'; 
+
+% SST field
+% SST.ifXY is logical mask for valid ocean gridpoints
+SST = load( fullfile( model.trgComponent( iCSST ).path, ...
+                      'dataGrid.mat' ) ); 
+SST.xLim = xLim; % longitude plot limits
+SST.yLim = yLim; % latitude plot limits
+SST.cLim    = [ -2 2 ]; % color range
+SST.cOffset = .035; % horizontal offset of colorbar
+SST.cScale  = .4;  % scaling factor for colorbar width  
+SST.ifXTickLabels = true;  
+SST.ifYTickLabels = true;
+    
+% SSH field
+% SSH.ifXY is logical mask for valid ocean gridpoints
+SSH = load( fullfile( model.trgComponent( iCSSH ).path, ...
+                      'dataGrid.mat' ) ); 
+SSH.xLim = xLim; % longitude plot limits
+SSH.yLim = yLim; % latitude plot limits
+SSH.cLim    = [ -15 15 ]; % color range
+SSH.cOffset = .035; % horizontal offset of colorbar
+SSH.cScale  = .4;  % scaling factor for colorbar width  
+SSH.ifXTickLabels = true;  
+SSH.ifYTickLabels = false;
+switch dataset
+case 'ccsm4Ctrl'
+    SSH.title = 'SSH anomaly (cm)';
+    SSH.scl = 1;
+case 'ersstV4'
+    SSH.title = 'SSH anomaly rel. geoid (100 m)';
+    SSH.scl = 1E-2;
+case 'ersstV5'
+    SSH.title = 'SSH anomaly rel. geoid (100 m)';
+    SSH.scl = 1E-2;
+otherwise
+    error( 'Invalid dataset' )
+end
+   
+% SAT field
+% SAT.ifXY is logical mask for valid gridpoints
+SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
+                      'dataGrid.mat' ) ); 
+SAT.xLim = xLim; % longitude plot limits
+SAT.yLim = yLim; % latitude plot limits
+SAT.cLim    = [ -2 2 ]; % color range
+SAT.cOffset = .035; % horizontal offset of colorbar
+SAT.cScale  = .4;  % scaling factor for colorbar width  
+SAT.ifXTickLabels = true;  
+SAT.ifYTickLabels = false;
+ 
+% Precipitation rate field
+% PRate.ifXY is logical mask for valid gridpoints
+PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
+                        'dataGrid.mat' ) ); 
+PRate.xLim = xLim; % longitude plot limits
+PRate.yLim = yLim; % latitude plot limits
+PRate.cLim    = [ -2 2 ]; % color range
+PRate.cOffset = .035; % horizontal offset of colorbar
+PRate.cScale  = .4;  % scaling factor for colorbar width  
+PRate.ifXTickLabels = true;  
+PRate.ifYTickLabels = false;
+switch dataset
+case 'ccsm4Ctrl'
+    PRate.scl     = 1000 * 3600 * 24; % convert from m/s to mm/day 
+    PRate.title   = 'Precip. anomaly (mm/day)';
+case 'ersstV4'
+    PRate.scl    = 1; 
+    PRate.title  = 'Precip. anomaly (mm/day)';
+case 'ersstV5'
+    PRate.scl    = 1; 
+    PRate.title  = 'Precip. anomaly (mm/day)';
+otherwise
+    error( 'Invalid dataset' )
+end
+
+% Surface wind field
+UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+              'dataGrid.mat' ) ); 
+switch dataset
+case 'ccsm4Ctrl'
+    UVWnd.nSkipX = 10; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 10; % meridional downsampling factor for quiver plots
+case 'ersstV4'
+    UVWnd.nSkipX = 5; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 5; % meridional downsampling factor for quiver plots
+case 'ersstV5'
+    UVWnd.nSkipX = 5; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 5; % meridional downsampling factor for quiver plots
+otherwise
+    error( 'Invalid dataset' )
+end
+
+
+
+%% TREND COMBINATION COMPOSITES BASED ON GENERATOR
+% Create a cell array compZTrendC of size [ 1 nC ] where nC is the number of 
+% observables to be composited. nC is equal to the number of target 
+% components in the NLSA model. 
+%
+% compZTrendC{ iC } is an array of size [ nD nPhaseTrendC ], where nD is the 
+% dimension of component iC. compZTrendC{ iC }( :, iPhase ) contains the 
+% phase composite for observable iC and phase iPhase. 
+if ifKoopmanTrendCombiComposites
+
+    disp( 'Generator-based trend combination composites...' ); t = tic;
+    
+    % Start and end time indices in data arrays
+    iStart = 1 + nSB + nShiftTakens;
+    iEnd   = iStart + nSE - 1;  
+
+    if ifWeighComposites
+        compZTrendC = computePhaseComposites( model, ZTrendC.selectInd, ...
+                                        iStart, iEnd, ZTrendC.weights );
+    else
+        compZTrendC = computePhaseComposites( model, ZTrendC.selectInd, ...
+                                        iStart, iEnd );
+    end
+
+    toc( t )
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    colormap( redblue )
+
+    % Loop over the phases
+    for iPhase = 1 : nPhaseTrendC
+
+        % SST phase composites
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        SST.ifXTickLabels = iPhase == nPhaseTrendC;
+        if ifPlotWind
+            plotPhaseComposite( compZTrendC{ iCSST }( :, iPhase ), SST, ...
+                                compZTrendC{ iCUWnd }( :, iPhase ), ...
+                                compZTrendC{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SST anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZTrendC{ iCSST }( :, iPhase ), SST )
+            titleStr = 'SST anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+        lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        lblPos = get( lbl, 'position' );
+        lblPos( 1 ) = lblPos( 1 ) - .4;
+        set( lbl, 'position', lblPos )
+
+        % SSH phase composites
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SSH.ifXTickLabels = iPhase == nPhaseTrendC;
+        if ifPlotWind
+            plotPhaseComposite( compZTrendC{ iCSSH }( :, iPhase ), SSH, ...
+                                compZTrendC{ iCUWnd }( :, iPhase ), ...
+                                compZTrendC{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ SSH.title ', surface wind' ];
+        else
+            plotPhaseComposite( compZTrendC{ iCSSH }( :, iPhase ), SSH );
+            titleStr = SSH.title;  
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % SAT phase composites
+        set( fig, 'currentAxes', ax( 3, iPhase ) )
+        SAT.ifXTickLabels = iPhase == nPhaseTrendC;
+        if ifPlotWind
+            plotPhaseComposite( compZTrendC{ iCSAT }( :, iPhase ), SAT, ...
+                                compZTrendC{ iCUWnd }( :, iPhase ), ...
+                                compZTrendC{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SAT anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZTrendC{ iCSAT }( :, iPhase ), SAT );
+            titleStr = 'SAT anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % Precipitation rate phase composites
+        set( fig, 'currentAxes', ax( 4, iPhase ) )
+        PRate.ifXTickLabels = iPhase == nPhaseTrendC;
+        if ifPlotWind
+            plotPhaseComposite( compZTrendC{ iCPRate }( :, iPhase ), PRate, ...
+                                compZTrendC{ iCUWnd }( :, iPhase ), ... 
+                                compZTrendC{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ PRate.title, ', surface wind' ]; 
+        else
+            plotPhaseComposite( ...
+                compZTrendC{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+            titleStr = PRate.title;
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+    end
+
+    title( axTitle, 'Trend combination composites -- generator' )
+
+    % Print figure
+    if ifPrintFig
+        figFile = [ 'figTrendCombiCompositesGenerator_' compositesDomain fileSuffix ];
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+
+
+%% PLOT ENSO COMBINATION LIFECYCLE BASED ON KOOPMAN EIGENFUNCTIONS
+if ifKoopmanEnsoCombiLifecycle
+
+    % Retrieve Koopman eigenfunctions
+    z = getKoopmanEigenfunctions( model );
+    ZEnsoC.idx = [ real( phaseZEnsoC * z( :, idxZEnsoC ) )' 
+                    imag( phaseZEnsoC * z( :, idxZEnsoC ) )' ];
+    ZEnsoC.time = getTrgTime( model );
+    ZEnsoC.time = ZEnsoC.time( nSB + 1 + nShiftTakens : end );
+    ZEnsoC.time = ZEnsoC.time( 1 : nSE );
+    T = getKoopmanEigenperiods( model ) / 12;
+    TEnsoC = T( idxZEnsoC );
+    
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 12; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .65;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .40;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0.3; 
+    Fig.nTileX     = 5;
+    Fig.nTileY     = 1;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Plot trend combination lifecycle
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    plotLifecycle( ZEnsoC, ElNinos, LaNinas, model.tFormat )
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnsoC ) )
+    ylabel( sprintf( 'Im(z_{%i})', idxZEnsoC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+
+    % Make scatterplot of trend combination lifcycle colored by ENSO 
+    % eigenfunction
+    set( gcf, 'currentAxes', ax( 2, 1 ) )
+    plot( ZEnsoC.idx( 1, : ), ZEnsoC.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( ZEnsoC.idx( 1, : ), ZEnsoC.idx( 2, : ), 17, ...
+             Z.idx( 1, : ), 'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnsoC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    title( 'Coloring by ENSO eigenfunc.' )
+
+    % Make scatterplot of trend combination lifcycle colored by absolute value 
+    % of ENSO eigenfunction
+    set( gcf, 'currentAxes', ax( 3, 1 ) )
+    plot( ZEnsoC.idx( 1, : ), ZEnsoC.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( ZEnsoC.idx( 1, : ), ZEnsoC.idx( 2, : ), 17, ...
+             abs( Z.idx( 1, : ) ), 'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnsoC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    title( 'Coloring by abs( ENSO eigenfunc. )' )
+
+    % Make scatterplot of trend combination lifcycle colored by calendar  
+    % month
+    set( gcf, 'currentAxes', ax( 4, 1 ) )
+    plot( ZEnsoC.idx( 1, : ), ZEnsoC.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( ZEnsoC.idx( 1, : ), ZEnsoC.idx( 2, : ), 17, ...
+             month( ZEnsoC.time ), 'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnsoC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ 1 12 ] )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    title( 'Coloring by month' )
+    
+    % Make scatterplot of trend combination lifcycle colored by 
+    % cos( 2 * calendar month )
+    %indRef = cos( 2 * pi * ( month( ZEnsoC.time ) - 1 ) / 6 );
+    indRef = cos( 2 * pi * ( month( ZEnsoC.time ) - 1 ) / 12 ) ...
+           .* sign( Z.idx( 1, : ) );
+    set( gcf, 'currentAxes', ax( 5, 1 ) )
+    plot( ZEnsoC.idx( 1, : ), ZEnsoC.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( ZEnsoC.idx( 1, : ), ZEnsoC.idx( 2, : ), 17, indRef, ...
+             'o', 'filled' )  
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnsoC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    title( 'Coloring by cos(month)*sign(trend)' )
+
+
+    titleStr = sprintf( [ 'Enso combination lifecycle (Koopman); ' ...
+                          'eigenperiod = %1.2f y' ], TEnsoC );
+    title( axTitle, titleStr  )
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figEnsoCombiLifecycleGenerator.png' );
+        set( gcf, 'invertHardCopy', 'off' )
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+%% COMPUTE AND PLOT TREND COMBINATION PHASES BASED ON GENERATOR EIGENFUNCTIONS
+%
+% ZEnsoC.selectInd is a cell array of size [ 1 nPhaseEnsoC ]. 
+% ZEnsoC.selectInd{ iPhase } is a row vector containing the indices 
+% (timestamps) of the data affiliated with trend combination phase iPHase. 
+%
+% ZEnsoC.angles is a row vector of size [ 1 nPhase ] containing the polar
+% angles in the 2D plane of the phase boundaries.
+% 
+% ZtrendC.month_ref is a row vector of size [ 1 nPhase ] containing the 
+% average of a reference index given by the cosine of 2 * calendar month
+% for each phase.
+%
+if ifKoopmanEnsoCombiPhases
+   
+    disp( 'Generator-based ENSO combination phases...' ); t = tic;
+
+
+    % Create index to align ENSO combination phases based on calendar month
+    ZEnsoC.indRef = cos( 2 * pi * ( month( ZEnsoC.time ) - 1 ) / 12 ) ...
+           .* sign( Z.idx( 1, : ) );
+
+    % Compute trend combination phases based on generator
+    [ ZEnsoC.selectInd, ZEnsoC.angles, ZEnsoC.meanIndRef, ...
+      ZEnsoC.weights ] = ...
+        computeLifecyclePhasesWeighted( ZEnsoC.idx', ZEnsoC.indRef', ...
+                        nPhaseEnsoC, nSamplePhaseEnsoC, decayFactorEnsoC );
+    toc( t )
+        
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 5; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .60;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0; 
+    Fig.nTileX     = 1;
+    Fig.nTileY     = 1;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 8;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % Plot generator phases
+    set( gcf, 'currentAxes', ax( 1 ) )
+    plotPhases( ZEnsoC.idx', ZEnsoC.selectInd, ZEnsoC.angles )
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnsoC ) )
+    ylabel( sprintf( 'Im(z_{%i})', idxZEnsoC ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    title( sprintf( 'ENSO combination phases; eigenperiod = %1.2f y', ...
+                    TEnsoC ) )
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figEnsoCombiPhasesKoopman.png' );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+
+
+end
+
+
+
+%% ENSO COMBINATION EQUIVARIANCE PLOTS BASED ON GENERATOR
+if ifKoopmanEnsoCombiEquivariance
+
+    nLead = numel( leadsEnsoC );  
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 10; 
+    Fig.deltaX     = .5;
+    Fig.deltaX2    = .1;
+    Fig.deltaY     = .48;
+    Fig.deltaY2    = .5;
+    Fig.gapX       = .20;
+    Fig.gapY       = .5;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = nLead / 2;
+    Fig.nTileY     = 2;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 6;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Loop over the leads
+    for iLead = 1 : nLead
+
+        if iLead <= nLead / 2
+            iTileX = iLead;
+            iTileY = 1;
+        else
+            iTileX = iLead - nLead / 2;
+            iTileY = 2;
+        end
+        % Plot Koopman phases 
+        set( gcf, 'currentAxes', ax( iTileX, iTileY ) )
+        title( sprintf( 'Lead = %i months', leadsEnsoC( iLead ) ) )
+        plotPhaseEvolution( ZEnsoC.idx', ZEnsoC.selectInd, ZEnsoC.angles, ...
+                            phase0EnsoC, leadsEnsoC( iLead ) )
+        if iTileX == 1
+            ylabel( sprintf( 'Im(z_{%i})', idxZEnsoC ) )
+        else
+            yticklabels( [] )
+        end
+        if iTileY == Fig.nTileY 
+            xlabel( sprintf( 'Re(z_{%i})', idxZEnsoC ) )
+        else
+            xticklabels( [] )
+        end
+        xlim( [ -2.5 2.5 ] )
+        ylim( [ -2.5 2.5 ] )
+    end
+
+    title( axTitle, sprintf( 'Start phase = %i', phase0EnsoC ) )
+
+    % Print figure
+    if ifPrintFig
+        figFile = sprintf( 'figEnsoCombiEquivarianceGenerator_phase%i.png', phase0EnsoC );
+        figFile = fullfile( figDir, figFile );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+
+
+%% GENERAL PLOT PARAMETERS FOR TREND COMBINATION COMPOSITES
+
+Fig.units      = 'inches';
+Fig.figWidth   = 13; 
+Fig.deltaX     = .55;
+Fig.deltaX2    = .7;
+Fig.deltaY     = .5;
+Fig.deltaY2    = .5;
+Fig.gapX       = .20;
+Fig.gapY       = .2;
+Fig.gapT       = .25; 
+Fig.nTileX     = 4;
+Fig.nTileY     = nPhaseEnsoC;
+Fig.aspectR    = aspectR;
+Fig.fontName   = 'helvetica';
+Fig.fontSize   = 6;
+Fig.tickLength = [ 0.02 0 ];
+Fig.visible    = 'on';
+Fig.nextPlot   = 'add'; 
+
+% SST field
+% SST.ifXY is logical mask for valid ocean gridpoints
+SST = load( fullfile( model.trgComponent( iCSST ).path, ...
+                      'dataGrid.mat' ) ); 
+SST.xLim = xLim; % longitude plot limits
+SST.yLim = yLim; % latitude plot limits
+SST.cLim    = [ -2 2 ]; % color range
+SST.cOffset = .035; % horizontal offset of colorbar
+SST.cScale  = .4;  % scaling factor for colorbar width  
+SST.ifXTickLabels = true;  
+SST.ifYTickLabels = true;
+    
+% SSH field
+% SSH.ifXY is logical mask for valid ocean gridpoints
+SSH = load( fullfile( model.trgComponent( iCSSH ).path, ...
+                      'dataGrid.mat' ) ); 
+SSH.xLim = xLim; % longitude plot limits
+SSH.yLim = yLim; % latitude plot limits
+SSH.cLim    = [ -15 15 ]; % color range
+SSH.cOffset = .035; % horizontal offset of colorbar
+SSH.cScale  = .4;  % scaling factor for colorbar width  
+SSH.ifXTickLabels = true;  
+SSH.ifYTickLabels = false;
+switch dataset
+case 'ccsm4Ctrl'
+    SSH.title = 'SSH anomaly (cm)';
+    SSH.scl = 1;
+case 'ersstV4'
+    SSH.title = 'SSH anomaly rel. geoid (100 m)';
+    SSH.scl = 1E-2;
+case 'ersstV5'
+    SSH.title = 'SSH anomaly rel. geoid (100 m)';
+    SSH.scl = 1E-2;
+otherwise
+    error( 'Invalid dataset' )
+end
+   
+% SAT field
+% SAT.ifXY is logical mask for valid gridpoints
+SAT = load( fullfile( model.trgComponent( iCSAT ).path, ...
+                      'dataGrid.mat' ) ); 
+SAT.xLim = xLim; % longitude plot limits
+SAT.yLim = yLim; % latitude plot limits
+SAT.cLim    = [ -2 2 ]; % color range
+SAT.cOffset = .035; % horizontal offset of colorbar
+SAT.cScale  = .4;  % scaling factor for colorbar width  
+SAT.ifXTickLabels = true;  
+SAT.ifYTickLabels = false;
+ 
+% Precipitation rate field
+% PRate.ifXY is logical mask for valid gridpoints
+PRate = load( fullfile( model.trgComponent( iCPRate ).path, ...
+                        'dataGrid.mat' ) ); 
+PRate.xLim = xLim; % longitude plot limits
+PRate.yLim = yLim; % latitude plot limits
+PRate.cLim    = [ -2 2 ]; % color range
+PRate.cOffset = .035; % horizontal offset of colorbar
+PRate.cScale  = .4;  % scaling factor for colorbar width  
+PRate.ifXTickLabels = true;  
+PRate.ifYTickLabels = false;
+switch dataset
+case 'ccsm4Ctrl'
+    PRate.scl     = 1000 * 3600 * 24; % convert from m/s to mm/day 
+    PRate.title   = 'Precip. anomaly (mm/day)';
+case 'ersstV4'
+    PRate.scl    = 1; 
+    PRate.title  = 'Precip. anomaly (mm/day)';
+case 'ersstV5'
+    PRate.scl    = 1; 
+    PRate.title  = 'Precip. anomaly (mm/day)';
+otherwise
+    error( 'Invalid dataset' )
+end
+
+% Surface wind field
+UVWnd = load( fullfile( model.trgComponent( iCUWnd ).path, ...
+              'dataGrid.mat' ) ); 
+switch dataset
+case 'ccsm4Ctrl'
+    UVWnd.nSkipX = 10; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 10; % meridional downsampling factor for quiver plots
+case 'ersstV4'
+    UVWnd.nSkipX = 5; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 5; % meridional downsampling factor for quiver plots
+case 'ersstV5'
+    UVWnd.nSkipX = 5; % zonal downsampling factor for quiver plots
+    UVWnd.nSkipY = 5; % meridional downsampling factor for quiver plots
+otherwise
+    error( 'Invalid dataset' )
+end
+
+
+
+%% TREND COMBINATION COMPOSITES BASED ON GENERATOR
+% Create a cell array compZEnsoC of size [ 1 nC ] where nC is the number of 
+% observables to be composited. nC is equal to the number of target 
+% components in the NLSA model. 
+%
+% compZEnsoC{ iC } is an array of size [ nD nPhaseEnsoC ], where nD is the 
+% dimension of component iC. compZEnsoC{ iC }( :, iPhase ) contains the 
+% phase composite for observable iC and phase iPhase. 
+if ifKoopmanEnsoCombiComposites
+
+    disp( 'Generator-based trend combination composites...' ); t = tic;
+    
+    % Start and end time indices in data arrays
+    iStart = 1 + nSB + nShiftTakens;
+    iEnd   = iStart + nSE - 1;  
+
+    if ifWeighComposites
+        compZEnsoC = computePhaseComposites( model, ZEnsoC.selectInd, ...
+                                        iStart, iEnd, ZEnsoC.weights );
+    else
+        compZEnsoC = computePhaseComposites( model, ZEnsoC.selectInd, ...
+                                        iStart, iEnd );
+    end
+
+    toc( t )
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    colormap( redblue )
+
+    % Loop over the phases
+    for iPhase = 1 : nPhaseEnsoC
+
+        % SST phase composites
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        SST.ifXTickLabels = iPhase == nPhaseEnsoC;
+        if ifPlotWind
+            plotPhaseComposite( compZEnsoC{ iCSST }( :, iPhase ), SST, ...
+                                compZEnsoC{ iCUWnd }( :, iPhase ), ...
+                                compZEnsoC{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SST anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZEnsoC{ iCSST }( :, iPhase ), SST )
+            titleStr = 'SST anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+        lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        lblPos = get( lbl, 'position' );
+        lblPos( 1 ) = lblPos( 1 ) - .4;
+        set( lbl, 'position', lblPos )
+
+        % SSH phase composites
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SSH.ifXTickLabels = iPhase == nPhaseEnsoC;
+        if ifPlotWind
+            plotPhaseComposite( compZEnsoC{ iCSSH }( :, iPhase ), SSH, ...
+                                compZEnsoC{ iCUWnd }( :, iPhase ), ...
+                                compZEnsoC{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ SSH.title ', surface wind' ];
+        else
+            plotPhaseComposite( compZEnsoC{ iCSSH }( :, iPhase ), SSH );
+            titleStr = SSH.title;  
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % SAT phase composites
+        set( fig, 'currentAxes', ax( 3, iPhase ) )
+        SAT.ifXTickLabels = iPhase == nPhaseEnsoC;
+        if ifPlotWind
+            plotPhaseComposite( compZEnsoC{ iCSAT }( :, iPhase ), SAT, ...
+                                compZEnsoC{ iCUWnd }( :, iPhase ), ...
+                                compZEnsoC{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = 'SAT anomaly (K), surface wind';
+        else
+            plotPhaseComposite( compZEnsoC{ iCSAT }( :, iPhase ), SAT );
+            titleStr = 'SAT anomaly (K)';
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+
+        % Precipitation rate phase composites
+        set( fig, 'currentAxes', ax( 4, iPhase ) )
+        PRate.ifXTickLabels = iPhase == nPhaseEnsoC;
+        if ifPlotWind
+            plotPhaseComposite( compZEnsoC{ iCPRate }( :, iPhase ), PRate, ...
+                                compZEnsoC{ iCUWnd }( :, iPhase ), ... 
+                                compZEnsoC{ iCVWnd }( :, iPhase ), UVWnd )
+            titleStr = [ PRate.title, ', surface wind' ]; 
+        else
+            plotPhaseComposite( ...
+                compZEnsoC{ iCPRate }( :, iPhase ) * PRate.scl, PRate )
+            titleStr = PRate.title;
+        end
+        if iPhase == 1
+            title( titleStr  )
+        end
+    end
+
+    title( axTitle, 'ENSO combination composites -- generator' )
+
+    % Print figure
+    if ifPrintFig
+        figFile = [ 'figEnsoCombiCompositesGenerator_' compositesDomain fileSuffix ];
+        figFile = fullfile( figDir, figFile  );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
+
+
+
+
 
 
 
@@ -3060,7 +4208,14 @@ hold on
 % plot phases
 nPhase = numel( selectInd );
 c = distinguishable_colors( nPhase );
-c = c( [ 2 3 4 5 1 6 7 8 ], : );
+switch nPhase
+case 4
+    % Set 1st phase to blue, 3rd phase to read (for DJF/JJA)
+    c = c( [ 1 3 2 4 ], : );
+case 8 
+    % Set 1st phase to red, 5th to blue (for El Nino/La Nina)
+    c = c( [ 2 3 4 5 1 6 7 8 ], : );
+end
 for iPhase = 1 : nPhase
 
     plot( index( selectInd{ iPhase }, 1 ), index( selectInd{ iPhase }, 2 ), ...
@@ -3079,7 +4234,14 @@ hold on
 % plot phases
 nPhase = numel( selectInd );
 c = distinguishable_colors( nPhase );
-c = c( [ 2 3 4 5 1 6 7 8 ], : );
+switch nPhase
+case 4
+    % Set 1st phase to blue, 3rd phase to read (for DJF/JJA)
+    c = c( [ 1 3 2 4 ], : );
+case 8 
+    % Set 1st phase to red, 5th to blue (for El Nino/La Nina)
+    c = c( [ 2 3 4 5 1 6 7 8 ], : );
+end
 for iPhase = 1 : nPhase
 
     plot( index( selectInd{ iPhase }, 1 ), index( selectInd{ iPhase }, 2 ), ...

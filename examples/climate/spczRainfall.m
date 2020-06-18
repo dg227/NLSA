@@ -1,4 +1,18 @@
-% ANALYSIS OF SPCZ RAINFALL
+% NLSA/KOOPMAN ANALYSIS OF SPCZ RAINFALL
+% 
+% Commands to retrieve output from the NLSA model:
+%
+% phi   = getDiffusionEigenfunctions( model ); -- NLSA eigenfunctions
+% z     = getKoopmanEigenfunctions( model );   -- Koopman eigenfunctions
+% gamma = getKoopmanEigenvalues( model ) * 12 / (2*pi) -- Koopman eigenvalues  
+% T     = getKoopmanEigenperiods( model ) / 12; -- Koopman eigenperiods
+% uPhi  = getProjectedData( model ); -- Projected data onto NLSA eigenfunctons
+% uZ    = getKoopmanProjectedData( model ); -- Proj. data onto Koopman eigenfunctions
+%
+% Koopman eigenfrequencies are the imaginary part of gamma, and are in units
+% of 1/year.
+%
+% Koopman eigenperiods (T) are in units of year. 
 %
 % Modified 2020/06/16
 
@@ -18,7 +32,7 @@ kernel     = 'cone';       % cone kernel
 ifDataSource = true;  % extract source precipitation data from NetCDF files  
 
 % Eigenfunctions
-ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
+ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
 ifKoopman = true; % compute Koopman eigenfunctions
 
 % Koopman spectrum
