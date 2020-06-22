@@ -8,10 +8,15 @@
 %experiment = '6.4k_dt0.01_nEL100'; % 6400 samples, sampling interval 0.01, 100 delays 
 %experiment = '6.4k_dt0.01_nEL150'; % 6400 samples, sampling interval 0.01, 150 delays 
 %experiment = '6.4k_dt0.01_nEL200'; % 6400 samples, sampling interval 0.01, 200 delays 
-%experiment = '6.4k_dt0.01_nEL300'; % 6400 samples, sampling interval 0.01, 200 delays 
-experiment = '6.4k_dt0.01_nEL400'; % 6400 samples, sampling interval 0.01, 200 delays 
-ifSourceData   = true; % generate source data
-ifNLSA         = true; % run NLSA
+%experiment = '6.4k_dt0.01_nEL300'; % 6400 samples, sampling interval 0.01, 300 delays 
+%experiment = '6.4k_dt0.01_nEL400'; % 6400 samples, sampling interval 0.01, 400 delays 
+%experiment = '64k_dt0.01_nEL0'; % 64000 samples, sampling interval 0.01, no delays 
+%experiment = '64k_dt0.01_nEL400'; % 64000 samples, sampling interval 0.01, 400 delays
+experiment = '64k_dt0.01_nEL800'; % 64000 samples, sampling interval 0.01, 800 delays
+%experiment = '64k_dt0.01_nEL1600'; % 64000 samples, sampling interval 0.01, 1600 delays
+%experiment = '64k_dt0.01_nEL3200'; % 64000 samples, sampling interval 0.01, 3200j delays
+ifSourceData   = false; % generate source data
+ifNLSA         = false; % run NLSA
 ifPlotPhi      = true; % plot eigenfunctions
 ifPrintFig     = true; % print figures to file
 
@@ -89,10 +94,10 @@ case '6.4k_dt0.01_nEL400'
 % 64000 samples, sampling interval 0.01, no delay embedding 
 case '64k_dt0.01_nEL0'
 
-    idxPhiPlt  = [ 2 3 4 ];     
+    idxPhiPlt  = [ 2 3 ];     
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
-    markerSize = 5;         
+    markerSize = 3;         
 
 % 64000 samples, sampling interval 0.01, 400 delays
 case '64k_dt0.01_nEL400'
@@ -100,23 +105,32 @@ case '64k_dt0.01_nEL400'
     idxPhiPlt  = [ 2 3 4 5  ];     
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
-    markerSize = 5;         
+    markerSize = 3;         
 
 % 64000 samples, sampling interval 0.01, 800 delays
 case '64k_dt0.01_nEL800'
 
-    idxPhiPlt  = [ 2 3 4 5  ];     
+    idxPhiPlt  = [ 2 3 ];     
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
-    markerSize = 5;         
+    markerSize = 3;         
 
 % 64000 samples, sampling interval 0.01, 1600 delays
 case '64k_dt0.01_nEL1600'
 
-    idxPhiPlt  = [ 2 3 4 5  ];     
+    idxPhiPlt  = [ 2 3  ];     
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
-    markerSize = 5;         
+    markerSize = 3;         
+
+% 64000 samples, sampling interval 0.01, 3200 delays
+case '64k_dt0.01_nEL3200'
+
+    idxPhiPlt  = [ 2 3 ];     
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    markerSize = 3;         
+
 
 end
 
@@ -300,7 +314,7 @@ if ifPlotPhi
 
     % Print figure
     if ifPrintFig
-        figFile = sprintf( 'figPhi_%s.png', idx2str( idxPhiPlt, '_' ) );
+        figFile = sprintf( 'figPhi%s.png', idx2str( idxPhiPlt, '_' ) );
         figFile = fullfile( figDir, figFile );
         print( fig, figFile, '-dpng', '-r300' ) 
     end

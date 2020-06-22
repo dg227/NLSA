@@ -95,13 +95,22 @@ case '64k_dt0.01_nEL800'
     DataSpecs.Time.nSProd = 64000;  % production samples
     DataSpecs.Time.nEL    = 800;   % embedding window length (extra samples)
 
-% 64000 samples, sampling interval 0.01, 400 delays
+% 64000 samples, sampling interval 0.01, 1600 delays
 case '64k_dt0.01_nEL1600'
 
     DataSpecs.Time.dt     = 0.01;  % sampling interval
     DataSpecs.Time.nSSpin = 64000; % spinup samples
     DataSpecs.Time.nSProd = 64000;  % production samples
     DataSpecs.Time.nEL    = 1600;   % embedding window length (extra samples)
+
+% 64000 samples, sampling interval 0.01, 3200 delays
+case '64k_dt0.01_nEL3200'
+
+    DataSpecs.Time.dt     = 0.01;  % sampling interval
+    DataSpecs.Time.nSSpin = 64000; % spinup samples
+    DataSpecs.Time.nSProd = 64000;  % production samples
+    DataSpecs.Time.nEL    = 3200;   % embedding window length (extra samples)
+
 
 otherwise
     

@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2020/04/15
+% Modified 2020/06/08
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -237,7 +237,7 @@ for iC = In.nC : -1 : 1
     switch In.Src( iC ).embFormat
         case 'evector'
             if In.Src( iC ).fdOrder <= 0
-                embComponent( iC, 1 ) = nlsaEmbeddedComponent( ...
+                embComponent( iC, 1 ) = nlsaEmbeddedComponent_e( ...
                                     'idxE',    In.Src( iC ).idxE, ... 
                                     'nXB',     In.Src( iC ).nXB, ...
                                     'nXA',     In.Src( iC ).nXA );
