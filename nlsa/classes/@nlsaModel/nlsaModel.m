@@ -253,18 +253,19 @@ classdef nlsaModel < nlsaModel_base
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/04/15
+%   Modified 2020/06/16
 
     %% PROPERTIES
     properties
-        pDistance       = nlsaPairwiseDistance();
-        sDistance       = nlsaSymmetricDistance_gl();
-        diffOp          = nlsaDiffusionOperator_gl();
-        prjComponent    = nlsaProjectedComponent();
-        recComponent    = nlsaComponent_rec_phi();
-        linMap          = nlsaLinearMap_gl();
-        svdRecComponent = nlsaComponent_rec_phi();
-        koopmanOp       = nlsaKoopmanOperator.empty;
+        pDistance           = nlsaPairwiseDistance();
+        sDistance           = nlsaSymmetricDistance_gl();
+        diffOp              = nlsaDiffusionOperator_gl();
+        prjComponent        = nlsaProjectedComponent();
+        recComponent        = nlsaComponent_rec_phi();
+        linMap              = nlsaLinearMap_gl();
+        svdRecComponent     = nlsaComponent_rec_phi();
+        koopmanOp           = nlsaKoopmanOperator.empty;
+        koopmanPrjComponent = nlsaProjectedComponent.empty; 
     end
 
     methods
@@ -284,14 +285,15 @@ classdef nlsaModel < nlsaModel_base
             ifParentArg = true( 1, nargin );
 
             % Parse input arguments
-            iPDistance       = [];
-            iSDistance       = [];
-            iDiffOp          = [];
-            iLinearMap       = [];
-            iPrjComponent    = [];
-            iRecComponent    = [];
-            iSvdRecComponent = [];
-            iKoopmanOp       = [];
+            iPDistance           = [];
+            iSDistance           = [];
+            iDiffOp              = [];
+            iLinearMap           = [];
+            iPrjComponent        = [];
+            iRecComponent        = [];
+            iSvdRecComponent     = [];
+            iKoopmanOp           = [];
+            iKoopmanPrjComponent = [];
 
             for i = 1 : 2 : nargin
                 switch varargin{ i } 
@@ -318,6 +320,9 @@ classdef nlsaModel < nlsaModel_base
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'koopmanOperator'
                         iKoopmanOp = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'koopmanPrjComponent'
+                        iKoopmanPrjComponent = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                 end
             end
@@ -425,13 +430,58 @@ classdef nlsaModel < nlsaModel_base
                 obj.prjComponent = obj.prjComponent';
             end
 
+            % Koopman projected component
+            if ~isempty( iKoopmanPrjComponent )
+                if isempty( iKoopmanOp )
+                    msgStr = [ 'Koopman projected components cannot be ' ...
+                               'specified unless a Koopman operator is ' ...
+                               'specified.' ];
+                    error( msgStr )
+                end
+                if ~isa( varargin{ iKoopmanPrjComponent }, ...
+                         'nlsaProjectedComponent' )
+                    msgStr = [ 'Koopman-projected data must be specified ' ...
+                               'as nlsaProjectedComponent objects.' ];
+                    error( msgStr )
+                end
+                if ~isCompatible( varargin{ iKoopmanPrjComponent }, ...
+                                  trgEmbComponent )
+                    msgSgtr = [ 'Incompatible Koopman projected components '...
+                                'and target embedded components' ];
+                    error( msgStr  )
+                end
+                if ~isCompatible( varargin{ iKoopmanPrjComponent }, ...
+                                  obj.koopmanOp )
+                    msgStr = [ 'Incompatible Koopman-projected components ' ...
+                               'and Koopman operator' ];
+                    error( msgStr )
+                end
+                obj.koopmanPrjComponent = varargin{ iKoopmanPrjComponent };
+            else
+                if ~isempty( iKoopmanOp )
+                    nCT = size( trgEmbComponent, 1 );
+                    nDE = getEmbeddingSpaceDimension( trgEmbComponent( :, 1 ));
+                    nL  = getNEigenfunction( obj.koopmanOp );
+                    for iC = nCT : -1 : 1
+                        obj.koopmanPrjComponent( iC ) = ...
+                            nlsaProjectedComponent( ...
+                                'embeddingSpaceDimension', nDE( iC ), ...
+                                'partition', partition, ...
+                                'nBasisFunction', nL );
+                    end
+                    obj.koopmanPrjComponent = obj.koopmanPrjComponent';
+                end
+            end
+
             % Reconsructed component
             if ~isempty( iRecComponent )
                 if ~isa( varargin{ iRecComponent }, 'nlsaComponent_rec_phi' )
                     error( [ msgId 'invalidRecOmponent' ], ...
                         'Reconstructed component must be specified as an array of of nlsaComponent_rec_phi objects.' )        
                 end
-                if ~isCompatible( trgEmbComponent, varargin{ iRecComponent } )
+                if ~isCompatible( trgEmbComponent, ...
+                                  varargin{ iRecComponent }, ...
+                                 'testSamples', false )
                     error( 'Incompatible reconstructed components' )
                 end
                 obj.recComponent = varargin{ iRecComponent };
@@ -466,9 +516,11 @@ classdef nlsaModel < nlsaModel_base
                         'Reconstructed component must be specified as an array of of nlsaComponent_rec_phi objects.' )        
                 end
                 for iA = 1 : numel( obj.linMap )
-                    if ~isCompatible( trgEmbComponent, ...
-                          squeeze( varargin{ iSvdRecComponent }( :, :, iA ) ) )
-                        error( 'Incompatible reconstructed components' )
+                    if ~isCompatible( ...
+                      trgEmbComponent, ...
+                      squeeze( varargin{ iSvdRecComponent }( :, :, iA ) ), ...
+                      'testSamples', false )
+                        error( 'Incompatible reconstructed components.' )
                     end
                 end
                 obj.svdRecComponent = varargin{ iSvdRecComponent };
@@ -487,6 +539,7 @@ classdef nlsaModel < nlsaModel_base
                          'diffusionOperator' ...
                          'koopmanOperator' ...
                          'prjComponent' ...
+                         'koopmanPrjComponent' ...
                          'recComponent' ...
                          'linearMap' ...
                          'svdRecComponent' } ];
@@ -503,6 +556,7 @@ classdef nlsaModel < nlsaModel_base
                          'diffusionOperatorTemplate' ...
                          'koopmanOperatorTemplate' ...
                          'projectionTemplate' ...
+                         'koopmanProjectionTemplate' ...
                          'reconstructionTemplate' ...
                          'reconstructionPartition' ...
                          'targetComponentName' ...

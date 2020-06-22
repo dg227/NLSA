@@ -27,6 +27,7 @@ case 'ersstV5'
 
     % Time specification
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
+
     switch( period )
 
     % Satellite era
@@ -401,6 +402,10 @@ case 'ersstV5'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
         importData_ncep( DataSpecs ) 
+
+    otherwise
+
+        error( 'Invalid variable' )
 
     end
 
@@ -823,7 +828,7 @@ case 'ersstV4'
         importData_ncep( DataSpecs ) 
 
     otherwise
-        error( 'Invalid data' )
+        error( 'Invalid variable' )
 
     end
 

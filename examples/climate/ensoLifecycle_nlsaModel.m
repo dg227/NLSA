@@ -37,7 +37,7 @@ end
 switch experiment
 
 % NOAA 20th Century Reanalysis, industrial era, Indo-Pacific SST input,
-% 4-year delay embeding window  
+% 4-year delay embeding window, cone kernel  
 case '20CR_industrial_IPSST_4yrEmb_coneKernel'
    
     % Dataset specification  
@@ -104,6 +104,7 @@ case '20CR_industrial_IPSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
 % NOAA 20th Century Reanalysis, approximate satellite era, Indo-Pacific SST 
 % input, 4-year delay embeding window  
@@ -165,6 +166,7 @@ case '20CR_satellite_IPSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
 % ERSSTv5 data (and various NOAA products), satellite era, Indo-Pacific SST 
 % input, 4-year delay embeding window  
@@ -226,6 +228,8 @@ case 'ersstV5_satellite_IPSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % ERSSTv5 data (and various NOAA products), satellite era, global SST 
 % input, 4-year delay embeding window  
@@ -287,6 +291,8 @@ case 'ersstV5_satellite_globalSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % ERSSTv5 data (and various NOAA products), last 50 years, Global SST input, 
 % 4-year delay embeding window  
@@ -348,6 +354,8 @@ case 'ersstV5_50yr_globalSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % ERSSTV5 data (and various NOAA products), last 50 years, Global SST input, 
 % 5-year delay embeding window  
@@ -409,6 +417,8 @@ case 'ersstV5_50yr_globalSST_5yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % ERSSTv4 data (and various NOAA products), last 50 years, Global SST input, 
 % 4-year delay embeding window, cone kernel  
@@ -470,6 +480,8 @@ case 'ersstV4_50yr_globalSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % ERSSTV4 data (and various NOAA products), last 50 years, Indo-Pacific SST 
 % input, 4-year delay embeding window, cone kernel  
@@ -532,6 +544,8 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 
 
@@ -598,6 +612,8 @@ case 'ersstV4_satellite_globalSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % ERSSTV4 data (and various NOAA products), satellite era, Global SST input, 
 % 4-year delay embeding window  
@@ -659,6 +675,8 @@ case 'ersstV4_satellite_globalSST_4yrEmb_l2Kernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % ERSSTV4 data (and various NOAA products), satellite era, sub-global SST 
 % input, 4-year delay embeding window  
@@ -720,6 +738,8 @@ case 'ersstV4_satellite_subglobalSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 
 % ERSSTV4 data (and various NOAA products), satellite era, Indo-Pacific SST 
@@ -783,6 +803,8 @@ case 'ersstV4_satellite_IPSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman );        % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 
 
@@ -847,6 +869,8 @@ case 'ccsm4Ctrl_200yr_IPSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % CCSM4 pre-industrial control, 1300-year period, Indo-Pacific SST input, 4-year
 % delay embeding window  
@@ -908,6 +932,8 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % CCSM4 pre-industrial control, 1300-year period, global SST input, 4-year
 % delay embeding window  
@@ -969,6 +995,8 @@ case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 401;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % CCSM4 pre-industrial control, 1300-year period, global SST input, 10-year
 % delay embeding window  
@@ -1030,6 +1058,8 @@ case 'ccsm4Ctrl_1300yr_globalSST_10yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 501;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 % CCSM4 pre-industrial control, 1300-year period, global SST input, 20-year
 % delay embeding window  
@@ -1091,6 +1121,8 @@ case 'ccsm4Ctrl_1300yr_globalSST_20yrEmb_coneKernel'
     In.koopmanRegType = 'inv';     % regularization type
     In.idxPhiKoopman  = 1 : 501;   % diffusion eigenfunctions used as basis
     In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+    In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
 
 
 
@@ -1101,15 +1133,12 @@ end
 
 %% PREPARE TARGET COMPONENTS (COMMON TO ALL MODELS)
 %
-% tStr is a string identifier for the analysis time interval.
-%
 % climStr is a string identifier for the climatology period relative to which
 % anomalies are computed. 
 %
 % nETrg is the delay-embedding window for the target data
 
 climStr = [ '_' In.Res( 1 ).tClim{ 1 } '-' In.Res( 1 ).tClim{ 2 } ];
-tStr    = [ '_' In.Res( 1 ).tLim{ 1 } '-' In.Res( 1 ).tLim{ 2 } ];
 nETrg   = 1; 
 
 % Nino 3.4 index

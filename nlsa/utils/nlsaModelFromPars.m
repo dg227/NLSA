@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2020/06/08
+% Modified 2020/06/16
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -644,6 +644,25 @@ else
     koopmanOperatorTemplateArg = { };
 end
                         
+%% KOOPMAN PROJECTED COMPONENTS
+if ifKoopman
+    for iC = In.nCT : -1 : 1
+        if isa( trgEmbComponent( iC, 1 ), 'nlsaEmbeddedComponent_xi' )
+            koopmanPrjComponent( iC ) = nlsaProjectedComponent_xi( ...
+                                 'nBasisFunction', In.nKoopmanPrj );
+        else
+            koopmanPrjComponent( iC ) = nlsaProjectedComponent( ...
+                                 'nBasisFunction', In.nKoopmanPrj );
+        end
+    end
+    koopmanOperatorTemplateArg = [ koopmanOperatorTemplateArg ...
+                                   'koopmanProjectionTemplate' ...
+                                   { koopmanPrjComponent } ];
+end
+
+
+
+
 %% LINEAR MAP FOR SVD OF TARGET DATA
 linMap = nlsaLinearMap_gl( 'basisFunctionIdx', In.idxPhiSVD );
 

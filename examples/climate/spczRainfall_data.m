@@ -13,29 +13,24 @@ function spczRainfall_data( dataset, period, fld )
 %
 % Modified 2020/05/09
 
-%% GLOBAL DATA SPECIFICATIONS
-
-% Root directory where data is stored
-DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data'; 
-% DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
-
-
-% Output data specification
-DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
-
-% Time specification
-DataSpecs.Time.tFormat = 'yyyymm';              % time format
-
 switch dataset
 
 %% NOAA/CMAP REANALYSIS DATA
-case 'noaa'
+case 'cmap'
 
     % Input data directory 
-    DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'noaa' ); 
+    DataSpecs.In.dir = '/Users/dg227/GoogleDrive/physics/climate/data'; 
 
     % Time specification
     DataSpecs.Time.tStart  = '197901';           % start time in nc file 
+
+
+    % Output data specification
+    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
+
+    % Time specification
+    DataSpecs.Time.tFormat = 'yyyymm';              % time format
+
 
     switch( period )
 
@@ -43,7 +38,6 @@ case 'noaa'
     case 'satellite' 
 
         DataSpecs.Time.tLim    = { '197901' '201912' }; % time limits
-        DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
 
     otherwise
         error( 'Invalid period.' )
@@ -55,13 +49,15 @@ case 'noaa'
     case 'IPPrecip'
 
         % Input data
-        DataSpecs.In.file = 'CMAP_extended.nc'; 
-        DataSpecs.In.lon  = 'lon';
-        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'cmap' );
+        DataSpecs.In.file = 'precip.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'precip';
 
         % Output data
-        DataSpecs.Out.fld = 'prate';      
+        DataSpecs.Out.fld = 'prate';
+
+        % Time specification
+        DataSpecs.Time.tStart  = '197901'; % start time in dataset
 
         % Spatial domain 
         DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
@@ -70,22 +66,28 @@ case 'noaa'
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-        DataSpecs.Opts.ifCenterMonth = false;  % remove monthly climatology 
+        DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
+        DataSpecs.Opts.ifDetrend     = false; % don't do linear detrending
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_cmap( DataSpecs )
+
 
     %% Pacific precipitation
     case 'PacPrecip'
 
         % Input data
-        DataSpecs.In.file = 'CMAP_extended.nc'; 
-        DataSpecs.In.lon  = 'lon';
-        DataSpecs.In.lat  = 'lat';
+        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'cmap' );
+        DataSpecs.In.file = 'precip.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'precip';
 
         % Output data
-        DataSpecs.Out.fld = 'prate';      
+        DataSpecs.Out.fld = 'prate';
+
+        % Time specification
+        DataSpecs.Time.tStart  = '197901'; % start time in dataset
 
         % Spatial domain 
         DataSpecs.Domain.xLim = [ 135 270 ]; % longitude limits
@@ -94,10 +96,13 @@ case 'noaa'
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-        DataSpecs.Opts.ifCenterMonth = false;  % remove monthly climatology 
+        DataSpecs.Opts.ifCenterMonth = false; % don'tremove monthly climatology 
+        DataSpecs.Opts.ifDetrend     = false; % don't perform linear detrending
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_cmap( DataSpecs )
 
     otherwise
         error( 'Invalid variable.' )
@@ -108,10 +113,13 @@ case 'noaa'
 case 'ccsm4Ctrl'
 
     % Input data directory 
-    DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ccsm4/b40.1850' ); 
+    DataSpecs.In.dir = '/kontiki_array5/data/ccsm4/b40.1850';
+
+    % Output data specification
+    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
 
     % Time specification
-    DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+    DataSpecs.Time.tFormat = 'yyyymm';              % time format
 
     switch( period )
 
@@ -128,15 +136,14 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tClim   = DataSpecs.Time.tLim;   % climatology 
 
     otherwise
-        error( 'Invalid period.' )
-
+        error( 'Invalid period' )
     end
 
 
     switch( fld )
 
     %% Indo-Pacific precipitation
-    case 'IPPrecip'
+    case( 'IndoPacPrecip' )
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.PREC'; 
@@ -147,6 +154,9 @@ case 'ccsm4Ctrl'
 
         % Output data
         DataSpecs.Out.fld = 'prate';      
+
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
         DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
@@ -155,13 +165,15 @@ case 'ccsm4Ctrl'
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-        DataSpecs.Opts.ifCenterMonth = false;  % remove monthly climatology 
+        DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
+        importData_ccsm4Ctrl( DataSpecs ) 
+
     %% Pacific precipitation
-    case 'PacPrecip'
+    case( 'PacPrecip' )
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.PREC'; 
@@ -173,6 +185,9 @@ case 'ccsm4Ctrl'
         % Output data
         DataSpecs.Out.fld = 'prate';      
 
+        % Time specification
+        DataSpecs.Time.tStart  = '000101';           % start time in nc file 
+
         % Spatial domain 
         DataSpecs.Domain.xLim = [ 135 270 ]; % longitude limits
         DataSpecs.Domain.yLim = [ -35 35 ]; % latitude limits
@@ -180,10 +195,12 @@ case 'ccsm4Ctrl'
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
         DataSpecs.Opts.ifWeight      = false; % don't perform area weighting
-        DataSpecs.Opts.ifCenterMonth = false;  % remove monthly climatology 
+        DataSpecs.Opts.ifCenterMonth = false; % don't remove monthly climatology 
         DataSpecs.Opts.ifAverage     = false; % don't perform area averaging
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
+
+        importData_ccsm4Ctrl( DataSpecs ) 
 
     otherwise
 
@@ -195,7 +212,3 @@ otherwise
 
     error( 'Invalid dataset.' )
 end
-
-% Read data
-climateData( dataset, DataSpecs ) 
-
