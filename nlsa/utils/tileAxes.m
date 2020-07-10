@@ -5,6 +5,7 @@ function [ fig, ax, axTitle, Fig ] = tileAxes( Fig )
 % Fig is a data structure specifying the figure parameters. 
 %
 % Fig.units:      units
+% Fig.paperUnits: units for printing
 % Fig.deltaX:     left margin
 % Fig.deltaX2:    right margin
 % Fig.deltaY:     bottom margin
@@ -28,7 +29,15 @@ function [ fig, ax, axTitle, Fig ] = tileAxes( Fig )
 %
 % axTitle is a handle to the title axis
 % 
-% Modified 2020/06/06
+% Modified 2020/07/10
+
+% Set paper units if needed
+if ~isfield( Fig, 'paperUnits' )
+    Fig.paperUnits = Fig.units;
+end
+if strcmp( Fig.paperUnits, 'pixels' )
+    Fig.paperUnits = 'points';
+end
 
 % Determine panel sizes and figure position
 panelX = ( Fig.figWidth - Fig.deltaX - Fig.deltaX2 ...
@@ -47,7 +56,7 @@ posn = [ 0 ...
 
 % Create figure
 fig = figure( 'units',                 Fig.units, ...
-              'paperunits',            Fig.units, ...
+              'paperunits',            Fig.paperUnits, ...
               'position',              posn, ...
               'paperPosition',         posn, ...
               'color',                 'white', ...
