@@ -14,11 +14,13 @@
 %experiment = '64k_dt0.01_nEL400'; % 64000 samples, sampling interval 0.01, 400 delays
 experiment = '64k_dt0.01_nEL800'; % 64000 samples, sampling interval 0.01, 800 delays
 %experiment = '64k_dt0.01_nEL1600'; % 64000 samples, sampling interval 0.01, 1600 delays
-%experiment = '64k_dt0.01_nEL3200'; % 64000 samples, sampling interval 0.01, 3200j delays
+%experiment = '64k_dt0.01_nEL3200'; % 64000 samples, sampling interval 0.01, 3200 delays
+
 ifSourceData   = false; % generate source data
 ifNLSA         = false; % run NLSA
-ifPlotPhi      = true; % plot eigenfunctions
-ifPrintFig     = true; % print figures to file
+ifPlotPhi      = false; % plot eigenfunctions
+ifMoviePhi     = true;  % make eigenfunction movie
+ifPrintFig     = true;  % print figures to file
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
@@ -26,7 +28,7 @@ nProc = 1; % number of batch processes
 
 %% GLOBAL PARAMETERS
 % nShiftPlt:   Temporal shift applied to eigenfunctions to illustrate action
-%                  of Koopman operator
+%              of Koopman operator
 % idxPhiPlt:   Eigenfunctions to plot
 % idxTPlt:     Time interval to plot
 % figDir:      Output directory for plots
@@ -111,8 +113,9 @@ case '64k_dt0.01_nEL400'
 case '64k_dt0.01_nEL800'
 
     idxPhiPlt  = [ 2 3 ];     
+    signPhiPlt = [ 1 -1 ];   
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
-    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov timescales
     markerSize = 3;         
 
 % 64000 samples, sampling interval 0.01, 1600 delays
@@ -120,7 +123,7 @@ case '64k_dt0.01_nEL1600'
 
     idxPhiPlt  = [ 2 3  ];     
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
-    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov timescales
     markerSize = 3;         
 
 % 64000 samples, sampling interval 0.01, 3200 delays
@@ -322,5 +325,144 @@ end
 
 
 
+%% MAKE EIGENFUNCTION MOVIE
+if ifMoviePhi
+    
+    % Retrieve source data and NLSA eigenfunctions
+    x = getData( model.srcComponent );
+    x = x( :, 1 + nShiftTakens : nSE + nShiftTakens );
+    [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
 
+
+    % Set up figure and axes 
+    Fig.nTileX     = 3;
+    Fig.nTileY     = 2;
+    Fig.units      = 'pixels';
+    Fig.figWidth   = 1000; 
+    Fig.deltaX     = 20;
+    Fig.deltaX2    = 20;
+    Fig.deltaY     = 50;
+    Fig.deltaY2    = 30;
+    Fig.gapX       = 50;
+    Fig.gapY       = 70;
+    Fig.gapT       = 40; 
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 12;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Set up videowriter
+    movieFile = sprintf( 'moviePhi%s.png', idx2str( idxPhiPlt, '_' ) );
+    movieFile = fullfile( figDir, movieFile );
+    writerObj = VideoWriter( movieFile, 'MPEG-4' );
+    writerObj.FrameRate = 20;
+    writerObj.Quality = 100;
+    open( writerObj );
+
+    % Determine number of movie frames; assign timestamps
+    nFrame = idxTPlt( 2 ) - idxTPlt( 1 ) + 1;
+    t = ( 0 : nFrame - 1 ) * In.dt;  
+
+    % Construct coherent observable
+    z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
+
+    % Loop over the frames
+    for iFrame = 1 : nFrame
+
+        iT = idxTPlt( 1 ) + iFrame - 1;
+
+        % Scatterplot of x2 observable
+        set( gcf, 'currentAxes', ax( 1, 1 ) )
+        scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, x( 2, : ), ...
+                  'filled'  )
+        scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
+        title( 'x_2 observable' )
+        axis off
+        view( 0, 0 )
+        set( gca, 'cLim', max( abs( x( 2, : ) ) ) * [ -1 1 ] ) 
+
+        % (x1,x2) projection
+        set( gcf, 'currentAxes', ax( 2, 1 ) )
+        plot( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), 'b-', ...
+              'linewidth', 1.5 ) 
+        scatter( x( 1, iT ), x( 2, iT ), 50, 'r', 'filled' ) 
+        xlim( [ -30 30 ] )
+        ylim( [ -30 30 ] )
+        grid on
+        title( '(x_1,x_2) projection' )
+        xlabel( 'x_1' )
+        ylabel( 'x_2' )
+
+        
+        % x2 time series
+        set( gcf, 'currentAxes', ax( 3, 1 ) )
+        plot( t( 1 : iFrame ), x( 2, idxTPlt( 1 ) : iT ), 'b-', ...
+              'linewidth', 1.5 )
+        scatter( t( iFrame ), x( 2, iT ), 50, 'r', 'filled' ) 
+        grid on
+        xlim( [ t( 1 ) t( end ) ] )
+        ylim( [ -30 30 ] )
+        title( 'x_2 time series' )
+        xlabel( 't' )
+        ylabel( 'x_2' )
+
+        % phi2 scatterplot
+        set( gcf, 'currentAxes', ax( 1, 2 ) )
+        scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, z( :, 2 ), ...
+                  'filled'  )
+        scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
+        title( sprintf( '\\phi_{%i} observable', idxPhiPlt( 2 ) - 1 ) )
+        axis off
+        view( 0, 0 )
+        set( gca, 'cLim', max( abs( z( :, 2 ) ) ) * [ -1 1 ] )
+
+        % (phi1,phi2) projection
+        set( gcf, 'currentAxes', ax( 2, 2 ) )
+        plot( z( idxTPlt( 1 ) : iT, 1 ), z( idxTPlt( 1 ) : iT, 2 ), ...
+              'b-', 'linewidth', 1.5 ) 
+        scatter( z( iT, 1 ), z( iT, 2 ), 50, 'r', 'filled' ) 
+        xlim( [ -1.5 1.5 ] )
+        ylim( [ -1.5 1.5 ] )
+        grid on
+        title( sprintf( '(\\phi_{%i},\\phi_{%i}) projection', ...
+               idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
+        xlabel( sprintf( '\\phi_{%i}', idxPhiPlt( 1 ) - 1 ) )
+        ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
+
+        % phi2 time series
+        set( gcf, 'currentAxes', ax( 3, 2 ) )
+        plot( t( 1 : iFrame ), z( idxTPlt( 1 ) : iT, 2 ), 'b-', ...
+              'linewidth', 1.5 )
+        scatter( t( iFrame ), z( iT, 2 ), 50, 'r', 'filled' ) 
+        grid on
+        xlim( [ t( 1 ) t( end ) ] )
+        ylim( [ -1.5 1.5 ] )
+        title( sprintf( '\\phi_{%i} time series', idxPhiPlt( 2 ) - 1 ) )
+        ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
+        xlabel( 't' )
+
+        title( axTitle, sprintf( 't = %1.2f', t( iFrame ) ) )
+        axis( axTitle, 'off' )
+        
+        frame = getframe( fig );
+        writeVideo( writerObj, frame )
+        
+        for iY = 1 : Fig.nTileY
+            for iX = 1 : Fig.nTileX
+                cla( ax( iX, iY ), 'reset' )
+            end
+        end
+        cla( axTitle, 'reset' )
+    end
+
+    % Close video file and figure
+    close( writerObj )
+    close( fig )
+end
+
+        
     
