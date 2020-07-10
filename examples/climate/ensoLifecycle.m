@@ -5,15 +5,15 @@
 
 %% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset    = 'ccsm4Ctrl';    
+%dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-period     = '1300yr';        % 1300-year analysis
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%period     = '1300yr';        % 1300-year analysis
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
+%embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
-kernel     = 'cone';       % cone kernel      
+%kernel     = 'cone';       % cone kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -26,14 +26,14 @@ kernel     = 'cone';       % cone kernel
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-%dataset    = 'ersstV4';                                     
+dataset    = 'ersstV4';                                     
 %period     = 'satellite'; % 1978-present
-%period     = '50yr';      % 1970-present
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
+period     = '50yr';      % 1970-present
+sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
-%embWindow  = '4yr';       % 4-year embedding
-%kernel     = 'cone';      % cone kernel
+embWindow  = '4yr';       % 4-year embedding
+kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -59,7 +59,7 @@ ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
 
 % Koopman spectrum
-ifKoopmanSpectrum = false;  % plot generator spectrum
+ifKoopmanSpectrum = true;  % plot generator spectrum
 
 % ENSO lifecycle plots
 ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
@@ -106,14 +106,14 @@ ifKoopmanTrendCombiEquivariance = false;
 ifKoopmanTrendCombiComposites = false;
 
 % Lifecycle plots for ENSO combination modes
-ifKoopmanEnsoCombiLifecycle = true; 
+ifKoopmanEnsoCombiLifecycle = false; 
 
 % Lifecycle phases and equivariance plots for ENSO combination modes
-ifKoopmanEnsoCombiPhases = true;
-ifKoopmanEnsoCombiEquivariance = true; 
+ifKoopmanEnsoCombiPhases = false;
+ifKoopmanEnsoCombiEquivariance = false; 
 
 % Phase composites for trend combination modes based on Koopman
-ifKoopmanEnsoCombiComposites = true;
+ifKoopmanEnsoCombiComposites = false;
 
 
 
@@ -407,11 +407,11 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
     Spec.mark = { 1          ... % constant
                   [ 2 3 ]    ... % annual
                   [ 4 5 ]    ... % semiannual
-                  [ 6 7 ]    ... % triennial
-                  8          ... % trend
+                  [ 13 14 ]    ... % triennial
+                  6          ... % trend
                   [ 9 10 ]   ... % trend combination
-                  [ 11 12 ]  ... % ENSO 
-                  [ 13 14 ]  ... % ENSO combination 
+                  [ 7 8 ]    ... % ENSO 
+                  [ 11 12 16 17 ]  ... % ENSO combination 
                   15         ... % decadal
                  };
     Spec.legend = { 'mean' ... 
@@ -423,9 +423,10 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
                     'ENSO' ...
                     'ENSO combination' ...
                     'decadal' };
-    Spec.xLim = [ -1.5 .1 ];
+    Spec.xLim = [ -0.8 .1 ];
     Spec.yLim = [ -3 3 ]; 
     Spec.c = distinguishable_colors( 9 );
+    Spec.title = '(a) ERSSTv4';
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
     idxPhiLF = [ 8 16 ];
@@ -1002,10 +1003,10 @@ case 'ersstV5'
 
 case 'ersstV4'
 
-    PlotLim.nino4  = [ -3 3 ];
+    PlotLim.nino4  = [ -2 2 ];
     PlotLim.nino34 = [ -3 3 ];
-    PlotLim.nino3  = [ -3 3 ];
-    PlotLim.nino12 = [ -4 4 ];
+    PlotLim.nino3  = [ -4 4 ];
+    PlotLim.nino12 = [ -5 5 ];
 
 case 'ccsm4Ctrl'
 
@@ -1133,7 +1134,7 @@ if ifNLSALifecycle
     ylabel( sprintf( 'Nino - %i months', nShiftNino ) )
     xlim( PlotLim.nino4 )
     ylim( PlotLim.nino4 )
-    title( 'Nino 4 lifecycle' )
+    title( '(a) Nino 4 lifecycle' )
 
     % Plot Nino 3.4 lifecycle
     set( gcf, 'currentAxes', ax( 2, 1 ) )
@@ -1142,7 +1143,7 @@ if ifNLSALifecycle
     %ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( PlotLim.nino34 )
     ylim( PlotLim.nino34 )
-    title( 'Nino 3.4 lifecycle' )
+    title( '(b) Nino 3.4 lifecycle' )
 
     % Plot Nino 3 lifecycle
     set( gcf, 'currentAxes', ax( 3, 1 ) )
@@ -1151,7 +1152,7 @@ if ifNLSALifecycle
     %ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
     xlim( PlotLim.nino3 )
     ylim( PlotLim.nino3 )
-    title( 'Nino 3 lifecycle' )
+    title( '(c) Nino 3 lifecycle' )
 
     % Plot Nino 1+2 lifecycle
     set( gcf, 'currentAxes', ax( 4, 1 ) )
@@ -1160,7 +1161,9 @@ if ifNLSALifecycle
     %ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
     xlim( PlotLim.nino12 )
     ylim( PlotLim.nino12 )
-    title( 'Nino 1+2 lifecycle' )
+    set( gca, 'xTick', PlotLim.nino12( 1 ) : 1 : PlotLim.nino12( end ), ...
+              'yTick', PlotLim.nino12( 1 ) : 1 : PlotLim.nino12( end ) )
+    title( '(d) Nino 1+2 lifecycle' )
 
     % Plot NLSA lifecycle
     set( gcf, 'currentAxes', ax( 5, 1 ) )
@@ -1170,7 +1173,7 @@ if ifNLSALifecycle
     xlim( [ -3 3 ] )
     ylim( [ -3 3 ] )
     set( gca, 'yAxisLocation', 'right' )
-    title( 'NLSA lifecycle' )
+    title( '(e) Kernel lifecycle' )
 
     % Make scatterplot of NLSA lifcycle colored by Nino 4 index
     set( gcf, 'currentAxes', ax( 1, 2 ) )
@@ -1285,7 +1288,9 @@ if ifKoopmanLifecycle
     ylabel( sprintf( 'Nino - %i months', nShiftNino ) )
     xlim( PlotLim.nino4 )
     ylim( PlotLim.nino4 )
-    title( 'Nino 4 lifecycle' )
+    set( gca, 'xTick', PlotLim.nino4( 1 ) : 1 : PlotLim.nino4( end ), ...
+              'yTick', PlotLim.nino4( 1 ) : 1 : PlotLim.nino4( end ) )
+    title( '(a) Nino 4 lifecycle' )
 
     % Plot Nino 3.4 lifecycle
     set( gcf, 'currentAxes', ax( 2, 1 ) )
@@ -1294,7 +1299,9 @@ if ifKoopmanLifecycle
     %ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( PlotLim.nino34 )
     ylim( PlotLim.nino34 )
-    title( 'Nino 3.4 lifecycle' )
+    set( gca, 'xTick', PlotLim.nino34( 1 ) : 1 : PlotLim.nino34( end ), ...
+              'yTick', PlotLim.nino34( 1 ) : 1 : PlotLim.nino34( end ) )
+    title( '(b) Nino 3.4 lifecycle' )
 
     % Plot Nino 3 lifecycle
     set( gcf, 'currentAxes', ax( 3, 1 ) )
@@ -1303,7 +1310,9 @@ if ifKoopmanLifecycle
     %ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
     xlim( PlotLim.nino3 )
     ylim( PlotLim.nino3 )
-    title( 'Nino 3 lifecycle' )
+    set( gca, 'xTick', PlotLim.nino3( 1 ) : 1 : PlotLim.nino3( end ), ...
+              'yTick', PlotLim.nino3( 1 ) : 1 : PlotLim.nino3( end ) )
+    title( '(c) Nino 3 lifecycle' )
 
     % Plot Nino 1+2 lifecycle
     set( gcf, 'currentAxes', ax( 4, 1 ) )
@@ -1312,7 +1321,9 @@ if ifKoopmanLifecycle
     %ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
     xlim( PlotLim.nino12 )
     ylim( PlotLim.nino12 )
-    title( 'Nino 1+2 lifecycle' )
+    set( gca, 'xTick', PlotLim.nino12( 1 ) : 1 : PlotLim.nino12( end ), ...
+              'yTick', PlotLim.nino12( 1 ) : 1 : PlotLim.nino12( end ) )
+    title( '(d) Nino 1+2 lifecycle' )
 
 
     % Plot generator lifecycle
@@ -1323,54 +1334,58 @@ if ifKoopmanLifecycle
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
     set( gca, 'yAxisLocation', 'right' )
-    title( sprintf( 'Koopman lifecycle; eigenperiod = %1.2f y', TEnso ) )
+    title( sprintf( '(e) Generator lifecycle; eigenperiod = %1.2f y', TEnso ) )
 
     % Make scatterplot of generator lifcycle colored by Nino 4 index
     set( gcf, 'currentAxes', ax( 1, 2 ) )
+    scl = max( abs( Nino4.idx( 1, : ) ) );
     plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
-    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino4.idx( 1, : ), ...
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino4.idx( 1, : ) / scl, ...
              'o', 'filled' )  
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
-    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    set( gca, 'clim', [ -1 1 ] )
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
 
     % Make scatterplot of generator lifcycle colored by Nino 3.4 index
     set( gcf, 'currentAxes', ax( 2, 2 ) )
+    scl = max( abs( Nino34.idx( 1, : ) ) );
     plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
-    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino34.idx( 1, : ), ...
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino34.idx( 1, : ) / scl, ...
              'o', 'filled' )  
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
-    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    set( gca, 'clim', [ -1 1 ] )
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
 
     % Make scatterplot of generator lifcycle colored by Nino 3 index
     set( gcf, 'currentAxes', ax( 3, 2 ) )
+    scl = max( abs( Nino3.idx( 1, : ) ) );
     plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
-    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino3.idx( 1, : ), ...
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino3.idx( 1, : ) / scl, ...
              'o', 'filled' )  
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
-    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    set( gca, 'clim', [ -1 1 ] )
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
 
     % Make scatterplot of generator lifcycle colored by Nino 1+2 index
     set( gcf, 'currentAxes', ax( 4, 2 ) )
+    scl = max( abs( Nino12.idx( 1, : ) ) );
     plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
-    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino12.idx( 1, : ), ...
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino12.idx( 1, : ) / scl, ...
              'o', 'filled' )  
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
-    set( gca, 'clim', [ -1 1 ] * 2.5 )
+    set( gca, 'clim', [ -1 1 ] )
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
     axPos = get( gca, 'position' );
@@ -1379,7 +1394,7 @@ if ifKoopmanLifecycle
     cPos( 3 ) = cPos( 3 ) * .7;
     cPos( 1 ) = cPos( 1 ) + .045;
     set( hC, 'position', cPos )
-    xlabel( hC, 'Nino index' )
+    xlabel( hC, 'Normalized Nino index' )
     set( gca, 'position', axPos )
 
     % Make redundant axis invisible
@@ -1771,7 +1786,8 @@ if ifKoopmanSpectrum
     grid on
     xlim( Spec.xLim )
     ylim( Spec.yLim )
-    title( 'Generator spectrum' )
+    %title( 'Generator spectrum' )
+    title( Spec.title )
     ylabel( 'frequency (1/y)' )
     xlabel( 'decay rate (arbitrary units)' )
     axPos = get( gca, 'position' );
