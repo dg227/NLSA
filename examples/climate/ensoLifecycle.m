@@ -5,15 +5,15 @@
 
 %% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-%dataset    = 'ccsm4Ctrl';    
+dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-%period     = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
+period     = '1300yr';        % 1300-year analysis
+sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
+embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
-%kernel     = 'cone';       % cone kernel      
+kernel     = 'cone';       % cone kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -26,14 +26,14 @@
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-dataset    = 'ersstV4';                                     
+%dataset    = 'ersstV4';                                     
 %period     = 'satellite'; % 1978-present
-period     = '50yr';      % 1970-present
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
-embWindow  = '4yr';       % 4-year embedding
-kernel     = 'cone';      % cone kernel
+%embWindow  = '4yr';       % 4-year embedding
+%kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -59,7 +59,7 @@ ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
 ifKoopman = false; % compute Koopman eigenfunctions
 
 % Koopman spectrum
-ifKoopmanSpectrum = true;  % plot generator spectrum
+ifKoopmanSpectrum = false;  % plot generator spectrum
 
 % ENSO lifecycle plots
 ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
@@ -67,11 +67,11 @@ ifNLSALifecycle    = false; % ENSO lifecycle from kernel eigenfunctions
 ifKoopmanLifecycle = false; % ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNinoPhases          = false; % ENSO phases from Nino 3.4 index
+ifNinoPhases          = true; % ENSO phases from Nino 3.4 index
 ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
 ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
+ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
 
 % Composite plots
 ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
@@ -708,17 +708,20 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
                   [ 6 7 ]    ... % triennial
                   [ 8 9 ]    ... % ENSO
                   [ 10 : 17 ] ... % ENSO combination
+                  29 ...          % WPMM
                   };
     Spec.legend = { 'mean' ... 
                     'annual' ...
                     'semiannual' ...
                     'triennial' ...
                     'ENSO' ...
-                    'ENSO combination' };
-    Spec.xLim = [ -5 .1 ];
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -4 .1 ];
     Spec.yLim = [ -3 3 ]; 
-    Spec.c = distinguishable_colors( 6 );
-    Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
+    Spec.c = distinguishable_colors( 7 );
+    Spec.c = Spec.c( [ 4 1 2 3 5 6 7 ], : );
+    Spec.title = '(b) CCSM4';
 
     idxZEnsoC   = 10;
     phaseZEnsoC = exp( i * 9 * pi / 16 );
@@ -728,6 +731,10 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
     phase0EnsoC = 1;
     leadsEnsoC = 0 : 2 : 22;
 
+    Lifecycle.ninoTitle = '(c) CCSM4 Nino 3.4 phases';
+    Lifecycle.zTitle = '(d) CCSM4 generator phases';
+
+    Equivariance.title = '(b) CCSM4 phase evolution';
 
 
 case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb_coneKernel'
@@ -1589,6 +1596,7 @@ if ifKoopmanPhases
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( PlotLim.nino34 )
     ylim( PlotLim.nino34 )
+    title( Lifecycle.ninoTitle )
 
     % Plot generator phases
     set( gcf, 'currentAxes', ax( 2 ) )
@@ -1597,7 +1605,7 @@ if ifKoopmanPhases
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
-    title( sprintf( 'Generator; eigenperiod = %1.2f y', TEnso ) )
+    title( Lifecycle.zTitle )
 
     % Print figure
     if ifPrintFig
@@ -1732,7 +1740,8 @@ if ifKoopmanEquivariance
         ylim( [ -2.5 2.5 ] )
     end
 
-    title( axTitle, sprintf( 'Start phase = %i', phase0 ) )
+    title( axTitle, [ Equivariance.title ...
+                      sprintf( ' -- Start phase = %i', phase0 ) ] )
 
     % Print figure
     if ifPrintFig
