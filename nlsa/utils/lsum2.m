@@ -1,7 +1,7 @@
 function y = lsum2( yL, idxE )
 %LSUM2 Lagged embedding sum along diagonal blocks
 %
-% Modified 2018/05/04
+% Modified 2020/07/11
 
 nSL1 = size( yL, 1 );
 nSL2 = size( yL, 2 );
@@ -15,6 +15,5 @@ kShift = ( idxE - 1 ) * ( nSL1 + 1 );
 if ~iscolumn( kShift )
     kShift = kShift';
 end
-k = bsxfun( @plus, k, kShift );
-y = sum( yL( k ), 1 );
+y = sum( yL( k + kShift ), 1 );
 y = reshape( y, [ nS1 nS2 ] );

@@ -22,6 +22,15 @@ case '6.4k_dt0.01_nEL0'
     DataSpecs.Time.nSProd = 6400;  % production samples
     DataSpecs.Time.nEL    = 0;     % embedding window length (extra samples)
 
+% 6400 samples, sampling interval 0.01, 10 delays
+case '6.4k_dt0.01_nEL10'
+
+    DataSpecs.Time.dt     = 0.01;  % sampling interval
+    DataSpecs.Time.nSSpin = 64000; % spinup samples
+    DataSpecs.Time.nSProd = 6400;  % production samples
+    DataSpecs.Time.nEL    = 10;    % embedding window length (extra samples)
+
+
 % 6400 samples, sampling interval 0.01, 80 delays
 case '6.4k_dt0.01_nEL80'
 
@@ -70,6 +79,13 @@ case '6.4k_dt0.01_nEL400'
     DataSpecs.Time.nSProd = 6400;  % production samples
     DataSpecs.Time.nEL    = 400;   % embedding window length (extra samples)
 
+% 6400 samples, sampling interval 0.01, 400 delays
+case '6.4k_dt0.01_nEL800'
+
+    DataSpecs.Time.dt     = 0.01;  % sampling interval
+    DataSpecs.Time.nSSpin = 64000; % spinup samples
+    DataSpecs.Time.nSProd = 6400;  % production samples
+    DataSpecs.Time.nEL    = 800;   % embedding window length (extra samples)
 
 % 64000 samples, sampling interval 0.01, no delay embedding 
 case '64k_dt0.01_nEL0'

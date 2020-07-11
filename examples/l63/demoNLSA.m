@@ -4,12 +4,14 @@
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
 %experiment = '6.4k_dt0.01_nEL0'; % 6400 samples, sampling interval 0.01, 0 delays 
+%experiment = '6.4k_dt0.01_nEL10'; % 6400 samples, sampling interval 0.01, 10 delays 
 %experiment = '6.4k_dt0.01_nEL80'; % 6400 samples, sampling interval 0.01, 80 delays 
 %experiment = '6.4k_dt0.01_nEL100'; % 6400 samples, sampling interval 0.01, 100 delays 
 %experiment = '6.4k_dt0.01_nEL150'; % 6400 samples, sampling interval 0.01, 150 delays 
 %experiment = '6.4k_dt0.01_nEL200'; % 6400 samples, sampling interval 0.01, 200 delays 
 %experiment = '6.4k_dt0.01_nEL300'; % 6400 samples, sampling interval 0.01, 300 delays 
 %experiment = '6.4k_dt0.01_nEL400'; % 6400 samples, sampling interval 0.01, 400 delays 
+%experiment = '6.4k_dt0.01_nEL800'; % 6400 samples, sampling interval 0.01, 400 delays 
 %experiment = '64k_dt0.01_nEL0'; % 64000 samples, sampling interval 0.01, no delays 
 %experiment = '64k_dt0.01_nEL400'; % 64000 samples, sampling interval 0.01, 400 delays
 experiment = '64k_dt0.01_nEL800'; % 64000 samples, sampling interval 0.01, 800 delays
@@ -17,10 +19,10 @@ experiment = '64k_dt0.01_nEL800'; % 64000 samples, sampling interval 0.01, 800 d
 %experiment = '64k_dt0.01_nEL3200'; % 64000 samples, sampling interval 0.01, 3200 delays
 
 ifSourceData   = false; % generate source data
-ifNLSA         = false; % run NLSA
-ifPlotPhi      = false; % plot eigenfunctions
-ifMoviePhi     = true;  % make eigenfunction movie
-ifPrintFig     = true;  % print figures to file
+ifNLSA         = true; % run NLSA
+ifPlotPhi      = true; % plot eigenfunctions
+ifMoviePhi     = false;  % make eigenfunction movie
+ifPrintFig     = false;  % print figures to file
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
@@ -90,7 +92,7 @@ case '6.4k_dt0.01_nEL400'
 
     idxPhiPlt  = [ 2 3 4 5  ];     
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
-    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov timescales
+    idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov timescales
     markerSize = 7;         
 
 % 64000 samples, sampling interval 0.01, no delay embedding 
@@ -173,6 +175,24 @@ nSB          = getNXB( model.embComponent );
 nEL          = getEmbeddingWindow( model.embComponent ) - 1;
 nShiftTakens = round( nEL / 2 );
 
+% Create parallel pool if required
+% In.nParE is the number of parallel workers for delay-embedded distances
+% In.nParNN is the number of parallel workers for nearest neighbor search
+if isfield( In, 'nParE' ) && In.nParE > 0
+    nPar = In.nParE;
+else
+    nPar = 0;
+end
+if isfield( In, 'nParNN' ) && In.nParNN > 0
+    nPar = max( nPar, In.nParNN );
+end
+if nPar > 0
+    poolObj = gcp( 'nocreate' );
+    if isempty( poolObj )
+        poolObj = parpool( nPar );
+    end
+end
+
 %% PERFORM NLSA
 if ifNLSA
     
@@ -188,11 +208,11 @@ if ifNLSA
     computeDenPairwiseDistances( model, iProc, nProc )
     toc( t )
 
-    disp( 'Distance normalization for KDE...' ); t = tic;
+    disp( 'Distance normalization for kernel density steimation...' ); t = tic;
     computeDenBandwidthNormalization( model );
     toc( t )
 
-    disp( 'Kernel tuning for KDE...' ); t = tic;
+    disp( 'Kernel bandwidth tuning for density estimation...' ); t = tic;
     computeDenKernelDoubleSum( model );
     toc( t )
 
@@ -212,7 +232,7 @@ if ifNLSA
     symmetrizeDistances( model )
     toc( t )
 
-    disp( 'Kernel tuning...' ); t = tic;
+    disp( 'Kernel bandwidth tuning...' ); t = tic;
     computeKernelDoubleSum( model )
     toc( t )
 
@@ -274,11 +294,12 @@ if ifPlotPhi
             
             if iShift == 1
                 titleStr = sprintf( '\\phi_{%i}, \\lambda_{%i} = %1.3g', ...
-                                    idxPhiPlt( iPhi ), idxPhiPlt( iPhi ), ...
+                                    idxPhiPlt( iPhi ) - 1, ...
+                                    idxPhiPlt( iPhi ) - 1, ...
                                     lambda( idxPhiPlt( iPhi ) ) );
             else
                 titleStr = sprintf( 'U^t\\phi_{%i},   t = %1.2f', ...
-                                    idxPhiPlt( iPhi ), ...
+                                    idxPhiPlt( iPhi ) - 1, ...
                                     nShiftPlt( iShift ) * In.dt ); 
             end
             title( titleStr )

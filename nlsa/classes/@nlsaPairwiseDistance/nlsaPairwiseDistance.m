@@ -2,7 +2,7 @@ classdef nlsaPairwiseDistance
 %NLSAPAIRWISEDISTANCE  Class definition and constructor of nlsaPairwiseDistance
 % objects
 %
-% Modified 2019/11/18  
+% Modified 2020/07/11  
 
    %% PROPERTIES
     properties
@@ -14,6 +14,7 @@ classdef nlsaPairwiseDistance
         path          = pwd;
         pathY         = 'dataY';
         tag           = '';
+        nPar          = 0;
     end
 
     methods
@@ -48,6 +49,8 @@ classdef nlsaPairwiseDistance
                         iPathY = i + 1;
                     case 'tag'
                         iTag = i + 1;
+                    case 'nPar'
+                        iNPar = i + 1;
                     otherwise
                         error( 'Invalid property' )
                 end
@@ -106,6 +109,14 @@ classdef nlsaPairwiseDistance
                 else
                     error( 'Invalid object tag' )
                 end
+            end
+            if ~isempty( iNPar )
+                if ~isnnsi( varargin{ iNPar } )
+                    msgStr = [ 'Number of parallel workers must be a ' ...
+                               'nonnegative scalar integer.' ]; 
+                    error( msgStr )
+                end
+                obj.nPar = varargin{ iNPar };
             end
         end
     end

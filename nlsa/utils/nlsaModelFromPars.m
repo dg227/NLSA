@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2020/06/16
+% Modified 2020/07/11
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -400,12 +400,29 @@ else
     modeStr = 'explicit';
 end
 
+% Number of parallel workers 
+if ~isfield( In, 'nParE' ) % delay-embedding sums 
+    In.nParE = 0; 
+end
+if ~isfield( In, 'nParNN' ) % nearest-neighbor search
+    In.nParNN = 0;
+end
+if ifOse
+    if ~isfield( Out, 'nParE' ) % delay-embedding sums 
+        Out.nParE = 0; 
+    end
+    if ~isfield( Out, 'nParNN' ) % nearest-neighbor search
+        Out.nParNN = 0;
+    end
+end
+
 
 %% PAIRWISE DISTANCE FOR DENSITY ESTIMATION FOR IN-SAMPLE DATA
 if ifDen
     switch In.denLDist
         case 'l2' % L^2 distance
-            denLDist = nlsaLocalDistance_l2( 'mode', modeStr );
+            denLDist = nlsaLocalDistance_l2( 'mode', modeStr, ...
+                                             'nPar', In.nParE );
 
         case 'at' % "autotuning" NLSA kernel
             denLDist = nlsaLocalDistance_at( 'mode', modeStr );
@@ -420,7 +437,8 @@ if ifDen
     denDFunc = nlsaLocalDistanceFunction( 'localDistance', denLDist );
 
     denPDist = nlsaPairwiseDistance( 'nearestNeighbors', In.nN, ...
-                                     'distanceFunction', denDFunc );
+                                     'distanceFunction', denDFunc, ...
+                                     'nPar', In.nParNN );
 
     denPDist = repmat( denPDist, [ In.nC 1 ] );
 end
@@ -429,7 +447,8 @@ end
 if ifDen && ifOse
     switch Out.denLDist
         case 'l2' % L^2 distance
-            denLDist = nlsaLocalDistance_l2( 'mode', modeStr );
+            denLDist = nlsaLocalDistance_l2( 'mode', modeStr, ...
+                                             'nPar', Out.nParE );
 
         case 'at' % "autotuning" NLSA kernel
             denLDist = nlsaLocalDistance_at( 'mode', modeStr );
@@ -444,7 +463,8 @@ if ifDen && ifOse
     denDFunc = nlsaLocalDistanceFunction( 'localDistance', denLDist );
 
     oseDenPDist = nlsaPairwiseDistance( 'nearestNeighbors', Out.nN, ...
-                                        'distanceFunction', denDFunc );
+                                        'distanceFunction', denDFunc, ...
+                                        'nPar',             Out.nParNN );
 
     oseDenPDist = repmat( oseDenPDist, [ Out.nC 1 ] );
 end
@@ -495,7 +515,8 @@ end
 %% PAIRWISE DISTANCES FOR IN-SAMPLE DATA
 switch In.lDist
     case 'l2' % L^2 distance
-        lDist = nlsaLocalDistance_l2( 'mode', modeStr );
+        lDist = nlsaLocalDistance_l2( 'mode', modeStr, ...
+                                      'nPar', In.nParE );
 
     case 'at' % "autotuning" NLSA kernel
         lDist = nlsaLocalDistance_at( 'mode', modeStr ); 
@@ -514,13 +535,15 @@ else
     dFunc = nlsaLocalDistanceFunction( 'localDistance', lDist );
 end
 pDist = nlsaPairwiseDistance( 'distanceFunction', dFunc, ...
-                              'nearestNeighbors', In.nN );
+                              'nearestNeighbors', In.nN, ...
+                              'nPar',             In.nParNN );
 
 %% PAIRWISE DISTANCES FOR OUT-OF-SAMPLE DATA
 if ifOse
     switch Out.lDist
         case 'l2' % L^2 distance
-            lDist = nlsaLocalDistance_l2( 'mode', modeStr );
+            lDist = nlsaLocalDistance_l2( 'mode', modeStr, ...
+                                          'nPar', Out.nParE );
 
         case 'at' % "autotuning" NLSA kernel
             lDist = nlsaLocalDistance_at( 'mode', modeStr ); 
@@ -536,7 +559,8 @@ if ifOse
     oseDFunc = nlsaLocalDistanceFunction_scl( 'localDistance', lDist, ...
                                               'localScaling', lScl );
     osePDist = nlsaPairwiseDistance( 'distanceFunction', oseDFunc, ...
-                                     'nearestNeighbors', Out.nN );
+                                     'nearestNeighbors', Out.nN, ...
+                                     'nPar',             Out.nParNN );
 end
 
 %% SYMMETRIZED PAIRWISE DISTANCES

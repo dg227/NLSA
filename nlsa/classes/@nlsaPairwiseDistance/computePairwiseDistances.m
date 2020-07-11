@@ -2,7 +2,7 @@ function [ yVal, yInd ] = computePairwiseDistances( obj, qry, varargin )
 % COMPUTEPAIRWISEDISTANCES Compute pairwise distance from array of query 
 % data and test data
 % 
-% Modified 2020/01/29
+% Modified 2020/07/11
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments, set test data
@@ -184,9 +184,9 @@ for iB = Opt.batch
         % Sort nearest neighbors
         tWall = tic;
         nSort = min( obj.nN, nN0 + nSJ );
-        [ yVal( :, 1 : nSort ), idx ] = mink( yVal( :, 1 : nN0 + nSJ ), nSort, 2 ); % operate along columns
-        kdx = sub2ind( [ nSI ( nN0 + nSJ ) ], repmat( ( 1 : nSI )', [ 1 nSort ] ), idx );  
-        yInd( :, 1 : nSort )  = yInd( kdx );
+        [ yVal( :, 1 : nSort ), yInd( :, 1 : nSort ) ] = nnsort( ...
+            yVal( :, 1 : nN0 + nSJ ), yInd( :, 1 : nN0 + nSJ ), nSort, ...
+            obj.nPar );
         tWall = toc( tWall );
         fprintf( logId, 'MINK component %i/%i, realization %i-%i, local batches %i-%i, global batches %i-%i (%i sorted samples)  %2.4f \n', ...
              iC, nC, iR, jR, iBR, jBR, iB, jB, nSort, tWall );
