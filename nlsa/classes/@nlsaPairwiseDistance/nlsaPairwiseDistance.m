@@ -2,7 +2,7 @@ classdef nlsaPairwiseDistance
 %NLSAPAIRWISEDISTANCE  Class definition and constructor of nlsaPairwiseDistance
 % objects
 %
-% Modified 2020/07/11  
+% Modified 2020/07/13  
 
    %% PROPERTIES
     properties
@@ -31,6 +31,7 @@ classdef nlsaPairwiseDistance
             iPath          = [];
             iPathY         = [];
             iTag           = [];
+            iNPar          = [];
             for i = 1 : 2 : nargin
                 switch varargin{ i }
                     case 'file'

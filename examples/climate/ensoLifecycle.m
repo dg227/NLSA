@@ -5,15 +5,15 @@
 
 %% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset    = 'ccsm4Ctrl';    
+%dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-period     = '1300yr';        % 1300-year analysis
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%period     = '1300yr';        % 1300-year analysis
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
+%embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
-kernel     = 'cone';       % cone kernel      
+%kernel     = 'cone';       % cone kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -26,14 +26,14 @@ kernel     = 'cone';       % cone kernel
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-%dataset    = 'ersstV4';                                     
+dataset    = 'ersstV4';                                     
 %period     = 'satellite'; % 1978-present
-%period     = '50yr';      % 1970-present
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
+period     = '50yr';      % 1970-present
+sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
-%embWindow  = '4yr';       % 4-year embedding
-%kernel     = 'cone';      % cone kernel
+embWindow  = '4yr';       % 4-year embedding
+kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -67,11 +67,11 @@ ifNLSALifecycle    = false; % ENSO lifecycle from kernel eigenfunctions
 ifKoopmanLifecycle = false; % ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNinoPhases          = true; % ENSO phases from Nino 3.4 index
+ifNinoPhases          = false; % ENSO phases from Nino 3.4 index
 ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
+ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
 ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
-ifKoopmanEquivariance = true; % ENSO equivariance plots based on Koopman
+ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
 ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
@@ -460,6 +460,10 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
     phase0EnsoC = 1;
     leadsEnsoC = 0 : 2 : 22;
 
+    Equivariance.title = '(a) ERSSTv4 phase evolution';
+
+    Lifecycle.ninoTitle = '(a) ERSSTv4 Nino 3.4 phases';
+    Lifecycle.zTitle = '(b) ERSSTv4 generator phases';
 
 % ERSSTv4 reanalysis data, satellite era, global SST input, 4-year delay 
 % embeding window, cone kernel  
