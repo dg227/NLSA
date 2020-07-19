@@ -77,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/05/20 
+%   Modified 2020/07/16 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -1140,6 +1140,61 @@ propVal{ iDiffOp } = setDefaultSubpath( propVal{ iDiffOp } );
 propVal{ iDiffOp } = setPath( propVal{ iDiffOp }, modelPathL );
 mkdir( propVal{ iDiffOp } )
 propVal{ iDiffOp } = setDefaultFile( propVal{ iDiffOp } );
+
+
+%% KOOPMAN OPERATOR
+% Parse Koopman operator template 
+for iProp = 1 : nProp 
+    if strcmp( propName{ iProp }, 'koopmanOperator' )
+        iKoopmanOp = iProp;
+        break
+    end  
+end
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'koopmanOperatorTemplate' )
+        if ~isempty( propVal{ iKoopmanOp } )
+            error( 'A Koopman operator template has been already specified' )
+        end
+        if isa( varargin{ i + 1 }, 'nlsaKoopmanOperator' ) ...
+           && isscalar( varargin{ i + 1 } )
+            propVal{ iKoopmanOp } = varargin{ i + 1 };
+        else
+            msgStr = [ 'The Koopman operator template must be specified ' ...
+                       'as a scalar nlsaKoopmanOperator object' ];
+            error( msgStr )
+        end
+        ifProp( iKoopmanOp ) = true;
+    end
+end
+
+if ifProp( iKoopmanOp )
+    propVal{ iKoopmanOp } = setPartition( propVal{ iKoopmanOp }, partition );
+    propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
+                                partitionQ );
+    idxPhi = getBasisFunctionIndices( propVal{ iKoopmanOp } );
+    if any( idxPhi > nPhi )
+        msgStr = [ 'Diffusion eigenfunctions requested for Koopman ' ...
+                   'operator approximation exceeds available ' ...
+                   'eigenfunctions.' ];
+        error( msgStr )
+    end
+    tag = getTag( propVal{ iKoopmanOp } );
+    if ~isempty( tag )
+        tag = [ tag '_' ];
+    end
+    propVal{ iKoopmanOp } = setTag( propVal{ iKoopmanOp }, ...
+            [ tag getDefaultTag( propVal{ iKoopmanOp } ) ] ); 
+
+    % Assign Koopman operator  paths and filenames
+    modelPathK = fullfile( modelPathL, getTag( propVal{ iKoopmanOp } ) );
+    propVal{ iKoopmanOp } = setDefaultSubpath( propVal{ iKoopmanOp } );
+    propVal{ iKoopmanOp } = setPath( propVal{ iKoopmanOp }, modelPathK );
+    mkdir( propVal{ iKoopmanOp } )
+    propVal{ iKoopmanOp } = setDefaultFile( propVal{ iKoopmanOp } );
+end
+
+
+
 
 
 %% PROJECTED DATA

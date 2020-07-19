@@ -12,7 +12,7 @@ function [ model, In, Out ] = demoNLSA_nlsaModel( experiment )
 % Out:   Data structure with out-of-sample model parameters (optional). 
 %
 % This function creates the data structures In and Out, which are then passed 
-% to function climateNLSAModel_base to build the model.
+% to function l63NLSAModel to build the model.
 %
 % Modified 2020/07/11
 if nargin == 0
@@ -77,7 +77,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -142,7 +142,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -209,7 +209,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -275,7 +275,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -341,7 +341,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -407,7 +407,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -473,7 +473,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -540,7 +540,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -607,7 +607,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 8;             % nearest neighbors 
@@ -676,7 +676,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 80;             % nearest neighbors 
@@ -741,7 +741,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 80;             % nearest neighbors 
@@ -808,7 +808,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 80;             % nearest neighbors 
@@ -873,7 +873,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 80;             % nearest neighbors 
@@ -938,7 +938,7 @@ switch experiment
 
         % NLSA parameters, kernel density estimation (KDE)
         In.denType      = 'vb';          % density estimation type
-        In.denND        = 2;             % manifold dimension for 
+        In.denND        = 2;             % manifold dimension
         In.denLDist     = 'l2';          % local distance function 
         In.denBeta      = -1 / In.denND; % density exponent 
         In.denNN        = 80;             % nearest neighbors 
