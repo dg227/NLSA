@@ -18,11 +18,14 @@ experiment = '64k_dt0.01_nEL800'; % 64000 samples, sampling interval 0.01, 800 d
 %experiment = '64k_dt0.01_nEL1600'; % 64000 samples, sampling interval 0.01, 1600 delays
 %experiment = '64k_dt0.01_nEL3200'; % 64000 samples, sampling interval 0.01, 3200 delays
 
-ifSourceData   = false; % generate source data
-ifNLSA         = true; % run NLSA
-ifPlotPhi      = true; % plot eigenfunctions
-ifMoviePhi     = false;  % make eigenfunction movie
-ifPrintFig     = false;  % print figures to file
+ifSourceData    = false; % generate source data
+ifNLSA          = false; % run NLSA
+ifPCA           = false;  % run PCA (for comparison with NLSA)
+ifPlotPhi       = false; % plot eigenfunctions
+ifPlotCoherence = true;  % figure illustrating coherence of NLSA eigenfunctions
+ifMoviePhi      = false;  % make eigenfunction movie
+ifPrintFig      = true;  % print figures to file
+ifPool          = false;  % create parallel pool
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
@@ -119,6 +122,7 @@ case '64k_dt0.01_nEL800'
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
     idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov timescales
     markerSize = 3;         
+    signPC = [ 1 1 ];
 
 % 64000 samples, sampling interval 0.01, 1600 delays
 case '64k_dt0.01_nEL1600'
@@ -178,18 +182,20 @@ nShiftTakens = round( nEL / 2 );
 % Create parallel pool if required
 % In.nParE is the number of parallel workers for delay-embedded distances
 % In.nParNN is the number of parallel workers for nearest neighbor search
-if isfield( In, 'nParE' ) && In.nParE > 0
-    nPar = In.nParE;
-else
-    nPar = 0;
-end
-if isfield( In, 'nParNN' ) && In.nParNN > 0
-    nPar = max( nPar, In.nParNN );
-end
-if nPar > 0
-    poolObj = gcp( 'nocreate' );
-    if isempty( poolObj )
-        poolObj = parpool( nPar );
+if ifPool
+    if isfield( In, 'nParE' ) && In.nParE > 0
+        nPar = In.nParE;
+    else
+        nPar = 0;
+    end
+    if isfield( In, 'nParNN' ) && In.nParNN > 0
+        nPar = max( nPar, In.nParNN );
+    end
+    if nPar > 0
+        poolObj = gcp( 'nocreate' );
+        if isempty( poolObj )
+            poolObj = parpool( nPar );
+        end
     end
 end
 
@@ -240,6 +246,15 @@ if ifNLSA
     computeDiffusionEigenfunctions( model )
     toc( t )
 
+end
+
+%% PERFORM PCA
+if ifPCA
+
+    disp( 'PCA...' ); t = tic;
+    x = getData( model.srcComponent );
+    [ PCA.u, PCA.s, PCA.v ] = svd( x, 'econ' );
+    toc( t )
 end
 
 %% PLOT EIGENFUNCTIONS
@@ -343,6 +358,186 @@ if ifPlotPhi
         print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
+
+
+%% COHERENCE FIGURE
+if ifPlotCoherence
+    
+    % Retrieve source data and NLSA eigenfunctions. Assign timestamps.
+    x = getData( model.srcComponent );
+    x = x( :, 1 + nShiftTakens : nSE + nShiftTakens );
+    [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
+    t = ( 0 : nSE - 1 ) * In.dt;  
+    tPlt = t( idxTPlt( 1 ) : idxTPlt( 2 ) );
+    tPlt = tPlt - tPlt( 1 );
+
+    % Construct complex-valued  coherent observable based on phi's
+    z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
+    z = complex( z( :, 1 ), z( :, 2 ) );
+    phi1CLim = [ -1 1 ] * max( abs( real( z ) ) );
+
+    % Construct complex-valued coherent observable based on leading two PCs 
+    zPC = PCA.v( 1 + nShiftTakens : nSE + nShiftTakens, [ 1 2 ] ) ...
+        .* signPC / sqrt( 2 ) * sqrt( getNTotalSample( model.srcComponent ) );
+    zPC = complex( zPC( :, 1 ), zPC( :, 2 ) );
+    pcMean = mean( zPC  );
+    pc1CLim = [ -1.2 1.2 ] * max( abs( real( zPC ) - real( pcMean ) ) ) ...
+            + real( pcMean );
+    pc1AxLim = [ -1 1 ] * max( abs( real( zPC ) - real( pcMean  ) ) ) ...
+             + real( pcMean );
+    pc2AxLim = [ -1 1 ] * max( abs( imag( zPC ) - imag( pcMean ) ) ) ...
+             + imag( pcMean );
+    
+
+    % Set up figure and axes 
+    Fig.nTileX     = 5;
+    Fig.nTileY     = 2;
+    Fig.units      = 'inches';
+    Fig.figWidth   = 15 / 4 * Fig.nTileX; 
+    Fig.deltaX     = .4;
+    Fig.deltaX2    = .2;
+    Fig.deltaY     = .6;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .40;
+    Fig.gapY       = 1;
+    Fig.gapT       = 0; 
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 12;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+    set( fig, 'invertHardCopy', 'off' )
+    colormap( redblue )
+
+    % PC1 on L63 attractor
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, ...
+              real( zPC ), 'filled'  )
+    view( 0, 0 )
+    set( gca, 'cLim', pc1CLim, ...
+              'color', [ 1 1 1 ] * .3 )
+    title( '(a) PC1 on L63 attractor' )
+
+    %axPos = get( gca, 'position' );
+    %hC = colorbar( 'location', 'westOutside' );
+    %cPos = get( hC, 'position' );
+    %cPos( 1 ) = cPos( 1 ) - .07;
+    %cPos( 3 ) = .5 * cPos( 3 );
+    %set( hC, 'position', cPos )
+    %set( gca, 'position', axPos )
+
+    % (PC1,PC2) phase on L63 attractor
+    set( gcf, 'currentAxes', ax( 2, 1 ) )
+    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, ...
+              cos( angle( zPC - mean( zPC ) ) ), 'filled'  )
+    %axis off
+    view( 0, 0 )
+    set( gca, 'cLim',  [ -1 1 ], ...
+              'color', [ 1 1 1 ] * .3 )
+    title( '(b) (PC1, PC2) phase on L63 attractor' )
+
+    % PC1 on (PC2, PC1) space
+    set( gcf, 'currentAxes', ax( 3, 1 ) )
+    scatter( imag( zPC ), real( zPC ),  markerSize, ...
+             real( zPC ), 'filled'  )
+    %axis off
+    set( gca, 'cLim',  pc1CLim, ...
+              'color', [ 1 1 1 ] * .3 )
+    xlim( pc2AxLim )
+    ylim( pc1AxLim )
+    title( '(c) PC1 on (PC2, PC1) space' )
+    xlabel( 'PC_2' )
+
+
+    % phi1 on (PC2, PC1) space
+    set( gcf, 'currentAxes', ax( 4, 1 ) )
+    scatter( imag( zPC ), real( zPC ),  markerSize, ...
+             real( z ), 'filled'  )
+    %axis off
+    set( gca, 'cLim',  phi1CLim, ...
+              'color', [ 1 1 1 ] * .3 )
+    xlim( pc2AxLim )
+    ylim( pc1AxLim )
+    title( '(d) \phi_1 on (PC_2, PC_1) space' )
+    xlabel( 'PC_2' )
+
+
+    % PC1 time series
+    set( gcf, 'currentAxes', ax( 5, 1 ) )
+    plot( tPlt, real( zPC( idxTPlt( 1 ) : idxTPlt( 2 ) ) ), 'b-' )
+    grid on
+    xlim( [ tPlt( 1 ) tPlt( end ) ] )
+    ylim( pc1AxLim )
+    title( '(e) PC1 time series' )
+    xlabel( 't' )
+
+    % phi1 on L63 attractor
+    set( gcf, 'currentAxes', ax( 1, 2 ) )
+    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, ...
+              imag( z ), 'filled'  )
+    view( 0, 0 )
+    set( gca, 'cLim', phi1CLim, ...
+              'color', [ 1 1 1 ] * .3 )
+    title( sprintf( '(f) \\phi_{%i} on L63 attractor', idxPhiPlt( 1 ) - 1 ) )
+    xlabel( 'x' )
+    ylabel( 'z' )
+
+    % (phi1,phi2) phase on L63 attractor
+    set( gcf, 'currentAxes', ax( 2, 2 ) )
+    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, ...
+              cos( angle( z ) ), 'filled'  )
+    %axis off
+    view( 0, 0 )
+    set( gca, 'cLim',  [ -1 1 ], ...
+              'color', [ 1 1 1 ] * .3 )
+    title( sprintf( '(f) (\\phi_{%i},\\phi_{%i}) phase on L63 attractor', ...
+                    idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
+    xlabel( 'x' )
+
+    % PC1 on (phi1, phi2) space
+    set( gcf, 'currentAxes', ax( 3, 2 ) )
+    scatter( real( z ), imag( z ),  markerSize, ...
+             real( zPC ), 'filled'  )
+    set( gca, 'cLim',  pc1CLim, ...
+              'color', [ 1 1 1 ] * .3 )
+    xlim( [ -1.5 1.5 ] )
+    ylim( [ -1.5 1.5 ] )
+    title( '(g) PC_1 on (\phi_1, \phi_2) space' )
+    xlabel( '\phi_1' )
+
+    % phi1 on (phi1, phi2) space
+    set( gcf, 'currentAxes', ax( 4, 2 ) )
+    scatter( real( z ), imag( z ),  markerSize, ...
+             real( z ), 'filled'  )
+    set( gca, 'cLim',  phi1CLim, ...
+              'color', [ 1 1 1 ] * .3 )
+    xlim( [ -1.5 1.5 ] )
+    ylim( [ -1.5 1.5 ] )
+    title( '(h) \phi_1 on (\phi_1, \phi_2) space' )
+    xlabel( '\phi_1' )
+
+    % phi1 time series
+    set( gcf, 'currentAxes', ax( 5, 2 ) )
+    plot( tPlt, ...
+          real( z( idxTPlt( 1 ) : idxTPlt( 2 ) ) ), 'b-' )
+    grid on
+    xlim( [ tPlt( 1 ) tPlt( end ) ] )
+    ylim( [ -1.5 1.5 ] )
+    title( sprintf( '(i) \\phi_{%i} time series', idxPhiPlt( 1 ) - 1 ) )
+    xlabel( 't' )
+
+
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figPhiCoherence.png' );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+end
+
 
 
 

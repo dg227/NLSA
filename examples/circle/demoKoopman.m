@@ -29,6 +29,7 @@ nProc = 1; % number of batch processes
 %              of Koopman operator
 % idxZPlt:     Eigenfunctions to plot
 % idxTPlt:     Time interval to plot
+% idxTMrk:     Timestamp to mark in rectification plots
 % phaseZ:      Phase factor
 % idxZRec:     Eigenfunction in rectification figure/movie
 % figDir:      Output directory for plots
@@ -42,6 +43,7 @@ case 'a0.7'
     phaseZ     = [ 1 ]; 
     nShiftPlt  = [ 0 500 1000 ]; 
     idxTPlt    = [ 1 2001 ]; 
+    idxTMrk    = 238;
     idxZRec    = 2;
     markerSize = 7;         
 
@@ -310,9 +312,9 @@ if ifPlotRectification
     Fig.nTileY     = 2;
     Fig.units      = 'inches';
     Fig.figWidth   = 15 / 4 * Fig.nTileX; 
-    Fig.deltaX     = .8;
+    Fig.deltaX     = .9;
     Fig.deltaX2    = .2;
-    Fig.deltaY     = .48;
+    Fig.deltaY     = .55;
     Fig.deltaY2    = .3;
     Fig.gapX       = .40;
     Fig.gapY       = 0.8;
@@ -325,17 +327,20 @@ if ifPlotRectification
     Fig.nextPlot   = 'add'; 
 
     [ fig, ax ] = tileAxes( Fig );
+    set( fig, 'invertHardCopy', 'off' )
 
     % x1 observable on original (unrectified) state space
     set( gcf, 'currentAxes', ax( 1, 1 ) )
     scatter( x( 1, : ), x( 2, : ), markerSize, x( 1, : ), 'filled'  )
+    scatter( x( 1, idxTMrk ), x( 2, idxTMrk  ), 70, 'g', 'filled' ) 
     colormap( redblue )
     set( gca, 'cLim', [ -1 1 ], ...
               'color', [ 1 1 1 ] * .3, ...
               'xTickLabel', [], 'yTickLabel', [] )
     xlim( [ -1.2 1.2 ] )
     ylim( [ -1.2 1.2 ] )
-    title( 'x_1 on original state space' )
+    title( '(a) x on original state space' )
+    xlabel( 'x' )
 
     axPos = get( gca, 'position' );
     hC = colorbar( 'location', 'westOutside' );
@@ -348,35 +353,40 @@ if ifPlotRectification
     % x1 observable on rectified state space
     set( gcf, 'currentAxes', ax( 2, 1 ) )
     scatter( real( zPlt ), imag( zPlt ), markerSize, x( 1, : ), 'filled'  )
+    scatter( real( zPlt( idxTMrk ) ), imag( zPlt( idxTMrk ) ), ...
+             70, 'g', 'filled'  )
     colormap( redblue )
     set( gca, 'cLim', [ -1 1 ], ...
               'color', [ 1 1 1 ] * .3, ...
               'xTickLabel', [], 'yTickLabel', [] )
     xlim( [ -1.2 1.2 ] )
     ylim( [ -1.2 1.2 ] )
-    title( 'x_1 on rectified state space' )
+    title( '(b) x on rectified state space' )
+    xlabel( sprintf( 'Re(z_{%i})', idxZRec - 1 ) )
         
     % Time series of x1 observable
     set( gcf, 'currentAxes', ax( 3, 1 ) )
-    plot( tPlt( 1 : iFrame ), x( 1, idxTPlt( 1 ) : iT ), '-', ...
-          'linewidth', 1 )
-    scatter( tPlt( iFrame ), x( 1, iT ), 50, 'g', 'filled' )
+    plot( tPlt, x( 1, idxTPlt( 1 ) : idxTPlt( end ) ), '-', 'linewidth', 1 )
+    scatter( tPlt( idxTMrk ), x( 1, idxTMrk ), 70, 'g', 'filled' )
     grid on
     xlim( [ tPlt( 1 ) tPlt( end ) ] )
     ylim( [ -1.2 1.2 ] )
-    title( 'x_1 time series' )
+    title( '(c) x time series' )
+    set( gca, 'xTickLabel', [] )
     xlabel( 't' ) 
 
     % Generator eigenfunction on original (unrectified) state space
     set( gcf, 'currentAxes', ax( 1, 2 ) )
     scatter( x( 1, : ), x( 2, : ), markerSize, real( zPlt ), 'filled'  )
+    scatter( x( 1, idxTMrk ), x( 2, idxTMrk  ), 70, 'g', 'filled' ) 
     colormap( redblue )
     set( gca, 'cLim', max( abs( zPlt ) ) * [ -1 1 ], ...
               'color', [ 1 1 1 ] * .3, ...
-              'xTickLabel', [], 'yTickLabel', [] )
+              'yTickLabel', [] )
     xlim( [ -1.2 1.2 ] )
     ylim( [ -1.2 1.2 ] )
-    title( sprintf( 'Re(z_{%i}) on original state space' ,idxZRec - 1 ) )
+    title( sprintf( '(d) Re(z_{%i}) on original state space' ,idxZRec - 1 ) )
+    xlabel( 'x' )
 
     axPos = get( gca, 'position' );
     hC = colorbar( 'location', 'westOutside' );
@@ -390,23 +400,27 @@ if ifPlotRectification
     set( gcf, 'currentAxes', ax( 2, 2 ) )
     scatter( real( zPlt ), imag( zPlt ), markerSize, real( zPlt ), ...
             'filled'  )
+    scatter( real( zPlt( idxTMrk ) ), imag( zPlt( idxTMrk ) ), ...
+             70, 'g', 'filled'  )
     colormap( redblue )
     set( gca, 'cLim', max( abs( zPlt ) ) * [ -1 1 ], ...
               'color', [ 1 1 1 ] * .3, ...
-              'xTickLabel', [], 'yTickLabel', [] )
+              'yTickLabel', [] )
     xlim( [ -1.2 1.2 ] )
     ylim( [ -1.2 1.2 ] )
-    title( sprintf( 'Re(z_{%i}) on rectified state space' ,idxZRec - 1 ) )
+    title( sprintf( '(e) Re(z_{%i}) on rectified state space' ,idxZRec - 1 ) )
+    xlabel( sprintf( 'Re(z_{%i})', idxZRec - 1 ) )
     
     % Time series of generator eigenfunction
     set( gcf, 'currentAxes', ax( 3, 2 ) )
-    plot( tPlt( 1 : iFrame ), real( zPlt( idxTPlt( 1 ) : iT ) ), '-', ...
-          'linewidth', 1 )
+    plot( tPlt, real( zPlt( idxTPlt( 1 ) : idxTPlt( end ) ) ), ...
+          '-', 'linewidth', 1 )
+    scatter( tPlt( idxTMrk ), real( zPlt( idxTMrk ) ), 70, 'g', 'filled' )
     grid on
     xlim( [ tPlt( 1 ) tPlt( end ) ] )
     ylim( [ -1.2 1.2 ] )
     xlabel( 't' ) 
-    title( sprintf( 'Re(z_{%i}) time series', idxZRec - 1 ) )
+    title( sprintf( '(f) Re(z_{%i}) time series', idxZRec - 1 ) )
 
 
     % Print figure
