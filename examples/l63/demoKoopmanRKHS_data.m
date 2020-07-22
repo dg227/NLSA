@@ -1,6 +1,6 @@
-function demoNLSA_data( experiment )
-% DEMONLSA_DATA Helper function to generate datasets for NLSA demo for L63
-% system.
+function demoKoopmanRKHS_data( experiment )
+% DEMOKOOPMANRKHS_DATA Helper function to generate datasets for Koopman RKHS
+% demo for L63 system.
 %
 % experiment - String identifier for data analysis experiment
 %
@@ -9,7 +9,7 @@ function demoNLSA_data( experiment )
 %
 % The data is then generated and saved on disk using the l63Data function. 
 %
-% Modified 2020/06/06
+% Modified 2020/07/22
 
 %% SET EXPERIMENT-SPECIFIC PARAMETERS
 switch experiment

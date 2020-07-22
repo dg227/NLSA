@@ -1,5 +1,6 @@
-function [ model, In, Out ] = demoNLSA_nlsaModel( experiment )
-% DEMONLSA_NLSAMODEL Construct NLSA model for analysis of Lorenz 63 data
+function [ model, In, Out ] = demoKoopmanRKHS_nlsaModel( experiment )
+% DEMOKOOPAMNRKHS_NLSAMODEL Construct NLSA model for Koopman spectral analysis
+% of Lorenz 63 data using reproducing kernel Hilbert space compactification.
 %
 % Input arguments:
 %
@@ -14,7 +15,8 @@ function [ model, In, Out ] = demoNLSA_nlsaModel( experiment )
 % This function creates the data structures In and Out, which are then passed 
 % to function l63NLSAModel to build the model.
 %
-% Modified 2020/07/11
+% Modified 2020/07/22   
+%
 if nargin == 0
     experiment = '6.4k_dt0.01_nEL0';
 end
@@ -69,7 +71,7 @@ switch experiment
         In.epsilonE    = [ -20 20 ];% kernel bandwidth exponents 
         In.nEpsilon    = 200;       % number of exponents for bandwidth tuning
         In.alpha       = .5;        % diffusion maps normalization 
-        In.nPhi        = 101;       % diffusion eigenfunctions to compute
+        In.nPhi        = 1001;      % diffusion eigenfunctions to compute
         In.nPhiPrj     = In.nPhi;   % eigenfunctions to project the data
         In.idxPhiRec   = 1 : 1;     % eigenfunctions for reconstruction
         In.idxPhiSVD   = 1 : 1;     % eigenfunctions for linear mapping
@@ -87,6 +89,20 @@ switch experiment
         In.denEpsilonB  = 2;             % kernel bandwidth base 
         In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
         In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
+
+        % Koopman generator parameters; in-sample data
+        In.koopmanOpType = 'rkhs';     % Koopman generator type
+        In.koopmanFDType  = 'central'; % finite-difference type
+        In.koopmanFDOrder = 4;         % finite-difference order
+        In.koopmanDt      = In.dt; % sampling interval 
+        In.koopmanAntisym = true;      % enforce antisymmetrization
+        In.koopmanEpsilon = 1E-3;      % regularization parameter
+        In.koopmanRegType = 'inv';     % regularization type
+        In.idxPhiKoopman  = 2 : 51;   % diffusion eigenfunctions used as basis
+        In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+        In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
+
+
 
     % 6400 samples, sampling interval 0.01, 800 delays
     case '6.4k_dt0.01_nEL800'
@@ -136,7 +152,7 @@ switch experiment
         In.epsilonE    = [ -20 20 ];% kernel bandwidth exponents 
         In.nEpsilon    = 200;       % number of exponents for bandwidth tuning
         In.alpha       = .5;        % diffusion maps normalization 
-        In.nPhi        = 101;       % diffusion eigenfunctions to compute
+        In.nPhi        = 1001;       % diffusion eigenfunctions to compute
         In.nPhiPrj     = In.nPhi;   % eigenfunctions to project the data
         In.idxPhiRec   = 1 : 1;     % eigenfunctions for reconstruction
         In.idxPhiSVD   = 1 : 1;     % eigenfunctions for linear mapping
@@ -155,6 +171,17 @@ switch experiment
         In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
         In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
 
+        % Koopman generator parameters; in-sample data
+        In.koopmanOpType = 'rkhs';     % Koopman generator type
+        In.koopmanFDType  = 'central'; % finite-difference type
+        In.koopmanFDOrder = 4;         % finite-difference order
+        In.koopmanDt      = In.dt; % sampling interval 
+        In.koopmanAntisym = true;      % enforce antisymmetrization
+        In.koopmanEpsilon = 1E-3;      % regularization parameter
+        In.koopmanRegType = 'inv';     % regularization type
+        In.idxPhiKoopman  = 2 : 201;   % diffusion eigenfunctions used as basis
+        In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+        In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
     % 64000 samples, sampling interval 0.01, no delay embedding 
     case '64k_dt0.01_nEL0'
@@ -223,6 +250,17 @@ switch experiment
         In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
         In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
 
+        % Koopman generator parameters; in-sample data
+        In.koopmanOpType = 'rkhs';     % Koopman generator type
+        In.koopmanFDType  = 'central'; % finite-difference type
+        In.koopmanFDOrder = 4;         % finite-difference order
+        In.koopmanDt      = In.dt; % sampling interval 
+        In.koopmanAntisym = true;      % enforce antisymmetrization
+        In.koopmanEpsilon = 1E-3;      % regularization parameter
+        In.koopmanRegType = 'inv';     % regularization type
+        In.idxPhiKoopman  = 2 : 51;   % diffusion eigenfunctions used as basis
+        In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+        In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
     
     % 64000 samples, sampling interval 0.01, 800 delays 
     case '64k_dt0.01_nEL800'
@@ -272,7 +310,7 @@ switch experiment
         In.epsilonE    = [ -20 20 ];% kernel bandwidth exponents 
         In.nEpsilon    = 200;       % number of exponents for bandwidth tuning
         In.alpha       = .5;        % diffusion maps normalization 
-        In.nPhi        = 101;      % diffusion eigenfunctions to compute
+        In.nPhi        = 1001;      % diffusion eigenfunctions to compute
         In.nPhiPrj     = In.nPhi;   % eigenfunctions to project the data
         In.idxPhiRec   = 1 : 1;     % eigenfunctions for reconstruction
         In.idxPhiSVD   = 1 : 1;     % eigenfunctions for linear mapping
@@ -291,6 +329,17 @@ switch experiment
         In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
         In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
 
+        % Koopman generator parameters; in-sample data
+        In.koopmanOpType = 'rkhs';     % Koopman generator type
+        In.koopmanFDType  = 'central'; % finite-difference type
+        In.koopmanFDOrder = 4;         % finite-difference order
+        In.koopmanDt      = In.dt;     % sampling interval 
+        In.koopmanAntisym = true;      % enforce antisymmetrization
+        In.koopmanEpsilon = 1.1E-3;      % regularization parameter
+        In.koopmanRegType = 'inv';     % regularization type
+        In.idxPhiKoopman  = 2 : 51;   % diffusion eigenfunctions used as basis
+        In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+        In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
     otherwise
         error( 'Invalid experiment' )
 end

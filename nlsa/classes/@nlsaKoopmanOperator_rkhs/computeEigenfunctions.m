@@ -91,7 +91,7 @@ end
 % the generator in the eigenbasis of diffOp
 tWall0 = tic;
 [ c, gamma ]  = eig( V );
-gamma         = diag( gamma );
+gamma         = diag( gamma ).';
 tWall         = toc( tWall0 );
 fprintf( logId, 'EIGV %2.4f \n', tWall );
 
@@ -106,10 +106,13 @@ dt = getSamplingInterval( obj );
 lambda = exp( - epsilon * eta );
 omega = imag( gamma )';
 E = sum( lambda .* abs( c ) .^ 2, 1 );  
-E = ( 1 ./ E - 1 ) ./ ( 1 - ( imag( gamma ) * dt ) .^ 2 );
+%E = ( 1 ./ E - 1 ) ./ ( 1 - ( imag( gamma ) * dt ) .^ 2 );
+E = ( 1 ./ E - 1 );
 
 % Sort results in order of increasing Dirichlet energy
 [ E, idxE ] = sort( E, 'ascend' );
+E = E( 1 : nEig );
+idxE = idxE( 1 : nEig );
 gamma = gamma( idxE );
 c = c( :, idxE );
 tWall = toc( tWall0 );
@@ -122,7 +125,7 @@ if ifZeta
     [ phi, mu ] = getEigenfunctions( diffOp );
     phi = phi( :, getBasisFunctionIndices( obj ) ); 
     sqrtLambda = exp( - epsilon * eta / 2 )';
-    zeta = phi * c ./ sqrtLambda;;
+    zeta = phi * c .* sqrtLambda;
     tWall = toc( tWall0 );
     fprintf( logId, 'EVALEIG %2.4f \n', tWall );
 end

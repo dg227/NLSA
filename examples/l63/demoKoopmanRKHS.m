@@ -1,18 +1,11 @@
-% DEMO OF NLSA APPLIED TO LORENZ 63 (L63) DATA
+% DEMO OF KOOPMAN SPECTRAL ANALYSIS FOR THE LORENZ 63 (L63) SYSTEM USING 
+% REPRODUCING KERNEL HILBERT SPACE (RKHS) COMPACTIFICATION
+% 
+% This script computes approximate eigenvalues and eigenfunctions of the 
+% generator of the Koopman group on the L2 space associated with the SRB 
+% measure of the L63 system. 
 %
-% This script demonstrates the identification of coherent observables of the L63
-% system using eigenfunctions of kernel integral operators constructed from 
-% delay-coordinate mapped data. 
-%
-% Given a sufficiently long delay embedding window, the leading two 
-% eigenfunctions of these operators exhibit an approximately cyclical behavior 
-% despite the mixing (chaotic) dynamics of L63, on timescales of order 10 
-% Lyapunov times.
-%
-% In contrast, without delays, the leading eigenfunctions exhibit a chaotic
-% behavior of comparable complexity to the state vector components of the L63
-% system. 
-%
+% 
 % Four test cases are provided, illustrating the behavior of the eigenfunctions
 % in datasets of either 6400 or 64000 samples, and 0 or 800 delays, all at a
 % sampling interval of 0.01 natural time units. The test cases are selected by
@@ -29,7 +22,7 @@
 % The kernel employed is a variable-bandwidth Gaussian kernel, normalized to a
 % symmetric Markov kernel. This requires a kernel density estimation step to
 % compute the bandwidth functions, followed by a normalization step to form the
-% kernel matrix. See pseudocode in Appendix B of reference [2] below for 
+% kernel matrix. See pseudocode in Appendix B of reference [1] below for 
 % further details. 
 %
 % Approximate running times on Matlab R2018b running on Intel(R) Core(TM) 
@@ -40,85 +33,70 @@
 %
 % References:
 % 
-% [1] S. Das, D. Giannakis (2019), "Delay-coordinate maps and the spectra of
-%     Koopman operators", J. Stat. Phys., 175(6), 1107-1145, 
-%     https://doi.org/10.1007/s10955-019-02272-w.
-%
-% [2] S. Das, D. Giannakis, J. Slawinska (2018), "Reproducing kernel Hilbert
+% [1] S. Das, D. Giannakis, J. Slawinska (2018), "Reproducing kernel Hilbert
 %     space compactification of unitary evolution groups", 
 %     https://arxiv.org/abs/1808.01515.
-%
-% [3] D. Giannakis, A. J. Majda (201), "Nonlinear Laplacian spectral analysis
-%     for time series with intermittency and low-frequency variability", 
-%     Proc. Natl. Acad. Sci., 109(7), 2222, 
-%     http://dx.doi.org/10.1073/pnas.1118984109.
-%
-% [4] D. Giannakis (2019), "Data-driven spectral decomposition and forecasting
-%     of ergodic dynamical systems", Appl. Comput. Harmon. Anal., 62(2), 
-%     338-396, http://dx.doi.org/10.1016/j.acha.2017.09.001.
-% 
-% [5] D. Giannakis (2020), "Delay-coordinate maps, coherence, and approximate 
-%     spectra of evolution operators", https://arxiv.org/abs/2007.02195.  
 %
 % Modified 2020/07/22
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = '6.4k_dt0.01_nEL0'; 
+%experiment = '6.4k_dt0.01_nEL0'; 
 %experiment = '6.4k_dt0.01_nEL800'; 
 %experiment = '64k_dt0.01_nEL0'; 
-%experiment = '64k_dt0.01_nEL800'; 
+experiment = '64k_dt0.01_nEL800'; 
 
 ifSourceData     = false; % generate source data
-ifNLSA           = true; % run NLSA (kernel eigenfunctions)
-ifPCA            = true;  % run PCA (for comparison with NLSA)
-ifPlotPhi        = false; % plot eigenfunctions
-ifPlotCoherence  = true;  % figure illustrating coherence of NLSA eigenfunctions
+ifNLSA           = false; % run NLSA (kernel eigenfunctions)
+ifKoopman        = true;  % compute Koopman eigenfunctions
+ifPCA            = false; % run PCA (for comparison with NLSA)
+ifPlotZ          = true; % plot Koopman eigenfunctions
+ifPlotCoherence  = false; % figure illustrating coherence of NLSA eigenfunctions
 ifMovieCoherence = false; % make eigenfunction movie illustrating coherence
-ifPrintFig       = false;  % print figures to file
+ifPrintFig       = false; % print figures to file
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
 
 %% GLOBAL PARAMETERS
-% idxPhiPlt:   Eigenfunctions to plot
+% idxZPlt:     Eigenfunctions to plot
 % nShiftPlt:   Temporal shift applied to eigenfunctions to illustrate action
 %              of Koopman operator
 % idxTPlt:     Time interval to plot
 % figDir:      Output directory for plots
 % markerSize:  For eigenfunction scatterplots
 % signPC:      Sign multiplication factors for principal components
-% signPhiPlt:  Sign multiplication factors for plotted eigenfunctions 
+% signZPlt:  Sign multiplication factors for plotted eigenfunctions 
 
 switch experiment
 
 case '6.4k_dt0.01_nEL0'
-    idxPhiPlt  = [ 2 3 ];     
-    signPhiPlt = [ 1 -1 ];   
+    idxZPlt  = [ 1 3 5 7  ];     
+    signZPlt = [ 1 -1 ];   
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
     markerSize = 7;         
     signPC     = [ -1 1 ];
 
 case '6.4k_dt0.01_nEL800'
-    idxPhiPlt  = [ 2 3 ];     
-    signPhiPlt = [ 1 -1 ];   
+    idxZPlt  = [ 9 11 13 15 ];     
+    signZPlt = [ 1 -1 ];   
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
     idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov times
     markerSize = 7;         
     signPC     = [ -1 1 ];
 
 case '64k_dt0.01_nEL0'
-    idxPhiPlt  = [ 2 3 ];     
-    signPhiPlt = [ 1 -1 ];   
+    idxZPlt  = [ 1 3 5 7 ];     
+    signZPlt = [ 1 -1 ];   
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
     markerSize = 3;         
     signPC     = [ -1 1 ];
 
 case '64k_dt0.01_nEL800'
-    idxPhiPlt  = [ 2 3 ];     
-    signPhiPlt = [ 1 -1 ];   
+    idxZPlt  = [ 1 9 11 13 ];     
+    signZPlt = [ 1 -1 ];   
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
     idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov times
     markerSize = 3;         
@@ -138,7 +116,7 @@ end
 %% EXTRACT SOURCE DATA
 if ifSourceData
     disp( 'Generating source data...' ); t = tic;
-    demoNLSA_data( experiment ) 
+    demoKoopmanRKHS_data( experiment ) 
     toc( t )
 end
 
@@ -157,7 +135,7 @@ end
 % the center of the Takens embedding window. 
 
 disp( 'Building NLSA model...' ); t = tic;
-[ model, In ] = demoNLSA_nlsaModel( experiment ); 
+[ model, In ] = demoKoopmanRKHS_nlsaModel( experiment ); 
 toc( t )
 
 nSE          = getNTotalSample( model.embComponent );
@@ -237,6 +215,14 @@ if ifNLSA
 
 end
 
+%% COMPUTE EIGENFUNCTIONS OF KOOPMAN GENERATOR
+if ifKoopman
+    disp( 'Koopman eigenfunctions...' ); t = tic;
+    computeKoopmanEigenfunctions( model )
+    toc( t )
+end
+
+
 %% PERFORM PCA
 if ifPCA
 
@@ -248,18 +234,19 @@ if ifPCA
 end
 
 %% PLOT EIGENFUNCTIONS
-if ifPlotPhi
+if ifPlotZ
     
     % Retrieve source data and NLSA eigenfunctions. Assign timestamps.
     x = getData( model.srcComponent );
     x = x( :, 1 + nShiftTakens : nSE + nShiftTakens );
-    [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
+    [ zeta, ~, omega ] = getKoopmanEigenfunctions( model );
+    omega = imag( omega );
     t = ( 0 : nSE - 1 ) * In.dt;  
 
 
     % Set up figure and axes 
     Fig.nTileX     = numel( nShiftPlt ) + 1;
-    Fig.nTileY     = numel( idxPhiPlt );
+    Fig.nTileY     = numel( idxZPlt );
     Fig.units      = 'inches';
     Fig.figWidth   = 15 / 4 * Fig.nTileX; 
     Fig.deltaX     = .2;
@@ -286,25 +273,26 @@ if ifPlotPhi
         xPlt = x( :, 1 : end - nShiftPlt( iShift ) );
 
         % Loop over the eigenfunctions
-        for iPhi = 1 : Fig.nTileY
+        for iZ = 1 : Fig.nTileY
 
-            phiPlt = phi( 1 + nShiftPlt( iShift ) : end, idxPhiPlt( iPhi ) );
+            zetaPlt = zeta( 1 + nShiftPlt( iShift ) : end, idxZPlt( iZ ) );
+            zetaPlt = real( zetaPlt );
 
-            set( gcf, 'currentAxes', ax( iShift, iPhi ) )
+            set( gcf, 'currentAxes', ax( iShift, iZ ) )
             scatter3( xPlt( 1, : ), xPlt( 2, : ), xPlt( 3, : ), markerSize, ...
-                      phiPlt, 'filled'  )
+                      zetaPlt, 'filled'  )
             axis off
             view( 0, 0 )
-            set( gca, 'cLim', max( abs( phiPlt ) ) * [ -1 1 ] )
+            set( gca, 'cLim', max( abs( zetaPlt ) ) * [ -1 1 ] )
             
             if iShift == 1
-                titleStr = sprintf( '\\phi_{%i}, \\lambda_{%i} = %1.3g', ...
-                                    idxPhiPlt( iPhi ) - 1, ...
-                                    idxPhiPlt( iPhi ) - 1, ...
-                                    lambda( idxPhiPlt( iPhi ) ) );
+                titleStr = sprintf( '\\zeta_{%i}, \\omega_{%i} = %1.3g', ...
+                                    idxZPlt( iZ ) - 1, ...
+                                    idxZPlt( iZ ) - 1, ...
+                                    omega( idxZPlt( iZ ) ) );
             else
-                titleStr = sprintf( 'U^t\\phi_{%i},   t = %1.2f', ...
-                                    idxPhiPlt( iPhi ) - 1, ...
+                titleStr = sprintf( 'U^t\\zeta_{%i},   t = %1.2f', ...
+                                    idxZPlt( iZ ) - 1, ...
                                     nShiftPlt( iShift ) * In.dt ); 
             end
             title( titleStr )
@@ -318,20 +306,20 @@ if ifPlotPhi
     tPlt = tPlt - tPlt( 1 ); % set time origin to 1st plotted point
 
     % Loop over the eigenfunctions
-    for iPhi = 1 : Fig.nTileY
+    for iZ = 1 : Fig.nTileY
 
-        phiPlt = phi( idxTPlt( 1 ) : idxTPlt( 2 ), idxPhiPlt( iPhi ) );
+        zetaPlt = zeta( idxTPlt( 1 ) : idxTPlt( 2 ), idxZPlt( iZ ) );
 
-        set( gcf, 'currentAxes', ax( Fig.nTileX, iPhi ) )
-        plot( tPlt, phiPlt, '-' )
+        set( gcf, 'currentAxes', ax( Fig.nTileX, iZ ) )
+        plot( tPlt, real( zetaPlt ), '-' )
         grid on
         xlim( [ tPlt( 1 ) tPlt( end ) ] )
         ylim( [ -3 3 ] )
 
-        if iPhi == 1
+        if iZ == 1
             title( 'Time series along orbit' )
         end
-        if iPhi == Fig.nTileY
+        if iZ == Fig.nTileY
             xlabel( 't' )
         end
     end
@@ -343,7 +331,7 @@ if ifPlotPhi
 
     % Print figure
     if ifPrintFig
-        figFile = sprintf( 'figPhi%s.png', idx2str( idxPhiPlt, '_' ) );
+        figFile = sprintf( 'figZ%s.png', idx2str( idxZPlt, '_' ) );
         figFile = fullfile( figDir, figFile );
         print( fig, figFile, '-dpng', '-r300' ) 
     end
@@ -359,7 +347,7 @@ if ifPlotCoherence
     [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
 
     % Construct coherent observables based on phi's
-    z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
+    z = phi( :, idxZPlt ) .* signZPlt / sqrt( 2 );
     a = max( abs( z ), [], 1 ); % z amplitude
     angl = angle( complex( z( :, 1 ), z( :, 2 ) ) ); % z phase
 
@@ -478,7 +466,7 @@ if ifPlotCoherence
     %plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
     %       x( 3, idxTPlt( 1 ) : iT ), 'k-', ...
     %        'lineWidth', 2 )
-    title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxPhiPlt( 1 ) - 1 ) )
+    title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxZPlt( 1 ) - 1 ) )
     axis off
     view( 0, 0 )
     set( gca, 'cLim', [ -1 1 ] * a( 1 ) )
@@ -502,7 +490,7 @@ if ifPlotCoherence
     %        'lineWidth', 3 )
     title( sprintf( [ '(f) (\\phi_{%i}, \\phi_{%i}) angle on L63 ' ...
                       'attractor' ], ...
-                    idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
+                    idxZPlt( 1 ) - 1, idxZPlt( 2 ) - 1 ) )
     axis off
     view( 90, 0 )
     set( gca, 'cLim', [ -pi pi  ] )
@@ -527,9 +515,9 @@ if ifPlotCoherence
     ylim( [ -1.5 1.5 ] )
     grid on
     title( sprintf( '(g) (\\phi_{%i}, \\phi_{%i}) projection', ...
-           idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
-    xlabel( sprintf( '\\phi_{%i}', idxPhiPlt( 1 ) - 1 ) )
-    ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
+           idxZPlt( 1 ) - 1, idxZPlt( 2 ) - 1 ) )
+    xlabel( sprintf( '\\phi_{%i}', idxZPlt( 1 ) - 1 ) )
+    ylabel( sprintf( '\\phi_{%i}', idxZPlt( 2 ) - 1 ) )
 
     % phi1 time series
     set( gcf, 'currentAxes', ax( 4, 2 ) )
@@ -539,13 +527,13 @@ if ifPlotCoherence
     grid on
     xlim( [ t( 1 ) t( end ) ] )
     ylim( [ -1.5 1.5 ] )
-    title( sprintf( '(h) \\phi_{%i} time series', idxPhiPlt( 1 ) - 1 ) )
+    title( sprintf( '(h) \\phi_{%i} time series', idxZPlt( 1 ) - 1 ) )
     xlabel( 't' )
 
 
     % Print figure
     if ifPrintFig
-        figFile = fullfile( figDir, 'figPhiCoherence.png' );
+        figFile = fullfile( figDir, 'figZCoherence.png' );
         print( fig, figFile, '-dpng', '-r300' ) 
     end
 end
@@ -562,7 +550,7 @@ if ifMovieCoherence
     [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
 
     % Construct coherent observables based on phi's
-    z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
+    z = phi( :, idxZPlt ) .* signZPlt / sqrt( 2 );
     a = max( abs( z ), [], 1 ); % z amplitude
     angl = angle( complex( z( :, 1 ), z( :, 2 ) ) ); % z phase
 
@@ -692,7 +680,7 @@ if ifMovieCoherence
         plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
                x( 3, idxTPlt( 1 ) : iT ), 'k-', ...
                 'lineWidth', 2 )
-        title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxPhiPlt( 1 ) - 1 ) )
+        title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxZPlt( 1 ) - 1 ) )
         axis off
         view( 0, 0 )
         set( gca, 'cLim', [ -1 1 ] * a( 1 ) )
@@ -716,7 +704,7 @@ if ifMovieCoherence
                 'lineWidth', 3 )
         title( sprintf( [ '(f) (\\phi_{%i}, \\phi_{%i}) angle on L63 ' ...
                           'attractor' ], ...
-                        idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
+                        idxZPlt( 1 ) - 1, idxZPlt( 2 ) - 1 ) )
         axis off
         view( 90, 0 )
         set( gca, 'cLim', [ -pi pi  ] )
@@ -740,9 +728,9 @@ if ifMovieCoherence
         ylim( [ -1.5 1.5 ] )
         grid on
         title( sprintf( '(g) (\\phi_{%i}, \\phi_{%i}) projection', ...
-               idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
-        xlabel( sprintf( '\\phi_{%i}', idxPhiPlt( 1 ) - 1 ) )
-        ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
+               idxZPlt( 1 ) - 1, idxZPlt( 2 ) - 1 ) )
+        xlabel( sprintf( '\\phi_{%i}', idxZPlt( 1 ) - 1 ) )
+        ylabel( sprintf( '\\phi_{%i}', idxZPlt( 2 ) - 1 ) )
 
         % phi1 time series
         set( gcf, 'currentAxes', ax( 4, 2 ) )
@@ -752,7 +740,7 @@ if ifMovieCoherence
         grid on
         xlim( [ t( 1 ) t( end ) ] )
         ylim( [ -1.5 1.5 ] )
-        title( sprintf( '(h) \\phi_{%i} time series', idxPhiPlt( 1 ) - 1 ) )
+        title( sprintf( '(h) \\phi_{%i} time series', idxZPlt( 1 ) - 1 ) )
         xlabel( 't' )
 
         title( axTitle, sprintf( 't = %1.2f', t( iFrame ) ) )

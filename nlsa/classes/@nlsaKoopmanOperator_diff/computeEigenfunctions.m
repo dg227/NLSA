@@ -22,8 +22,6 @@ function [ c, gamma, E, zeta, mu ] = computeEigenfunctions( ...
 % mu: A column vector of size [ nS 1 ] storing the inner product weights with
 %     repect to which the phi are orthonormal. 
 %
-% lambda: A row vector of size [ 1 nPhi ] 
-%
 % Modified 2020/05/01
 
 

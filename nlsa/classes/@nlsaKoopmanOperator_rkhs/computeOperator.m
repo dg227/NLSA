@@ -2,7 +2,7 @@ function V = computeOperator( obj, diffOp, varargin )
 % COMPUTEOPERATOR Compute RKHS-compactified Koopman generator in an 
 % eigenbasis of a kernel integral operator.
 % 
-% Modified 2020/05/01
+% Modified 2020/07/22
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments
@@ -48,7 +48,7 @@ eta = computeRegularizingEigenvalues( obj, diffOp );
 % Form regularized operator
 epsilon = getRegularizationParameter( obj );
 sqrtLambda = exp( - epsilon * eta / 2 );
-sqrtLambda = sqrtLamdba( : ); % ensure sqrtLmabda is a column vector
+sqrtLambda = sqrtLambda( : ); % ensure sqrtLmabda is a column vector
 V =  sqrtLambda .* V .* sqrtLambda.';  
 
 tWall = toc( tWall0 );
