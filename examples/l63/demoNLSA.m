@@ -18,14 +18,14 @@ experiment = '64k_dt0.01_nEL800'; % 64000 samples, sampling interval 0.01, 800 d
 %experiment = '64k_dt0.01_nEL1600'; % 64000 samples, sampling interval 0.01, 1600 delays
 %experiment = '64k_dt0.01_nEL3200'; % 64000 samples, sampling interval 0.01, 3200 delays
 
-ifSourceData    = false; % generate source data
-ifNLSA          = false; % run NLSA
-ifPCA           = false;  % run PCA (for comparison with NLSA)
-ifPlotPhi       = false; % plot eigenfunctions
-ifPlotCoherence = true;  % figure illustrating coherence of NLSA eigenfunctions
-ifMoviePhi      = false;  % make eigenfunction movie
-ifPrintFig      = true;  % print figures to file
-ifPool          = false;  % create parallel pool
+ifSourceData     = false; % generate source data
+ifNLSA           = false; % run NLSA
+ifPCA            = true;  % run PCA (for comparison with NLSA)
+ifPlotPhi        = false; % plot eigenfunctions
+ifPlotCoherence  = true; % figure illustrating coherence of NLSA eigenfunctions
+ifMovieCoherence = false;  % make eigenfunction movie
+ifPrintFig       = true;  % print figures to file
+ifPool           = false;  % create parallel pool
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
@@ -122,7 +122,7 @@ case '64k_dt0.01_nEL800'
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov timescales
     idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov timescales
     markerSize = 3;         
-    signPC = [ 1 1 ];
+    signPC = [ -1 1 ];
 
 % 64000 samples, sampling interval 0.01, 1600 delays
 case '64k_dt0.01_nEL1600'
@@ -253,7 +253,8 @@ if ifPCA
 
     disp( 'PCA...' ); t = tic;
     x = getData( model.srcComponent );
-    [ PCA.u, PCA.s, PCA.v ] = svd( x, 'econ' );
+    [ PCA.u, PCA.s, PCA.v ] = svd( x - mean( x, 2 ), 'econ' );
+    PCA.v = PCA.v * sqrt( getNTotalSample( model.srcComponent ) );
     toc( t )
 end
 
@@ -363,34 +364,28 @@ end
 %% COHERENCE FIGURE
 if ifPlotCoherence
     
-    % Retrieve source data and NLSA eigenfunctions. Assign timestamps.
+    % Retrieve source data and NLSA eigenfunctions
     x = getData( model.srcComponent );
     x = x( :, 1 + nShiftTakens : nSE + nShiftTakens );
     [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
-    t = ( 0 : nSE - 1 ) * In.dt;  
-    tPlt = t( idxTPlt( 1 ) : idxTPlt( 2 ) );
-    tPlt = tPlt - tPlt( 1 );
 
-    % Construct complex-valued  coherent observable based on phi's
+    % Construct coherent observables based on phi's
     z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
-    z = complex( z( :, 1 ), z( :, 2 ) );
-    phi1CLim = [ -1 1 ] * max( abs( real( z ) ) );
+    a = max( abs( z ), [], 1 ); % z amplitude
+    angl = angle( complex( z( :, 1 ), z( :, 2 ) ) ); % z phase
 
-    % Construct complex-valued coherent observable based on leading two PCs 
+    % Construct coherent observables based on PCs
     zPC = PCA.v( 1 + nShiftTakens : nSE + nShiftTakens, [ 1 2 ] ) ...
-        .* signPC / sqrt( 2 ) * sqrt( getNTotalSample( model.srcComponent ) );
-    zPC = complex( zPC( :, 1 ), zPC( :, 2 ) );
-    pcMean = mean( zPC  );
-    pc1CLim = [ -1.2 1.2 ] * max( abs( real( zPC ) - real( pcMean ) ) ) ...
-            + real( pcMean );
-    pc1AxLim = [ -1 1 ] * max( abs( real( zPC ) - real( pcMean  ) ) ) ...
-             + real( pcMean );
-    pc2AxLim = [ -1 1 ] * max( abs( imag( zPC ) - imag( pcMean ) ) ) ...
-             + imag( pcMean );
-    
+        .* signPC / sqrt( 2 );
+    anglPC = angle( complex( zPC( :, 1 ), zPC( :, 2 ) ) ); % z phase
+    aPC = max( abs( zPC ), [], 1 ); % PC amplitude 
+
+    % Determine number of temporal samples; assign timestamps
+    nFrame = idxTPlt( 2 ) - idxTPlt( 1 ) + 1;
+    t = ( 0 : nFrame - 1 ) * In.dt;  
 
     % Set up figure and axes 
-    Fig.nTileX     = 5;
+    Fig.nTileX     = 4;
     Fig.nTileY     = 2;
     Fig.units      = 'inches';
     Fig.figWidth   = 15 / 4 * Fig.nTileX; 
@@ -410,125 +405,153 @@ if ifPlotCoherence
 
     [ fig, ax ] = tileAxes( Fig );
     set( fig, 'invertHardCopy', 'off' )
-    colormap( redblue )
 
-    % PC1 on L63 attractor
+    % Scatterplot of PC1
     set( gcf, 'currentAxes', ax( 1, 1 ) )
-    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, ...
-              real( zPC ), 'filled'  )
+    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, zPC( :, 1 ), ...
+              'filled'  )
+    plot3( x( 1, idxTPlt( 1 ) : idxTPlt( 2 ) ), ...
+           x( 2, idxTPlt( 1 ) : idxTPlt( 2 ) ), ...
+           x( 3, idxTPlt( 1 ) : idxTPlt( 2 ) ), 'k-', ...
+           'lineWidth', 2 )
+              
+    title( '(a) PC_1 on L63 attracror' )
+    axis off
     view( 0, 0 )
-    set( gca, 'cLim', pc1CLim, ...
-              'color', [ 1 1 1 ] * .3 )
-    title( '(a) PC1 on L63 attractor' )
+    set( gca, 'cLim', [ -1 1 ] * aPC( 1 ) ) 
 
-    %axPos = get( gca, 'position' );
-    %hC = colorbar( 'location', 'westOutside' );
-    %cPos = get( hC, 'position' );
-    %cPos( 1 ) = cPos( 1 ) - .07;
-    %cPos( 3 ) = .5 * cPos( 3 );
-    %set( hC, 'position', cPos )
-    %set( gca, 'position', axPos )
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'southOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 2 ) = cPos( 2 ) - .07;
+    cPos( 4 ) = .5 * cPos( 4 );
+    set( hC, 'position', cPos )
+    set( gca, 'position', axPos )
 
-    % (PC1,PC2) phase on L63 attractor
+
+    % (PC1, PC2) angle
     set( gcf, 'currentAxes', ax( 2, 1 ) )
-    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, ...
-              cos( angle( zPC - mean( zPC ) ) ), 'filled'  )
+    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, anglPC, ...
+              'filled'  )
+    %scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
+    plot3( x( 1, idxTPlt( 1 ) : idxTPlt( 2 ) ), ...
+           x( 2, idxTPlt( 1 ) : idxTPlt( 2 ) ), ...
+           x( 3, idxTPlt( 1 ) : idxTPlt( 2 ) ), 'k-', ...
+           'lineWidth', 2 )
+    title( '(b) (PC_1, PC_2) angle on L63 attractor' )
+    axis off
+    view( 90, 0 )
+    set( gca, 'cLim', [ -pi pi  ] )
+    colormap( gca, jet )
+    %set( gcf, 'currentAxes', ax( 2, 1 ) )
     %axis off
-    view( 0, 0 )
-    set( gca, 'cLim',  [ -1 1 ], ...
-              'color', [ 1 1 1 ] * .3 )
-    title( '(b) (PC1, PC2) phase on L63 attractor' )
 
-    % PC1 on (PC2, PC1) space
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'southOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 2 ) = cPos( 2 ) - .07;
+    cPos( 4 ) = .5 * cPos( 4 );
+    set( hC, 'position', cPos )
+    set( gca, 'position', axPos )
+
+
+    % (PC1,PC2) projection
     set( gcf, 'currentAxes', ax( 3, 1 ) )
-    scatter( imag( zPC ), real( zPC ),  markerSize, ...
-             real( zPC ), 'filled'  )
-    %axis off
-    set( gca, 'cLim',  pc1CLim, ...
-              'color', [ 1 1 1 ] * .3 )
-    xlim( pc2AxLim )
-    ylim( pc1AxLim )
-    title( '(c) PC1 on (PC2, PC1) space' )
-    xlabel( 'PC_2' )
-
-
-    % phi1 on (PC2, PC1) space
-    set( gcf, 'currentAxes', ax( 4, 1 ) )
-    scatter( imag( zPC ), real( zPC ),  markerSize, ...
-             real( z ), 'filled'  )
-    %axis off
-    set( gca, 'cLim',  phi1CLim, ...
-              'color', [ 1 1 1 ] * .3 )
-    xlim( pc2AxLim )
-    ylim( pc1AxLim )
-    title( '(d) \phi_1 on (PC_2, PC_1) space' )
-    xlabel( 'PC_2' )
-
-
-    % PC1 time series
-    set( gcf, 'currentAxes', ax( 5, 1 ) )
-    plot( tPlt, real( zPC( idxTPlt( 1 ) : idxTPlt( 2 ) ) ), 'b-' )
+    plot( zPC( idxTPlt( 1 ) : idxTPlt( 2 ), 1 ), ...
+          zPC( idxTPlt( 1 ) : idxTPlt( 2 ), 2 ), ...
+          'b-', 'linewidth', 1.5 ) 
+    %scatter( zPC( iT, 1 ), zPC( iT, 2 ), 70, 'r', 'filled' ) 
+    xlim( [ -2 2 ] )
+    ylim( [ -2 2 ] )
     grid on
-    xlim( [ tPlt( 1 ) tPlt( end ) ] )
-    ylim( pc1AxLim )
-    title( '(e) PC1 time series' )
+    title( '(c) (PC_1, PC_2) projection' )
+    xlabel( 'PC_1' )
+    ylabel( 'PC_2' )
+
+    
+    % PC1 time series
+    set( gcf, 'currentAxes', ax( 4, 1 ) )
+    plot( t, zPC( idxTPlt( 1 ) : idxTPlt( 2 ), 1 ), 'b-', ...
+          'linewidth', 1.5 )
+    %scatter( t( iFrame ), zPC( iT, 1 ), 70, 'r', 'filled' ) 
+    grid on
+    xlim( [ t( 1 ) t( end ) ] )
+    ylim( [ -2 2 ] )
+    title( '(d) PC_1 time series' )
     xlabel( 't' )
+    %ylabel( 'PC_1' )
 
-    % phi1 on L63 attractor
+    % phi1 scatterplot
     set( gcf, 'currentAxes', ax( 1, 2 ) )
-    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, ...
-              imag( z ), 'filled'  )
+    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, z( :, 1 ), ...
+              'filled'  )
+    %scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
+    %plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
+    %       x( 3, idxTPlt( 1 ) : iT ), 'k-', ...
+    %        'lineWidth', 2 )
+    title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxPhiPlt( 1 ) - 1 ) )
+    axis off
     view( 0, 0 )
-    set( gca, 'cLim', phi1CLim, ...
-              'color', [ 1 1 1 ] * .3 )
-    title( sprintf( '(f) \\phi_{%i} on L63 attractor', idxPhiPlt( 1 ) - 1 ) )
-    xlabel( 'x' )
-    ylabel( 'z' )
+    set( gca, 'cLim', [ -1 1 ] * a( 1 ) )
 
-    % (phi1,phi2) phase on L63 attractor
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'southOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 2 ) = cPos( 2 ) - .07;
+    cPos( 4 ) = .5 * cPos( 4 );
+    set( hC, 'position', cPos )
+    set( gca, 'position', axPos )
+
+
+
+    % (phi1,phi2) phase angle
     set( gcf, 'currentAxes', ax( 2, 2 ) )
-    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, ...
-              cos( angle( z ) ), 'filled'  )
-    %axis off
-    view( 0, 0 )
-    set( gca, 'cLim',  [ -1 1 ], ...
-              'color', [ 1 1 1 ] * .3 )
-    title( sprintf( '(f) (\\phi_{%i},\\phi_{%i}) phase on L63 attractor', ...
+    scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, angl, 'filled'  )
+    %scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
+    %plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
+    %       x( 3, idxTPlt( 1 ) : iT ), 'm-', ...
+    %        'lineWidth', 3 )
+    title( sprintf( [ '(f) (\\phi_{%i}, \\phi_{%i}) angle on L63 ' ...
+                      'attractor' ], ...
                     idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
-    xlabel( 'x' )
+    axis off
+    view( 90, 0 )
+    set( gca, 'cLim', [ -pi pi  ] )
+    colormap( gca, jet )
 
-    % PC1 on (phi1, phi2) space
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'southOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 2 ) = cPos( 2 ) - .07;
+    cPos( 4 ) = .5 * cPos( 4 );
+    set( hC, 'position', cPos )
+    set( gca, 'position', axPos )
+
+
+    % (phi1,phi2) projection
     set( gcf, 'currentAxes', ax( 3, 2 ) )
-    scatter( real( z ), imag( z ),  markerSize, ...
-             real( zPC ), 'filled'  )
-    set( gca, 'cLim',  pc1CLim, ...
-              'color', [ 1 1 1 ] * .3 )
+    plot( z( idxTPlt( 1 ) : idxTPlt( 2 ), 1 ), ...
+          z( idxTPlt( 1 ) : idxTPlt( 2 ), 2 ), ...
+          'b-', 'linewidth', 1.5 ) 
+    %scatter( z( iT, 1 ), z( iT, 2 ), 50, 'r', 'filled' ) 
     xlim( [ -1.5 1.5 ] )
     ylim( [ -1.5 1.5 ] )
-    title( '(g) PC_1 on (\phi_1, \phi_2) space' )
-    xlabel( '\phi_1' )
-
-    % phi1 on (phi1, phi2) space
-    set( gcf, 'currentAxes', ax( 4, 2 ) )
-    scatter( real( z ), imag( z ),  markerSize, ...
-             real( z ), 'filled'  )
-    set( gca, 'cLim',  phi1CLim, ...
-              'color', [ 1 1 1 ] * .3 )
-    xlim( [ -1.5 1.5 ] )
-    ylim( [ -1.5 1.5 ] )
-    title( '(h) \phi_1 on (\phi_1, \phi_2) space' )
-    xlabel( '\phi_1' )
+    grid on
+    title( sprintf( '(g) (\\phi_{%i}, \\phi_{%i}) projection', ...
+           idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
+    xlabel( sprintf( '\\phi_{%i}', idxPhiPlt( 1 ) - 1 ) )
+    ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
 
     % phi1 time series
-    set( gcf, 'currentAxes', ax( 5, 2 ) )
-    plot( tPlt, ...
-          real( z( idxTPlt( 1 ) : idxTPlt( 2 ) ) ), 'b-' )
+    set( gcf, 'currentAxes', ax( 4, 2 ) )
+    plot( t, z( idxTPlt( 1 ) : idxTPlt( 2 ), 2 ), 'b-', ...
+          'linewidth', 1.5 )
+    %scatter( t( iFrame ), z( iT, 2 ), 50, 'r', 'filled' ) 
     grid on
-    xlim( [ tPlt( 1 ) tPlt( end ) ] )
+    xlim( [ t( 1 ) t( end ) ] )
     ylim( [ -1.5 1.5 ] )
-    title( sprintf( '(i) \\phi_{%i} time series', idxPhiPlt( 1 ) - 1 ) )
+    title( sprintf( '(h) \\phi_{%i} time series', idxPhiPlt( 1 ) - 1 ) )
     xlabel( 't' )
-
 
 
     % Print figure
@@ -542,16 +565,30 @@ end
 
 
 %% MAKE EIGENFUNCTION MOVIE
-if ifMoviePhi
+if ifMovieCoherence
     
     % Retrieve source data and NLSA eigenfunctions
     x = getData( model.srcComponent );
     x = x( :, 1 + nShiftTakens : nSE + nShiftTakens );
     [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
 
+    % Construct coherent observables based on phi's
+    z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
+    a = max( abs( z ), [], 1 ); % z amplitude
+    angl = angle( complex( z( :, 1 ), z( :, 2 ) ) ); % z phase
+
+    % Construct coherent observables based on PCs
+    zPC = PCA.v( 1 + nShiftTakens : nSE + nShiftTakens, [ 1 2 ] ) ...
+        .* signPC / sqrt( 2 );
+    anglPC = angle( complex( zPC( :, 1 ), zPC( :, 2 ) ) ); % z phase
+    aPC = max( abs( zPC ), [], 1 ); % PC amplitude 
+
+    % Determine number of movie frames; assign timestamps
+    nFrame = idxTPlt( 2 ) - idxTPlt( 1 ) + 1;
+    t = ( 0 : nFrame - 1 ) * In.dt;  
 
     % Set up figure and axes 
-    Fig.nTileX     = 3;
+    Fig.nTileX     = 4;
     Fig.nTileY     = 2;
     Fig.units      = 'pixels';
     Fig.figWidth   = 1000; 
@@ -572,93 +609,161 @@ if ifMoviePhi
     [ fig, ax, axTitle ] = tileAxes( Fig );
 
     % Set up videowriter
-    movieFile = sprintf( 'moviePhi%s.png', idx2str( idxPhiPlt, '_' ) );
+    movieFile = 'movieCoherence.mp4';
     movieFile = fullfile( figDir, movieFile );
     writerObj = VideoWriter( movieFile, 'MPEG-4' );
     writerObj.FrameRate = 20;
     writerObj.Quality = 100;
     open( writerObj );
 
-    % Determine number of movie frames; assign timestamps
-    nFrame = idxTPlt( 2 ) - idxTPlt( 1 ) + 1;
-    t = ( 0 : nFrame - 1 ) * In.dt;  
-
-    % Construct coherent observable
-    z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
 
     % Loop over the frames
     for iFrame = 1 : nFrame
 
         iT = idxTPlt( 1 ) + iFrame - 1;
 
-        % Scatterplot of x2 observable
+        % Scatterplot of PC1
         set( gcf, 'currentAxes', ax( 1, 1 ) )
-        scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, x( 2, : ), ...
+        scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, zPC( :, 1 ), ...
                   'filled'  )
         scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-        title( 'x_2 observable' )
+        plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
+               x( 3, idxTPlt( 1 ) : iT ), 'k-', ...
+                'lineWidth', 1.5 )
+                  
+        title( '(a) PC1 on L63 attracror' )
         axis off
         view( 0, 0 )
-        set( gca, 'cLim', max( abs( x( 2, : ) ) ) * [ -1 1 ] ) 
+        set( gca, 'cLim', [ -1 1 ] * aPC( 1 ) ) 
 
-        % (x1,x2) projection
+        axPos = get( gca, 'position' );
+        hC = colorbar( 'location', 'southOutside' );
+        cPos = get( hC, 'position' );
+        cPos( 2 ) = cPos( 2 ) - .07;
+        cPos( 4 ) = .5 * cPos( 4 );
+        set( hC, 'position', cPos )
+        set( gca, 'position', axPos )
+
+
+        % (PC1, PC2) angle
         set( gcf, 'currentAxes', ax( 2, 1 ) )
-        plot( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), 'b-', ...
-              'linewidth', 1.5 ) 
-        scatter( x( 1, iT ), x( 2, iT ), 50, 'r', 'filled' ) 
-        xlim( [ -30 30 ] )
-        ylim( [ -30 30 ] )
+        scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, anglPC, ...
+                  'filled'  )
+        scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
+        plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
+               x( 3, idxTPlt( 1 ) : iT ), 'm-', ...
+                'lineWidth', 3 )
+        title( '(b) (PC_1, PC_2) angle on L63 attractor' )
+        axis off
+        view( 90, 0 )
+        set( gca, 'cLim', [ -pi pi  ] )
+        colormap( gca, jet )
+        %set( gcf, 'currentAxes', ax( 2, 1 ) )
+        %axis off
+
+        axPos = get( gca, 'position' );
+        hC = colorbar( 'location', 'southOutside' );
+        cPos = get( hC, 'position' );
+        cPos( 2 ) = cPos( 2 ) - .07;
+        cPos( 4 ) = .5 * cPos( 4 );
+        set( hC, 'position', cPos )
+        set( gca, 'position', axPos )
+
+
+        % (PC1,PC2) projection
+        set( gcf, 'currentAxes', ax( 3, 1 ) )
+        plot( zPC( idxTPlt( 1 ) : iT, 1 ), zPC( idxTPlt( 1 ) : iT, 2 ), ...
+              'b-', 'linewidth', 1.5 ) 
+        scatter( zPC( iT, 1 ), zPC( iT, 2 ), 70, 'r', 'filled' ) 
+        xlim( [ -2 2 ] )
+        ylim( [ -2 2 ] )
         grid on
-        title( '(x_1,x_2) projection' )
-        xlabel( 'x_1' )
-        ylabel( 'x_2' )
+        title( '(c) (PC_1, PC_2) projection' )
+        xlabel( 'PC_1' )
+        ylabel( 'PC_2' )
 
         
-        % x2 time series
-        set( gcf, 'currentAxes', ax( 3, 1 ) )
-        plot( t( 1 : iFrame ), x( 2, idxTPlt( 1 ) : iT ), 'b-', ...
+        % PC1 time series
+        set( gcf, 'currentAxes', ax( 4, 1 ) )
+        plot( t( 1 : iFrame ), zPC( idxTPlt( 1 ) : iT, 1 ), 'b-', ...
               'linewidth', 1.5 )
-        scatter( t( iFrame ), x( 2, iT ), 50, 'r', 'filled' ) 
+        scatter( t( iFrame ), zPC( iT, 1 ), 70, 'r', 'filled' ) 
         grid on
         xlim( [ t( 1 ) t( end ) ] )
-        ylim( [ -30 30 ] )
-        title( 'x_2 time series' )
+        ylim( [ -2 2 ] )
+        title( '(d) PC_1 time series' )
         xlabel( 't' )
-        ylabel( 'x_2' )
+        %ylabel( 'PC_1' )
 
-        % phi2 scatterplot
+        % phi1 scatterplot
         set( gcf, 'currentAxes', ax( 1, 2 ) )
-        scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, z( :, 2 ), ...
+        scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, z( :, 1 ), ...
                   'filled'  )
         scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-        title( sprintf( '\\phi_{%i} observable', idxPhiPlt( 2 ) - 1 ) )
+        plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
+               x( 3, idxTPlt( 1 ) : iT ), 'k-', ...
+                'lineWidth', 2 )
+        title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxPhiPlt( 1 ) - 1 ) )
         axis off
         view( 0, 0 )
-        set( gca, 'cLim', max( abs( z( :, 2 ) ) ) * [ -1 1 ] )
+        set( gca, 'cLim', [ -1 1 ] * a( 1 ) )
+
+        axPos = get( gca, 'position' );
+        hC = colorbar( 'location', 'southOutside' );
+        cPos = get( hC, 'position' );
+        cPos( 2 ) = cPos( 2 ) - .07;
+        cPos( 4 ) = .5 * cPos( 4 );
+        set( hC, 'position', cPos )
+        set( gca, 'position', axPos )
+
+
+
+        % (phi1,phi2) phase angle
+        set( gcf, 'currentAxes', ax( 2, 2 ) )
+        scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, angl, 'filled'  )
+        scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
+        plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
+               x( 3, idxTPlt( 1 ) : iT ), 'm-', ...
+                'lineWidth', 3 )
+        title( sprintf( [ '(f) (\\phi_{%i}, \\phi_{%i}) angle on L63 ' ...
+                          'attractor' ], ...
+                        idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
+        axis off
+        view( 90, 0 )
+        set( gca, 'cLim', [ -pi pi  ] )
+        colormap( gca, jet )
+
+        axPos = get( gca, 'position' );
+        hC = colorbar( 'location', 'southOutside' );
+        cPos = get( hC, 'position' );
+        cPos( 2 ) = cPos( 2 ) - .07;
+        cPos( 4 ) = .5 * cPos( 4 );
+        set( hC, 'position', cPos )
+        set( gca, 'position', axPos )
+
 
         % (phi1,phi2) projection
-        set( gcf, 'currentAxes', ax( 2, 2 ) )
+        set( gcf, 'currentAxes', ax( 3, 2 ) )
         plot( z( idxTPlt( 1 ) : iT, 1 ), z( idxTPlt( 1 ) : iT, 2 ), ...
               'b-', 'linewidth', 1.5 ) 
         scatter( z( iT, 1 ), z( iT, 2 ), 50, 'r', 'filled' ) 
         xlim( [ -1.5 1.5 ] )
         ylim( [ -1.5 1.5 ] )
         grid on
-        title( sprintf( '(\\phi_{%i},\\phi_{%i}) projection', ...
+        title( sprintf( '(g) (\\phi_{%i}, \\phi_{%i}) projection', ...
                idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
         xlabel( sprintf( '\\phi_{%i}', idxPhiPlt( 1 ) - 1 ) )
         ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
 
-        % phi2 time series
-        set( gcf, 'currentAxes', ax( 3, 2 ) )
+        % phi1 time series
+        set( gcf, 'currentAxes', ax( 4, 2 ) )
         plot( t( 1 : iFrame ), z( idxTPlt( 1 ) : iT, 2 ), 'b-', ...
               'linewidth', 1.5 )
         scatter( t( iFrame ), z( iT, 2 ), 50, 'r', 'filled' ) 
         grid on
         xlim( [ t( 1 ) t( end ) ] )
         ylim( [ -1.5 1.5 ] )
-        title( sprintf( '\\phi_{%i} time series', idxPhiPlt( 2 ) - 1 ) )
-        ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
+        title( sprintf( '(h) \\phi_{%i} time series', idxPhiPlt( 1 ) - 1 ) )
         xlabel( 't' )
 
         title( axTitle, sprintf( 't = %1.2f', t( iFrame ) ) )

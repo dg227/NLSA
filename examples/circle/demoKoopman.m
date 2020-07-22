@@ -4,7 +4,7 @@
 % flow.  
 % 
 % a = 1:     Constant-speed flow
-% a = 0:     Singular flow with fixed point at theta = 3 * pi / 2
+% a = 0:     Singular flow with a fixed point at theta = 3 * pi / 2
 % 0 < a < 1: Flow is faster for 0 < theta < pi and slower for pi < theta < 2 pi. 
 %
 % Modified 2020/07/15
@@ -16,9 +16,10 @@ ifSourceData         = false; % generate source data
 ifNLSA               = false; % run NLSA (kernel eigenfunctions)
 ifKoopman            = false;  % compute Koopman eigenfunctions 
 ifPlotZ              = false; % plot generator eigenfunctions
-ifPlotRectification  = true; % show dynamical rectification by generator eig  
-ifMovieRectification = false;  % make rectification movie
+ifPlotRectification  = false; % show dynamical rectification by generator eig  
+ifMovieRectification = true;  % make dynamical rectification movie
 ifPrintFig           = true;  % print figures to file
+ifPool               = false; % create Matltab parallel pool
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
@@ -30,8 +31,8 @@ nProc = 1; % number of batch processes
 % idxZPlt:     Eigenfunctions to plot
 % idxTPlt:     Time interval to plot
 % idxTMrk:     Timestamp to mark in rectification plots
-% phaseZ:      Phase factor
-% idxZRec:     Eigenfunction in rectification figure/movie
+% phaseZ:      Phase factor for Koopman eigenfunctions
+% idxZRec:     Eigenfunction to show in rectification figure/movie
 % figDir:      Output directory for plots
 % markerSize:  For eigenfunction scatterplots
 
@@ -92,18 +93,20 @@ nShiftTakens = round( nEL / 2 );
 % Create parallel pool if required
 % In.nParE is the number of parallel workers for delay-embedded distances
 % In.nParNN is the number of parallel workers for nearest neighbor search
-if isfield( In, 'nParE' ) && In.nParE > 0
-    nPar = In.nParE;
-else
-    nPar = 0;
-end
-if isfield( In, 'nParNN' ) && In.nParNN > 0
-    nPar = max( nPar, In.nParNN );
-end
-if nPar > 0
-    poolObj = gcp( 'nocreate' );
-    if isempty( poolObj )
-        poolObj = parpool( nPar );
+if ifPool 
+    if isfield( In, 'nParE' ) && In.nParE > 0
+        nPar = In.nParE;
+    else
+        nPar = 0;
+    end
+    if isfield( In, 'nParNN' ) && In.nParNN > 0
+        nPar = max( nPar, In.nParNN );
+    end
+    if nPar > 0
+        poolObj = gcp( 'nocreate' );
+        if isempty( poolObj )
+            poolObj = parpool( nPar );
+        end
     end
 end
 
@@ -311,13 +314,13 @@ if ifPlotRectification
     Fig.nTileX     = 3;
     Fig.nTileY     = 2;
     Fig.units      = 'inches';
-    Fig.figWidth   = 15 / 4 * Fig.nTileX; 
-    Fig.deltaX     = .9;
+    Fig.figWidth   = 12 / 4 * Fig.nTileX; 
+    Fig.deltaX     = .7;
     Fig.deltaX2    = .2;
     Fig.deltaY     = .55;
     Fig.deltaY2    = .3;
-    Fig.gapX       = .40;
-    Fig.gapY       = 0.8;
+    Fig.gapX       = .45;
+    Fig.gapY       = 0.9;
     Fig.gapT       = 0; 
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
@@ -336,7 +339,7 @@ if ifPlotRectification
     colormap( redblue )
     set( gca, 'cLim', [ -1 1 ], ...
               'color', [ 1 1 1 ] * .3, ...
-              'xTickLabel', [], 'yTickLabel', [] )
+              'yTickLabel', [] )
     xlim( [ -1.2 1.2 ] )
     ylim( [ -1.2 1.2 ] )
     title( '(a) x on original state space' )
@@ -358,7 +361,7 @@ if ifPlotRectification
     colormap( redblue )
     set( gca, 'cLim', [ -1 1 ], ...
               'color', [ 1 1 1 ] * .3, ...
-              'xTickLabel', [], 'yTickLabel', [] )
+              'yTickLabel', [] )
     xlim( [ -1.2 1.2 ] )
     ylim( [ -1.2 1.2 ] )
     title( '(b) x on rectified state space' )
@@ -372,7 +375,6 @@ if ifPlotRectification
     xlim( [ tPlt( 1 ) tPlt( end ) ] )
     ylim( [ -1.2 1.2 ] )
     title( '(c) x time series' )
-    set( gca, 'xTickLabel', [] )
     xlabel( 't' ) 
 
     % Generator eigenfunction on original (unrectified) state space
@@ -455,20 +457,21 @@ if ifMovieRectification
     Fig.units      = 'pixels';
     Fig.figWidth   = 550; 
     Fig.deltaX     = 40;
-    Fig.deltaX2    = 20;
-    Fig.deltaY     = 35;
+    Fig.deltaX2    = 15;
+    Fig.deltaY     = 40;
     Fig.deltaY2    = 20;
-    Fig.gapX       = 30;
-    Fig.gapY       = 50;
-    Fig.gapT       = 30; 
+    Fig.gapX       = 40;
+    Fig.gapY       = 60;
+    Fig.gapT       = 20; 
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 10;
+    Fig.fontSize   = 8;
     Fig.tickLength = [ 0.02 0 ];
     Fig.visible    = 'on';
     Fig.nextPlot   = 'add'; 
 
     [ fig, ax, axTitle ] = tileAxes( Fig );
+    colormap( redblue )
 
     % Set up videowriter
     movieFile = 'movieRectification.mp4';
@@ -494,10 +497,11 @@ if ifMovieRectification
         colormap( redblue )
         set( gca, 'cLim', [ -1 1 ], ...
                   'color', [ 1 1 1 ] * .3, ...
-                  'xTickLabel', [], 'yTickLabel', [] )
+                  'yTickLabel', [] )
         xlim( [ -1.2 1.2 ] )
         ylim( [ -1.2 1.2 ] )
-        title( 'x_1 on original state space' )
+        title( '(a) x on original state space' )
+        xlabel( 'x' )
 
         axPos = get( gca, 'position' );
         hC = colorbar( 'location', 'westOutside' );
@@ -511,13 +515,13 @@ if ifMovieRectification
         set( gcf, 'currentAxes', ax( 2, 1 ) )
         scatter( real( zPlt ), imag( zPlt ), markerSize, x( 1, : ), 'filled'  )
         scatter( real( zPlt( iT ) ), imag( zPlt( iT )), 70, 'g', 'filled' ) 
-        colormap( redblue )
         set( gca, 'cLim', [ -1 1 ], ...
                   'color', [ 1 1 1 ] * .3, ...
-                  'xTickLabel', [], 'yTickLabel', [] )
+                  'yTickLabel', [] )
         xlim( [ -1.2 1.2 ] )
         ylim( [ -1.2 1.2 ] )
-        title( 'x_1 on rectified state space' )
+        title( '(b) x on rectified state space' )
+        xlabel( sprintf( 'Re(z_{%i})', idxZRec - 1 ) )
         
         % Time series of x1 observable
         set( gcf, 'currentAxes', ax( 3, 1 ) )
@@ -527,7 +531,7 @@ if ifMovieRectification
         grid on
         xlim( [ tPlt( 1 ) tPlt( end ) ] )
         ylim( [ -1.2 1.2 ] )
-        title( 'x_1 time series' )
+        title( '(c) x time series' )
         xlabel( 't' ) 
 
         % Generator eigenfunction on original (unrectified) state space
@@ -537,10 +541,11 @@ if ifMovieRectification
         colormap( redblue )
         set( gca, 'cLim', max( abs( zPlt ) ) * [ -1 1 ], ...
                   'color', [ 1 1 1 ] * .3, ...
-                  'xTickLabel', [], 'yTickLabel', [] )
+                  'yTickLabel', [] )
         xlim( [ -1.2 1.2 ] )
         ylim( [ -1.2 1.2 ] )
-        title( sprintf( 'Re(z_{%i}) on original state space' ,idxZRec - 1 ) )
+        title( sprintf( '(d) Re(z_{%i}) on original state space' ,idxZRec - 1 ) )
+        xlabel( 'x' )
 
         axPos = get( gca, 'position' );
         hC = colorbar( 'location', 'westOutside' );
@@ -558,10 +563,11 @@ if ifMovieRectification
         colormap( redblue )
         set( gca, 'cLim', max( abs( zPlt ) ) * [ -1 1 ], ...
                   'color', [ 1 1 1 ] * .3, ...
-                  'xTickLabel', [], 'yTickLabel', [] )
+                  'yTickLabel', [] )
         xlim( [ -1.2 1.2 ] )
         ylim( [ -1.2 1.2 ] )
-        title( sprintf( 'Re(z_{%i}) on rectified state space' ,idxZRec - 1 ) )
+        title( sprintf( '(e) Re(z_{%i}) on rectified state space' ,idxZRec - 1 ) )
+        xlabel( sprintf( 'Re(z_{%i})', idxZRec - 1 ) )
         
         % Time series of generator eigenfunction
         set( gcf, 'currentAxes', ax( 3, 2 ) )
@@ -572,7 +578,7 @@ if ifMovieRectification
         xlim( [ tPlt( 1 ) tPlt( end ) ] )
         ylim( [ -1.2 1.2 ] )
         xlabel( 't' ) 
-        title( sprintf( 'Re(z_{%i}) time series', idxZRec - 1 ) )
+        title( sprintf( '(f) Re(z_{%i}) time series', idxZRec - 1 ) )
 
         title( axTitle, sprintf( 't = %1.2f', t( iFrame ) ) )
         axis( axTitle, 'off' )
