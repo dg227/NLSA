@@ -43,13 +43,16 @@
 %experiment = '6.4k_dt0.01_nEL0'; 
 %experiment = '6.4k_dt0.01_nEL800'; 
 %experiment = '64k_dt0.01_nEL0'; 
-experiment = '64k_dt0.01_nEL800'; 
+%experiment = '64k_dt0.01_nEL100'; 
+experiment = '64k_dt0.01_nEL200'; 
+%experiment = '64k_dt0.01_nEL400'; 
+%experiment = '64k_dt0.01_nEL800'; 
 
-ifSourceData     = false; % generate source data
-ifNLSA           = false; % run NLSA (kernel eigenfunctions)
+ifSourceData     = true; % generate source data
+ifNLSA           = true; % run NLSA (kernel eigenfunctions)
 ifKoopman        = false;  % compute Koopman eigenfunctions
 ifPCA            = false; % run PCA (for comparison with NLSA)
-ifPlotZ          = true;  % plot Koopman eigenfunctions
+ifPlotZ          = false;  % plot Koopman eigenfunctions
 ifPlotCoherence  = false; % figure illustrating coherence of NLSA eigenfunctions
 ifMovieCoherence = false; % make eigenfunction movie illustrating coherence
 ifPrintFig       = false; % print figures to file
@@ -87,6 +90,30 @@ case '6.4k_dt0.01_nEL800'
     signPC     = [ -1 1 ];
 
 case '64k_dt0.01_nEL0'
+    idxZPlt  = [ 1 3 5 7 ];     
+    signZPlt = [ 1 -1 ];   
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
+    markerSize = 3;         
+    signPC     = [ -1 1 ];
+
+case '64k_dt0.01_nEL100'
+    idxZPlt  = [ 1 3 5 7 ];     
+    signZPlt = [ 1 -1 ];   
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
+    markerSize = 3;         
+    signPC     = [ -1 1 ];
+
+case '64k_dt0.01_nEL200'
+    idxZPlt  = [ 1 3 5 7 ];     
+    signZPlt = [ 1 -1 ];   
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
+    markerSize = 3;         
+    signPC     = [ -1 1 ];
+
+case '64k_dt0.01_nEL400'
     idxZPlt  = [ 1 3 5 7 ];     
     signZPlt = [ 1 -1 ];   
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
