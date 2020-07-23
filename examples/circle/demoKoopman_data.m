@@ -1,5 +1,5 @@
-function demoNLSA_data( experiment )
-% DEMONLSA_DATA Helper function to generate datasets for NLSA demo for 
+function demoKoopman_data( experiment )
+% DEMOKOOPMAN_DATA Helper function to generate datasets for Koopman demo for 
 % variable-speed circle rotation.
 %
 % experiment - String identifier for data analysis experiment

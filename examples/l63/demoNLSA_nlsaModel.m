@@ -14,7 +14,23 @@ function [ model, In, Out ] = demoNLSA_nlsaModel( experiment )
 % This function creates the data structures In and Out, which are then passed 
 % to function l63NLSAModel to build the model.
 %
-% Modified 2020/07/11
+% Information about dataset partitioning and parallelization:
+%
+% The parameter In.nB sets the number of batches to partition the dataset
+% in pairwise distance calculations. Increasing this parameter reduces the
+% memory footprint, but increases execution time associated with file I/O and 
+% nearest-neighbor sorting. As a rule of thumb, values of In.nB between 4
+% and 6 are appropriate for L63 datasets with ~50,000 samples on a machine
+% with 32GB of memory. Note that enabling parallel for loops (as described 
+% below) results in additional memory requirements. 
+%
+% The parameters In.nParE and In.nParNN set the number of Matlab parallel 
+% workers used in parfor loops to compute distances in delay-embedding space 
+% and to identify nearest neighbors, respectively. Setting these parameters
+% to 0 reverts to serial for loops. 
+%
+% Modified 2020/07/23
+
 if nargin == 0
     experiment = '6.4k_dt0.01_nEL0';
 end

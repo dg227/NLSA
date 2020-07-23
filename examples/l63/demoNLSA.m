@@ -32,11 +32,34 @@
 % kernel matrix. See pseudocode in Appendix B of reference [2] below for 
 % further details. 
 %
+% The script calls function demoNLSA_nlsaModel to create an object of
+% nlsaModel class, which encodes all aspects and parameters of the calculation,
+% such as location of source data, kernel parameters, Koopman operator 
+% approximation parameters, etc. 
+%
+% Results from each stage of the calculation are written on disk. Below is a
+% summary of basic commands to access the code output:
+%
+% lambda = getDiffusionEigenvalues( model ); -- NLSA (kernel) eigenvalues
+% phi    = getDiffusionEigenfunctions( model ); -- kernel eigenfunctions
+% z     = getKoopmanEigenfunctions( model );   -- Koopman eigenfunctions
+% gamma = getKoopmanEigenvalues( model ); -- Koopman eigenvalues  
+% T     = getKoopmanEigenperiods( model ); -- Koopman eigenperiods
+%
 % Approximate running times on Matlab R2018b running on Intel(R) Core(TM) 
 % i9-8950HK CPU @ 2.90GHz are as follows:
 %
 % '6.4k_dt0.01_nEL0':   2 minutes   
 % '6.4k_dt0.01_nEL800': 3 minutes
+% '64k_dt0.01_nEL0':    45 minutes
+% '64k_dt0.01_nEL800':  90 minutes
+%
+% See function demoNLSA_nlsaModel for additional information on dataset 
+% partitioning and parallelization using Matlab's Parallel Computing toolbox.
+%
+% A figure, figPhiCoherence.png, depicting the extracted coherent observables 
+% from the '64k_dt0.01_nEL800' experiment, is included for reference in 
+% subdirectory ./figs/64k_dt0.01_nEL800.
 %
 % References:
 % 
@@ -48,7 +71,7 @@
 %     space compactification of unitary evolution groups", 
 %     https://arxiv.org/abs/1808.01515.
 %
-% [3] D. Giannakis, A. J. Majda (201), "Nonlinear Laplacian spectral analysis
+% [3] D. Giannakis, A. J. Majda (2012), "Nonlinear Laplacian spectral analysis
 %     for time series with intermittency and low-frequency variability", 
 %     Proc. Natl. Acad. Sci., 109(7), 2222, 
 %     http://dx.doi.org/10.1073/pnas.1118984109.
@@ -63,18 +86,18 @@
 % Modified 2020/07/22
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = '6.4k_dt0.01_nEL0'; 
+%experiment = '6.4k_dt0.01_nEL0'; 
 %experiment = '6.4k_dt0.01_nEL800'; 
 %experiment = '64k_dt0.01_nEL0'; 
-%experiment = '64k_dt0.01_nEL800'; 
+experiment = '64k_dt0.01_nEL800'; 
 
 ifSourceData     = false; % generate source data
-ifNLSA           = true; % run NLSA (kernel eigenfunctions)
+ifNLSA           = false; % run NLSA (kernel eigenfunctions)
 ifPCA            = true;  % run PCA (for comparison with NLSA)
 ifPlotPhi        = false; % plot eigenfunctions
-ifPlotCoherence  = true;  % figure illustrating coherence of NLSA eigenfunctions
-ifMovieCoherence = false; % make eigenfunction movie illustrating coherence
-ifPrintFig       = false;  % print figures to file
+ifPlotCoherence  = false; % figure illustrating coherence of NLSA eigenfunctions
+ifMovieCoherence = true; % make eigenfunction movie illustrating coherence
+ifPrintFig       = false; % print figures to file
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script

@@ -1,24 +1,95 @@
 % DEMO OF KOOPMAN SPECTRAL ANALYSIS APPLIED TO VARIABLE-SPEED FLOW ON CIRCLE
 %
-% a is a parameter in the interval ( 0, 1 ] controling the nonlinerity of the 
-% flow.  
+% In this example, we consider the dynamical flow on the circle generated
+% by the ODE
+%
+% dtheta/dt = f * ( 1 + sqrt( 1 - a ) * sin( theta ) )
+% 
+% theta( 0 ) = 0,
+%
+% where theta is the phase angle on the circle,  f is a frequency parameter, 
+% and a is a parameter in the interval ( 0, 1 ] controlling the nonlinearity of
+% the flow.  
 % 
 % a = 1:     Constant-speed flow
 % a = 0:     Singular flow with a fixed point at theta = 3 * pi / 2
 % 0 < a < 1: Flow is faster for 0 < theta < pi and slower for pi < theta < 2 pi. 
 %
+% The goal of this example is to demonstrate that the leading eigenfunction 
+% of the Koopman generator of this system (acting on the L2 space associated
+% with the invariant measure) rectifies the variable-speed flow, mapping
+% the system to a conjugate system where the dynamics has constant frequency.
+% The frequency of the rectified system is determined from the corresponding
+% generator eigenvalue. 
+%
+% This script solves the eigenvalue problem for the generator in a data-driven
+% basis obtained by eigenfunctions of a kernel integral operator (kernel 
+% matrix), with a small amount of diffusion added for regularization.
+%
+% The kernel matrix is based on a variable-bandwidth Gaussian kernel with
+% symmetric (bistochastic) Markov normalization. See Reference [1] below for
+% further details and pseudocode. 
+%
+% The script calls function demoKoopman_nlsaModel to create an object of
+% nlsaModel class, which encodes all aspects and parameters of the calculation,
+% such as location of source data, kernel parameters, Koopman operator 
+% approximation parameters, etc. 
+%
+% Results from each stage of the calculation are written on disk. Below is a
+% summary of basic commands to access the code output:
+%
+% lambda = getDiffusionEigenvalues( model ); -- NLSA (kernel) eigenvalues
+% phi    = getDiffusionEigenfunctions( model ); -- kernel eigenfunctions
+% z     = getKoopmanEigenfunctions( model );   -- Koopman eigenfunctions
+% gamma = getKoopmanEigenvalues( model ); -- Koopman eigenvalues  
+% T     = getKoopmanEigenperiods( model ); -- Koopman eigenperiods
+%
+% An animation, movieRectifiation.mp4, included in subdirectory 
+% ./figs/a0.7/movieRectification.mp4, illustrates the output of the code
+% and the dynamical rectification induced by the leading Koopman eigenfunction
+% for this system. 
+%
+% Movie caption:
+%
+% Panel (a) shows the state space of the oscillator (i.e., the unit circle S^1)
+% colored by the x coordinate, x = cos theta. The dynamics is chosen such that
+% dtheta / dt is larger for 0 < theta < pi and smaller for pi < theta < 2 pi, 
+% resulting in the time series for x(t) = x(theta(t)) in Panel (c).  
+%
+% Panel (d) shows the real part of the leading generator eigenfunction z1, 
+% where it is evident that the values undergo a slower (faster) progression 
+% when d theta / dt is high (slow). This leads to the rectified time series 
+% u(t) = Re z1( \theta(t) ) in Panel (f). The latter, is a pure cosine wave 
+% u( t ) = cos(2 \pi  t / T) with period T ~ 7.5 determined from the generator
+% eigenvalue corresponding to z1. 
+%
+% Panels (b) and (d) show x and Re z1 on the rectified state space obtained by
+% nonlinear mapping (homeomorphism) of the circle, using the real and imaginary
+% parts of z1 as coordinates. 
+%
+% In Panel~(e), the evolution of the phase angle in the rectified state space 
+% is that of a harmonic oscillator with constant angular frequency 2 \pi / T.
+% See Methods for further details on the dynamical system employed in this 
+% example.
+%
+% References:
+%
+% [1] D. Giannakis (2019), "Data-driven spectral decomposition and forecasting
+%     of ergodic dynamical systems", Appl. Comput. Harmon. Anal., 62(2), 
+%     338-396, http://dx.doi.org/10.1016/j.acha.2017.09.001.
+%
 % Modified 2020/07/15
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = 'a0.7'; 
+experiment = 'a0.7';  
 
 ifSourceData         = false; % generate source data
 ifNLSA               = false; % run NLSA (kernel eigenfunctions)
-ifKoopman            = false;  % compute Koopman eigenfunctions 
+ifKoopman            = false; % compute Koopman eigenfunctions 
 ifPlotZ              = false; % plot generator eigenfunctions
 ifPlotRectification  = false; % show dynamical rectification by generator eig  
 ifMovieRectification = true;  % make dynamical rectification movie
-ifPrintFig           = true;  % print figures to file
+ifPrintFig           = false; % print figures to file
 ifPool               = false; % create Matltab parallel pool
 
 %% BATCH PROCESSING
@@ -39,7 +110,6 @@ nProc = 1; % number of batch processes
 switch experiment
 
 case 'a0.7'
- 
     idxZPlt    = [ 2 4 ];     
     phaseZ     = [ 1 ]; 
     nShiftPlt  = [ 0 500 1000 ]; 
@@ -49,7 +119,6 @@ case 'a0.7'
     markerSize = 7;         
 
 otherwise
-
     'Invalid experiment.'
 
 end

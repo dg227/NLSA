@@ -1,7 +1,6 @@
 function [ Data, DataSpecs ] = circleData( DataSpecs )
 % CIRCLEDATA Integrate variable speed dynamical system on the circle:
 %
-% dtheta/dt = f * ( 1 - sqrt( 1 - a ) * sin( theta ) )
 % dtheta/dt = f * ( 1 + sqrt( 1 - a ) * sin( theta ) )
 % 
 % theta( 0 ) = 0,
