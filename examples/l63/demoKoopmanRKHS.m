@@ -47,9 +47,9 @@ experiment = '64k_dt0.01_nEL800';
 
 ifSourceData     = false; % generate source data
 ifNLSA           = false; % run NLSA (kernel eigenfunctions)
-ifKoopman        = true;  % compute Koopman eigenfunctions
+ifKoopman        = false;  % compute Koopman eigenfunctions
 ifPCA            = false; % run PCA (for comparison with NLSA)
-ifPlotZ          = true; % plot Koopman eigenfunctions
+ifPlotZ          = true;  % plot Koopman eigenfunctions
 ifPlotCoherence  = false; % figure illustrating coherence of NLSA eigenfunctions
 ifMovieCoherence = false; % make eigenfunction movie illustrating coherence
 ifPrintFig       = false; % print figures to file
@@ -95,9 +95,9 @@ case '64k_dt0.01_nEL0'
     signPC     = [ -1 1 ];
 
 case '64k_dt0.01_nEL800'
-    idxZPlt  = [ 1 9 11 13 ];     
+    idxZPlt  = [ 1 3 5 7 ];     
     signZPlt = [ 1 -1 ];   
-    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    nShiftPlt  = [ 0 100 300 ]; % approx [ 0 1 3 ] Lyapunov times
     idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov times
     markerSize = 3;         
     signPC     = [ -1 1 ];
@@ -264,6 +264,7 @@ if ifPlotZ
     Fig.nextPlot   = 'add'; 
 
     [ fig, ax, axTitle ] = tileAxes( Fig );
+    colormap( jet )
 
     % EIGENFUNCTION SCATTERPLOTS
 

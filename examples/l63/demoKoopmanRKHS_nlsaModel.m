@@ -215,8 +215,8 @@ switch experiment
         In.Trg.embFormat = 'overlap'; % storage format for delay embedding
 
         % NLSA parameters
-        In.Res.nB     = 4;          % batches to partition the in-sample data
-        In.Res.nBRec  = 4;          % batches for reconstructed data
+        In.Res.nB     = 6;          % batches to partition the in-sample data
+        In.Res.nBRec  = 6;          % batches for reconstructed data
         In.nParNN     = 3;          % parallel workers for nearest neighbors
         In.nParE      = 0;          % workers for delay-embedding sums
         In.nN         = 7000;       % nearest neighbors for pairwise distances
@@ -231,7 +231,7 @@ switch experiment
         In.epsilonE    = [ -20 20 ];% kernel bandwidth exponents 
         In.nEpsilon    = 200;       % number of exponents for bandwidth tuning
         In.alpha       = .5;        % diffusion maps normalization 
-        In.nPhi        = 101;      % diffusion eigenfunctions to compute
+        In.nPhi        = 501;      % diffusion eigenfunctions to compute
         In.nPhiPrj     = In.nPhi;   % eigenfunctions to project the data
         In.idxPhiRec   = 1 : 1;     % eigenfunctions for reconstruction
         In.idxPhiSVD   = 1 : 1;     % eigenfunctions for linear mapping
@@ -256,9 +256,9 @@ switch experiment
         In.koopmanFDOrder = 4;         % finite-difference order
         In.koopmanDt      = In.dt; % sampling interval 
         In.koopmanAntisym = true;      % enforce antisymmetrization
-        In.koopmanEpsilon = 1E-3;      % regularization parameter
+        In.koopmanEpsilon = 0.5E-4;    % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 2 : 51;   % diffusion eigenfunctions used as basis
+        In.idxPhiKoopman  = 2 : 401;   % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
     
@@ -335,9 +335,9 @@ switch experiment
         In.koopmanFDOrder = 4;         % finite-difference order
         In.koopmanDt      = In.dt;     % sampling interval 
         In.koopmanAntisym = true;      % enforce antisymmetrization
-        In.koopmanEpsilon = 1.1E-3;      % regularization parameter
+        In.koopmanEpsilon = 3.7E-2;      % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 2 : 51;   % diffusion eigenfunctions used as basis
+        In.idxPhiKoopman  = 2 : 1001;  % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
     otherwise
