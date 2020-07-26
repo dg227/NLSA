@@ -40,19 +40,21 @@
 % Modified 2020/07/22
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-%experiment = '6.4k_dt0.01_nEL0'; 
+experiment = '6.4k_dt0.01_nEL0'; 
 %experiment = '6.4k_dt0.01_nEL800'; 
 %experiment = '64k_dt0.01_nEL0'; 
 %experiment = '64k_dt0.01_nEL100'; 
-experiment = '64k_dt0.01_nEL200'; 
+%experiment = '64k_dt0.01_nEL200'; 
 %experiment = '64k_dt0.01_nEL400'; 
 %experiment = '64k_dt0.01_nEL800'; 
 
-ifSourceData     = true; % generate source data
-ifNLSA           = true; % run NLSA (kernel eigenfunctions)
-ifKoopman        = false;  % compute Koopman eigenfunctions
+ifSourceData     = false; % generate source data
+ifTestData       = false;  % generate test data for forescasting
+ifNLSA           = false; % run NLSA (kernel eigenfunctions)
+ifKoopman        = false; % compute Koopman eigenfunctions
+ifOse            = true;  % do out-of-sample extension (for forecasting)
 ifPCA            = false; % run PCA (for comparison with NLSA)
-ifPlotZ          = false;  % plot Koopman eigenfunctions
+ifPlotZ          = false; % plot Koopman eigenfunctions
 ifPlotCoherence  = false; % figure illustrating coherence of NLSA eigenfunctions
 ifMovieCoherence = false; % make eigenfunction movie illustrating coherence
 ifPrintFig       = false; % print figures to file
@@ -69,7 +71,7 @@ nProc = 1; % number of batch processes
 % figDir:      Output directory for plots
 % markerSize:  For eigenfunction scatterplots
 % signPC:      Sign multiplication factors for principal components
-% signZPlt:  Sign multiplication factors for plotted eigenfunctions 
+% signZPlt:    Sign multiplication factors for plotted eigenfunctions 
 
 switch experiment
 
@@ -114,7 +116,7 @@ case '64k_dt0.01_nEL200'
     signPC     = [ -1 1 ];
 
 case '64k_dt0.01_nEL400'
-    idxZPlt  = [ 1 3 5 7 ];     
+    idxZPlt  = [ 1 12 14 ];     
     signZPlt = [ 1 -1 ];   
     nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
     idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
@@ -122,7 +124,7 @@ case '64k_dt0.01_nEL400'
     signPC     = [ -1 1 ];
 
 case '64k_dt0.01_nEL800'
-    idxZPlt  = [ 1 3 5 7 ];     
+    idxZPlt  = [ 1 3 43 190 ]; 49;    
     signZPlt = [ 1 -1 ];   
     nShiftPlt  = [ 0 100 300 ]; % approx [ 0 1 3 ] Lyapunov times
     idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov times
@@ -146,6 +148,14 @@ if ifSourceData
     demoKoopmanRKHS_data( experiment ) 
     toc( t )
 end
+
+%% EXTRACT TEST DATA
+if ifTestData
+    disp( 'Generating test data...' ); t = tic;
+    demoKoopmanRKHS_test_data( experiment ) 
+    toc( t )
+end
+
 
 %% BUILD NLSA MODEL, DETERMINE BASIC ARRAY SIZES
 % In is a data structure containing the NLSA parameters for the training data.
@@ -249,6 +259,49 @@ if ifKoopman
     toc( t )
 end
 
+%% DO OUT-OF-SAMPLE EXTENSIONS
+if ifOse
+    
+    disp( 'Takens delay embedding for out-of-sample data...' ); t = tic;
+    computeOutDelayEmbedding( model )
+    toc( t )
+
+    fprintf( 'OSE pairwise distances for density data... %i/%i\n', iProc, ...
+        nProc ); t = tic;
+    computeOseDenPairwiseDistances( model, iProc, nProc )
+    toc( t )
+
+    disp( 'OSE density bandwidth normalization...' ); t = tic;
+    computeOseDenBandwidthNormalization( model )
+    toc( t )
+
+    disp( 'OSE kernel density estimation...' ); t = tic;
+    computeOseDensity( model )
+    toc( t )
+
+    disp( 'OSE density delay embedding...' ); t = tic; 
+    computeOseDensityDelayEmbedding( model );
+    toc( t )
+
+    fprintf( 'OSE pairwise distances... %i/%i\n', iProc, nProc ); t = tic; 
+    computeOsePairwiseDistances( model, iProc, nProc )
+    toc( t )
+
+    disp( 'OSE kernel normalization...' ); t = tic;
+    computeOseKernelNormalization( model )
+
+    disp( 'OSE kernel degree...' ); t = tic;
+    computeOseKernelDegree( model )
+    toc( t )
+
+    disp( 'Nystrom operator...' ); t = tic;
+    computeOseDiffusionOperator( model )
+    toc( t )
+
+    disp( 'OSE diffusion eigenfunctions...' ); t = tic;
+    computeOseDiffusionEigenfunctions( model )
+    toc( t )
+end
 
 %% PERFORM PCA
 if ifPCA

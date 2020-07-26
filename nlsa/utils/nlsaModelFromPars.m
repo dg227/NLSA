@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2020/07/22
+% Modified 2020/07/25
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -94,8 +94,10 @@ if ifOse
 end
 if ifOse && isfield( Data, 'outTrg' )
     outTargetComponentArg = { 'outTargetComponent', Data.outTrg };
+    ifOutTrg = true;
 else
     outTargetComponentArg = {};
+    ifOutTrg = false;
 end
 In.nC  = size( Data.src, 1 );
 In.nR  = size( Data.src, 2 ); 
@@ -112,14 +114,14 @@ end
 if ifOse 
     Out.nC = size( Data.out, 1 );
     Out.nR = size( Data.out, 2 );
-    if ~isfield( Out, 'Src' ) || numel( Out.Src ) ~=- Out.nC
+    if ~isfield( Out, 'Src' ) || numel( Out.Src ) ~= Out.nC
         error( 'Incompatible OS source components and parameter array.' )
     end
     if ~isfield( Out, 'Res' ) || numel( Out.Res ) ~= Out.nR
         error( 'Incompatible OS realizations and parameter array.' )
     end
     if ifOutTrg
-        Out.nCT = size( Data, out );
+        Out.nCT = size( Data.outTrg, 1 );
         if ~isfield( Out, 'Trg' ) || numel( Out.Trg ) ~= Out.nCT
             error( 'Incompatible OS target components and parameter array.' )
         end 
@@ -174,13 +176,17 @@ else
 end
 if ifOse && isfield( Out, 'tFormat' )
     outTimeFormatArg = { 'outTimeFOrmat', Out.tFormat };
+else
+    outTimeFormatArg = {};
 end
-if ifOse && isfield( Out.res( 1 ).tNum )
+if ifOse && isfield( Out.Res( 1 ), 'tNum' )
     tNumO = cell( 1, Out.nR );
     for Ir = 1 : Out.nR
         tNum{ iR } = Out.Res( 1 ).tNum;
     end
     outTimeArg = { 'outTime', tNumO };
+else
+    outTimeArg = {};
 end
 
 %% DELAY-EMBEDDING ORIGINGS

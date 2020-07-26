@@ -170,7 +170,6 @@ end
 
 if ifOse && ifOutTrg
     Out.nCT          = In.nCT; % number of target components
-    Out.Trg          = In.Trg; % target component specification
 end
 
 if ifOse && ifDen
@@ -180,7 +179,7 @@ if ifOse && ifDen
     Out.denConeAlpha = In.denConeAlpha; % cone kernel paramter alpha
     Out.denNN        = In.denNN; % nearest neighbors for KDE
     Out.denND        = In.denND; % manifold dimension for density estimation
-    Out.denEpsilon   = In.denEpsilon; % bandwidth parmeter for KDE
+    Out.denEpsilon   = 1; % bandwidth parmeter for KDE
 end
 
 

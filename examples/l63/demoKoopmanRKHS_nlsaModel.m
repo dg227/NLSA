@@ -36,6 +36,17 @@ switch experiment
         In.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
         In.Res.ifCent = false;        % data centering
 
+        % Out-of-sample dataset parameters
+        Out.dt         = 0.01;         % sampling interval
+        Out.Res.beta   = 8/3;          % L63 parameter beta
+        Out.Res.rho    = 28;           % L63 parameter rho
+        Out.Res.sigma  = 10;           % L63 parameter sigma
+        Out.Res.nSProd = 6400;         % number of "production" samples
+        Out.Res.nSSpin = 64000;        % spinup samples
+        Out.Res.x0     = [ 0.2 1.2 1.25 ]; % initial conditions
+        Out.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
+        Out.Res.ifCent = false;        % data centering
+
         % Source data
         In.Src.idxX    = 1 : 3;       % observed state vector components 
         In.Src.idxE    = 1 : 1;       % delay embedding indices
@@ -90,7 +101,7 @@ switch experiment
         In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
         In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
 
-        % Koopman generator parameters; in-sample data
+        % Koopman generator parameters
         In.koopmanOpType = 'rkhs';     % Koopman generator type
         In.koopmanFDType  = 'central'; % finite-difference type
         In.koopmanFDOrder = 4;         % finite-difference order
@@ -102,7 +113,9 @@ switch experiment
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
-
+        % NLSA parameters, out-of-sample data
+        Out.Res.nB    = 1;
+        Out.Res.nBRec = 1;
 
     % 6400 samples, sampling interval 0.01, 800 delays
     case '6.4k_dt0.01_nEL800'
@@ -256,9 +269,9 @@ switch experiment
         In.koopmanFDOrder = 4;         % finite-difference order
         In.koopmanDt      = In.dt; % sampling interval 
         In.koopmanAntisym = true;      % enforce antisymmetrization
-        In.koopmanEpsilon = 0.5E-4;    % regularization parameter
+        In.koopmanEpsilon = 5E-4;    % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 2 : 401;   % diffusion eigenfunctions used as basis
+        In.idxPhiKoopman  = 2 : 1001;   % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
@@ -335,7 +348,7 @@ switch experiment
         In.koopmanFDOrder = 4;         % finite-difference order
         In.koopmanDt      = In.dt;     % sampling interval 
         In.koopmanAntisym = true;      % enforce antisymmetrization
-        In.koopmanEpsilon = 3.7E-2;      % regularization parameter
+        In.koopmanEpsilon = 4.1E-2;      % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
         In.idxPhiKoopman  = 2 : 1001;  % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
@@ -495,7 +508,8 @@ switch experiment
         In.koopmanFDOrder = 4;         % finite-difference order
         In.koopmanDt      = In.dt;     % sampling interval 
         In.koopmanAntisym = true;      % enforce antisymmetrization
-        In.koopmanEpsilon = 3.7E-2;      % regularization parameter
+        %In.koopmanEpsilon = 4.1E-2;      % regularization parameter
+        In.koopmanEpsilon = 2.1E-2;      % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
         In.idxPhiKoopman  = 2 : 1001;  % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
@@ -549,7 +563,7 @@ switch experiment
         In.epsilonE    = [ -20 20 ];% kernel bandwidth exponents 
         In.nEpsilon    = 200;       % number of exponents for bandwidth tuning
         In.alpha       = .5;        % diffusion maps normalization 
-        In.nPhi        = 1001;      % diffusion eigenfunctions to compute
+        In.nPhi        = 2001;      % diffusion eigenfunctions to compute
         In.nPhiPrj     = In.nPhi;   % eigenfunctions to project the data
         In.idxPhiRec   = 1 : 1;     % eigenfunctions for reconstruction
         In.idxPhiSVD   = 1 : 1;     % eigenfunctions for linear mapping
@@ -591,6 +605,8 @@ ifOse = exist( 'Out', 'var' );
 
 %% CONSTRUCT NLSA MODEL
 if ifOse
+    Out.Src = In.Src;
+    Out.Trg = In.Trg;
     args = { In Out };
 else
     args = { In };
