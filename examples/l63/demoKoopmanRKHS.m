@@ -40,10 +40,10 @@
 % Modified 2020/07/22
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = '6.4k_dt0.01_nEL0'; 
+%experiment = '6.4k_dt0.01_nEL0'; 
 %experiment = '6.4k_dt0.01_nEL800'; 
 %experiment = '64k_dt0.01_nEL0'; 
-%experiment = '64k_dt0.01_nEL100'; 
+experiment = '64k_dt0.01_nEL100'; 
 %experiment = '64k_dt0.01_nEL200'; 
 %experiment = '64k_dt0.01_nEL400'; 
 %experiment = '64k_dt0.01_nEL800'; 
@@ -51,10 +51,10 @@ experiment = '6.4k_dt0.01_nEL0';
 ifSourceData     = false; % generate source data
 ifTestData       = false;  % generate test data for forescasting
 ifNLSA           = false; % run NLSA (kernel eigenfunctions)
-ifKoopman        = false; % compute Koopman eigenfunctions
-ifOse            = true;  % do out-of-sample extension (for forecasting)
+ifKoopman        = true; % compute Koopman eigenfunctions
+ifOse            = false;  % do out-of-sample extension (for forecasting)
 ifPCA            = false; % run PCA (for comparison with NLSA)
-ifPlotZ          = false; % plot Koopman eigenfunctions
+ifPlotZ          = true; % plot Koopman eigenfunctions
 ifPlotCoherence  = false; % figure illustrating coherence of NLSA eigenfunctions
 ifMovieCoherence = false; % make eigenfunction movie illustrating coherence
 ifPrintFig       = false; % print figures to file

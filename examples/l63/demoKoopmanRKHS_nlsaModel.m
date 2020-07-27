@@ -348,7 +348,7 @@ switch experiment
         In.koopmanFDOrder = 4;         % finite-difference order
         In.koopmanDt      = In.dt;     % sampling interval 
         In.koopmanAntisym = true;      % enforce antisymmetrization
-        In.koopmanEpsilon = 4.1E-2;      % regularization parameter
+        In.koopmanEpsilon = 5.5E-3;      % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
         In.idxPhiKoopman  = 2 : 1001;  % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
