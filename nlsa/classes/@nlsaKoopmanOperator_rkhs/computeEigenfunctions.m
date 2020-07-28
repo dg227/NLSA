@@ -99,15 +99,21 @@ fprintf( logId, 'EIGV %2.4f \n', tWall );
 tWall0 = tic;
 
 % Compute Dirichlet energies of eigenvectors
+Lambda = getEigenvalues( diffOp );
+Lambda = Lambda( idxPhi );
+Lambda = Lambda( : );
 eta = computeRegularizingEigenvalues( obj, diffOp );
 eta = eta( : );  % ensure eta is a column vector
 epsilon = getRegularizationParameter( obj );
 dt = getSamplingInterval( obj );
 lambda = exp( - epsilon * eta );
 omega = imag( gamma )';
-E = sum( lambda .* abs( c ) .^ 2, 1 );  
+%E = sum( lambda .* abs( c ) .^ 2, 1 );  
 %E = ( 1 ./ E - 1 ) ./ ( 1 - ( imag( gamma ) * dt ) .^ 2 );
-E = ( 1 ./ E - 1 );
+%E = ( 1 ./ E - 1 );
+l2Norm = sum( lambda .* abs( c ) .^ 2, 1 );
+hNorm = sum( lambda ./ Lambda .* abs( c ) .^2, 1 );
+E = hNorm ./ l2Norm - 1; 
 
 % Sort results in order of increasing Dirichlet energy
 [ E, idxE ] = sort( E, 'ascend' );
