@@ -1,5 +1,5 @@
 function spczRainfall_data( dataset, period, fld )
-% DEMOENSOLIFECYCLE_DATA Helper function to import datasets for ENSO lifecycle
+% SPCZRAINFALL_DATA Helper function to import datasets for ENSO lifecycle
 % analyses.
 %
 % dataset - String identifier for dataset to read. 
