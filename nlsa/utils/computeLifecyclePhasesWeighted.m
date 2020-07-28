@@ -2,7 +2,7 @@ function [ selectind, angles, avbindex, weight ] = computeLifecyclePhasesWeighte
     phi, refI, nPhase, num, decayfactor, skipfraction, ifPlot )
 % Compute lifecycle phase based on eigenfunction data phi. refI is a reference
 % index used to align the phases such that the first phase corresponds to the
-% largest phase-average nino value.
+% largest phase-average of the referencde index.
 
 % 'weight' is a cell array with nPhase cells (just like selectind), and where
 % each cell is a vector of the same length as phi, with entries

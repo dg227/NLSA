@@ -2,7 +2,7 @@ function [ selectind, angles, avbindex ] = computeLifecyclePhases( ...
     phi, refI, nPhase, num, skipfraction )
 % Compute lifecycle phase based on eigenfunction data phi. refI is a reference
 % index used to align the phases such that the first phase corresponds to the
-% largest phase-average nino value. 
+% largest phase-average of the reference index. 
 
 % default input arguments
 if nargin < 6 
