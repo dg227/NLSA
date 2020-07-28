@@ -5,15 +5,15 @@
 
 %% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-%dataset    = 'ccsm4Ctrl';    
+dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-%period     = '1300yr';        % 1300-year analysis
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
+period     = '1300yr';        % 1300-year analysis
+sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
-%embWindow  = '4yr';       % 4-year embedding
+embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
-%kernel     = 'cone';       % cone kernel      
+kernel     = 'cone';       % cone kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -26,14 +26,14 @@
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-dataset    = 'ersstV4';                                     
+%dataset    = 'ersstV4';                                     
 %period     = 'satellite'; % 1978-present
-period     = '50yr';      % 1970-present
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%period     = '50yr';      % 1970-present
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
-embWindow  = '4yr';       % 4-year embedding
-kernel     = 'cone';      % cone kernel
+%embWindow  = '4yr';       % 4-year embedding
+%kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -56,7 +56,7 @@ ifDataWind   = false;   % extract 10m wind target data from NetCDF files
 
 % ENSO representations
 ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
-ifKoopman = false; % compute Koopman eigenfunctions
+ifKoopman = true; % compute Koopman eigenfunctions
 
 % Koopman spectrum
 ifKoopmanSpectrum = false;  % plot generator spectrum
