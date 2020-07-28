@@ -934,6 +934,17 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
     In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
     In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
+    % Koopman generator parameters; in-sample data
+    %In.koopmanOpType = 'rkhs';     % Koopman generator type
+    %In.koopmanFDType  = 'central'; % finite-difference type
+    %In.koopmanFDOrder = 4;         % finite-difference order
+    %In.koopmanDt      = 1;         % sampling interval (in months)
+    %In.koopmanAntisym = true;      % enforce antisymmetrization
+    %In.koopmanEpsilon = 7E-4;2.5E-3;      % regularization parameter
+    %In.koopmanRegType = 'inv';     % regularization type
+    %In.idxPhiKoopman  = 2 : 401;   % diffusion eigenfunctions used as basis
+    %In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+    %In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
 % CCSM4 pre-industrial control, 1300-year period, global SST input, 4-year
 % delay embeding window  

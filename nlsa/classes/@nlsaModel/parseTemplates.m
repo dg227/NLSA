@@ -84,7 +84,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/06/16 
+%   Modified 2020/07/27 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -555,14 +555,14 @@ if ifProp( iKoopmanOp )
             propVal{ iKoopmanPrjComponent }( iC ) );
         mkdir( propVal{ iKoopmanPrjComponent }( iC ) )
     end
+    if ~isCompatible( propVal{ iKoopmanPrjComponent } )
+        error( 'Incompatible projection components' )
+    end
+    if ~isCompatible( propVal{ iKoopmanPrjComponent }, propVal{ iKoopmanOp } )
+        error( 'Incompatible projection components and Koopman operator' )
+    end
+    mkdir( propVal{ iKoopmanPrjComponent } )
 end
-if ~isCompatible( propVal{ iKoopmanPrjComponent } )
-    error( 'Incompatible projection components' )
-end
-if ~isCompatible( propVal{ iKoopmanPrjComponent }, propVal{ iKoopmanOp } )
-    error( 'Incompatible projection components and Koopman operator' )
-end
-mkdir( propVal{ iKoopmanPrjComponent } )
 
 
 
