@@ -127,7 +127,6 @@ function constrArgs = parseTemplates( varargin )
 %
 %   'outRealizationName': Similar to 'outComponentName', but used to compress
 %      the realization-dependent part of the pairwise distance directory.
-%
 % 
 %   'oseDiffusionOperatorTemplate': An nlsaDiffusionOperator_ose object
 %       specifying the OSE operator in the data analysis model.
