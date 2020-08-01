@@ -59,7 +59,7 @@ ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
 ifKoopman = true; % compute Koopman eigenfunctions
 
 % Koopman spectrum
-ifKoopmanSpectrum = false;  % plot generator spectrum
+ifKoopmanSpectrum = true;  % plot generator spectrum
 
 % ENSO lifecycle plots
 ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
