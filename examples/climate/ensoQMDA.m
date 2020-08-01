@@ -8,19 +8,24 @@
 % ERSSTv4 reanalysis 
 dataset    = 'ersstV4';                                     
 period     = '50yr';      % 1960-2010
+testPeriod = '10yr';      % 2010-2020
 sourceVar  = 'IPSST';     % Indo-Pacific SST
 embWindow  = '2yr';       % 2-year embedding
 kernel     = 'cone';      % cone kernel
 
 %% SCRIPT EXECUTION OPTIONS
-% Data extraction
-ifData = false;  % extract training and test data from NetCDF files
+% Data extraction from netCDF files
+ifDataSrc    = false; % source (observed) data
+ifDataTrg    = false; % target (estimated) data
+ifDataOut    = false; % out-of-sample observed data
+ifDataOutTrg = false; % out-of-sample estimated data
 
 % NLSA
-ifNLSA = true; % perform NLSA 
+ifNLSA = true; % perform NLSA (training phase)
+ifOSE  = true; % perform out-of-sample extension
 
 % Data assimilation
-ifRead    = true; % read NLSA eigenfunctions 
+ifDataDA  = true; % read training and test data for data assimilation
 ifProjObs = true; % compute projection operators for observed components
 ifProjEst = true; % compute projection operators for estimated components
 ifKoop    = true; % compute Koopman operators
@@ -33,74 +38,215 @@ ifPlotEnt   = false; % entropy plots
 ifMovieProb = false; % histogram movie
 
 %% GLOBAL PARAMETERS
-idxH  = [ 1 : 25 ];    % observed  components (kernel eigenfunctions)
-idxY  = [ 1 ];         % estimated  components (Nino 3.4 index) 
-idxR  = 1;             % realization (ensemble member) in assimilation phase    
-nL    = 101;           % number of eigenfunctions
-nQ    = 11;            % quantization levels
-nDT   = 1;             % timesteps between obs
-nDTF  = 12;            % number of forecast timesteps (must be at least nDTF)
-nPar  = 0;             % number of workers 
+idxH  = [ 2 : 26 ]; % observed  components (kernel eigenfunctions)
+idxY  = [ 1 ];      % estimated  components (Nino 3.4 index) 
+idxR  = 1;          % realization (ensemble member) in assimilation phase    
+nL    = 101;        % number of eigenfunctions
+nQ    = 11;         % quantization levels
+nDT   = 1;          % timesteps between obs
+nDTF  = 12;         % number of forecast timesteps (must be at least nDTF)
+nPar  = 0;          % number of workers 
 
 tLimPlt = { '201001' '202001' }; % time limit to plot
 idxTPlt = [ 0 : 3 : 12 ] + 1; % lead times for running forecast
 idxYPlt  = 1; % estimated components for running probability forecast
 
 
+%% EXTRACT SOURCE DATA
+if ifDataSrc
+    disp( sprintf( 'Reading source data %s...', sourceVar ) ); t = tic;
+    ensoLifecycle_data( dataset, period, sourceVar ) 
+    toc( t )
+end
+
+%% EXTRACT TARGET DATA
+if ifDataTrg
+    disp( 'Reading Nino 3.4 index...' ); t = tic;
+    ensoLifecycle_data( dataset, period, 'Nino3.4' ) 
+    toc( t )
+
+    disp( 'Reading Nino 3 index...' ); t = tic;
+    ensoLifecycle_data( dataset, period, 'Nino3' ) 
+    toc( t )
+
+    disp( 'Reading Nino 4 index...' ); t = tic;
+    ensoLifecycle_data( dataset, period, 'Nino4' ) 
+    toc( t )
+
+    disp( 'Reading Nino 1+2 index...' ); t = tic;
+    ensoLifecycle_data( dataset, period, 'Nino1+2' ) 
+    toc( t )
+end
+
+%% EXTRACT TEST DATA
+if ifDataOut
+    disp( sprintf( 'Reading test data %s...', sourceVar ) ); t = tic;
+    ensoLifecycle_data( dataset, testPeriod, sourceVar ) 
+    toc( t )
+end
+
+%% EXTRACT OUT-OF-SAMPLE TARGET DATA
+if ifDataTrg
+    disp( 'Reading out-of-sample Nino 3.4 index...' ); t = tic;
+    ensoLifecycle_data( dataset, period, 'Nino3.4' ) 
+    toc( t )
+
+    disp( 'Reading out-of-sample Nino 3 index...' ); t = tic;
+    ensoLifecycle_data( dataset, period, 'Nino3' ) 
+    toc( t )
+
+    disp( 'Reading out-of-sample Nino 4 index...' ); t = tic;
+    ensoLifecycle_data( dataset, period, 'Nino4' ) 
+    toc( t )
+
+    disp( 'Reading out-of-sample Nino 1+2 index...' ); t = tic;
+    ensoLifecycle_data( dataset, period, 'Nino1+2' ) 
+    toc( t )
+end
+
 %% BUILD NLSA MODEL, SETUP BASIC ARRYAS
+experiment = { dataset period testPeriod sourceVar [ embWindow 'Emb' ] ...
+               [ kernel 'Kernel' ] };
+experiment = strjoin_e( experiment, '_' );
 [ model, Pars, ParsO ] = ensoQMDA_nlsaModel( experiment );
 nH   = numel( idxH );
 nY   = numel( idxY );
 nS   = getNTotalEmbSample( model ); % training samples
-nSO  = getNTotalOutSample( model ); % verification samples 
+nSO  = getNTotalOutEmbSample( model ); % verification samples 
 idxTObs = 1 : nDT : nSO;
 nDA  = numel( idxTObs ); % data assimilation cycles
-idxT1 = Pars.Res.idxT1 - floor( max( Pars.nE, Pars.nET ) / 2 );
+idxT1 = getOrigin( model.outTrgEmbComponent ); 
 %idxT1 = Pars.Res.idxT1;
 b    = linspace( 0, 1, nQ + 1 ); % CDF bins
 
-%% READ DATA FROM MODEL
-if ifRead
-    tic
-    disp( 'Data retrieval')
-    % Eigenfunctions
-    [ phi, mu, lambda ] = getDiffusionEigenfunctions( model ); % eignefunctions
-    phiMu = bsxfun( @times, phi, mu );
+%% PERFORM NLSA
+if ifNLSA
+    
+    % Execute NLSA steps. Output from each step is saved on disk
 
-    % Training signal
-    x  = getData( model.trgComponent );
-    x  = x( :, idxT1 : idxT1 + nS - 1 ); % training signal
-    h = x( idxH, : ); % observed components in training phase
-    y = x( idxY, : ); % estimated components in training phase 
+    disp( 'Takens delay embedding...' ); t = tic; 
+    computeDelayEmbedding( model )
+    toc( t )
 
-    % Assimilation signal
-    x = zeros( ParsO.nCT, nSO );
-    tStr = [ ParsO.Res( idxR ).tLim{ 1 } '-' ParsO.Res( idxR ).tLim{ 2 } ];
-    for iC = 1 : ParsO.nCT
-        xyStr = sprintf( 'x%i-%i_y%i-%i', ParsO.Trg( iC ).xLim( 1 ), ...
-                                          ParsO.Trg( iC ).xLim( 2 ), ...
-                                          ParsO.Trg( iC ).yLim( 1 ), ...
-                                          ParsO.Trg( iC ).yLim( 2 ) );
+    disp( 'Phase space velocity (time tendency of data)...' ); t = tic; 
+    computeVelocity( model )
+    toc( t )
 
-        pathOut = fullfile( pwd, ...
-                            'data/raw',  ...
-                            ParsO.Res( idxR ).experiment, ...
-                            ParsO.Trg( iC ).field,  ...
-                            [ xyStr '_' tStr ] );
+    disp( 'Takens delay embedding for target data...' ); t = tic; 
+    computeTrgDelayEmbedding( model )
+    toc( t )
+    
+    fprintf( 'Pairwise distances (%i/%i)...\n', iProc, nProc ); t = tic;
+    computePairwiseDistances( model, iProc, nProc )
+    toc( t )
 
-            
-        xTmp = load( fullfile( pathOut, 'dataX.mat' ), 'x' );
-        x( iC, :) = xTmp.x;
-    end
-    hO = x( idxH, : ); % observed components in assimilation phase
-    yO = x( idxY, : ); % estimated components in assimilation phase
-    yObs = yO( :, idxTObs ); 
-    tNumOut = getOutTime( model ); % serial time numbers for true signal
-    tNumObs = datemnth( tNumOut( 1 ), idxTObs - 1 )'; % initialization time  
-    tNumVer = repmat( tNumObs, [ 1 nDTF + 1 ] ); % verification time
-    tNumVer = datemnth( tNumVer, repmat( 0 : nDTF, [ nDA 1 ] ) )';
-    toc
+    disp( 'Distance symmetrization...' ); t = tic;
+    symmetrizeDistances( model )
+    toc( t )
+
+    disp( 'Kernel tuning...' ); t = tic;
+    computeKernelDoubleSum( model )
+    toc( t )
+
+    disp( 'Kernel eigenfunctions...' ); t = tic;
+    computeDiffusionEigenfunctions( model )
+    toc( t )
 end
+
+%% DO OUT-OF-SAMPLE EXTENSIONS
+if ifOSE
+    
+    disp( 'Takens delay embedding for out-of-sample data...' ); t = tic;
+    computeOutDelayEmbedding( model )
+    toc( t )
+
+    disp( 'Phase space velocity for out-of-sample data...' ); t = tic; 
+    computeOutVelocity( model )
+    toc( t )
+
+    disp( 'Takens delay embedding for out-of-sample target data...' ); t = tic;
+    computeOutTrgDelayEmbedding( model )
+    toc( t )
+
+    fprintf( 'OSE pairwise distances for density data... %i/%i\n', iProc, ...
+        nProc ); t = tic;
+    computeOseDenPairwiseDistances( model, iProc, nProc )
+    toc( t )
+
+    disp( 'OSE density bandwidth normalization...' ); t = tic;
+    computeOseDenBandwidthNormalization( model )
+    toc( t )
+
+    disp( 'OSE kernel density estimation...' ); t = tic;
+    computeOseDensity( model )
+    toc( t )
+
+    disp( 'OSE density delay embedding...' ); t = tic; 
+    computeOseDensityDelayEmbedding( model );
+    toc( t )
+
+    fprintf( 'OSE pairwise distances... %i/%i\n', iProc, nProc ); t = tic; 
+    computeOsePairwiseDistances( model, iProc, nProc )
+    toc( t )
+
+    disp( 'OSE kernel normalization...' ); t = tic;
+    computeOseKernelNormalization( model )
+
+    disp( 'OSE kernel degree...' ); t = tic;
+    computeOseKernelDegree( model )
+    toc( t )
+
+    disp( 'Nystrom operator...' ); t = tic;
+    computeOseDiffusionOperator( model )
+    toc( t )
+
+    disp( 'OSE diffusion eigenfunctions...' ); t = tic;
+    computeOseDiffusionEigenfunctions( model )
+    toc( t )
+end
+
+
+%% READ TRAINING DATA FOR DATA ASSIMILATION
+if ifReadDA
+    tic
+    disp( 'Retrieving data assimilation training data...' ); t = tic;
+    
+    % Eigenfunctions 
+    [ phi, mu, lambda ] = getDiffusionEigenfunctions( model ); 
+    phiMu = phi .* mu;
+
+    % Training data
+    h = phi( :, idxH )'; % observed components 
+    y = getData( model.embComponent, [], [], idxY ); % estimated components  
+
+    toc( t )
+end
+
+%% READ TEST DATA FOR DATA ASSIMILATION
+if ifReadTestDA
+    tic
+    disp( 'Retrieveing data assimilation test data...' ); t = tic;
+
+
+    % Eigenfunctions 
+    phiO = getOseDiffusionEigenfunctions( model ); % eigenfunctions
+    phiMu = phi .* mu;
+
+    % Test (out-of-sample) data
+    hO = phiO( :, idxH )'; % observed components 
+
+    % Initialization/verification timestamps
+    tNumOut = getOutTime( model ); % serial time numbers for true signal
+    tNumOut = tNumOut( idxT1 : end ); % shift by delay embedding window 
+    tNumObs = datemnth( tNumOut( 1 ), idxTObs - 1 )'; % initialization times  
+    tNumVer = repmat( tNumObs, [ 1 nDTF + 1 ] ); % verification times
+    tNumVer = datemnth( tNumVer, repmat( 0 : nDTF, [ nDA 1 ] ) )';
+    toc(t )
+
+    5yObs = yO( :, idxTObs ); 
+end
+    
+
 
 
 %% PROJECTION OPERATORS

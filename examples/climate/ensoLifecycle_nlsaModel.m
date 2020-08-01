@@ -31,7 +31,7 @@ function [ model, In, Out ] = ensoLifecycle_nlsaModel( experiment )
 % Modified 2020/05/19
 
 if nargin == 0
-    experiment = 'ersstV5_industrial_IPSST_4yrEmb';
+    experiment = 'ersstV4_50yr_IPSST_4yrEmb_coneKernel';
 end
 
 switch experiment
