@@ -34,7 +34,7 @@ switch experiment
 
 % ERSSTv4 data, global domain, 1950-2010 for training, 2010-2020 
 % for verification, 2-year delay embeding window, cone kernel  
-case 'ersstV4_50yr_globalSST_4yrEmb_coneKernel'
+case 'ersstV4_50yr_globalSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -57,7 +57,7 @@ case 'ersstV4_50yr_globalSST_4yrEmb_coneKernel'
     In.Src( 1 ).yLim  = [ -89 89 ]; % latitude limits
 
     % Delay-embedding/finite-difference parameters; in-sample data
-    In.Src( 1 ).idxE      = 1 : 24;     % delay-embedding indices 
+    In.Src( 1 ).idxE      = 1 : 12;     % delay-embedding indices 
     In.Src( 1 ).nXB       = 2;          % samples before main interval
     In.Src( 1 ).nXA       = 2;          % samples after main interval
     In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
@@ -90,7 +90,7 @@ case 'ersstV4_50yr_globalSST_4yrEmb_coneKernel'
 
 % ERSSTv4 data, Indo-Pacific domain, 1950-2010 for training, 2010-2020 
 % for verification, 2-year delay embeding window, cone kernel  
-case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
+case 'ersstV4_50yr_IPSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -113,7 +113,7 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
     In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
 
     % Delay-embedding/finite-difference parameters; in-sample data
-    In.Src( 1 ).idxE      = 1 : 24;     % delay-embedding indices 
+    In.Src( 1 ).idxE      = 1 : 12;     % delay-embedding indices 
     In.Src( 1 ).nXB       = 2;          % samples before main interval
     In.Src( 1 ).nXA       = 2;          % samples after main interval
     In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
@@ -151,7 +151,7 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
 
 % ERSSTv4 data, sub-global domain, 1950-2010 for training, 2010-2020 
 % for verification, 2-year delay embeding window, cone kernel  
-case 'ersstV4_satellite_subglobalSST_4yrEmb_coneKernel'
+case 'ersstV4_satellite_subglobalSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -229,7 +229,7 @@ case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
     In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
 
     % Delay-embedding/finite-difference parameters; in-sample data
-    In.Src( 1 ).idxE      = 1 : 24;     % delay-embedding indices 
+    In.Src( 1 ).idxE      = 1 : 12;     % delay-embedding indices 
     In.Src( 1 ).nXB       = 2;          % samples before main interval
     In.Src( 1 ).nXA       = 2;          % samples after main interval
     In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
@@ -290,7 +290,7 @@ case 'ccsm4Ctrl_1100yr_200yr_globalSST_2yrEmb_coneKernel'
     In.Src( 1 ).yLim  = [ -89 89 ]; % latitude limits
 
     % Delay-embedding/finite-difference parameters; in-sample data
-    In.Src( 1 ).idxE      = 1 : 24;     % delay-embedding indices 
+    In.Src( 1 ).idxE      = 1 : 12;     % delay-embedding indices 
     In.Src( 1 ).nXB       = 2;          % samples before main interval
     In.Src( 1 ).nXA       = 2;          % samples after main interval
     In.Src( 1 ).fdOrder   = 4;          % finite-difference order 

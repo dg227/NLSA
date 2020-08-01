@@ -10,15 +10,15 @@ dataset    = 'ersstV4';
 period     = '50yr';      % 1960-2010
 testPeriod = '10yr';      % 2010-2020
 sourceVar  = 'IPSST';     % Indo-Pacific SST
-embWindow  = '2yr';       % 2-year embedding
+embWindow  = '1yr';       % 1-year embedding
 kernel     = 'cone';      % cone kernel
 
 %% SCRIPT EXECUTION OPTIONS
 % Data extraction from netCDF files
-ifDataSrc    = false; % source (observed) data
-ifDataTrg    = false; % target (estimated) data
-ifDataOut    = false; % out-of-sample observed data
-ifDataOutTrg = false; % out-of-sample estimated data
+ifDataSrc    = true; % source (observed) data
+ifDataTrg    = true; % target (estimated) data
+ifDataOut    = true; % out-of-sample observed data
+ifDataOutTrg = true; % out-of-sample estimated data
 
 % NLSA
 ifNLSA = true; % perform NLSA (training phase)
