@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2020/07/25
+% Modified 2020/08/02
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -175,14 +175,14 @@ else
     srcTimeArg = {};
 end
 if ifOse && isfield( Out, 'tFormat' )
-    outTimeFormatArg = { 'outTimeFOrmat', Out.tFormat };
+    outTimeFormatArg = { 'outTimeFormat', Out.tFormat };
 else
     outTimeFormatArg = {};
 end
 if ifOse && isfield( Out.Res( 1 ), 'tNum' )
     tNumO = cell( 1, Out.nR );
-    for Ir = 1 : Out.nR
-        tNum{ iR } = Out.Res( 1 ).tNum;
+    for iR = 1 : Out.nR
+        tNumO{ iR } = Out.Res( iR ).tNum;
     end
     outTimeArg = { 'outTime', tNumO };
 else
@@ -209,6 +209,14 @@ if In.nN == 0
 end 
 if In.nNS == 0
     In.nNS = nSETot;
+end
+if ifOse
+    if Out.nN == 0
+        Out.nN = nSETot;
+    end
+    if Out.nNO == 0
+        Out.nNO = nSETot;
+    end
 end
 
 %% IN-SAMPLE AND OUT-OF-SAMPLE DATA PARTITIONS
@@ -561,9 +569,13 @@ if ifOse
                                             'alpha', In.coneAlpha );
     end
 
-    lScl = nlsaLocalScaling_pwr( 'pwr', 1 / Out.denND );
-    oseDFunc = nlsaLocalDistanceFunction_scl( 'localDistance', lDist, ...
-                                              'localScaling', lScl );
+    if ifDen
+        lScl = nlsaLocalScaling_pwr( 'pwr', 1 / Out.denND );
+        oseDFunc = nlsaLocalDistanceFunction_scl( 'localDistance', lDist, ...
+                                                  'localScaling', lScl );
+    else
+        oseDFunc = nlsaLocalDistanceFunction( 'localDistance', lDist );
+    end
     osePDist = nlsaPairwiseDistance( 'distanceFunction', oseDFunc, ...
                                      'nearestNeighbors', Out.nN, ...
                                      'nPar',             Out.nParNN );

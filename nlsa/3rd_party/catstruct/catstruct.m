@@ -65,6 +65,8 @@ function A = catstruct(varargin)
 %                  (thanks to Isabel P)
 %   4.1 (feb 2015) fixed warning with narginchk
 
+% DG: Disabled warning when duplicate fieldnames occur.
+%
 narginchk(1,Inf) ;
 N = nargin ;
 
@@ -136,7 +138,7 @@ else
     % [UFN,ind] = unique(FN) ; % earlier ML versions, like 6.5
     
     if numel(UFN) ~= numel(FN),
-        warning('catstruct:DuplicatesFound','Fieldnames are not unique between structures.') ;
+        %warning('catstruct:DuplicatesFound','Fieldnames are not unique between structures.') ;
         sorted = 1 ;
     end
     

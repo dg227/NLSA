@@ -1,7 +1,7 @@
 function [ ifC, Test1, Test2 ] = isCompatible( obj1, obj2, varargin ) 
 % ISCOMPATIBLE Check compatibility of nlsaEmbeddedComponent objects 
 %
-% Modified 2015/01/05
+% Modified 2020/08/02
 
 [ ifC, Test1 ] = isCompatible_emb( obj1 );
 
@@ -20,12 +20,24 @@ if isa( obj2, 'nlsaComponent' )
 
     ifE = isa( obj2, 'nlsaEmbeddedComponent' );
     if ifE
+        % If obj2 is an nlsaEmbeddedComponent object, and testSamples is true,
+        % we require that the samples of obj1 and obj2 match exactly. 
         [ ifC2, Test2 ] = isCompatible_emb( obj2 );
         ifC = ifC && ifC2;
+        [ ifCParent, Test1Parent, Test2Parent ] = ...
+            isCompatible@nlsaComponent( obj1, obj2, ...
+                                       'testComponents', Opt.testComponents, ...
+                                       'testSamples', Opt.testSamples );
+    else
+        % If obj2 is not an nlsaEmbeddedComponent object, we require that
+        % the samples of obj2 are greater than or equal to the samples of 
+        % obj1 plus extra samples for delay embedding and finite differencing.
+        [ ifCParent, Test1Parent, Test2Parent ] = ...
+            isCompatible_emb( obj1, obj2, ...
+                              'testComponents', Opt.testComponents, ...
+                              'testSamples', Opt.testSamples );
     end
-    [ ifCParent, Test1Parent, Test2Parent ] = isCompatible@nlsaComponent( obj1, obj2, ...
-                                              'testComponents', Opt.testComponents, ... 
-                                              'testSamples', Opt.testSamples );
+
     ifC = ifC && ifCParent;    
     Test1 = catstruct( Test1, Test1Parent );
     if ifE 

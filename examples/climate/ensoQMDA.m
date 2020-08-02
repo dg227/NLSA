@@ -7,30 +7,33 @@
 %% DATASET SPECIFICATION
 % ERSSTv4 reanalysis 
 dataset    = 'ersstV4';                                     
-period     = '50yr';      % 1960-2010
+%period     = '50yr';      % 1960-2010
+period     = '70yr';      % 1970-2010
 testPeriod = '10yr';      % 2010-2020
 sourceVar  = 'IPSST';     % Indo-Pacific SST
 embWindow  = '1yr';       % 1-year embedding
+%embWindow  = '6mo';       % 1-year embedding
 kernel     = 'cone';      % cone kernel
 
 %% SCRIPT EXECUTION OPTIONS
 % Data extraction from netCDF files
-ifDataSrc    = true; % source (observed) data
-ifDataTrg    = true; % target (estimated) data
-ifDataOut    = true; % out-of-sample observed data
-ifDataOutTrg = true; % out-of-sample estimated data
+ifDataSrc    = false; % source (observed) data
+ifDataTrg    = false; % target (estimated) data
+ifDataOut    = false; % out-of-sample observed data
+ifDataOutTrg = false; % out-of-sample estimated data
 
 % NLSA
-ifNLSA = true; % perform NLSA (training phase)
-ifOSE  = true; % perform out-of-sample extension
+ifNLSA = false; % perform NLSA (training phase)
+ifOSE  = false; % perform out-of-sample extension
 
 % Data assimilation
-ifDataDA  = true; % read training and test data for data assimilation
+ifDataDA     = true; % read training data for data assimilation
+ifTestDataDA = true; % read test data for data assimilation
 ifProjObs = true; % compute projection operators for observed components
 ifProjEst = true; % compute projection operators for estimated components
 ifKoop    = true; % compute Koopman operators
 ifDA      = true; % perform data assimilation
-ifEnt     = true; % compute relative entropy skill scores
+ifEnt     = false; % compute relative entropy skill scores
 
 % Plotting/movie options
 ifPlotProb  = true; % probability contours 
@@ -38,69 +41,74 @@ ifPlotEnt   = false; % entropy plots
 ifMovieProb = false; % histogram movie
 
 %% GLOBAL PARAMETERS
-idxH  = [ 2 : 26 ]; % observed  components (kernel eigenfunctions)
+idxH  = [ 2 3 7 : 10 ]; % observed  components (kernel eigenfunctions; 1yr)
+%idxH  = [ 2 3 6 : 10 ]; % observed  components (kernel eigenfunctions; 6mo)
 idxY  = [ 1 ];      % estimated  components (Nino 3.4 index) 
 idxR  = 1;          % realization (ensemble member) in assimilation phase    
-nL    = 101;        % number of eigenfunctions
+nL    = 401;        % number of eigenfunctions
 nQ    = 11;         % quantization levels
 nDT   = 1;          % timesteps between obs
 nDTF  = 12;         % number of forecast timesteps (must be at least nDTF)
-nPar  = 0;          % number of workers 
+nPar  = 0;          % number of parallel workers 
 
 tLimPlt = { '201001' '202001' }; % time limit to plot
 idxTPlt = [ 0 : 3 : 12 ] + 1; % lead times for running forecast
 idxYPlt  = 1; % estimated components for running probability forecast
 
 
+%% BATCH PROCESSING
+iProc = 1; % index of batch process for this script
+nProc = 1; % number of batch processes
+
 %% EXTRACT SOURCE DATA
 if ifDataSrc
     disp( sprintf( 'Reading source data %s...', sourceVar ) ); t = tic;
-    ensoLifecycle_data( dataset, period, sourceVar ) 
+    ensoQMDA_data( dataset, period, sourceVar ) 
     toc( t )
 end
 
 %% EXTRACT TARGET DATA
 if ifDataTrg
     disp( 'Reading Nino 3.4 index...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'Nino3.4' ) 
+    ensoQMDA_data( dataset, period, 'Nino3.4' ) 
     toc( t )
 
     disp( 'Reading Nino 3 index...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'Nino3' ) 
+    ensoQMDA_data( dataset, period, 'Nino3' ) 
     toc( t )
 
     disp( 'Reading Nino 4 index...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'Nino4' ) 
+    ensoQMDA_data( dataset, period, 'Nino4' ) 
     toc( t )
 
     disp( 'Reading Nino 1+2 index...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'Nino1+2' ) 
+    ensoQMDA_data( dataset, period, 'Nino1+2' ) 
     toc( t )
 end
 
 %% EXTRACT TEST DATA
 if ifDataOut
     disp( sprintf( 'Reading test data %s...', sourceVar ) ); t = tic;
-    ensoLifecycle_data( dataset, testPeriod, sourceVar ) 
+    ensoQMDA_test_data( dataset, testPeriod, sourceVar ) 
     toc( t )
 end
 
 %% EXTRACT OUT-OF-SAMPLE TARGET DATA
-if ifDataTrg
+if ifDataOutTrg
     disp( 'Reading out-of-sample Nino 3.4 index...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'Nino3.4' ) 
+    ensoQMDA_test_data( dataset, testPeriod, 'Nino3.4' ) 
     toc( t )
 
     disp( 'Reading out-of-sample Nino 3 index...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'Nino3' ) 
+    ensoQMDA_test_data( dataset, testPeriod, 'Nino3' ) 
     toc( t )
 
     disp( 'Reading out-of-sample Nino 4 index...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'Nino4' ) 
+    ensoQMDA_test_data( dataset, testPeriod, 'Nino4' ) 
     toc( t )
 
     disp( 'Reading out-of-sample Nino 1+2 index...' ); t = tic;
-    ensoLifecycle_data( dataset, period, 'Nino1+2' ) 
+    ensoQMDA_test_data( dataset, testPeriod, 'Nino1+2' ) 
     toc( t )
 end
 
@@ -168,23 +176,6 @@ if ifOSE
     computeOutTrgDelayEmbedding( model )
     toc( t )
 
-    fprintf( 'OSE pairwise distances for density data... %i/%i\n', iProc, ...
-        nProc ); t = tic;
-    computeOseDenPairwiseDistances( model, iProc, nProc )
-    toc( t )
-
-    disp( 'OSE density bandwidth normalization...' ); t = tic;
-    computeOseDenBandwidthNormalization( model )
-    toc( t )
-
-    disp( 'OSE kernel density estimation...' ); t = tic;
-    computeOseDensity( model )
-    toc( t )
-
-    disp( 'OSE density delay embedding...' ); t = tic; 
-    computeOseDensityDelayEmbedding( model );
-    toc( t )
-
     fprintf( 'OSE pairwise distances... %i/%i\n', iProc, nProc ); t = tic; 
     computeOsePairwiseDistances( model, iProc, nProc )
     toc( t )
@@ -207,7 +198,7 @@ end
 
 
 %% READ TRAINING DATA FOR DATA ASSIMILATION
-if ifReadDA
+if ifDataDA
     tic
     disp( 'Retrieving data assimilation training data...' ); t = tic;
     
@@ -217,33 +208,33 @@ if ifReadDA
 
     % Training data
     h = phi( :, idxH )'; % observed components 
-    y = getData( model.embComponent, [], [], idxY ); % estimated components  
+    y = getData( model.trgEmbComponent, [], [], idxY ); % estimated components  
 
     toc( t )
 end
 
 %% READ TEST DATA FOR DATA ASSIMILATION
-if ifReadTestDA
+if ifTestDataDA
     tic
     disp( 'Retrieveing data assimilation test data...' ); t = tic;
 
 
     % Eigenfunctions 
     phiO = getOseDiffusionEigenfunctions( model ); % eigenfunctions
-    phiMu = phi .* mu;
 
     % Test (out-of-sample) data
     hO = phiO( :, idxH )'; % observed components 
+    yO = getData( model.outTrgEmbComponent, [], [], idxY ); % estimated 
+    yObs = yO( :, idxTObs ); 
 
     % Initialization/verification timestamps
     tNumOut = getOutTime( model ); % serial time numbers for true signal
-    tNumOut = tNumOut( idxT1 : end ); % shift by delay embedding window 
+    tNumOut = tNumOut( idxT1 : idxT1 + nSO - 1 ); % shift by delay window 
     tNumObs = datemnth( tNumOut( 1 ), idxTObs - 1 )'; % initialization times  
     tNumVer = repmat( tNumObs, [ 1 nDTF + 1 ] ); % verification times
     tNumVer = datemnth( tNumVer, repmat( 0 : nDTF, [ nDA 1 ] ) )';
     toc(t )
 
-    5yObs = yO( :, idxTObs ); 
 end
     
 
@@ -477,8 +468,8 @@ if ifPlotProb
 
         % bin coordinates
         aPlt = aY( idxYPlt( iY ), : );
-        aPlt( 1 ) = 1.3 *  min( y( idxYPlt( iY ), : ) );
-        aPlt( end ) = 1.3 * max( y( idxYPlt( iY ), : ) );
+        aPlt( 1 ) = 1.7 *  min( y( idxYPlt( iY ), : ) );
+        aPlt( end ) = 1.7 * max( y( idxYPlt( iY ), : ) );
         daPlt = ( aPlt( 2 : end ) - aPlt( 1 : end - 1 ) )';
 
         for iT = 1 : nTPlt 

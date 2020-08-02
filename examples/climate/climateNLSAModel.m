@@ -32,7 +32,7 @@ function [ model, In, Out ] = climateNLSAModel( In, Out )
 %
 %  Structure field Res represents different realizations (ensemble members)
 %
-% Modified 2020/06/16
+% Modified 2020/08/02
  
 %% PRELIMINARY CHECKS
 % Check number of input arguments, and if we are doing out-of-sample extension
@@ -112,8 +112,8 @@ In.nXAT = In.Trg( 1 ).nXA;
 for iC = 2 : In.nCT
     In.nET = max( In.nET, In.Trg( iC ).idxE( end ) );
     nETMin = min( In.nET, In.Trg( iC ).idxE( end ) );
-    In.nXBT = min( In.nXBT, In.Trg( iC ).nXB );
-    In.nXAT = min( In.nXAT, In.Trg( iC ).nXA );
+    In.nXBT = max( In.nXBT, In.Trg( iC ).nXB );
+    In.nXAT = max( In.nXAT, In.Trg( iC ).nXA );
 end
 nEMax = max( In.nE, In.nET );
 nXBMax = max( In.nXB, In.nXBT );

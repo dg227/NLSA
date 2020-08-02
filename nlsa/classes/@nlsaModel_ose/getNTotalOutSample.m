@@ -1,5 +1,5 @@
 function nS = getNTotalOutSample( obj )
-% GETNTOTALOUTSAMPLE Get number of source samples
+% GETNTOTALOUTSAMPLE Get number of out-of-sample source samples
 %
 % Modified 2019/07/06
 

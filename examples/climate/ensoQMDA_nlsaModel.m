@@ -26,15 +26,15 @@ function [ model, In, Out ] = ensoQMDA_nlsaModel( experiment )
 % Modified 2020/08/01
 
 if nargin == 0
-    experiment = 'ersstV4_50yr_10yr_IPSST_2yrEmb_coneKernel';
+    experiment = 'ersstV4_50yr_10yr_IPSST_1yrEmb_coneKernel';
 end
 
 switch experiment
 
 
-% ERSSTv4 data, global domain, 1950-2010 for training, 2010-2020 
-% for verification, 2-year delay embeding window, cone kernel  
-case 'ersstV4_50yr_globalSST_1yrEmb_coneKernel'
+% ERSSTv4 data, global domain, 1960-2010 for training, 2010-2020 
+% for verification, 1-year delay embeding window, cone kernel  
+case 'ersstV4_50yr_10yr_globalSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -43,6 +43,9 @@ case 'ersstV4_50yr_globalSST_1yrEmb_coneKernel'
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '196001' '200912' }; % time limit  
     In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    % Dataset specification (out-of-sample data) 
+    Out.Res( 1 ).experiment = 'ersstV4';
 
     % Time specification (out-of-sample data) 
     Out.tFormat        = 'yyyymm';              % time format
@@ -81,16 +84,16 @@ case 'ersstV4_50yr_globalSST_1yrEmb_coneKernel'
     In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
     In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
     In.alpha      = 0.5;        % diffusion maps normalization 
-    In.nPhi       = 451;        % diffusion eigenfunctions to compute
+    In.nPhi       = 551;        % diffusion eigenfunctions to compute
     In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
     In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
     In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
     In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
 
 
-% ERSSTv4 data, Indo-Pacific domain, 1950-2010 for training, 2010-2020 
-% for verification, 2-year delay embeding window, cone kernel  
-case 'ersstV4_50yr_IPSST_1yrEmb_coneKernel'
+% ERSSTv4 data, Indo-Pacific domain, 1960-2010 for training, 2010-2020 
+% for verification, 1-year delay embeding window, cone kernel  
+case 'ersstV4_50yr_10yr_IPSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -99,6 +102,9 @@ case 'ersstV4_50yr_IPSST_1yrEmb_coneKernel'
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '196001' '200912' }; % time limit  
     In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    % Dataset specification (out-of-sample data) 
+    Out.Res( 1 ).experiment = 'ersstV4';
 
     % Time specification (out-of-sample data) 
     Out.tFormat        = 'yyyymm';              % time format
@@ -141,7 +147,131 @@ case 'ersstV4_50yr_IPSST_1yrEmb_coneKernel'
     In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
     In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
     In.alpha      = 0.5;        % diffusion maps normalization 
-    In.nPhi       = 451;        % diffusion eigenfunctions to compute
+    In.nPhi       = 551;        % diffusion eigenfunctions to compute
+    In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
+    In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
+    In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
+    In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
+
+% ERSSTv4 data, Indo-Pacific domain, 1960-2010 for training, 2010-2020 
+% for verification, 6-month delay embeding window, cone kernel  
+case 'ersstV4_50yr_10yr_IPSST_6moEmb_coneKernel'
+    
+    % Dataset specification 
+    In.Res( 1 ).experiment = 'ersstV4';
+    
+    % Time specification (in-sample data) 
+    In.tFormat        = 'yyyymm';              % time format
+    In.Res( 1 ).tLim  = { '196001' '200912' }; % time limit  
+    In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    % Dataset specification (out-of-sample data) 
+    Out.Res( 1 ).experiment = 'ersstV4';
+
+    % Time specification (out-of-sample data) 
+    Out.tFormat        = 'yyyymm';              % time format
+    Out.Res( 1 ).tLim  = { '200801' '202002' }; % time limit  
+    Out.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    trendStr = ''; % string identifier for detrening of target data
+
+    % Source data specification 
+    In.Src( 1 ).field = 'sstw';      % physical field
+    In.Src( 1 ).xLim  = [ 28 290 ];  % longitude limits
+    In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
+
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 6;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 2;          % samples before main interval
+    In.Src( 1 ).nXA       = 2;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'central';  % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
+    % Batches to partition the in-sample data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
+
+    % Batches to partition the out-of-sample data
+    Out.Res( 1 ).nB    = 1; % partition batches
+    Out.Res( 1 ).nBRec = 1; % batches for reconstructed data
+
+    % NLSA parameters; in-sample data 
+    In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
+    In.lDist      = 'cone';     % local distance
+    In.tol        = 0;          % 0 distance threshold (for cone kernel)
+    In.zeta       = 0.995;      % cone kernel parameter 
+    In.coneAlpha  = 0;          % velocity exponent in cone kernel
+    In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+    In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+    In.epsilon    = 3;          % kernel bandwidth parameter 
+    In.epsilonB   = 2;          % kernel bandwidth base
+    In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+    In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
+    In.alpha      = 0.5;        % diffusion maps normalization 
+    In.nPhi       = 501;        % diffusion eigenfunctions to compute
+    In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
+    In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
+    In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
+    In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
+
+% ERSSTv4 data, Indo-Pacific domain, 1940-2010 for training, 2010-2020 
+% for verification, 1-year delay embeding window, cone kernel  
+case 'ersstV4_70yr_10yr_IPSST_1yrEmb_coneKernel'
+    
+    % Dataset specification 
+    In.Res( 1 ).experiment = 'ersstV4';
+    
+    % Time specification (in-sample data) 
+    In.tFormat        = 'yyyymm';              % time format
+    In.Res( 1 ).tLim  = { '194001' '200912' }; % time limit  
+    In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    % Dataset specification (out-of-sample data) 
+    Out.Res( 1 ).experiment = 'ersstV4';
+
+    % Time specification (out-of-sample data) 
+    Out.tFormat        = 'yyyymm';              % time format
+    Out.Res( 1 ).tLim  = { '200801' '202002' }; % time limit  
+    Out.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    trendStr = ''; % string identifier for detrening of target data
+
+    % Source data specification 
+    In.Src( 1 ).field = 'sstw';      % physical field
+    In.Src( 1 ).xLim  = [ 28 290 ];  % longitude limits
+    In.Src( 1 ).yLim  = [ -60  20 ]; % latitude limits
+
+    % Delay-embedding/finite-difference parameters; in-sample data
+    In.Src( 1 ).idxE      = 1 : 12;     % delay-embedding indices 
+    In.Src( 1 ).nXB       = 2;          % samples before main interval
+    In.Src( 1 ).nXA       = 2;          % samples after main interval
+    In.Src( 1 ).fdOrder   = 4;          % finite-difference order 
+    In.Src( 1 ).fdType    = 'central';  % finite-difference type
+    In.Src( 1 ).embFormat = 'overlap';  % storage format 
+
+    % Batches to partition the in-sample data
+    In.Res( 1 ).nB    = 1; % partition batches
+    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
+
+    % Batches to partition the out-of-sample data
+    Out.Res( 1 ).nB    = 1; % partition batches
+    Out.Res( 1 ).nBRec = 1; % batches for reconstructed data
+
+    % NLSA parameters; in-sample data 
+    In.nN         = 0;          % nearest neighbors; defaults to max. value if 0
+    In.lDist      = 'cone';     % local distance
+    In.tol        = 0;          % 0 distance threshold (for cone kernel)
+    In.zeta       = 0.995;      % cone kernel parameter 
+    In.coneAlpha  = 0;          % velocity exponent in cone kernel
+    In.nNS        = In.nN;      % nearest neighbors for symmetric distance
+    In.diffOpType = 'gl_mb_bs'; % diffusion operator type
+    In.epsilon    = 2;          % kernel bandwidth parameter 
+    In.epsilonB   = 2;          % kernel bandwidth base
+    In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
+    In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
+    In.alpha      = 0.5;        % diffusion maps normalization 
+    In.nPhi       = 501;        % diffusion eigenfunctions to compute
     In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
     In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
     In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
@@ -149,9 +279,9 @@ case 'ersstV4_50yr_IPSST_1yrEmb_coneKernel'
 
 
 
-% ERSSTv4 data, sub-global domain, 1950-2010 for training, 2010-2020 
-% for verification, 2-year delay embeding window, cone kernel  
-case 'ersstV4_satellite_subglobalSST_1yrEmb_coneKernel'
+% ERSSTv4 data, sub-global domain, 1960-2010 for training, 2010-2020 
+% for verification, 1-year delay embeding window, cone kernel  
+case 'ersstV4_50yr_10yr_subglobalSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -160,6 +290,14 @@ case 'ersstV4_satellite_subglobalSST_1yrEmb_coneKernel'
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '197801' '202002' }; % time limit  
     In.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
+
+    % Dataset specification (out-of-sample data) 
+    Out.Res( 1 ).experiment = 'ersstV4';
+
+    % Time specification (out-of-sample data) 
+    Out.tFormat        = 'yyyymm';              % time format
+    Out.Res( 1 ).tLim  = { '200801' '202002' }; % time limit  
+    Out.Res( 1 ).tClim = { '198101' '201012' }; % climatology time limits 
 
     trendStr = ''; % string identifier for detrening of target data
 
@@ -205,7 +343,7 @@ case 'ersstV4_satellite_subglobalSST_1yrEmb_coneKernel'
 
 
 % CCSM4 pre-industrial control, Indo-Pacific domain, 1100 years training, 200
-% years test, 2-year delay-embeding window  
+% years test, 1-year delay-embeding window  
 case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
    
     % Dataset specification  
@@ -215,6 +353,9 @@ case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '000101' '109912' }; % time limit  
     In.Res( 1 ).tClim = In.Res( 1 ).tLim;     % climatology limits 
+
+    % Dataset specification (out-of-sample data) 
+    Out.Res( 1 ).experiment = 'ccsm4Ctrl';
 
     % Time specification (in-sample data)
     Out.tFormat        = 'yyyymm';              % time format
@@ -266,7 +407,7 @@ case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
     
    
 % CCSM4 pre-industrial control, global domain, 1100 years training, 200
-% years test, 2-year delay-embeding window  
+% years test, 1-year delay-embeding window  
 case 'ccsm4Ctrl_1100yr_200yr_globalSST_2yrEmb_coneKernel'
 
     % Dataset specification  
@@ -276,6 +417,9 @@ case 'ccsm4Ctrl_1100yr_200yr_globalSST_2yrEmb_coneKernel'
     In.tFormat        = 'yyyymm';              % time format
     In.Res( 1 ).tLim  = { '000101' '109912' }; % time limit  
     In.Res( 1 ).tClim = In.Res( 1 ).tLim;     % climatology limits 
+
+    % Dataset specification (out-of-sample data) 
+    Out.Res( 1 ).experiment = 'ccsm4Ctrl';
 
     % Time specification (in-sample data)
     Out.tFormat        = 'yyyymm';              % time format

@@ -172,7 +172,7 @@ classdef nlsaModel_den_ose < nlsaModel_den
 %
 %  Contact: dimitris@cims.nyu.edu
 % 
-%  Modified 2020/03/19
+%  Modified 2020/08/02
 
     %% PROPERTIES
     properties
@@ -381,9 +381,9 @@ classdef nlsaModel_den_ose < nlsaModel_den
                 for iR = 1 : nR
                     if ~isvector( obj.outTime{ iR } ) 
                         msgStr = sprintf( [ 'Invalid timestamp array for realization %i: \n' ... 
-                                            'Expecting vector \n' ...
-                                            'Received  array of size [%i]' ], ...  
-                                            iR, nsR( iR ), size( obj.outTime{ iR } ) );  
+                                            'Expecting vector of size %i \n' ...
+                                            'Received  array of size [%i] \n' ], ...  
+                                            iR, nSR( iR ), size( obj.outTime{ iR } ) );  
                         error( [ msgId 'invalidOSETimestamps' ], msgStr )
                     end
                     
@@ -396,7 +396,7 @@ classdef nlsaModel_den_ose < nlsaModel_den
                     end
                     if ~ismonotonic( obj.outTime{ iR }, [], 'increasing' )
                         msgStr = sprintf( [ 'Invalid timestamps for realization %i: \n' ... 
-                                            'Time values must be monotonically increasing.' ], ...
+                                            'Time values must be monotonically increasing.\n' ], ...
                                           iR );
                         error( [ msg 'invalidOSETimestamps' ], msgStr )
                     end
@@ -658,13 +658,15 @@ classdef nlsaModel_den_ose < nlsaModel_den
                                         varargin{ iOutTrgEmbComponent } );
             end
          
-            % Reconsructed component
+            % Reconstructed component
             if ~isempty( iOseRecComponent )
                 if ~isa( varargin{ iOseRecComponent }, 'nlsaComponent_rec' )
                     error( [ msgId 'invalidOseRecOmponent' ], ...
                         'OSE reconstructed component must be specified as an array of of nlsaComponent_rec objects.' )
                 end
-                if ~isCompatible( varargin{ iOseEmbComponent}, varargin{ iOseRecComponent } )
+                if ~isCompatible( obj.oseEmbComponent, ...
+                                  varargin{ iOseRecComponent }, ...
+                                  'testSamples', false )
                     error( 'Incompatible OSE reconstructed components' )
                 end
                 obj.oseRecComponent = varargin{ iOseRecComponent };

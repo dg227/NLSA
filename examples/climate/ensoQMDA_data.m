@@ -37,6 +37,13 @@ case 'ersstV4'
         DataSpecs.Time.tLim    = { '196001' '200912' }; % time limits
         DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
 
+    % 1940-2010
+    case '70yr'
+
+        DataSpecs.Time.tLim    = { '194001' '200912' }; % time limits
+        DataSpecs.Time.tClim   = { '198101' '201012' }; % climatology 
+
+
     otherwise
 
         error( 'Invalid period' )
