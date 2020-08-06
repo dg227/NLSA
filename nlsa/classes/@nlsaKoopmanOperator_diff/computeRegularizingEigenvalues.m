@@ -2,7 +2,7 @@ function eta = computeRegularizingEigenvalues( obj, diffOp )
 % COMPUTEREGULARIZINGEIGENVALUES Compute eigenvalues of the regularizing 
 % operator for an nlsaKoopmanOperator_diff object.
 %
-% Modified 2020/07/22
+% Modified 2020/08/05
 
 % Validate input arguments
 if ~isa( diffOp, 'nlsaDiffusionOperator' ) || ~isscalar( diffOp )
@@ -17,7 +17,7 @@ if any( idxPhi > numel( lambda ) )
     error( 'Number of eigenvalues requested exceeds available eigenvalues' )
 end
 
-if any( lambda( idxPhi ) > 1 )
+if any( lambda( idxPhi ) > 1.0001 )
     error( 'Regularizing operator must have all eigenvalues <= 1.' )
 end 
 if any( lambda( idxPhi ) < 0 ) 

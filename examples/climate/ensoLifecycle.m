@@ -5,15 +5,15 @@
 
 %% DATA ANALYSIS SPECIFICATION 
 % CCSM4 pre-industrial control run
-dataset    = 'ccsm4Ctrl';    
+%dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
-period     = '1300yr';        % 1300-year analysis
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%period     = '1300yr';        % 1300-year analysis
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
+%embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
-kernel     = 'cone';       % cone kernel      
+% kernel     = 'cone';       % cone kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -26,14 +26,14 @@ kernel     = 'cone';       % cone kernel
 %kernel      = 'cone';     % cone kernel
 
 % ERSSTv4 reanalysis (and various NOAA products)
-%dataset    = 'ersstV4';                                     
+dataset    = 'ersstV4';                                     
 %period     = 'satellite'; % 1978-present
-%period     = '50yr';      % 1970-present
-%sourceVar  = 'IPSST';     % Indo-Pacific SST
+period     = '50yr';      % 1970-present
+sourceVar  = 'IPSST';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
 %sourceVar  = 'subglobalSST'; % polar latitudes removed to avoid noisy data
-%embWindow  = '4yr';       % 4-year embedding
-%kernel     = 'cone';      % cone kernel
+embWindow  = '4yr';       % 4-year embedding
+kernel     = 'cone';      % cone kernel
 %kernel      = 'l2';      % L2 kernel
 
 % NOAA 20th century reanalysis
@@ -55,28 +55,28 @@ ifDataPrecip = false;  % extract precipitation target data from NetCDF files
 ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
-ifNLSA    = false;  % compute kernel (NLSA) eigenfunctions
-ifKoopman = true; % compute Koopman eigenfunctions
+ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
+ifKoopman = false;  % compute Koopman eigenfunctions
 
 % Koopman spectrum
-ifKoopmanSpectrum = true;  % plot generator spectrum
+ifKoopmanSpectrum = false;  % plot generator spectrum
 
 % ENSO lifecycle plots
-ifNinoLifecycle    = false; % ENSO lifecycle from Nino indices
+ifNinoLifecycle    = true; % ENSO lifecycle from Nino indices
 ifNLSALifecycle    = false; % ENSO lifecycle from kernel eigenfunctions
-ifKoopmanLifecycle = false; % ENSO lifecycle from generator eigenfuncs. 
+ifKoopmanLifecycle = true; % ENSO lifecycle from generator eigenfuncs. 
 
 % Lifecycle phases and equivariance plots
-ifNinoPhases          = false; % ENSO phases from Nino 3.4 index
+ifNinoPhases          = true; % ENSO phases from Nino 3.4 index
 ifNLSAPhases          = false; % ENSO phases fron kerenel eigenfunctions
-ifKoopmanPhases       = false; % ENSO phases from generator eigenfunctions
+ifKoopmanPhases       = true; % ENSO phases from generator eigenfunctions
 ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
 ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
+ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
 ifNLSAComposites    = false; % compute phase composites based on NLSA
-ifKoopmanComposites = false; % compute phase composites based on Koopman
+ifKoopmanComposites = true; % compute phase composites based on Koopman
 
 % Composite difference plots
 ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
@@ -118,9 +118,10 @@ ifKoopmanEnsoCombiComposites = false;
 
 
 % Output/plotting options
-ifWeighComposites = false;     % weigh composites by adjacent phases
+ifWeighComposites = true;     % weigh composites by adjacent phases
 ifPlotWind        = true;      % overlay quiver plot of surface winds 
 ifPrintFig        = true;      % print figures to file
+ifSaveComposites  = true;      % save composite data in figure directory
 compositesDomain  = 'globe';   % global domain
 %compositesDomain  = 'Pacific'; % Pacific
 
@@ -429,13 +430,21 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
     Spec.title = '(a) ERSSTv4';
     %Spec.c = Spec.c( [ 4 1 2 3 5 6 ], : );
 
+    Lifecycle.idxTLim = [ 1 nSE ];
+    Lifecycle.title = '(b) ERSSTv4 ENSO lifecycle';
+
+    Phases.ninoTitle = '(c) ERSSTv4 Nino 3.4 phases';
+    Phases.zTitle = '(d) ERSSTv4 generator phases';
+
+    Comps.title = 'Reanalysis ENSO composites';
+
     idxPhiLF = [ 8 16 ];
     signPhiLF = [ -1 1 ];
     idxZLF = [ 6 15 ];
     signZLF = [ 1 1 ];
 
     LF.tLim  = { '197206' '201801' }; % date range to plot
-    LF.tSkip = 60;                   % interval between tickmarks
+    LF.tSkip = 60;                    % interval between tickmarks
     LF.phiLabel = { 'trend' 'TBD' };
     LF.zLabel   = { 'trend' 'PDO' };
 
@@ -460,10 +469,8 @@ case 'ersstV4_50yr_IPSST_4yrEmb_coneKernel'
     phase0EnsoC = 1;
     leadsEnsoC = 0 : 2 : 22;
 
-    Equivariance.title = '(a) ERSSTv4 phase evolution';
+    Equivariance.title = '(b) ERSSTv4 phase evolution';
 
-    Lifecycle.ninoTitle = '(a) ERSSTv4 Nino 3.4 phases';
-    Lifecycle.zTitle = '(b) ERSSTv4 generator phases';
 
 % ERSSTv4 reanalysis data, satellite era, global SST input, 4-year delay 
 % embeding window, cone kernel  
@@ -727,6 +734,9 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
     Spec.c = Spec.c( [ 4 1 2 3 5 6 7 ], : );
     Spec.title = '(b) CCSM4';
 
+    Lifecycle.idxTLim = [ 1 1200 ] + 9000;
+    Lifecycle.title = '(a) CCSM4 ENSO lifecycle';
+
     idxZEnsoC   = 10;
     phaseZEnsoC = exp( i * 9 * pi / 16 );
     nPhaseEnsoC = 8;
@@ -735,10 +745,10 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
     phase0EnsoC = 1;
     leadsEnsoC = 0 : 2 : 22;
 
-    Lifecycle.ninoTitle = '(c) CCSM4 Nino 3.4 phases';
-    Lifecycle.zTitle = '(d) CCSM4 generator phases';
+    Phases.ninoTitle = '(a) CCSM4 Nino 3.4 phases';
+    Phases.zTitle = '(b) CCSM4 generator phases';
 
-    Equivariance.title = '(b) CCSM4 phase evolution';
+    Equivariance.title = '(a) CCSM4 phase evolution';
 
 
 case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb_coneKernel'
@@ -1274,78 +1284,79 @@ if ifKoopmanLifecycle
     % Set up figure and axes 
     Fig.units      = 'inches';
     Fig.figWidth   = 15; 
-    Fig.deltaX     = .5;
+    Fig.deltaX     = .6;
     Fig.deltaX2    = .65;
-    Fig.deltaY     = .48;
+    Fig.deltaY     = .6;
     Fig.deltaY2    = .3;
     Fig.gapX       = .40;
-    Fig.gapY       = .3;
-    Fig.gapT       = 0; 
+    Fig.gapY       = .5;
+    Fig.gapT       = .3; 
     Fig.nTileX     = 5;
     Fig.nTileY     = 2;
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 6;
+    Fig.fontSize   = 14;
     Fig.tickLength = [ 0.02 0 ];
     Fig.visible    = 'on';
     Fig.nextPlot   = 'add'; 
 
-    [ fig, ax ] = tileAxes( Fig );
+    [ fig, ax, axTitle ] = tileAxes( Fig );
 
     % Plot Nino 4 lifecycle
     set( gcf, 'currentAxes', ax( 1, 1 ) )
-    plotLifecycle( Nino4, ElNinos, LaNinas, model.tFormat )
+    plotLifecycle( Nino4, ElNinos, LaNinas, model.tFormat, Lifecycle.idxTLim )
     %xlabel( 'Nino 4' )
     ylabel( sprintf( 'Nino - %i months', nShiftNino ) )
     xlim( PlotLim.nino4 )
     ylim( PlotLim.nino4 )
-    set( gca, 'xTick', PlotLim.nino4( 1 ) : 1 : PlotLim.nino4( end ), ...
-              'yTick', PlotLim.nino4( 1 ) : 1 : PlotLim.nino4( end ) )
-    title( '(a) Nino 4 lifecycle' )
+    set( gca, 'xTick', ceil( PlotLim.nino4( 1 ) ) : 1 : floor( PlotLim.nino4( end ) ), ...
+              'yTick', ceil( PlotLim.nino4( 1 ) ) : 1 : floor( PlotLim.nino4( end ) ) )
+    title( 'Nino 4' )
 
     % Plot Nino 3.4 lifecycle
     set( gcf, 'currentAxes', ax( 2, 1 ) )
-    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat )
+    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat, Lifecycle.idxTLim )
     %xlabel( 'Nino 3.4' )
     %ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( PlotLim.nino34 )
     ylim( PlotLim.nino34 )
     set( gca, 'xTick', PlotLim.nino34( 1 ) : 1 : PlotLim.nino34( end ), ...
               'yTick', PlotLim.nino34( 1 ) : 1 : PlotLim.nino34( end ) )
-    title( '(b) Nino 3.4 lifecycle' )
+    title( 'Nino 3.4' )
 
     % Plot Nino 3 lifecycle
     set( gcf, 'currentAxes', ax( 3, 1 ) )
-    plotLifecycle( Nino3, ElNinos, LaNinas, model.tFormat )
+    plotLifecycle( Nino3, ElNinos, LaNinas, model.tFormat, Lifecycle.idxTLim )
     %xlabel( 'Nino 3' )
     %ylabel( sprintf( 'Nino 3 - %i months', nShiftNino ) )
     xlim( PlotLim.nino3 )
     ylim( PlotLim.nino3 )
     set( gca, 'xTick', PlotLim.nino3( 1 ) : 1 : PlotLim.nino3( end ), ...
               'yTick', PlotLim.nino3( 1 ) : 1 : PlotLim.nino3( end ) )
-    title( '(c) Nino 3 lifecycle' )
+    title( 'Nino 3' )
 
     % Plot Nino 1+2 lifecycle
     set( gcf, 'currentAxes', ax( 4, 1 ) )
-    plotLifecycle( Nino12, ElNinos, LaNinas, model.tFormat )
+    plotLifecycle( Nino12, ElNinos, LaNinas, model.tFormat, Lifecycle.idxTLim )
     %xlabel( 'Nino 3' )
     %ylabel( sprintf( 'Nino 1+2 - %i months', nShiftNino ) )
     xlim( PlotLim.nino12 )
     ylim( PlotLim.nino12 )
-    set( gca, 'xTick', PlotLim.nino12( 1 ) : 1 : PlotLim.nino12( end ), ...
-              'yTick', PlotLim.nino12( 1 ) : 1 : PlotLim.nino12( end ) )
-    title( '(d) Nino 1+2 lifecycle' )
+    set( gca, ...
+      'xTick', ceil( PlotLim.nino12( 1 ) ) : 1 : floor( PlotLim.nino12( end ) ), ...
+      'yTick', ceil( PlotLim.nino12( 1 ) ) : 1 : floor( PlotLim.nino12( end ) ))
+    title( 'Nino 1+2' )
 
 
     % Plot generator lifecycle
     set( gcf, 'currentAxes', ax( 5, 1 ) )
-    plotLifecycle( Z, ElNinos, LaNinas, model.tFormat )
+    plotLifecycle( Z, ElNinos, LaNinas, model.tFormat, Lifecycle.idxTLim )
     xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
     set( gca, 'yAxisLocation', 'right' )
-    title( sprintf( '(e) Generator lifecycle; eigenperiod = %1.2f y', TEnso ) )
+    title( sprintf( 'Generator; eigenperiod = %1.2f y', TEnso ) )
 
     % Make scatterplot of generator lifcycle colored by Nino 4 index
     set( gcf, 'currentAxes', ax( 1, 2 ) )
@@ -1361,7 +1372,7 @@ if ifKoopmanLifecycle
     colormap( redblue )
     set( gca, 'color', [ 1 1 1 ] * .3 )
 
-    % Make scatterplot of generator lifcycle colored by Nino 3.4 index
+    % Make scatterplot of generator lifecycle colored by Nino 3.4 index
     set( gcf, 'currentAxes', ax( 2, 2 ) )
     scl = max( abs( Nino34.idx( 1, : ) ) );
     plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
@@ -1411,6 +1422,9 @@ if ifKoopmanLifecycle
     % Make redundant axis invisible
     set( gcf, 'currentAxes', ax( 5, 2 ) )
     axis off
+
+    % Plot title
+    title( axTitle, Lifecycle.title )
 
     % Print figure
     if ifPrintFig
@@ -1576,17 +1590,17 @@ if ifKoopmanPhases
     Fig.units      = 'inches';
     Fig.figWidth   = 8; 
     Fig.deltaX     = .5;
-    Fig.deltaX2    = .1;
-    Fig.deltaY     = .48;
+    Fig.deltaX2    = .6;
+    Fig.deltaY     = .6;
     Fig.deltaY2    = .3;
-    Fig.gapX       = .60;
+    Fig.gapX       = .30;
     Fig.gapY       = .3;
     Fig.gapT       = 0; 
     Fig.nTileX     = 2;
     Fig.nTileY     = 1;
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 8;
+    Fig.fontSize   = 12;
     Fig.tickLength = [ 0.02 0 ];
     Fig.visible    = 'on';
     Fig.nextPlot   = 'add'; 
@@ -1600,7 +1614,8 @@ if ifKoopmanPhases
     ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
     xlim( PlotLim.nino34 )
     ylim( PlotLim.nino34 )
-    title( Lifecycle.ninoTitle )
+    set( gca, 'yTick', -4 : 4, 'xTick', -4 : 4 )
+    title( Phases.ninoTitle )
 
     % Plot generator phases
     set( gcf, 'currentAxes', ax( 2 ) )
@@ -1609,7 +1624,9 @@ if ifKoopmanPhases
     ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
     xlim( [ -2.5 2.5 ] )
     ylim( [ -2.5 2.5 ] )
-    title( Lifecycle.zTitle )
+    set( gca, 'yAxisLocation', 'right', ...
+              'xTick', -2 : 2, 'yTick', -2 : 2 )
+    title( Phases.zTitle )
 
     % Print figure
     if ifPrintFig
@@ -1695,19 +1712,19 @@ if ifKoopmanEquivariance
     % Set up figure and axes 
     Fig.units      = 'inches';
     Fig.figWidth   = 10; 
-    Fig.deltaX     = .5;
+    Fig.deltaX     = .55;
     Fig.deltaX2    = .1;
-    Fig.deltaY     = .48;
-    Fig.deltaY2    = .5;
+    Fig.deltaY     = .55;
+    Fig.deltaY2    = .25;
     Fig.gapX       = .20;
-    Fig.gapY       = .5;
-    Fig.gapT       = .25; 
+    Fig.gapY       = .7;
+    Fig.gapT       = .3; 
     Fig.nTileX     = nLead;
     Fig.nTileY     = 2;
     Fig.aspectR    = 1;
     Fig.fontName   = 'helvetica';
-    Fig.fontSize   = 6;
-    Fig.tickLength = [ 0.02 0 ];
+    Fig.fontSize   = 10;
+    Fig.tickLength = [ 0.03 0 ];
     Fig.visible    = 'on';
     Fig.nextPlot   = 'add'; 
 
@@ -1728,6 +1745,7 @@ if ifKoopmanEquivariance
         else
             ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
         end
+        set( gca, 'xTick', -4 : 2 : 4, 'yTick', -4 : 2 : 4 )
         title( sprintf( 'Lead = %i months', leads( iLead ) ) )
         
         % Plot Koopman phases 
@@ -1742,10 +1760,11 @@ if ifKoopmanEquivariance
         end
         xlim( [ -2.5 2.5 ] )
         ylim( [ -2.5 2.5 ] )
+        set( gca, 'xTick', -2 : 1 : 2, 'yTick', -2 : 1 : 2 )
     end
 
     title( axTitle, [ Equivariance.title ...
-                      sprintf( ' -- Start phase = %i', phase0 ) ] )
+                      sprintf( '; Start phase = %i', phase0 ) ] )
 
     % Print figure
     if ifPrintFig
@@ -1840,17 +1859,23 @@ end
 % Ouput file suffix based on weighted/unweighted composites
 if ifWeighComposites
     fileSuffix = '_weighted.png';
+    if ifSaveComposites
+        dataFileSuffix = '_weighted.mat';
+    end
 else
     fileSuffix = '.png';
+    if ifSaveComposites
+        dataFileSuffix = '.mat';
+    end
 end
 
 % Figure and axes parameters 
 Fig.units      = 'inches';
 Fig.figWidth   = 13; 
 Fig.deltaX     = .55;
-Fig.deltaX2    = .7;
+Fig.deltaX2    = .5;
 Fig.deltaY     = .5;
-Fig.deltaY2    = .5;
+Fig.deltaY2    = .3;
 Fig.gapX       = .20;
 Fig.gapY       = .2;
 Fig.gapT       = .25; 
@@ -2060,13 +2085,22 @@ if ifNinoComposites
         end
     end
 
-    title( axTitle, 'ENSO composites -- Nino 3.4 index' )
+    title( axTitle, [ Comps.title ' based on Nino 3.4 phases' ] )
 
     % Print figure
     if ifPrintFig
         figFile = [ 'figEnsoCompositesNino_' compositesDomain fileSuffix ];
         figFile = fullfile( figDir, figFile  );
         print( fig, figFile, '-dpng', '-r300' ) 
+    end
+
+    % Save composites
+    if ifSaveComposites
+        dataFile = [ 'dataEnsoCompositesNino_' compositesDomain ...
+                     dataFileSuffix ];
+        dataFile = fullfile( figDir, dataFile );
+        save( dataFile, 'compNino34', 'SST', 'SSH', 'SAT', 'PRate', 'UVWnd', ...
+              '-v7.3' )   
     end
 end
 
@@ -2184,6 +2218,17 @@ if ifNLSAComposites
         figFile = fullfile( figDir, figFile  );
         print( fig, figFile, '-dpng', '-r300' ) 
     end
+
+    % Save composites
+    if ifSaveComposites
+        dataFile = [ 'dataEnsoCompositesKernel_' compositesDomain ...
+                      dataFileSuffix ];
+        dataFile = fullfile( figDir, dataFile );
+        save( dataFile, 'compPhi', 'SST', 'SSH', 'SAT', 'PRate', 'UVWnd', ...
+              '-v7.3' )   
+    end
+
+
 end
 
 
@@ -2289,13 +2334,22 @@ if ifKoopmanComposites
         end
     end
 
-    title( axTitle, 'ENSO composites -- generator' )
+    title( axTitle, [ Comps.title ' based on generator phases' ] )
 
     % Print figure
     if ifPrintFig
         figFile = [ 'figEnsoCompositesGenerator_' compositesDomain fileSuffix ];
         figFile = fullfile( figDir, figFile  );
         print( fig, figFile, '-dpng', '-r300' ) 
+    end
+
+    % Save composites
+    if ifSaveComposites
+        dataFile = [ 'dataEnsoCompositesGenerator_' compositesDomain ...
+                      dataFileSuffix ];
+        dataFile = fullfile( figDir, dataFile );
+        save( dataFile, 'compZ', 'SST', 'SSH', 'SAT', 'PRate', 'UVWnd', ...
+              '-v7.3' )   
     end
 end
 
@@ -4198,10 +4252,15 @@ end
 % AUXILIARY FUNCTIONS
 
 %% Function to plot two-dimensional ENSO index, highlighting significant events
-function plotLifecycle( Index, Ninos, Ninas, tFormat )
+function plotLifecycle( Index, Ninos, Ninas, tFormat, idxTLim )
+
+if nargin < 5
+    idxTLim = [ 1 size( Index.idx, 2 ) ];
+end 
+
 
 % plot temporal evolution of index
-plot( Index.idx( 1, : ), Index.idx( 2, : ), 'g-' )
+plot( Index.idx( 1, idxTLim( 1 ) : idxTLim( 2 ) ), Index.idx( 2, idxTLim( 1 ) : idxTLim( 2 ) ), 'g-' )
 hold on
 grid on
 
@@ -4218,7 +4277,7 @@ for iENSO = 1 : numel( Ninos )
     plot( Index.idx( 1, idxT1 : idxT2 ), Index.idx( 2, idxT1 : idxT2 ), ...
           'r-', 'lineWidth', 2 )
     text( Index.idx( 1, idxTLabel ), Index.idx( 2, idxTLabel ), ...
-          datestr( Index.time( idxT2 ), 'yyyy' ) )
+          datestr( Index.time( idxT2 ), 'yyyy' ), 'fontSize', 8 )
 end
 for iENSO = 1 : numel( Ninas )
 
@@ -4232,7 +4291,7 @@ for iENSO = 1 : numel( Ninas )
     plot( Index.idx( 1, idxT1 : idxT2 ), Index.idx( 2, idxT1 : idxT2 ), ...
           'b-', 'lineWidth', 2 )
     text( Index.idx( 1, idxTLabel ), Index.idx( 2, idxTLabel ), ...
-          datestr( Index.time( idxT2 ), 'yyyy' ) )
+          datestr( Index.time( idxT2 ), 'yyyy' ), 'fontSize', 8 )
 end
 
 end
@@ -4254,6 +4313,7 @@ case 4
 case 8 
     % Set 1st phase to red, 5th to blue (for El Nino/La Nina)
     c = c( [ 2 3 4 5 1 6 7 8 ], : );
+    c = c( [ 1 2 3 4 5 7 6 8 ], : );
 end
 for iPhase = 1 : nPhase
 
@@ -4280,6 +4340,7 @@ case 4
 case 8 
     % Set 1st phase to red, 5th to blue (for El Nino/La Nina)
     c = c( [ 2 3 4 5 1 6 7 8 ], : );
+    c = c( [ 1 2 3 4 5 7 6 8 ], : );
 end
 for iPhase = 1 : nPhase
 

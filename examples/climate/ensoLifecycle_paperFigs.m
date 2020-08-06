@@ -1,7 +1,9 @@
 modelExperiment = 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel';
 obsExperiment = 'ersstV4_50yr_IPSST_4yrEmb_coneKernel';
 
-ifSpectrum = true; 
+ifSpectrum = false; 
+ifCompositesM = false;
+ifCompositesO = true;
 
 figDir = 'paperFigs';
 if ~isdir( figDir )
@@ -19,7 +21,7 @@ if ifSpectrum
     legendStr = { 'constant' ...
                   'annual' ...
                   'semiannual' ...
-                  'triennial' ...
+                  'triannual' ...
                   'trend' ... 
                   'trend combination' ...
                   'ENSO' ...
@@ -84,9 +86,9 @@ if ifSpectrum
     % Set up figure and axes 
     Fig.units      = 'inches';
     Fig.figWidth   = 8; 
-    Fig.deltaX     = .5;
+    Fig.deltaX     = .55;
     Fig.deltaX2    = 2.1;
-    Fig.deltaY     = .48;
+    Fig.deltaY     = .55;
     Fig.deltaY2    = .2;
     Fig.gapX       = .25;
     Fig.gapY       = .5;
@@ -135,8 +137,8 @@ if ifSpectrum
           'color', [ .5 .5 .5 ] )
     xlim( [ -4 .1 ] );
     ylim( [ -3 3 ] ); 
-    ylabel( 'frequency (1/y)' )
-    xlabel( 'decay rate (arbitrary units)' )
+    ylabel( 'Frequency \nu_j (cycles/y)' )
+    xlabel( 'Decay rate Re(\gamma_j) (arbitrary units)' )
     grid on
     title( '(a) CCSM4 spectrum' )
 
@@ -186,7 +188,7 @@ if ifSpectrum
     set( hL, 'position', lPos );
     xlim( [ -1 .1 ] );
     ylim( [ -3 3 ] ); 
-    xlabel( 'decay rate (arbitrary units)' )
+    xlabel( 'Decay rate Re(\gamma_j) (arbitrary units)' )
     grid on
     title( '(b) ERSSTv4 spectrum' )
 
@@ -195,3 +197,234 @@ if ifSpectrum
 
 
 end
+
+if ifCompositesO
+
+    nPhase = 8;
+    ifPlotWind = true;
+    iCSST    = 5;  % global SST
+    iCSAT    = 7;  % global SAT
+    iCUWnd   = 9;  % global surface meridional winds
+    iCVWnd   = 10; % global surface zonal winds
+
+    dataFile = './figs/ersstV4_50yr_IPSST_4yrEmb_coneKernel/dataEnsoCompositesNino_globe_weighted.mat';
+    load( dataFile )
+
+
+    dataFile = './figs/ersstV4_50yr_IPSST_4yrEmb_coneKernel/dataEnsoCompositesGenerator_globe_weighted.mat';
+    load( dataFile )
+    
+    SST.cOffset = SST.cOffset + .045;
+    SAT.cOffset = SAT.cOffset + .055;
+    SAT.cLim = [ -3 3];
+
+    % SST phase composites
+
+    % Figure and axes parameters 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 6; 
+    Fig.deltaX     = .55;
+    Fig.deltaX2    = .5;
+    Fig.deltaY     = .3;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .20;
+    Fig.gapY       = .2;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = 2;
+    Fig.nTileY     = nPhase;
+    Fig.aspectR    = (3/4)^3;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 10;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+    colormap( redblue )
+
+    for iPhase = 1 : nPhase
+
+        SST.ifXTickLabels = iPhase == nPhase;
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        if ifPlotWind
+            plotPhaseComposite( compNino34{ iCSST }( :, iPhase ), SST, ...
+                                compNino34{ iCUWnd }( :, iPhase ), ...
+                                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+        else
+            plotPhaseComposite( compNino34{ iCSST }( :, iPhase ), SST )
+        end
+        if iPhase == 1
+            title( 'Nino 3.4' )
+        end
+        lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        lblPos = get( lbl, 'position' );
+        lblPos( 1 ) = lblPos( 1 ) - .4;
+        set( lbl, 'position', lblPos )
+
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SST.ifXTickLabels = iPhase == nPhase;
+        SST.ifYTickLabels = false;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+        else
+            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST )
+        end
+        SST.ifYTickLabels = true;
+
+        if iPhase == 1
+            title( 'Generator'  )
+        end
+
+    end
+
+
+    titleStr = '(a) SST anomaly (K), surface wind';
+    title( axTitle, titleStr )
+
+    figFile = fullfile( figDir, 'figEnsoSSTComposites_obs.png' );
+    print( fig, figFile, '-dpng', '-r300' ) 
+
+    % SAT phase composites
+
+    % Figure and axes parameters 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 6 - .6; 
+    Fig.deltaX     = .55 -.6;
+    Fig.deltaX2    = .5;
+    Fig.deltaY     = .3;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .20;
+    Fig.gapY       = .2;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = 2;
+    Fig.nTileY     = nPhase;
+    Fig.aspectR    = (3/4)^3;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 10;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+    colormap( redblue )
+
+    for iPhase = 1 : nPhase
+
+        SAT.ifYTickLabels = false;
+        SAT.ifXTickLabels = iPhase == nPhase;
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        if ifPlotWind
+            plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT, ...
+                                compNino34{ iCUWnd }( :, iPhase ), ...
+                                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+        else
+            plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT )
+        end
+        if iPhase == 1
+            title( 'Nino 3.4' )
+        end
+        %lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        %lblPos = get( lbl, 'position' );
+        %lblPos( 1 ) = lblPos( 1 ) - .4;
+        %set( lbl, 'position', lblPos )
+
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SAT.ifXTickLabels = iPhase == nPhase;
+        SAT.ifYTickLabels = false;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+        else
+            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT )
+        end
+        %SAT.ifYTickLabels = true;
+
+        if iPhase == 1
+            title( 'Generator'  )
+        end
+
+    end
+
+
+    titleStr = '(b) SAT anomaly (K), surface wind';
+    title( axTitle, titleStr )
+
+    figFile = fullfile( figDir, 'figEnsoSATComposites_obs.png' );
+    print( fig, figFile, '-dpng', '-r300' ) 
+
+
+end
+
+
+function plotPhaseComposite( s, SGrd, u, v, VGrd )
+
+% s:    values of scalar field to plot
+% SGrd: data structure with grid information for scalar field  
+% u, v: components of vector field to plot
+% VGrd: data structure with grid information for vector field
+
+sData = zeros( size( SGrd.ifXY ) );
+sData( ~SGrd.ifXY ) = NaN;
+sData( SGrd.ifXY ) = s;
+if isfield( SGrd, 'scl' )
+    sData = SGrd.scl * sData; % apply scaling factor
+end
+
+if SGrd.ifXTickLabels
+    xTickLabelsArg = { };
+else
+    xTickLabelsArg = { 'xTickLabels' [] };
+end
+if SGrd.ifYTickLabels
+    yTickLabelsArg = { };
+else
+    yTickLabelsArg = { 'yTickLabels' [] };
+end
+m_proj( 'Miller cylindrical', 'long',  SGrd.xLim, 'lat', SGrd.yLim );
+if ~isvector( SGrd.lon )
+    SGrd.lon = SGrd.lon';
+    SGrd.lat = SGrd.lat';
+end
+h = m_pcolor( SGrd.lon, SGrd.lat, sData' );
+set( h, 'edgeColor', 'none' )
+m_grid( 'linest', 'none', 'linewidth', 1, 'tickdir', 'out', ...
+        xTickLabelsArg{ : }, yTickLabelsArg{ : } ); 
+m_coast( 'linewidth', 1, 'color', 'k' );
+        %'xTick', [ SGrd.xLim( 1 ) : 40 : SGrd.xLim( 2 ) ], ...
+        %'yTick', [ SGrd.yLim( 1 ) : 20 : SGrd.yLim( 2 ) ] );
+
+axPos = get( gca, 'position' );
+hC = colorbar( 'location', 'eastOutside' );
+cPos   = get( hC, 'position' );
+cPos( 1 ) = cPos( 1 ) + SGrd.cOffset;
+cPos( 3 ) = cPos( 3 ) * SGrd.cScale;
+set( gca, 'cLim', SGrd.cLim, 'position', axPos )
+set( hC, 'position', cPos )
+
+if nargin == 2
+    return
+end
+
+uData = zeros( size( VGrd.ifXY ) );
+uData( ~VGrd.ifXY ) = NaN;
+uData( VGrd.ifXY ) = u;
+
+vData = zeros( size( VGrd.ifXY ) );
+vData( ~VGrd.ifXY ) = NaN;
+vData( VGrd.ifXY ) = v;
+
+[ lon, lat ] = meshgrid( VGrd.lon, VGrd.lat );
+%size(VGrd.lon)
+%size(uData')
+%size(vData')
+m_quiver( lon( 1 : VGrd.nSkipY : end, 1 : VGrd.nSkipX : end ), ...
+          lat( 1 : VGrd.nSkipY : end, 1 : VGrd.nSkipX : end ), ...
+          uData( 1 : VGrd.nSkipX : end, 1 : VGrd.nSkipY : end )', ...
+          vData( 1 : VGrd.nSkipX : end, 1 : VGrd.nSkipY : end )', ...
+          'g-', 'lineWidth', .5 ) 
+end
+
+
