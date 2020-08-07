@@ -98,7 +98,7 @@ if ifPred
 
     % put in appropriate form for multiplication with basis functions (phi)
     fTau = reshape( fTau, [ nD nG nP nT ] );
-    fTau = permute( fTau, [ 1 3 4 2 ] ); % size( fTau ) = [ nD nP nTO nG ]
+    fTau = permute( fTau, [ 1 3 4 2 ] ); % size( fTau ) = [ nD nP nT nG ]
     fTau = reshape( fTau, [ nD * nP, nT * nG ] );
 
     % compute regression coefficients of the time-shifted signal against 

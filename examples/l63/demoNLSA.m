@@ -59,7 +59,7 @@
 %
 % A figure, figPhiCoherence.png, depicting the extracted coherent observables 
 % from the '64k_dt0.01_nEL800' experiment, is included for reference in 
-% subdirectory ./figs/64k_dt0.01_nEL800.
+% subdirectory ./figsNLSA/64k_dt0.01_nEL800.
 %
 % References:
 % 
@@ -74,16 +74,16 @@
 % [3] D. Giannakis, A. J. Majda (2012), "Nonlinear Laplacian spectral analysis
 %     for time series with intermittency and low-frequency variability", 
 %     Proc. Natl. Acad. Sci., 109(7), 2222, 
-%     http://dx.doi.org/10.1073/pnas.1118984109.
+%     https://dx.doi.org/10.1073/pnas.1118984109.
 %
 % [4] D. Giannakis (2019), "Data-driven spectral decomposition and forecasting
 %     of ergodic dynamical systems", Appl. Comput. Harmon. Anal., 62(2), 
-%     338-396, http://dx.doi.org/10.1016/j.acha.2017.09.001.
+%     338-396, https://dx.doi.org/10.1016/j.acha.2017.09.001.
 % 
 % [5] D. Giannakis (2020), "Delay-coordinate maps, coherence, and approximate 
 %     spectra of evolution operators", https://arxiv.org/abs/2007.02195.  
 %
-% Modified 2020/07/22
+% Modified 2020/08/06
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
 %experiment = '6.4k_dt0.01_nEL0'; 
@@ -159,7 +159,7 @@ end
 
 
 % Figure/movie directory
-figDir = fullfile( pwd, 'figs', experiment );
+figDir = fullfile( pwd, 'figsNLSA', experiment );
 if ~isdir( figDir )
     mkdir( figDir )
 end
