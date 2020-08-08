@@ -9,12 +9,8 @@ function demoKAF_data( experiment )
 %
 % The data is then generated and saved on disk using the l63Data function. 
 %
-% nT is the number of extra samples we include in order to have availbale the
-% full evolution of the response variable over the desired forecast lead times.
-%
 % Modified 2020/08/06
 
-nT = 500;
 
 %% SET EXPERIMENT-SPECIFIC PARAMETERS
 switch experiment
@@ -37,18 +33,16 @@ end
 
 
 %% SET PARAMETERS COMMON TO ALL EXPERIMENTS
-
-% Extra samples for future values of the response
-DataSpecs.Time.nSProd = DataSpecs.Time.nSProd + nT; 
-
 % Standard L63 parameters
 DataSpecs.Pars.beta   = 8/3;         % L63 parameter beta
 DataSpecs.Pars.rho    = 28;          % L63 parameter rho
 DataSpecs.Pars.sigma  = 10;          % L63 parameter sigma
 
 % Extra samples before/after main time interval, total production samples
+% We add samples after the main interval to provide a complete set of %
+% training samples for forecasting.
 DataSpecs.Time.nXB    = 0;
-DataSpecs.Time.nXA    = 0;
+DataSpecs.Time.nXA    = 500; 
 DataSpecs.Time.nS     = DataSpecs.Time.nSProd ...
                       + DataSpecs.Time.nEL ...
                       + DataSpecs.Time.nXB ...

@@ -16,13 +16,13 @@ function [ c, gamma, E, zeta, mu ] = computeEigenfunctions( ...
 % E: A row vector of size [ 1 nEig ] storing the Dirichlet energies of the
 %    eigenfunctions.
 %
-% zeta: A matrix of size [ nS nPhi ] storing the values of the kernel
-%      eigenfunctions employed. nS is the number of samples. 
+% zeta: A matrix of size [ nS nPhi ] storing the values of the Koopman 
+%    eigenfunctions. nS is the number of samples. 
 %
 % mu: A column vector of size [ nS 1 ] storing the inner product weights with
 %     repect to which the phi are orthonormal. 
 %
-% Modified 2020/05/01
+% Modified 2020/08/07
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -102,18 +102,24 @@ tWall0 = tic;
 Lambda = getEigenvalues( diffOp );
 Lambda = Lambda( idxPhi );
 Lambda = Lambda( : );
-eta = computeRegularizingEigenvalues( obj, diffOp );
-eta = eta( : );  % ensure eta is a column vector
-epsilon = getRegularizationParameter( obj );
-dt = getSamplingInterval( obj );
-lambda = exp( - epsilon * eta );
-omega = imag( gamma )';
+E = sum( abs( c ) .^ 2 ./ Lambda );
+
+
+%Lambda = getEigenvalues( diffOp );
+%Lambda = Lambda( idxPhi );
+%Lambda = Lambda( : );
+%eta = computeRegularizingEigenvalues( obj, diffOp );
+%eta = eta( : );  % ensure eta is a column vector
+%epsilon = getRegularizationParameter( obj );
+%dt = getSamplingInterval( obj );
+%lambda = exp( - epsilon * eta );
+%omega = imag( gamma )';
 %E = sum( lambda .* abs( c ) .^ 2, 1 );  
 %E = ( 1 ./ E - 1 ) ./ ( 1 - ( imag( gamma ) * dt ) .^ 2 );
 %E = ( 1 ./ E - 1 );
-l2Norm = sum( lambda .* abs( c ) .^ 2, 1 );
-hNorm = sum( lambda ./ Lambda .* abs( c ) .^2, 1 );
-E = hNorm ./ l2Norm - 1; 
+%l2Norm = sum( lambda .* abs( c ) .^ 2, 1 );
+%hNorm = sum( lambda ./ Lambda .* abs( c ) .^2, 1 );
+%E = hNorm ./ l2Norm - 1; 
 
 % Sort results in order of increasing Dirichlet energy
 [ E, idxE ] = sort( E, 'ascend' );
@@ -129,9 +135,10 @@ fprintf( logId, 'ENGY %2.4f \n', tWall );
 if ifZeta
     tWall0 = tic;
     [ phi, mu ] = getEigenfunctions( diffOp );
-    phi = phi( :, getBasisFunctionIndices( obj ) ); 
-    sqrtLambda = exp( - epsilon * eta / 2 )';
-    zeta = phi * c .* sqrtLambda;
+    phi = phi( :, idxPhi ); 
+    zeta = phi * c;
+    %sqrtLambda = exp( - epsilon * eta / 2 )';
+    %zeta = phi * c .* sqrtLambda;
     tWall = toc( tWall0 );
     fprintf( logId, 'EVALEIG %2.4f \n', tWall );
 end

@@ -1,5 +1,5 @@
 function [ model, In, Out ] = demoKoopmanRKHS_nlsaModel( experiment )
-% DEMOKOOPAMNRKHS_NLSAMODEL Construct NLSA model for Koopman spectral analysis
+% DEMOKOOPANRKHS_NLSAMODEL Construct NLSA model for Koopman spectral analysis
 % of Lorenz 63 data using reproducing kernel Hilbert space compactification.
 %
 % Input arguments:
@@ -35,17 +35,6 @@ switch experiment
         In.Res.x0     = [ 0 1 1.05 ]; % initial conditions
         In.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
         In.Res.ifCent = false;        % data centering
-
-        % Out-of-sample dataset parameters
-        Out.dt         = 0.01;         % sampling interval
-        Out.Res.beta   = 8/3;          % L63 parameter beta
-        Out.Res.rho    = 28;           % L63 parameter rho
-        Out.Res.sigma  = 10;           % L63 parameter sigma
-        Out.Res.nSProd = 6400;         % number of "production" samples
-        Out.Res.nSSpin = 64000;        % spinup samples
-        Out.Res.x0     = [ 0.2 1.2 1.25 ]; % initial conditions
-        Out.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
-        Out.Res.ifCent = false;        % data centering
 
         % Source data
         In.Src.idxX    = 1 : 3;       % observed state vector components 
@@ -112,10 +101,6 @@ switch experiment
         In.idxPhiKoopman  = 2 : 51;   % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
-
-        % NLSA parameters, out-of-sample data
-        Out.Res.nB    = 1;
-        Out.Res.nBRec = 1;
 
     % 6400 samples, sampling interval 0.01, 800 delays
     case '6.4k_dt0.01_nEL800'

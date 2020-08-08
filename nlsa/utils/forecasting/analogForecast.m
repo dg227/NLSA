@@ -49,7 +49,7 @@ end
 % Put training data in appropriate form for time shift (temporal index is
 % last) 
 f = permute( f, [ 1 3 2 ] ); % size [ nD nR nSF ]
-f = reshape( fTtrain, [ nD * nR, nSF ] );
+f = reshape( f, [ nD * nR, nSF ] );
 
 % Create time-shifted copies of the input signal
 fT = lembed( f, [ nT, nT + nS - 1 ], 1 : nT );
@@ -61,10 +61,11 @@ fT = reshape( fT, [ nD * nT, nS * nR ] );
 
 % Compute expansion coefficients of the time-shifted signal with respec to the
 % basis
-cT = fT * phi .* mu;
+cT = fT * ( phi .* mu );
 
 % Evaluate forecast using out-of-sample values of the eigenfunctions
-fPred = cT * phiO;
+fPred = cT * phiO.';
+fPred = reshape( fPred, [ nD nT nSO ] );
 
 % Reshape coefficient array
 if nargout > 1

@@ -15,9 +15,9 @@ function [ fErr, fRMSE, fPC ] = forecastError( fTrue, fPred )
 %
 % fRMSE, fPC: RMSE and PC arrays of size [ nD, nT ].
 %
-% fErr:       Array of size [ nD, nT, nSO ] 
+% fErr:  Error array of size [ nD, nT, nSO ] 
 %
-% Modified 2020/08/06
+% Modified 2020/08/07
 
 % Get array sizes
 [ nD, nST ] = size( fTrue );
@@ -33,14 +33,14 @@ fErr( :, 1 : nSCount ) = lembed( fTrue, [ nT, nSTLim  ], 1 : nT );
 fErr = reshape( fErr, [ nD nT nSO ] ); 
 
 % Compute forecast errors
-fErr = fT - fPred;  
+fErr = fErr - fPred;  
 
 if nargout == 1
     return
 end
 
 % Compute RMSE 
-fRMSE = sqrt( mean( fErr( :, :, 1 : nSCount .^ 2, 3 ) );
+fRMSE = sqrt( mean( fErr( :, :, 1 : nSCount ) .^ 2, 3 ) );
 
 if nargout == 2
     return

@@ -1,88 +1,85 @@
-% DEMO OF KERNEL ANALOG FORECAST (KAF) OF THE LORENZ 63 (L63) SYSTEM 
+% DEMO OF FORECASTING OF THE LORENZ 63 (L63) SYSTEM USING REPRODUCING KERNEL 
+% HILBERT SPACE (RKHS) COMPACTIFICATION OF THE KOOPMAN GENERATOR
 % 
-% This script applies KAF to predict the state vector compoents of the L63 
-% system under full or partial observations.
+% In this example, we use a skew-adjoint, compact approximation of the 
+% generator of the Kooopman group of the L63 system to forecast its state 
+% vector components. This approximation is constructed by first computing
+% data-driven orthonormal basis functions for a suitable RKHS of observables of
+% the system using eigenfunctions of kernel integral operator. The kernel 
+% eigenfunctions are then employed to represent the operator as a 
+% skew-symmetric matrix, and finally that matrix is conjugated by a diagonal 
+% matrix representing a smoothing operator. 
 %
-% Two test cases are provided, illustrating the behavior of the method when
-% the covariate data is the x1 component of the state vector component alone,
-% or the full state vector. In addition, we consider an example where the 
-% covariate data of the partially observed system is augmented using delay-
-% coordinate maps, illustrating the recovery of forecast skill as expected
-% from "Embedology" results.
+% Forecasting is performed by exponentiating the compactified generator, 
+% leading to a unitary approximation of the Koopman evolution operator of the
+% system. 
 % 
-% Each test case has variants utiilizing 6400 or 64000 training samples, taken
-% near thee L63 attractor at a sampling interval dt of 0.01 natural time 
-% units.  These experiments are selected using a character variable 
-% experiments which can take the following values:
+% Two test cases are provided, illustrating the behavior of the method in 
+% datasets of either 6400 or 64000 samples.
 %
-% '6.4k_dt0.01_idxX1_2_3_nEL0': 6400 samples, dt=0.01, fully observed, 0 delays 
-% '6.4k_dt0.01_idxX_nEL0': 6400 samples, dt=0.01, x1 only, 0 delays 
-% '6.4k_dt0.01_idxX_nEL10': 6400 samples, dt=0.01, x1 only, 10 delays 
-% '64k_dt0.01_idxX1_2_3_nEL0': 64000 samples, dt=0.01, fully observed, 0 delays 
-% '64k_dt0.01_idxX_nEL0': 64000 samples, dt=0.01, x1 only, 0 delays 
-% '64k_dt0.01_idxX_nEL10': 64000 samples, dt=0.01, x1 only, 10 delays 
+% '6.4k_dt0.01_nEL0':   6400 samples, sampling interval 0.01, 0 delays 
+% '64k_dt0.01_nEL0':    64000 samples, sampling interval 0.01, no delays 
 %
 % The kernel employed is a variable-bandwidth Gaussian kernel, normalized to a
 % symmetric Markov kernel. This requires a kernel density estimation step to
 % compute the bandwidth functions, followed by a normalization step to form the
-% kernel matrix. See pseudocode in Appendix B of reference [2] below for 
+% kernel matrix. See pseudocode in Appendix B of reference [1] below for 
 % further details. 
 %
 % References:
 % 
-% [1] R. Alexander, D. Giannakis (2020), "Operator-theoretic framework for 
-%     forecasting nonlinear time series with kernel analog techniques", 
-%     Phys. D, 409, 132520, https://doi.org/10.1016/j.physd.2020.132520. 
-%
-% [2] S. Das, D. Giannakis, J. Slawinska (2018), "Reproducing kernel Hilbert
+% [1] S. Das, D. Giannakis, J. Slawinska (2018), "Reproducing kernel Hilbert
 %     space compactification of unitary evolution groups", 
 %     https://arxiv.org/abs/1808.01515.
 %
-% Modified 2020/08/08
+% Modified 2020/08/07
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = '6.4k_dt0.01_idxX1_2_3_nEL0';
-%experiment = '6.4k_dt0.01_idxX_nEL0';
-%experiment = '6.4k_dt0.01_idxX_nEL10'; 
-%experiment = '64k_dt0.01_idxX1_2_3_nEL0';
-%experiment = '64k_dt0.01_idxX_nEL0';
-%experiment = '64k_dt0.01_idxX_nEL10'; 
+experiment = '6.4k_dt0.01_nEL0'; 
+%experiment = '64k_dt0.01_nEL0'; 
 
-ifSourceData   = false; % generate source data
-ifTestData     = false; % generate test (verification) data
-ifNLSA         = false; % run NLSA (kernel eigenfunctions)
-ifOse          = false; % do out-of-sample extension of eigenfunctions
-ifReadKAFData  = false; % read training/test data for KAF
-ifKAF          = true;  % perform KAF 
-ifPlotForecast = true; % plot representative forecast trajectories
-ifPlotError    = true; % plot forecast error
-ifPrintFig     = true; % print figures to file
+ifSourceData       = false; % generate source data
+ifTestData         = false; % generate test data for forescasting
+ifNLSA             = false; % run NLSA (kernel eigenfunctions)
+ifKoopman          = true; % compute Koopman eigenfunctions
+ifOse              = true; % do out-of-sample extension (for forecasting)
+ifReadForecastData = true;  % read training/test data for forecasting 
+ifForecast         = true;  % perform forecasting
+ifPlotForecast     = true; % plot representative forecast trajectories
+ifPlotError        = true; % plot forecast error
+ifPlotZ            = true;  % plot Koopman eigenfunctions
+ifPrintFig         = false; % print figures to file
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
 
 %% GLOBAL PARAMETERS
-% nL:         Number of eigenfunctions to use for KAF target function
+% nL:         Number of eigenfunctions to use for operator approximation
 % nT:         Number of timesteps to predict (including 0)
+% idxZPlt:    Eigenfunctions to plot
 % idxTPlt:    Initial conditions for which to plot forecast trajectories
 % figDir:     Output directory for plots
 % markerSize: For eigenfunction scatterplots
+% signZPlt:   Sign multiplication factors for plotted eigenfunctions 
 
 switch experiment
 
-case '6.4k_dt0.01_idxX1_2_3_nEL0'
-    nL = 501;
-    nT = 501; 
-    idxTPlt = [ 2101 2201 2301 ];
+case '6.4k_dt0.01_nEL0'
+    nT         = 500;
+    nL         = 100;
+    idxZPlt    = [ 1 3 5 7  ];     
+    signZPlt   = [ 1 -1 ];   
+    idxTPlt    = [ 2201 2201 2301 ]; 
     markerSize = 7;         
-    tStr = '6.4k, full obs.';
+    signPC     = [ -1 1 ];
 
-case '6.4k_dt0.01_idxX1_nEL0'
-    nT = 501; 
-    idxTPlt = [ 2000 3000 ];
+case '64k_dt0.01_nEL0'
+    idxZPlt  = [ 1 3 5 7 ];     
     signZPlt = [ 1 -1 ];   
-    markerSize = 7;         
+    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
+    markerSize = 3;         
     signPC     = [ -1 1 ];
 
 otherwise
@@ -91,22 +88,22 @@ end
 
 
 % Figure/movie directory
-figDir = fullfile( pwd, 'figsKAF', experiment );
-if ifPrintFig && ~isdir( figDir )
+figDir = fullfile( pwd, 'figsKoopmanForecastRKHS', experiment );
+if ~isdir( figDir )
     mkdir( figDir )
 end
 
 %% EXTRACT SOURCE DATA
 if ifSourceData
     disp( 'Generating source data...' ); t = tic;
-    demoKAF_data( experiment ) 
+    demoKoopmanForecastRKHS_data( experiment ) 
     toc( t )
 end
 
 %% EXTRACT TEST DATA
 if ifTestData
     disp( 'Generating test data...' ); t = tic;
-    demoKAF_test_data( experiment ) 
+    demoKoopmanForecastRKHS_test_data( experiment ) 
     toc( t )
 end
 
@@ -118,11 +115,16 @@ end
 % idxT1 is the initial time stamp in the covariante data ("origin") where 
 % delay embedding is performed. We remove samples 1 to idxT1 from the response
 % data so that they always lie in the future of the delay embedding window.
+%
+% idxPhi are the indices of the diffusion eigenfunctions used for RKHS 
+% compactification.
+
 disp( 'Building NLSA model...' ); t = tic;
-[ model, In, Out ] = demoKAF_nlsaModel( experiment ); 
+[ model, In, Out ] = demoKoopmanForecastRKHS_nlsaModel( experiment ); 
 toc( t )
 
 idxT1 = getOrigin( model.embComponent );
+idxPhi = getBasisFunctionIndices( model.koopmanOp );
 
 % Create parallel pool if running NLSA and the NLSA model has been set up
 % with parallel workers. This part can be commented out if no parts of the
@@ -196,6 +198,13 @@ if ifNLSA
 
 end
 
+%% COMPUTE EIGENFUNCTIONS OF KOOPMAN GENERATOR
+if ifKoopman
+    disp( 'Koopman eigenfunctions...' ); t = tic;
+    computeKoopmanEigenfunctions( model )
+    toc( t )
+end
+
 %% DO OUT-OF-SAMPLE EXTENSIONS
 if ifOse
     
@@ -245,27 +254,30 @@ end
 % variable (3-dimensional L63 state vector) on the training states. nSY is
 % the number of response samples available after delay embedding.
 %
-% phi is an array of size [ nSX nPhi ] whose columns contain the eigenfunctions
-% from NLSA on the training states. nSX is the number of covariate samples
-% available after delay embedding, and nPhi the number of eigenfunctions 
-% available from the nlsaModel. nSX is less than or equal to nSY.  
+% z is an array of size [ nSX nZ ] whose columns contain the eigenfunctions of
+% the compactified generator on the training states. nSX is the number of 
+% covariate samples available after delay embedding, and nZ the number of 
+% generator eigenfunctions available from the nlsaModel. nSX is less than or 
+% equal to nSY.  
 %
 % yO is an array of size [ 3 nSO ] containing in its columns the response
 % variable on the test states. nSO is the number of test samples available
 % after delay embedding.
 %
-% phiO is an array of size [ nSO nPhi ] containing the out-of-sample values
-% of the NLSA eigenfunctions.
+% zO is an array of size [ nSO nPhi ] containing the out-of-sample values
+% of the generator eigenfunctions.
 if ifReadKAFData
     tic
-    disp( 'Retrieving KAF data...' ); t = tic;
+    disp( 'Retrieving forecast data...' ); t = tic;
     
     % Response variable
     y = getData( model.trgComponent );
     y = y( :, idxT1 : end );
 
-    % Eigenfunctions 
-    [ phi, mu ] = getDiffusionEigenfunctions( model ); 
+    % Eigenfunctions, eigenfrequencies, and expansion coefficients  
+    [ z, mu ] = getKoopmanEigenfunctions( model ); 
+    omega = getKoopmanEigenfrequencies( model );
+    c = getEigenfunctionCoefficients( model );
 
     % Response variable (test data)
     yO = getData( model.outTrgComponent );
@@ -273,14 +285,27 @@ if ifReadKAFData
 
     % Eigenfunctions (test data)
     phiO = getOseDiffusionEigenfunctions( model );
+    zO = phiO( :, idxPhi ) * c;
     toc( t )
 end
 
-%% PERFORM KAF
-if ifKAF
+%% PERFORM FORECASTING
+if ifForecast
+
+    % Lead times
+    tau = ( 0 : nT - 1 ) * In.dt; 
+
     tic 
-    disp( 'Performing KAF...' ); t = tic;
-    yT = analogForecast( y, phi( :, 1 : nL ), mu, phiO( :, 1 : nL ), nT );
+    disp( 'Performing  forecast...' ); t = tic;
+    yT = unitaryForecast( y, z( :, 1 : nL ), mu, omega, ...
+                          zO( :, 1 : nL ), tau );
+    yT = real( yT ); % iron out numerical wrinkles
+
+    % If idxPhi( 1 ) > 1 we are excluding the constant eigenfunction, so we 
+    % compensate by adding the mean of y.
+    if idxPhi( 1 ) > 1
+        yT = yT + mean( y, 2 ); 
+    end
     toc( t )
 
     tic
@@ -449,11 +474,5 @@ if ifPlotError
 end
         
 
-
-
-
-
-
-         
 
 
