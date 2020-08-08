@@ -44,9 +44,11 @@ DataSpecs.Pars.beta   = 8/3;         % L63 parameter beta
 DataSpecs.Pars.rho    = 28;          % L63 parameter rho
 DataSpecs.Pars.sigma  = 10;          % L63 parameter sigma
 
-% Extra samples before/after main time interval, total production samples
+% Extra samples before/after main time interval, total production samples.
+% We add samples after the main interval to provide a complete set of %
+% training samples for forecasting.
 DataSpecs.Time.nXB    = 0;
-DataSpecs.Time.nXA    = 0;
+DataSpecs.Time.nXA    = 500;
 DataSpecs.Time.nS     = DataSpecs.Time.nSProd ...
                       + DataSpecs.Time.nEL ...
                       + DataSpecs.Time.nXB ...

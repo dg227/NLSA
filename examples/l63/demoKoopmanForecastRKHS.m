@@ -35,53 +35,44 @@
 % Modified 2020/08/07
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = '6.4k_dt0.01_nEL0'; 
-%experiment = '64k_dt0.01_nEL0'; 
+%experiment = '6.4k_dt0.01_nEL0'; 
+experiment = '64k_dt0.01_nEL0'; 
 
 ifSourceData       = false; % generate source data
 ifTestData         = false; % generate test data for forescasting
 ifNLSA             = false; % run NLSA (kernel eigenfunctions)
 ifKoopman          = true; % compute Koopman eigenfunctions
-ifOse              = true; % do out-of-sample extension (for forecasting)
+ifOse              = false; % do out-of-sample extension (for forecasting)
 ifReadForecastData = true;  % read training/test data for forecasting 
 ifForecast         = true;  % perform forecasting
 ifPlotForecast     = true; % plot representative forecast trajectories
 ifPlotError        = true; % plot forecast error
-ifPlotZ            = true;  % plot Koopman eigenfunctions
 ifPrintFig         = false; % print figures to file
 
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
 
-%% GLOBAL PARAMETERS
+%% GLOBAL PARAMETERS AND VARIABLES
 % nL:         Number of eigenfunctions to use for operator approximation
 % nT:         Number of timesteps to predict (including 0)
-% idxZPlt:    Eigenfunctions to plot
 % idxTPlt:    Initial conditions for which to plot forecast trajectories
+% tStr:       String to prepend in figure titles       
 % figDir:     Output directory for plots
-% markerSize: For eigenfunction scatterplots
-% signZPlt:   Sign multiplication factors for plotted eigenfunctions 
 
 switch experiment
 
 case '6.4k_dt0.01_nEL0'
     nT         = 500;
-    nL         = 100;
-    idxZPlt    = [ 1 3 5 7  ];     
-    signZPlt   = [ 1 -1 ];   
-    idxTPlt    = [ 2201 2201 2301 ]; 
-    markerSize = 7;         
-    signPC     = [ -1 1 ];
+    nL         = 500;
+    idxTPlt    = [ 2101 2201 2301 ]; 
+    tStr       = '6.4k';
 
 case '64k_dt0.01_nEL0'
-    idxZPlt  = [ 1 3 5 7 ];     
-    signZPlt = [ 1 -1 ];   
-    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
-    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
-    markerSize = 3;         
-    signPC     = [ -1 1 ];
-
+    nT         = 500;
+    nL         = 2000;
+    idxTPlt    = [ 2101 2201 2301 ]; 
+    tStr       = '64k';
 otherwise
     error( 'Invalid experiment.' )
 end
@@ -112,19 +103,26 @@ end
 % In and Out are data structures containing the NLSA parameters for the 
 % training and test data, respectively.
 %
+% nSX is the number of covariate samples available for training. 
+% 
 % idxT1 is the initial time stamp in the covariante data ("origin") where 
 % delay embedding is performed. We remove samples 1 to idxT1 from the response
 % data so that they always lie in the future of the delay embedding window.
 %
 % idxPhi are the indices of the diffusion eigenfunctions used for RKHS 
 % compactification.
+%
+% tauRKHS is the RKHS compactification parameter. 
 
 disp( 'Building NLSA model...' ); t = tic;
 [ model, In, Out ] = demoKoopmanForecastRKHS_nlsaModel( experiment ); 
 toc( t )
 
+nSX = getNTotalSample( model.embComponent );
 idxT1 = getOrigin( model.embComponent );
 idxPhi = getBasisFunctionIndices( model.koopmanOp );
+nPhi = numel( idxPhi );
+tauRKHS = getRegularizationParameter( model.koopmanOp );
 
 % Create parallel pool if running NLSA and the NLSA model has been set up
 % with parallel workers. This part can be commented out if no parts of the
@@ -266,7 +264,7 @@ end
 %
 % zO is an array of size [ nSO nPhi ] containing the out-of-sample values
 % of the generator eigenfunctions.
-if ifReadKAFData
+if ifReadForecastData
     tic
     disp( 'Retrieving forecast data...' ); t = tic;
     
@@ -277,7 +275,7 @@ if ifReadKAFData
     % Eigenfunctions, eigenfrequencies, and expansion coefficients  
     [ z, mu ] = getKoopmanEigenfunctions( model ); 
     omega = getKoopmanEigenfrequencies( model );
-    c = getEigenfunctionCoefficients( model );
+    c = getEigenfunctionCoefficients( model.koopmanOp );
 
     % Response variable (test data)
     yO = getData( model.outTrgComponent );
@@ -297,8 +295,8 @@ if ifForecast
 
     tic 
     disp( 'Performing  forecast...' ); t = tic;
-    yT = unitaryForecast( y, z( :, 1 : nL ), mu, omega, ...
-                          zO( :, 1 : nL ), tau );
+    yT = generatorForecast( y( :, 1 : nSX ), z( :, 1 : nL ), mu, ...
+                            omega( 1 : nL  ), zO( :, 1 : nL ), tau );
     yT = real( yT ); % iron out numerical wrinkles
 
     % If idxPhi( 1 ) > 1 we are excluding the constant eigenfunction, so we 
@@ -378,21 +376,24 @@ if ifPlotForecast
             else
                 set( gca, 'xTickLabel', [] )
             end
-            if iT == 1 && iY == 1
-                legend( 'true', 'forecast', 'location', 'northwest' )
+            if iT == 1 && iY == 2
+                legend( 'true', 'forecast', 'location', 'northEast' )
             end
         end
     end
 
 
     % Add figure title
-    titleStr = sprintf( '%s, number of basis functions = %i', tStr, nL );
+    titleStr = sprintf( [ '%s, regularization parameter %1.2g, ' ...
+                          '# diffusion basis = %i, ', ...
+                          '# generator eigenfuncs = %i' ], ...
+                          tStr, tauRKHS,  nPhi, nL  );
     title( axTitle, titleStr )
             
 
     % Print figure
     if ifPrintFig
-        figFile = sprintf( 'figForecastTrajectory_nL%i.png', nL );
+        figFile = sprintf( 'figForecastTrajectory_tau%1.2g,nL%i.png', nL );
         figFile = fullfile( figDir, figFile );
         print( fig, figFile, '-dpng', '-r300' ) 
     end
@@ -434,9 +435,9 @@ if ifPlotError
         plot( t, yRMSE( iY, : ) )
 
         grid on
-        ylim( [ 0 1.2 ] )
+        ylim( [ 0 1.6 ] )
         xlim( [ t( 1 ) t( end ) ] )
-        set( gca, 'xTick', t( 1 ) : 1 : t( end ), 'yTick', 0 : .2 : 1.2, ...
+        set( gca, 'xTick', t( 1 ) : 1 : t( end ), 'yTick', 0 : .4 : 1.6, ...
                   'xTickLabel', [] )  
         if iY == 1
             ylabel( 'Normalized RMSE' )
@@ -462,12 +463,15 @@ if ifPlotError
     end
 
     % Add figure title
-    titleStr = sprintf( '%s, number of basis functions = %i', tStr, nL );
+    titleStr = sprintf( [ '%s, regularization parameter %1.2g, ' ...
+                          '# diffusion basis = %i, ', ...
+                          '# generator eigenfuncs = %i' ], ...
+                          tStr, tauRKHS,  nPhi, nL  );
     title( axTitle, titleStr )
 
     % Print figure
     if ifPrintFig
-        figFile = sprintf( 'figForecastError_nL%i.png', nL );
+        figFile = sprintf( 'figForecastError_tau%1.2g,nL%i.png', nL );
         figFile = fullfile( figDir, figFile );
         print( fig, figFile, '-dpng', '-r300' ) 
     end

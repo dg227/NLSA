@@ -15,11 +15,16 @@ function [ model, In, Out ] = demoKoopmanForecastRKHS_nlsaModel( experiment )
 % This function creates the data structures In and Out, which are then passed 
 % to function l63NLSAModel to build the model.
 %
+% nT is the number of extra samples we may include in the out-of-sample data 
+% for forecast verification.
+%
 % Modified 2020/08/07   
 %
 if nargin == 0
     experiment = '6.4k_dt0.01_nEL0';
 end
+
+nT = 500;
 
 switch experiment
 
@@ -107,9 +112,9 @@ switch experiment
         In.koopmanFDOrder = 4;         % finite-difference order
         In.koopmanDt      = In.dt; % sampling interval 
         In.koopmanAntisym = true;      % enforce antisymmetrization
-        In.koopmanEpsilon = 1E-3;      % regularization parameter
+        In.koopmanEpsilon = 1E-9;      % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 2 : 101;   % diffusion eigenfunctions used as basis
+        In.idxPhiKoopman  = 2 : 501;   % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
@@ -130,6 +135,17 @@ switch experiment
         In.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
         In.Res.ifCent = false;        % data centering
 
+        % Out-of-sample dataset parameters
+        Out.dt         = 0.01;         % sampling interval
+        Out.Res.beta   = 8/3;          % L63 parameter beta
+        Out.Res.rho    = 28;           % L63 parameter rho
+        Out.Res.sigma  = 10;           % L63 parameter sigma
+        Out.Res.nSProd = 6400;         % number of "production" samples
+        Out.Res.nSSpin = 64000;        % spinup samples
+        Out.Res.x0     = [ 0.2 1.2 1.25 ]; % initial conditions
+        Out.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
+        Out.Res.ifCent = false;        % data centering
+
         % Source data
         In.Src.idxX    = 1 : 3;       % observed state vector components 
         In.Src.idxE    = 1 : 1;       % delay embedding indices
@@ -143,7 +159,7 @@ switch experiment
         In.Trg.idxX      = 1 : 3;     % observed state vector components 
         In.Trg.idxE      = 1 : 1;     % delay-embedding indices
         In.Trg.nXB       = 0;         % additional samples before main interval
-        In.Trg.nXA       = 0;       % additional samples after main interval
+        In.Trg.nXA       = 0;         % additional samples after main interval
         In.Trg.fdOrder   = 0;         % finite-difference order 
         In.Trg.fdType    = 'central'; % finite-difference type
         In.Trg.embFormat = 'overlap'; % storage format for delay embedding
@@ -190,12 +206,15 @@ switch experiment
         In.koopmanFDOrder = 4;         % finite-difference order
         In.koopmanDt      = In.dt; % sampling interval 
         In.koopmanAntisym = true;      % enforce antisymmetrization
-        In.koopmanEpsilon = 5E-4;    % regularization parameter
+        In.koopmanEpsilon = 1E-5;    % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
-        In.idxPhiKoopman  = 2 : 1001;   % diffusion eigenfunctions used as basis
+        In.idxPhiKoopman  = 2 : 2001;  % diffusion eigenfunctions used as basis
         In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
+        % NLSA parameters, out-of-sample data
+        Out.Res.nB    = 1;
+        Out.Res.nBRec = 1;
     
     otherwise
         error( 'Invalid experiment' )
@@ -209,6 +228,9 @@ ifOse = exist( 'Out', 'var' );
 if ifOse
     Out.Src = In.Src;
     Out.Trg = In.Trg;
+    if Out.Trg.nXA == 0
+        Out.Trg.nXA = nT;
+    end
     args = { In Out };
 else
     args = { In };
