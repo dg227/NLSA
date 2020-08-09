@@ -2,7 +2,7 @@ function x = getData_std( obj, iB, iR, iC, iA )
 % GETDATA_STD  Read data from an array of nlsaEmbeddedComponent_o objects 
 % using the standard calling syntax
 %
-% Modified 2020/02/17
+% Modified 2020/08/08
 
 % Validate input arguments, assign default values
 siz = size( obj );
@@ -10,9 +10,8 @@ if ~isCompatible( obj ) || numel( siz ) > 3
     error( 'First argument must be an array of compatible nlsaEmbeddedComponent objects of at most rank 3' )
 end
 
-
-partition  = getPartition( obj );
-nBTot      = getNTotalBatch( partition( 1, : ) );
+partition  = getPartition( obj( 1, : ) );
+nBTot      = getNTotalBatch( partition );
 
 if nargin < 2 || isempty( iB )
     iB = 1 : nBTot;
@@ -41,11 +40,11 @@ if ~ispsi( iA ) || iA > siz( 3 )
     error( 'Page index argument iA must be a positive scalar integer less than or equal to the page dimension of the first input argument.' )
 end
 
-if ~ispi( iR ) || any( iR > siz( 2 ) )
+if any( ~ispi( iR ) ) || any( iR > siz( 2 ) )
     error( 'Realization index argument iR must be a vector of positive integerss less than or equal to the column dimension of the first input argument.' )
 end
 
-if ~ispi( iC ) || any( iC > siz( 1 ) )
+if any( ~ispi( iC ) ) || any( iC > siz( 1 ) )
     error( 'Component index argument iC must be a vector of positive integers less than or equal to the column dimensino of the first input argument.' )
 end
 
@@ -53,7 +52,7 @@ if ~isscalar( iR ) && ~isequal( size( iB ), size( iR ) )
     error( 'Batch index argument iB must have the same size as the realization argument iR whenever iR is non-scalar.' )
 end
 
-if ~ispi( iB ) || any( iB > getNBatch( partition( iR ) ) )
+if any( ~ispi( iB ) ) || any( iB > getNBatch( partition( iR ) ) )
     error( 'Batch index argument iB must be a vector of positive integers less than or equal to the batch number for the corresponding realization index argument iR.' )
 end
 

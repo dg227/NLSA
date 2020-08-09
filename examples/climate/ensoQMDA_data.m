@@ -11,7 +11,7 @@ function ensoQMDA_data( dataset, period, fld )
 %
 % The data is then retrieved and saved on disk using the climateData function. 
 %
-% Modified 2020/08/01
+% Modified 2020/08/08
 
 switch dataset 
 
@@ -460,10 +460,10 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tLim    = { '000101' '019912' }; % time limits
         DataSpecs.Time.tClim   = DataSpecs.Time.tLim;  % climatology 
 
-    % 1100 year period
-    case '1100yr'
+    % 1200 year period
+    case '1200yr'
 
-        DataSpecs.Time.tLim    = { '000101' '109912' }; % time limits
+        DataSpecs.Time.tLim    = { '000101' '119912' }; % time limits
         DataSpecs.Time.tClim   = DataSpecs.Time.tLim;   % climatology 
 
     otherwise

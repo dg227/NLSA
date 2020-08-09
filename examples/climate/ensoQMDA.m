@@ -5,16 +5,28 @@
 % Predicted component is Nino 3.4 index.
 
 %% DATASET SPECIFICATION
-% ERSSTv4 reanalysis 
-dataset    = 'ersstV4';                                     
-%period     = '50yr';      % 1960-2010
-period     = '70yr';      % 1970-2010
-testPeriod = '10yr';      % 2010-2020
-sourceVar  = 'IPSST';     % Indo-Pacific SST
-embWindow  = '1yr';       % 1-year embedding
-%embWindow  = '6mo';       % 1-year embedding
-kernel     = 'cone';      % cone kernel
+% CCSM4 pre-industrial control run
+dataset     = 'ccsm4Ctrl';    
+testDataset = 'ccsm4Ctrl';    
+period      = '1200yr';    % 0001-1200
+testPeriod  = '15yr';      % 1285-1300
+sourceVar   = 'IPSST';     % Indo-Pacific SST
+%sourceVar  = 'globalSST'; % global SST
+embWindow   = '1yr';       % 4-year embedding
+kernel      = 'cone';       % cone kernel      
 
+% ERSSTv4 reanalysis 
+%dataset     = 'ersstV4';                                     
+%testDataset = 'ersstV4';
+%period     = '50yr';      % 1960-2010
+%period      = '70yr';      % 1940-2010
+%testPeriod  = '10yr';      % 2010-2020 
+%sourceVar   = 'IPSST';     % Indo-Pacific SST
+%embWindow   = '1yr';       % 1-year embedding
+%embWindow  = '6mo';       % 1-year embedding
+%kernel      = 'cone';      % cone kernel
+
+    
 %% SCRIPT EXECUTION OPTIONS
 % Data extraction from netCDF files
 ifDataSrc    = false; % source (observed) data
@@ -29,31 +41,58 @@ ifOSE  = false; % perform out-of-sample extension
 % Data assimilation
 ifDataDA     = true; % read training data for data assimilation
 ifTestDataDA = true; % read test data for data assimilation
-ifProjObs = true; % compute projection operators for observed components
-ifProjEst = true; % compute projection operators for estimated components
-ifKoop    = true; % compute Koopman operators
-ifDA      = true; % perform data assimilation
-ifEnt     = false; % compute relative entropy skill scores
+ifProjObs    = true; % compute projection operators for observed components
+ifProjEst    = true; % compute projection operators for estimated components
+ifKoop       = true; % compute Koopman operators
+ifDA         = true; % perform data assimilation
+ifEnt        = false; % compute relative entropy skill scores
 
 % Plotting/movie options
 ifPlotProb  = true; % probability contours 
 ifPlotEnt   = false; % entropy plots 
 ifMovieProb = false; % histogram movie
 
-%% GLOBAL PARAMETERS
-idxH  = [ 2 3 7 : 10 ]; % observed  components (kernel eigenfunctions; 1yr)
-%idxH  = [ 2 3 6 : 10 ]; % observed  components (kernel eigenfunctions; 6mo)
-idxY  = [ 1 ];      % estimated  components (Nino 3.4 index) 
-idxR  = 1;          % realization (ensemble member) in assimilation phase    
-nL    = 401;        % number of eigenfunctions
-nQ    = 11;         % quantization levels
-nDT   = 1;          % timesteps between obs
-nDTF  = 12;         % number of forecast timesteps (must be at least nDTF)
-nPar  = 0;          % number of parallel workers 
 
-tLimPlt = { '201001' '202001' }; % time limit to plot
-idxTPlt = [ 0 : 3 : 12 ] + 1; % lead times for running forecast
-idxYPlt  = 1; % estimated components for running probability forecast
+%% SETUP GLOBAL PARAMETERS 
+experiment = { dataset period testDataset testPeriod sourceVar  ...
+               [ embWindow 'Emb' ] [ kernel 'Kernel' ] };
+experiment = strjoin_e( experiment, '_' );
+
+switch experiment
+case 'ersstV4_70yr_ersstV4_10yr_IPSST_1yrEmb_coneKernel'
+
+    idxH  = [ 2 3 7 : 10 ]; % observed  components (kernel eigenfunctions; 1yr)
+    %idxH  = [ 2 3 6 : 10 ]; % observed  components (kernel eigenfunctions; 6mo)
+    idxY  = [ 1 ];      % estimated  components (Nino 3.4 index) 
+    idxR  = 1;          % realization (ensemble member) in assimilation phase   
+    nL    = 401;        % number of eigenfunctions
+    nQ    = 11;         % quantization levels
+    nDT   = 1;          % timesteps between obs
+    nDTF  = 12;         % number of forecast timesteps (must be at least nDT)
+    nPar  = 0;          % number of parallel workers 
+
+    tLimPlt = { '201001' '202001' }; % time limit to plot
+    idxTPlt = [ 0 : 3 : 12 ] + 1; % lead times for running forecast
+    idxYPlt = 1; % estimated components for running probability forecast
+
+case 'ccsm4Ctrl_1200yr_ccsm4Ctrl_15yr_IPSST_1yrEmb_coneKernel'
+
+    idxH  = [ 2 : 51 ]; % observed  components (kernel eigenfunctions; 1yr)
+    idxY  = [ 1 ];      % estimated  components (Nino 3.4 index) 
+    idxR  = 1;          % realization (ensemble member) in assimilation phase   
+    nL    = 1001;        % number of eigenfunctions
+    nQ    = 15;         % quantization levels
+    nDT   = 12;         % timesteps between obs
+    nDTF  = 24;         % number of forecast timesteps (must be at least nDT)
+    nPar  = 0;          % number of parallel workers 
+
+    tLimPlt = { '128602' '129912' }; % time limit to plot
+    idxTPlt = [ 0 : 3 : 12 ] + 1; % lead times for running forecast
+    idxYPlt = 1; % estimated components for running probability forecast
+
+otherwise
+    error( 'Invalid experiment' )
+end
 
 
 %% BATCH PROCESSING
@@ -89,33 +128,30 @@ end
 %% EXTRACT TEST DATA
 if ifDataOut
     disp( sprintf( 'Reading test data %s...', sourceVar ) ); t = tic;
-    ensoQMDA_test_data( dataset, testPeriod, sourceVar ) 
+    ensoQMDA_test_data( testDataset, testPeriod, sourceVar ) 
     toc( t )
 end
 
 %% EXTRACT OUT-OF-SAMPLE TARGET DATA
 if ifDataOutTrg
     disp( 'Reading out-of-sample Nino 3.4 index...' ); t = tic;
-    ensoQMDA_test_data( dataset, testPeriod, 'Nino3.4' ) 
+    ensoQMDA_test_data( testDataset, testPeriod, 'Nino3.4' ) 
     toc( t )
 
     disp( 'Reading out-of-sample Nino 3 index...' ); t = tic;
-    ensoQMDA_test_data( dataset, testPeriod, 'Nino3' ) 
+    ensoQMDA_test_data( testDataset, testPeriod, 'Nino3' ) 
     toc( t )
 
     disp( 'Reading out-of-sample Nino 4 index...' ); t = tic;
-    ensoQMDA_test_data( dataset, testPeriod, 'Nino4' ) 
+    ensoQMDA_test_data( testDataset, testPeriod, 'Nino4' ) 
     toc( t )
 
     disp( 'Reading out-of-sample Nino 1+2 index...' ); t = tic;
-    ensoQMDA_test_data( dataset, testPeriod, 'Nino1+2' ) 
+    ensoQMDA_test_data( testDataset, testPeriod, 'Nino1+2' ) 
     toc( t )
 end
 
-%% BUILD NLSA MODEL, SETUP BASIC ARRYAS
-experiment = { dataset period testPeriod sourceVar [ embWindow 'Emb' ] ...
-               [ kernel 'Kernel' ] };
-experiment = strjoin_e( experiment, '_' );
+%% BUILD NLSA MODEL, DETERMINE BASIC ARRAY SIZES
 [ model, Pars, ParsO ] = ensoQMDA_nlsaModel( experiment );
 nH   = numel( idxH );
 nY   = numel( idxY );
@@ -124,8 +160,11 @@ nSO  = getNTotalOutEmbSample( model ); % verification samples
 idxTObs = 1 : nDT : nSO;
 nDA  = numel( idxTObs ); % data assimilation cycles
 idxT1 = getOrigin( model.outTrgEmbComponent ); 
-%idxT1 = Pars.Res.idxT1;
 b    = linspace( 0, 1, nQ + 1 ); % CDF bins
+
+
+
+
 
 %% PERFORM NLSA
 if ifNLSA
@@ -485,14 +524,14 @@ if ifPlotProb
             pPlt = real( squeeze( ...
                  p( :, idxYPlt( iY ), ( 1 : nDT ) + idxTPlt( iT ) - 1, : ) ) ); 
             pPlt = reshape( pPlt, [ nQ nDT * nDA ] ); 
-            pPlt = bsxfun( @rdivide, pPlt, daPlt );
+            pPlt = pPlt ./ daPlt;
 
 
             set( gcf, 'currentAxes', ax( iY, iT ) )
             contourf( tGrd, aGrd, log10( pPlt ), 4 );
             hold on
             plot( tNumOut( ifTruePlt ), yO( idxYPlt( iY ), find( ifTruePlt ) ), 'r-', 'linewidth', 2 )
-            plot( tNumObs( ifObsPlt ), yObs( idxYPlt( iY ), find( ifObsPlt ) ), 'r.', 'linewidth', 2 )
+            plot( tNumObs( ifObsPlt ), yObs( idxYPlt( iY ), find( ifObsPlt ) ), 'r*', 'linewidth', 2 )
 
             set( gca, 'tickDir', 'out', 'tickLength', [ 0.005 0 ] )
             axis tight
