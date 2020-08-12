@@ -2,7 +2,7 @@ function setEigenfunctions( obj, v, mu, varargin )
 % SETEIGENFUNCTIONS  Set eigenfunction data of an nlsaDiffusionOperator_gl
 % object
 %
-% Modified 2020/04/11
+% Modified 2020/08/12
 
 if ~isnumeric( v ) || ~ismatrix( v )
     error( 'Eigenfunctions must be specified as a numeric matrix' )
@@ -20,7 +20,7 @@ if ~isnumeric( mu ) || ~iscolumn( mu )
                'column vector' ];
     error( msgStr )
 end 
-if numel( mu ) ~= size( zeta, 1 )
+if numel( mu ) ~= size( v, 1 )
     error( 'Incompatible number of samples in Riemannian measure' )
 end
 
