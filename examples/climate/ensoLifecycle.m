@@ -58,7 +58,7 @@ ifDataPrecip = false;  % extract precipitation target data from NetCDF files
 ifDataWind   = false;   % extract 10m wind target data from NetCDF files  
 
 % ENSO representations
-ifNLSA    = true; % compute kernel (NLSA) eigenfunctions
+ifNLSA    = false; % compute kernel (NLSA) eigenfunctions
 ifKoopman = false;  % compute Koopman eigenfunctions
 
 % Koopman spectrum
@@ -1036,13 +1036,13 @@ if ifNLSA
     
     % Execute NLSA steps. Output from each step is saved on disk
 
-    %disp( 'Takens delay embedding...' ); t = tic; 
-    %computeDelayEmbedding( model )
-    %toc( t )
+    disp( 'Takens delay embedding...' ); t = tic; 
+    computeDelayEmbedding( model )
+    toc( t )
 
-    %disp( 'Phase space velocity (time tendency of data)...' ); t = tic; 
-    %computeVelocity( model )
-    %toc( t )
+    disp( 'Phase space velocity (time tendency of data)...' ); t = tic; 
+    computeVelocity( model )
+    toc( t )
 
     fprintf( 'Pairwise distances (%i/%i)...\n', iProc, nProc ); t = tic;
     computePairwiseDistances( model, iProc, nProc )

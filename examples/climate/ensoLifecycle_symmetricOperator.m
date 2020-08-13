@@ -1,4 +1,7 @@
-nPhi = 201;
+%experiment = 'ccsm4Ctrl_1300yr_IPSSTA_0yrEmb_l2Kernel';
+experiment = 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel';
+
+nPhi = 501;
 nQ = 48;
 
 model = ensoLifecycle_nlsaModel( experiment );
@@ -13,7 +16,8 @@ UK = U .* lambda( 1 : nPhi )';
 R = ( UK + UK' ) / 2;
 
 [ c, xi ] = eig( R );
+xi = diag( xi );
 [ xi, idx ] = sort( xi, 'descend' );
 c = c( :, idx );
 
-psi = phi * c;
+psi = phi( :, 1 : nPhi ) * c;

@@ -911,7 +911,7 @@ case 'ccsm4Ctrl_1300yr_IPSSTA_0yrEmb_l2Kernel'
     In.coneAlpha  = 0;          % velocity exponent in cone kernel
     In.nNS        = In.nN;      % nearest neighbors for symmetric distance
     In.diffOpType = 'gl_mb';    % diffusion operator type
-    In.epsilon    = 2;          % kernel bandwidth parameter 
+    In.epsilon    = 4;          % kernel bandwidth parameter 
     In.epsilonB   = 2;          % kernel bandwidth base
     In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
     In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
