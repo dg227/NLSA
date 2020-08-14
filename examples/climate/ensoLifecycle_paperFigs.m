@@ -2,8 +2,10 @@ modelExperiment = 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel';
 obsExperiment = 'ersstV4_50yr_IPSST_4yrEmb_coneKernel';
 
 ifSpectrum = false; 
+ifLifecycleM = true;
+ifLifecycleO = true;
 ifCompositesM = false;
-ifCompositesO = true;
+ifCompositesO = false;
 
 figDir = 'paperFigs';
 if ~isdir( figDir )
@@ -12,6 +14,27 @@ end
 
 modelM = ensoLifecycle_nlsaModel( modelExperiment );
 modelO = ensoLifecycle_nlsaModel( obsExperiment ); 
+
+ElNinos = { { '201511' '201603' } ... 
+            { '199711' '199803' } ...
+            { '199111' '199203' } ...
+            { '198711' '198803' } ...
+            { '198211' '198303' } ...
+            { '197211' '197303' } ...
+            { '196511' '196603' } ...
+            { '195711' '195803' } };
+
+LaNinas = { { '201011' '201103' } ... 
+            { '200711' '200803' } ...
+            { '199911' '200003' } ...
+            { '199811' '199903' } ...
+            { '198811' '198903' } ...
+            { '197511' '197603' } ...
+            { '197311' '197403' } };
+
+
+
+
 
 if ifSpectrum
 
@@ -198,6 +221,523 @@ if ifSpectrum
 
 end
 
+
+if ifLifecycleM
+
+    model = modelM;
+    idxZEnso     = 8;         
+    phaseZ       = exp( i * pi * ( 17 / 32 + 1 ) );        
+    iCNino34 = 1;  % Nino 3.4 index
+    nSE          = getNTotalSample( model.embComponent );
+    nSB          = getNXB( model.embComponent );
+    nShiftTakens = floor( getEmbeddingWindow( model.embComponent ) / 2 );
+    nShiftNino   = 11;        
+    decayFactor  = 4; 
+    nSamplePhase = 200;
+    nPhase = 8;
+
+    idxTLim = [ 1 1200 ] + 9000;
+    idxTLimTS = [ 1 361 ] + 8999;
+    idxTick = idxTLimTS( 1 ) : 60 : idxTLimTS( 2 );
+
+    % Retrieve Koopman eigenfunctions
+    z = getKoopmanEigenfunctions( model );
+    T = getEigenperiods( model.koopmanOp );
+    TEnso = abs( T( idxZEnso ) / 12 );
+    Z.idx = [ real( phaseZ * z( :, idxZEnso ) )' 
+             imag( phaseZ * z( :, idxZEnso ) )' ];
+    Z.time = getTrgTime( model );
+    Z.time = Z.time( nSB + 1 + nShiftTakens : end );
+    Z.time = Z.time( 1 : nSE );
+    
+    % Construct lagged Nino 3.4 indices
+    Nino34.time = getTrgTime( model ); 
+    Nino34.time = Nino34.time( nSB + 1 + nShiftTakens : end );
+    Nino34.time = Nino34.time( 1 : nSE );
+
+    % Nino 3.4 index
+    nino = getData( model.trgComponent( iCNino34 ) );
+    Nino34.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino34.idx = Nino34.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino34.idx = Nino34.idx( :, 1 : nSE );
+
+    [ Z.selectInd, Z.angles, Z.avNino34, Z.weights ] = ...
+        computeLifecyclePhasesWeighted( Z.idx', Nino34.idx( 1, : )', ...
+                                        nPhase, nSamplePhase, decayFactor );
+    [ Nino34.selectInd, Nino34.angles, Nino34.avNino34, Nino34.weights ] = ...
+        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx( 1, : )', ...
+                                        nPhase, nSamplePhase, decayFactor );
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 12; 
+    Fig.deltaX     = .8;
+    Fig.deltaX2    = 1.2;
+    Fig.deltaY     = .6;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .30;
+    Fig.gapY       = .7;
+    Fig.gapT       = .3; 
+    Fig.nTileX     = 3;
+    Fig.nTileY     = 2;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 13;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Plot Nino 3.4 lifecycle
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat, idxTLim )
+    xlabel( 'Nino 3.4' )
+    ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
+    xlim( [ -4 4 ] )
+    ylim( [ -4 4 ] )
+    set( gca, 'xTick', -4 : 1 : 4, 'yTick', -4 : 1 : 4 )
+    title( 'Nino 3.4' )
+
+    % Plot generator lifecycle
+    set( gcf, 'currentAxes', ax( 2, 1 ) )
+    plotLifecycle( Z, ElNinos, LaNinas, model.tFormat, idxTLim )
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+    ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    title( sprintf( 'Generator; eigenperiod = %1.2f y', TEnso ) )
+    set( gca, 'yAxisLocation', 'right' )
+
+    % Plot Nino 3.4 time series
+    set( gcf, 'currentAxes', ax( 3, 1 ) )
+    plot( Nino34.time( idxTLimTS( 1 ) : idxTLimTS( 2 ) ), ...
+          Nino34.idx( 1, idxTLimTS( 1 ) : idxTLimTS( 2 ) ), 'b-' )
+    ylim( [ -4 4 ] )
+    xlim( [ Nino34.time( idxTLimTS( 1 ) ) Nino34.time( idxTLimTS( 2 ) ) ] ) 
+    set( gca, 'xTick', Nino34.time( idxTick ), ...
+              'xTickLabel', datestr( Nino34.time( idxTick ), 'mm/yy' ), ...
+              'yAxisLocation', 'right' ) 
+    grid on
+    title( 'Time series' )
+    legend( 'Nino 3.4', 'location', 'southWest' )
+    axPos = get( gca, 'position' );
+    axPos( 1 ) = axPos( 1 ) + .7;
+    set( gca, 'position', axPos )
+    
+    % Make scatterplot of Nino 3.4 lifecycle colored by Nino 3.4 index
+    set( gcf, 'currentAxes', ax( 1, 2 ) )
+    plot( Nino34.idx( 1, : ), Nino34.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Nino34.idx( 1, : ), Nino34.idx( 2, : ), 17, Nino34.idx( 1, : ), ...
+             'o', 'filled' )  
+    %xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+    xlim( [ -4 4 ] )
+    ylim( [ -4 4 ] )
+    set( gca, 'clim', [ -3 3 ], 'xTick', [ -4 : 4 ], 'yTick', [ -4 : 4 ], ...
+         'yTickLabel', [] )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'westOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 3 ) = cPos( 3 ) * .7;
+    cPos( 1 ) = cPos( 1 ) - .05;
+    set( hC, 'position', cPos )
+    xlabel( hC, 'Nino 3.4 index' )
+    set( gca, 'position', axPos )
+    [ minNina, idxMinNina ] = min( Nino34.avNino34 ); 
+    angleRef = Nino34.angles( idxMinNina );
+    indRef = ( 0 : .1 : 4 ) * exp( i * angleRef );
+    plot( indRef, 'g--', 'lineWidth', 2 )
+    %xlabel( 'Nino 3.4' )
+
+    % Make scatterplot of generator lifecycle colored by Nino 3.4 index
+    set( gcf, 'currentAxes', ax( 2, 2 ) )
+    scl = max( abs( Nino34.idx( 1, : ) ) );
+    plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino34.idx( 1, : ) / scl, ...
+             'o', 'filled' )  
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    set( gca, 'xTick', [ -2 : 1 : 2 ], 'yTick', [ -2 : 1 : 2 ], ...
+              'yAxisLocation', 'right' );
+    [ minNina, idxMinNina ] = min( Z.avNino34 ); 
+    angleRef = Z.angles( idxMinNina );
+    indRef = ( 0 : .1 : 4 ) * exp( i * angleRef );
+    plot( indRef, 'g--', 'lineWidth', 2 )
+
+    % Plot generator time series
+    set( gcf, 'currentAxes', ax( 3, 2 ) )
+    plot( Z.time( idxTLimTS( 1 ) : idxTLimTS( 2 ) ), ...
+          Z.idx( 1, idxTLimTS( 1 ) : idxTLimTS( 2 ) ), 'b-' )
+    %hold on
+    %plot( Z.time( idxTLimTS( 1 ) : idxTLimTS( 2 ) ), ...
+    %      Z.idx( 2, idxTLimTS( 1 ) : idxTLimTS( 2 ) ), 'r-' )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'xTick', Z.time( idxTick ), ...
+              'xTickLabel', datestr( Z.time( idxTick ), 'mm/yy' ) ) 
+    set( gca, 'yAxisLocation', 'right' )  
+    grid on
+    legend( sprintf( 'Re(z_{%i})', idxZEnso ), ...
+            'location', 'southWest' )
+    axPos = get( gca, 'position' );
+    axPos( 1 ) = axPos( 1 ) + .7;
+    set( gca, 'position', axPos )
+    xlim( [ Z.time( idxTLimTS( 1 ) ) Z.time( idxTLimTS( 2 ) ) ] ) 
+
+    title( axTitle, '(a) CCSM4 ENSO lifecycle' );
+
+    set( gcf, 'invertHardCopy', 'off' )
+    figFile = fullfile( figDir, 'figEnsoLifecycleGenerator_ccsm4.png' );
+    print( fig, figFile, '-dpng', '-r300' ) 
+
+end
+ 
+if ifLifecycleO
+
+    model = modelO;
+    idxZEnso     = 7;         
+    phaseZ       = exp( i * 5 * pi / 32 );        
+    iCNino34 = 1;  % Nino 3.4 index
+    nSE          = getNTotalSample( model.embComponent );
+    nSB          = getNXB( model.embComponent );
+    nShiftTakens = floor( getEmbeddingWindow( model.embComponent ) / 2 );
+    nShiftNino   = 11;        
+
+    idxTLim = [ 1 nSE ];
+    idxTLimTS = [ nSE - 360, nSE ];
+    idxTick = idxTLimTS( 1 ) : 60 : idxTLimTS( 2 );
+
+    decayFactor  = 4; 
+    nSamplePhase = 200;
+    nPhase = 8;
+
+    % Retrieve Koopman eigenfunctions
+    z = getKoopmanEigenfunctions( model );
+    T = getEigenperiods( model.koopmanOp );
+    TEnso = abs( T( idxZEnso ) / 12 );
+    Z.idx = [ real( phaseZ * z( :, idxZEnso ) )' 
+             imag( phaseZ * z( :, idxZEnso ) )' ];
+    Z.time = getTrgTime( model );
+    Z.time = Z.time( nSB + 1 + nShiftTakens : end );
+    Z.time = Z.time( 1 : nSE );
+    
+    % Construct lagged Nino 3.4 indices
+    Nino34.time = getTrgTime( model ); 
+    Nino34.time = Nino34.time( nSB + 1 + nShiftTakens : end );
+    Nino34.time = Nino34.time( 1 : nSE );
+
+    % Nino 3.4 index
+    nino = getData( model.trgComponent( iCNino34 ) );
+    Nino34.idx = [ nino( nShiftNino + 1 : end ) 
+                 nino( 1 : end - nShiftNino ) ];
+    Nino34.idx = Nino34.idx( :, nSB + nShiftTakens - nShiftNino + 1 : end );
+    Nino34.idx = Nino34.idx( :, 1 : nSE );
+
+    
+    [ Z.selectInd, Z.angles, Z.avNino34, Z.weights ] = ...
+        computeLifecyclePhasesWeighted( Z.idx', Nino34.idx( 1, : )', ...
+                                        nPhase, nSamplePhase, decayFactor );
+    [ Nino34.selectInd, Nino34.angles, Nino34.avNino34, Nino34.weights ] = ...
+        computeLifecyclePhasesWeighted( Nino34.idx', Nino34.idx( 1, : )', ...
+                                        nPhase, nSamplePhase, decayFactor );
+
+    % Set up figure and axes 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 12; 
+    Fig.deltaX     = .8;
+    Fig.deltaX2    = 1.2;
+    Fig.deltaY     = .6;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .30;
+    Fig.gapY       = .7;
+    Fig.gapT       = .3; 
+    Fig.nTileX     = 3;
+    Fig.nTileY     = 2;
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 13;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+
+    % Plot Nino 3.4 lifecycle
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    plotLifecycle( Nino34, ElNinos, LaNinas, model.tFormat, idxTLim )
+    xlabel( 'Nino 3.4' )
+    ylabel( sprintf( 'Nino 3.4 - %i months', nShiftNino ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    set( gca, 'xTick', -3 : 1 : 3, 'yTick', -3 : 1 : 3 )
+    title( 'Nino 3.4' )
+
+    % Plot generator lifecycle
+    set( gcf, 'currentAxes', ax( 2, 1 ) )
+    plotLifecycle( Z, ElNinos, LaNinas, model.tFormat, idxTLim )
+    xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+    ylabel( sprintf( 'Im(z_{%i})', idxZEnso ) )
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    title( sprintf( 'Generator; eigenperiod = %1.2f y', TEnso ) )
+    set( gca, 'yAxisLocation', 'right' )
+
+    % Plot Nino 3.4 time series
+    set( gcf, 'currentAxes', ax( 3, 1 ) )
+    plot( Nino34.time( idxTLimTS( 1 ) : idxTLimTS( 2 ) ), ...
+          Nino34.idx( 1, idxTLimTS( 1 ) : idxTLimTS( 2 ) ), 'b-' )
+    ylim( [ -3 3 ] )
+    xlim( [ Nino34.time( idxTLimTS( 1 ) ) Nino34.time( idxTLimTS( 2 ) ) ] ) 
+    set( gca, 'xTick', Nino34.time( idxTick ), ...
+              'xTickLabel', datestr( Nino34.time( idxTick ), 'mm/yy' ), ...
+              'yAxisLocation', 'right' ) 
+    grid on
+    title( 'Time series' )
+    legend( 'Nino 3.4', 'location', 'southWest' )
+    axPos = get( gca, 'position' );
+    axPos( 1 ) = axPos( 1 ) + .7;
+    set( gca, 'position', axPos )
+    
+    % Make scatterplot of Nino 3.4 lifecycle colored by Nino 3.4 index
+    set( gcf, 'currentAxes', ax( 1, 2 ) )
+    plot( Nino34.idx( 1, : ), Nino34.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Nino34.idx( 1, : ), Nino34.idx( 2, : ), 17, Nino34.idx( 1, : ), ...
+             'o', 'filled' )  
+    %xlabel( sprintf( 'Re(z_{%i})', idxZEnso ) )
+    xlim( [ -3 3 ] )
+    ylim( [ -3 3 ] )
+    set( gca, 'clim', [ -3 3 ], 'xTick', [ -4 : 4 ], 'yTick', [ -4 : 4 ], ...
+         'yTickLabel', [] )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    axPos = get( gca, 'position' );
+    hC = colorbar( 'location', 'westOutside' );
+    cPos = get( hC, 'position' );
+    cPos( 3 ) = cPos( 3 ) * .7;
+    cPos( 1 ) = cPos( 1 ) - .05;
+    set( hC, 'position', cPos )
+    xlabel( hC, 'Nino 3.4 index' )
+    set( gca, 'position', axPos )
+    %xlabel( 'Nino 3.4' )
+    [ minNina, idxMinNina ] = min( Nino34.avNino34 ); 
+    angleRef = Nino34.angles( idxMinNina );
+    indRef = ( 0 : .1 : 4 ) * exp( i * angleRef );
+    plot( indRef, 'g--', 'lineWidth', 2 )
+
+    % Make scatterplot of generator lifecycle colored by Nino 3.4 index
+    set( gcf, 'currentAxes', ax( 2, 2 ) )
+    scl = max( abs( Nino34.idx( 1, : ) ) );
+    plot( Z.idx( 1, : ), Z.idx( 2, : ), '-', 'color', [ 0 .3 0 ] )
+    scatter( Z.idx( 1, : ), Z.idx( 2, : ), 17, Nino34.idx( 1, : ) / scl, ...
+             'o', 'filled' )  
+    xlim( [ -2.5 2.5 ] )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'clim', [ -1 1 ] )
+    colormap( redblue )
+    set( gca, 'color', [ 1 1 1 ] * .3 )
+    set( gca, 'xTick', [ -2 : 1 : 2 ], 'yTick', [ -2 : 1 : 2 ], ...
+              'yAxisLocation', 'right' );
+    [ minNina, idxMinNina ] = min( Z.avNino34 ); 
+    angleRef = Z.angles( idxMinNina );
+    indRef = ( 0 : .1 : 4 ) * exp( i * angleRef );
+    plot( indRef, 'g--', 'lineWidth', 2 )
+
+    % Plot generator time series
+    set( gcf, 'currentAxes', ax( 3, 2 ) )
+    plot( Z.time( idxTLimTS( 1 ) : idxTLimTS( 2 ) ), ...
+          Z.idx( 1, idxTLimTS( 1 ) : idxTLimTS( 2 ) ), 'b-' )
+    %hold on
+    %plot( Z.time( idxTLimTS( 1 ) : idxTLimTS( 2 ) ), ...
+    %      Z.idx( 2, idxTLimTS( 1 ) : idxTLimTS( 2 ) ), 'r-' )
+    ylim( [ -2.5 2.5 ] )
+    set( gca, 'xTick', Z.time( idxTick ), ...
+              'xTickLabel', datestr( Z.time( idxTick ), 'mm/yy' ) ) 
+    set( gca, 'yAxisLocation', 'right' )  
+    grid on
+    legend( sprintf( 'Re(z_{%i})', idxZEnso ), ...
+            'location', 'southWest' )
+    axPos = get( gca, 'position' );
+    axPos( 1 ) = axPos( 1 ) + .7;
+    set( gca, 'position', axPos )
+    xlim( [ Z.time( idxTLimTS( 1 ) ) Z.time( idxTLimTS( 2 ) ) ] ) 
+
+    title( axTitle, '(b) ERSSTv4 ENSO lifecycle' );
+
+    set( gcf, 'invertHardCopy', 'off' )
+    figFile = fullfile( figDir, 'figEnsoLifecycleGenerator_obs.png' );
+    print( fig, figFile, '-dpng', '-r300' ) 
+
+end
+ 
+
+
+
+if ifCompositesM
+
+    nPhase = 8;
+    ifPlotWind = true;
+    iCSST    = 5;  % global SST
+    iCSAT    = 7;  % global SAT
+    iCUWnd   = 9;  % global surface meridional winds
+    iCVWnd   = 10; % global surface zonal winds
+
+    dataFile = './figs/ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel/dataEnsoCompositesNino_globe_weighted.mat';
+    load( dataFile )
+
+
+    dataFile = './figs/ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel/dataEnsoCompositesGenerator_globe_weighted.mat';
+    load( dataFile )
+    
+    SST.cOffset = SST.cOffset + .045;
+    SAT.cOffset = SAT.cOffset + .055;
+    SAT.cLim = [ -3 3];
+
+    % SST phase composites
+
+    % Figure and axes parameters 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 6; 
+    Fig.deltaX     = .55;
+    Fig.deltaX2    = .5;
+    Fig.deltaY     = .3;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .20;
+    Fig.gapY       = .2;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = 2;
+    Fig.nTileY     = nPhase;
+    Fig.aspectR    = (3/4)^3;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 10;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+    colormap( redblue )
+
+    for iPhase = 1 : nPhase
+
+        SST.ifXTickLabels = iPhase == nPhase;
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        if ifPlotWind
+            plotPhaseComposite( compNino34{ iCSST }( :, iPhase ), SST, ...
+                                compNino34{ iCUWnd }( :, iPhase ), ...
+                                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+        else
+            plotPhaseComposite( compNino34{ iCSST }( :, iPhase ), SST )
+        end
+        if iPhase == 1
+            title( 'Nino 3.4' )
+        end
+        lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        lblPos = get( lbl, 'position' );
+        lblPos( 1 ) = lblPos( 1 ) - .4;
+        set( lbl, 'position', lblPos )
+
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SST.ifXTickLabels = iPhase == nPhase;
+        SST.ifYTickLabels = false;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+        else
+            plotPhaseComposite( compZ{ iCSST }( :, iPhase ), SST )
+        end
+        SST.ifYTickLabels = true;
+
+        if iPhase == 1
+            title( 'Generator'  )
+        end
+
+    end
+
+
+    titleStr = '(a) SST anomaly (K), surface wind';
+    title( axTitle, titleStr )
+
+    figFile = fullfile( figDir, 'figEnsoSSTComposites_ccsm4.png' );
+    print( fig, figFile, '-dpng', '-r300' ) 
+
+    % SAT phase composites
+
+    % Figure and axes parameters 
+    Fig.units      = 'inches';
+    Fig.figWidth   = 6 - .6; 
+    Fig.deltaX     = .55 -.6;
+    Fig.deltaX2    = .5;
+    Fig.deltaY     = .3;
+    Fig.deltaY2    = .3;
+    Fig.gapX       = .20;
+    Fig.gapY       = .2;
+    Fig.gapT       = .25; 
+    Fig.nTileX     = 2;
+    Fig.nTileY     = nPhase;
+    Fig.aspectR    = (3/4)^3;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 10;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax, axTitle ] = tileAxes( Fig );
+    colormap( redblue )
+
+    for iPhase = 1 : nPhase
+
+        SAT.ifYTickLabels = false;
+        SAT.ifXTickLabels = iPhase == nPhase;
+        set( fig, 'currentAxes', ax( 1, iPhase ) )
+        if ifPlotWind
+            plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT, ...
+                                compNino34{ iCUWnd }( :, iPhase ), ...
+                                compNino34{ iCVWnd }( :, iPhase ), UVWnd )
+        else
+            plotPhaseComposite( compNino34{ iCSAT }( :, iPhase ), SAT )
+        end
+        if iPhase == 1
+            title( 'Nino 3.4' )
+        end
+        %lbl = ylabel(sprintf( 'Phase %i', iPhase ) );
+        %lblPos = get( lbl, 'position' );
+        %lblPos( 1 ) = lblPos( 1 ) - .4;
+        %set( lbl, 'position', lblPos )
+
+        set( fig, 'currentAxes', ax( 2, iPhase ) )
+        SAT.ifXTickLabels = iPhase == nPhase;
+        SAT.ifYTickLabels = false;
+        if ifPlotWind
+            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT, ...
+                                compZ{ iCUWnd }( :, iPhase ), ...
+                                compZ{ iCVWnd }( :, iPhase ), UVWnd )
+        else
+            plotPhaseComposite( compZ{ iCSAT }( :, iPhase ), SAT )
+        end
+        %SAT.ifYTickLabels = true;
+
+        if iPhase == 1
+            title( 'Generator'  )
+        end
+
+    end
+
+
+    titleStr = '(b) SAT anomaly (K), surface wind';
+    title( axTitle, titleStr )
+
+    figFile = fullfile( figDir, 'figEnsoSATComposites_ccsm4.png' );
+    print( fig, figFile, '-dpng', '-r300' ) 
+
+
+end
+
+
 if ifCompositesO
 
     nPhase = 8;
@@ -357,6 +897,54 @@ if ifCompositesO
 
 
 end
+
+
+function plotLifecycle( Index, Ninos, Ninas, tFormat, idxTLim )
+
+if nargin < 5
+    idxTLim = [ 1 size( Index.idx, 2 ) ];
+end 
+
+
+% plot temporal evolution of index
+plot( Index.idx( 1, idxTLim( 1 ) : idxTLim( 2 ) ), Index.idx( 2, idxTLim( 1 ) : idxTLim( 2 ) ), 'g-' )
+hold on
+grid on
+
+% highlight significant events
+for iENSO = 1 : numel( Ninos )
+
+    % Serial date numbers for start and end of event
+    tLim = datenum( Ninos{ iENSO }( 1 : 2 ), tFormat );
+    
+    % Find and plot portion of index time series
+    idxT1     = find( Index.time == tLim( 1 ) );
+    idxT2     = find( Index.time == tLim( 2 ) );
+    idxTLabel = round( ( idxT1 + idxT2 ) / 2 ); 
+    plot( Index.idx( 1, idxT1 : idxT2 ), Index.idx( 2, idxT1 : idxT2 ), ...
+          'r-', 'lineWidth', 2 )
+    text( Index.idx( 1, idxTLabel ), Index.idx( 2, idxTLabel ), ...
+          datestr( Index.time( idxT2 ), 'yyyy' ), 'fontSize', 8 )
+end
+for iENSO = 1 : numel( Ninas )
+
+    % Serial date numbers for start and end of event
+    tLim = datenum( Ninas{ iENSO }( 1 : 2 ), tFormat );
+    
+    % Find and plot portion of index time series
+    idxT1 = find( Index.time == tLim( 1 ) );
+    idxT2 = find( Index.time == tLim( 2 ) );
+    idxTLabel = round( ( idxT1 + idxT2 ) / 2 ); 
+    plot( Index.idx( 1, idxT1 : idxT2 ), Index.idx( 2, idxT1 : idxT2 ), ...
+          'b-', 'lineWidth', 2 )
+    text( Index.idx( 1, idxTLabel ), Index.idx( 2, idxTLabel ), ...
+          datestr( Index.time( idxT2 ), 'yyyy' ), 'fontSize', 8 )
+end
+
+end
+
+
+
 
 
 function plotPhaseComposite( s, SGrd, u, v, VGrd )

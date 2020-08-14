@@ -11,7 +11,7 @@ function ensoQMDA_test_data( dataset, period, fld )
 %
 % The data is then retrieved and saved on disk using the climateData function. 
 %
-% Modified 2020/08/01
+% Modified 2020/08/08
 
 switch dataset 
 
@@ -445,11 +445,17 @@ case 'ccsm4Ctrl'
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
     switch( period )
 
-    % Last 200 years, using first 1100 years for climatology
-    case '200yr' 
+    % Last 100 years, using first 1200 years for climatology
+    case '100yr' 
 
-        DataSpecs.Time.tLim    = { '110001' '019912' }; % time limits
-        DataSpecs.Time.tClim   = { '000101' '109912' };  % climatology 
+        DataSpecs.Time.tLim    = { '120001' '129912' }; % time limits
+        DataSpecs.Time.tClim   = { '000101' '119912' };  % climatology 
+
+    % Last 15 years, using first 1200 years for climatology
+    case '15yr' 
+
+        DataSpecs.Time.tLim    = { '128501' '129912' }; % time limits
+        DataSpecs.Time.tClim   = { '000101' '119912' };  % climatology 
 
     otherwise
         error( 'Invalid period' )

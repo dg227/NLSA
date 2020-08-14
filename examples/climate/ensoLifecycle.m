@@ -8,12 +8,15 @@
 dataset    = 'ccsm4Ctrl';    
 %period     = '200yr';        % 200-year analysis 
 period     = '1300yr';        % 1300-year analysis
-sourceVar  = 'IPSST';     % Indo-Pacific SST
+%sourceVar  = 'IPSST';     % Indo-Pacific SST
+sourceVar  = 'IPSSTA';     % Indo-Pacific SST
 %sourceVar  = 'globalSST'; % global SST
-embWindow  = '4yr';       % 4-year embedding
+embWindow  = '0yr';       % 4-year embedding
+%embWindow  = '4yr';       % 4-year embedding
 %embWindow  = '10yr';       % 4-year embedding
 %mbWindow  = '20yr';       % 4-year embedding
-kernel     = 'cone';       % cone kernel      
+%kernel     = 'cone';       % cone kernel      
+kernel     = 'l2';       % L2 kernel      
 
 % ERSSTv5 reanalysis (and various NOAA products)
 %dataset    = 'ersstV5';                                     
@@ -74,9 +77,9 @@ ifNLSAEquivariance    = false; % ENSO equivariance plots based on NLSA
 ifKoopmanEquivariance = false; % ENSO equivariance plots based on Koopman
 
 % Composite plots
-ifNinoComposites    = true; % compute phase composites based on Nino 3.4 index
+ifNinoComposites    = false; % compute phase composites based on Nino 3.4 index
 ifNLSAComposites    = false; % compute phase composites based on NLSA
-ifKoopmanComposites = true; % compute phase composites based on Koopman
+ifKoopmanComposites = false; % compute phase composites based on Koopman
 
 % Composite difference plots
 ifNinoDiffComposites    = false; % difference composites based on Nino 3.4 index
@@ -752,7 +755,62 @@ case 'ccsm4Ctrl_1300yr_IPSST_4yrEmb_coneKernel'
 
 
     Comps.title = 'CCSM4 ENSO composites';
+
+% CCSM4 pre-industrial control, 1300-year period, Indo-Pacific SST input, 
+% no delay embedding  
+case 'ccsm4Ctrl_1300yr_IPSSTA_0yrEmb_l2Kernel'
+
+    idxPhiEnso   = [ 9 8 ];  
+    signPhi      = [ -1 1 ]; 
+    idxZEnso     = 8;         
+    phaseZ       = exp( i * pi * ( 17 / 32 + 1 ) );        
+    nPhase       = 8;         
+    nSamplePhase = 200;       
+
+    Spec.mark = { 1          ... % constant
+                  [ 2 3 ]    ... % annual
+                  [ 4 5 ]    ... % semiannual
+                  [ 6 7 ]    ... % triennial
+                  [ 8 9 ]    ... % ENSO
+                  [ 10 : 17 ] ... % ENSO combination
+                  29 ...          % WPMM
+                  };
+    Spec.legend = { 'mean' ... 
+                    'annual' ...
+                    'semiannual' ...
+                    'triennial' ...
+                    'ENSO' ...
+                    'ENSO combination' ...
+                    'decadal' };
+    Spec.xLim = [ -4 .1 ];
+    Spec.yLim = [ -3 3 ]; 
+    Spec.c = distinguishable_colors( 7 );
+    Spec.c = Spec.c( [ 4 1 2 3 5 6 7 ], : );
+    Spec.title = '(b) CCSM4';
+
+    Lifecycle.idxTLim = [ 1 1200 ] + 9000;
+    Lifecycle.title = '(a) CCSM4 ENSO lifecycle';
+
+    idxZEnsoC   = 10;
+    phaseZEnsoC = exp( i * 9 * pi / 16 );
+    nPhaseEnsoC = 8;
+    nSamplePhaseEnsoC = 200; 
+    decayFactorEnsoC = 4; 
+    phase0EnsoC = 1;
+    leadsEnsoC = 0 : 2 : 22;
+
+    Phases.ninoTitle = '(a) CCSM4 Nino 3.4 phases';
+    Phases.zTitle = '(b) CCSM4 generator phases';
+
+    Equivariance.title = '(a) CCSM4 phase evolution';
+
+
+    Comps.title = 'CCSM4 ENSO composites';
+
+
+
 case 'ccsm4Ctrl_1300yr_globalSST_4yrEmb_coneKernel'
+
 
     idxPhiEnso   = [ 9 8 ];  
     signPhi      = [ -1 1 ]; 

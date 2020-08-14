@@ -26,7 +26,7 @@ function [ model, In, Out ] = ensoQMDA_nlsaModel( experiment )
 % Modified 2020/08/01
 
 if nargin == 0
-    experiment = 'ersstV4_50yr_10yr_IPSST_1yrEmb_coneKernel';
+    experiment = 'ersstV4_50yr_ersstV4_10yr_IPSST_1yrEmb_coneKernel';
 end
 
 switch experiment
@@ -34,7 +34,7 @@ switch experiment
 
 % ERSSTv4 data, global domain, 1960-2010 for training, 2010-2020 
 % for verification, 1-year delay embeding window, cone kernel  
-case 'ersstV4_50yr_10yr_globalSST_1yrEmb_coneKernel'
+case 'ersstV4_50yr_ersstv4_10yr_globalSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -93,7 +93,7 @@ case 'ersstV4_50yr_10yr_globalSST_1yrEmb_coneKernel'
 
 % ERSSTv4 data, Indo-Pacific domain, 1960-2010 for training, 2010-2020 
 % for verification, 1-year delay embeding window, cone kernel  
-case 'ersstV4_50yr_10yr_IPSST_1yrEmb_coneKernel'
+case 'ersstV4_50yr_ersstV4_10yr_IPSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -155,7 +155,7 @@ case 'ersstV4_50yr_10yr_IPSST_1yrEmb_coneKernel'
 
 % ERSSTv4 data, Indo-Pacific domain, 1960-2010 for training, 2010-2020 
 % for verification, 6-month delay embeding window, cone kernel  
-case 'ersstV4_50yr_10yr_IPSST_6moEmb_coneKernel'
+case 'ersstV4_50yr_ersstV4_10yr_IPSST_6moEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -217,7 +217,7 @@ case 'ersstV4_50yr_10yr_IPSST_6moEmb_coneKernel'
 
 % ERSSTv4 data, Indo-Pacific domain, 1940-2010 for training, 2010-2020 
 % for verification, 1-year delay embeding window, cone kernel  
-case 'ersstV4_70yr_10yr_IPSST_1yrEmb_coneKernel'
+case 'ersstV4_70yr_ersstV4_10yr_IPSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -281,7 +281,7 @@ case 'ersstV4_70yr_10yr_IPSST_1yrEmb_coneKernel'
 
 % ERSSTv4 data, sub-global domain, 1960-2010 for training, 2010-2020 
 % for verification, 1-year delay embeding window, cone kernel  
-case 'ersstV4_50yr_10yr_subglobalSST_1yrEmb_coneKernel'
+case 'ersstV4_50yr_ersstV4_10yr_subglobalSST_1yrEmb_coneKernel'
     
     % Dataset specification 
     In.Res( 1 ).experiment = 'ersstV4';
@@ -342,16 +342,16 @@ case 'ersstV4_50yr_10yr_subglobalSST_1yrEmb_coneKernel'
     In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
 
 
-% CCSM4 pre-industrial control, Indo-Pacific domain, 1100 years training, 200
+% CCSM4 pre-industrial control, Indo-Pacific domain, 1200 years training, 15
 % years test, 1-year delay-embeding window  
-case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
+case 'ccsm4Ctrl_1200yr_ccsm4Ctrl_15yr_IPSST_1yrEmb_coneKernel'
    
     % Dataset specification  
     In.Res( 1 ).experiment = 'ccsm4Ctrl'; 
 
     % Time specification (in-sample data)
     In.tFormat        = 'yyyymm';              % time format
-    In.Res( 1 ).tLim  = { '000101' '109912' }; % time limit  
+    In.Res( 1 ).tLim  = { '000101' '119912' }; % time limit  
     In.Res( 1 ).tClim = In.Res( 1 ).tLim;     % climatology limits 
 
     % Dataset specification (out-of-sample data) 
@@ -359,8 +359,8 @@ case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
 
     % Time specification (in-sample data)
     Out.tFormat        = 'yyyymm';              % time format
-    Out.Res( 1 ).tLim  = { '110001' '130012' }; % time limit  
-    Out.Res( 1 ).tClim = { '000101' '109912' }; % climatology limits  
+    Out.Res( 1 ).tLim  = { '128501' '129912' }; % time limit  
+    Out.Res( 1 ).tClim = { '000101' '119912' }; % climatology limits  
 
     trendStr = ''; % string identifier for detrening of target data
 
@@ -378,8 +378,8 @@ case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
     In.Src( 1 ).embFormat = 'overlap';  % storage format 
 
     % Batches to partition the in-sample data
-    In.Res( 1 ).nB    = 1; % partition batches
-    In.Res( 1 ).nBRec = 1; % batches for reconstructed data
+    In.Res( 1 ).nB    = 4; % partition batches
+    In.Res( 1 ).nBRec = 4; % batches for reconstructed data
 
     % Batches to partition the out-of-sample data
     Out.Res( 1 ).nB    = 1; % partition batches
@@ -398,7 +398,7 @@ case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
     In.epsilonE   = [ -40 40 ]; % kernel bandwidth exponents 
     In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
     In.alpha      = 0.5;        % diffusion maps normalization 
-    In.nPhi       = 501;        % diffusion eigenfunctions to compute
+    In.nPhi       = 1001;       % diffusion eigenfunctions to compute
     In.nPhiPrj    = In.nPhi;    % eigenfunctions to project the data
     In.idxPhiRec  = 1 : 1;      % eigenfunctions for reconstruction
     In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
@@ -408,7 +408,7 @@ case 'ccsm4Ctrl_1100yr_200yr_IPSST_2yrEmb_coneKernel'
    
 % CCSM4 pre-industrial control, global domain, 1100 years training, 200
 % years test, 1-year delay-embeding window  
-case 'ccsm4Ctrl_1100yr_200yr_globalSST_2yrEmb_coneKernel'
+case 'ccsm4Ctrl_1100yr_ccsm4Ctrl_200yr_globalSST_2yrEmb_coneKernel'
 
     % Dataset specification  
     In.Res( 1 ).experiment = 'ccsm4Ctrl'; 
@@ -468,9 +468,8 @@ case 'ccsm4Ctrl_1100yr_200yr_globalSST_2yrEmb_coneKernel'
     In.idxPhiSVD  = 1 : 1;      % eigenfunctions for linear mapping
     In.idxVTRec   = 1 : 1;      % SVD termporal patterns for reconstruction
 
-
 otherwise
-        error( 'Invalid experiment' )
+    error( 'Invalid experiment' )
 end
 
 %% PREPARE TARGET COMPONENTS (COMMON TO ALL MODELS)
