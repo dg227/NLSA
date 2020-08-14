@@ -52,7 +52,7 @@ switch experiment
 
         % Source data
         In.Src.idxX    = 1 : 3;       % observed state vector components 
-        In.Src.idxE    = 1 : 1;       % delay embedding indices
+        In.Src.idxE    = 1 : 15;       % delay embedding indices
         In.Src.nXB     = 0;           % additional samples before main interval
         In.Src.nXA     = 0;           % additional samples after main interval
         In.Src.fdOrder = 0;           % finite-difference order 
