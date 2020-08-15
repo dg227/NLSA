@@ -21,7 +21,7 @@
 %
 % '64k_dt0.01_idxX1_2_3_nEL0': 64000 samples, dt=0.01, fully observed, 0 delays 
 % '64k_dt0.01_idxX1_nEL0': 64000 samples, dt=0.01, x1 only, 0 delays 
-% '64k_dt0.01_idxX1_nEL10': 64000 samples, dt=0.01, x1 only, 10 delays 
+% '64k_dt0.01_idxX1_nEL15': 64000 samples, dt=0.01, x1 only, 15 delays 
 %
 % The kernel employed is a variable-bandwidth Gaussian kernel, normalized to a
 % symmetric Markov kernel. This requires a kernel density estimation step to
@@ -56,12 +56,12 @@
 % Modified 2020/08/08
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-%experiment = '6.4k_dt0.01_idxX1_2_3_nEL0';
+experiment = '6.4k_dt0.01_idxX1_2_3_nEL0';
 %experiment = '6.4k_dt0.01_idxX1_nEL0';
 %experiment = '6.4k_dt0.01_idxX1_nEL15'; 
 %experiment = '64k_dt0.01_idxX1_2_3_nEL0';
 %experiment = '64k_dt0.01_idxX_nEL0';
-%experiment = '64k_dt0.01_idxX_nEL10'; 
+%experiment = '64k_dt0.01_idxX_nEL15'; 
 
 ifSourceData   = true; % generate source data
 ifTestData     = true; % generate test (verification) data
