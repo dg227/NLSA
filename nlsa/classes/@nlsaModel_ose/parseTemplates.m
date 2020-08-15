@@ -88,7 +88,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2019/11/04    
+%   Modified 2020/08/01    
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -361,6 +361,164 @@ for iR = 1 : nRO
 end
 mkdir( propVal{ iOutEmbComponent } )
 
+%% OS TARGET DATA
+
+% Import out-of-sample target data and determine the number of samples 
+% and dimension 
+for iProp = 1 : nProp 
+    if strcmp( propName{ iProp }, 'outTrgComponent' )
+        iOutTrgComponent = iProp;
+        break
+    end
+end
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'outTargetComponent' )
+        if ~isempty( propVal{ iOutTrgComponent } )
+            error( 'Out-of-sample target components have been already specified' )
+        end
+        if ~isa( varargin{ i + 1 }, 'nlsaComponent' )
+            error( 'Out-of-sample target data must be specified as an array of nlsaComponent objects' )
+        end
+        if size( varargin{ i + 1 }, 2 ) ~= nRO
+            error( 'The number of source and target OS realizations must be equal' )
+        end
+        propVal{ iOutTrgComponent } = varargin{ i + 1 };
+        ifProp( iOutTrgComponent )  = true;
+    end
+end
+
+
+%% OSE TARGET EMBEDDED DATA
+if ifProp( iOutTrgComponent )
+    % Parse embedding templates for the target data   
+    for iProp = 1 : nProp 
+        if strcmp( propName{ iProp }, 'outTrgEmbComponent' )
+            iOutTrgEmbComponent = iProp;
+            break
+        end
+    end
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'targetEmbeddingTemplate' )
+            if ~isempty( propVal{ iOutTrgEmbComponent } ) 
+                error( 'Time-lagged embedding templates for the target data have been already specified' )
+            end
+            if  isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent' ) ...
+                && isscalar( varargin{ i + 1 } )
+                propVal{ iOutTrgEmbComponent } = repmat( ...
+                    varargin{ i + 1 }, [ nCT 1 ] );
+            elseif isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent' ) ...
+                   && isvector( varargin{ i + 1 } ) ...
+                   && numel( varargin{ i + 1 } ) == nCT
+                propVal{ iOutTrgEmbComponent } = varargin{ i + 1 };
+                if size( propVal{ iOutTrgEmbComponent }, 2 ) > 1 
+                    propVal{ iOutTrgEmbComponent } = propVal{ iOutTrgEmbComponent }';
+                end
+            else
+                error( 'Time-lagged embedding templates must be specified as a scalar nlsaEmbeddedComponent object, or vector of nlsaEmbeddedComponent objects of size equal to the number of components' )
+            end
+            ifProp( iOutTrgEmbComponent ) = true;
+        end
+    end
+    if isempty( propVal{ iOutTrgEmbComponent } )
+        propVal{ iOutTrgEmbComponent } = propVal{ iEmbComponent }( :, 1 );
+        ifProp( iOutTrgEmbComponent )  = true;
+    end
+
+    for iC = 1 : nCT
+        propVal{ iOutTrgEmbComponent }( iC ) = setDimension( ...
+            propVal{ iOutTrgEmbComponent }( iC ), ...
+            getDimension( propVal{ iOutTrgComponent }( iC ) ) );
+    end
+
+    % Determine time limits for embedding origin 
+    minEmbeddingOrigin = getMinOrigin( propVal{ iOutTrgEmbComponent } );
+
+    % Replicate template to form target embedded component array
+    propVal{ iOutTrgEmbComponent } = repmat( propVal{ iOutTrgEmbComponent }, [ 1 nRO ] );             
+    % Parse embedding origin templates
+    isSet = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'targetEmbeddingOrigin' )
+            if isSet
+                error( 'Time-lagged embedding origins for the target data have been already specified' )
+            end
+            if ispsi( varargin{ i + 1 } )
+                embeddingOrigin = repmat( varargin{ i + 1 }, [ 1 nRO ] );
+            elseif isvector( varargin{ i + 1 } ) && numel( varargin{ i + 1 } ) == nRO 
+                embeddingOrigin = varargin{ i + 1 };
+            end
+            isSet = true;
+        end
+    end
+    if ~isSet
+        embeddingOrigin = max( minEmbeddingOrigin, ...
+                               getOrigin( propVal{ iOutEmbComponent }( 1, 1 ) ) ) ...
+                        * ones( 1, nRO );
+    end
+    for iR = 1 : nRO
+        if embeddingOrigin( iR ) < minEmbeddingOrigin
+            error( 'Time-lagged embedding origin is below minimum value' )
+        end
+        for iC = 1 : nCT
+            propVal{ iOutTrgEmbComponent }( iC, iR ) = setOrigin( propVal{ iOutTrgEmbComponent }( iC, iR ), embeddingOrigin( iR ) );
+        end
+    end
+
+    % Determine maximum number of samples in each embedded component
+    maxNSRET = zeros( 1, nRO );
+    for iR = 1 : nRO
+        
+        maxNSRET( iR ) = getMaxNSample( ...
+            propVal{ iOutTrgEmbComponent }( :, iR ), ...
+            getNSample( propVal{ iOutTrgComponent }( :, iR ) ) );
+    end
+
+    % Check number of samples in target embedded data
+    for iR = 1 : nRO
+        if getNSample( partition( iR ) ) > maxNSRET( iR )
+             msgStr = [ 'Number of time-lagged embedded samples ', ...
+                        int2str( getNSample( partition( iR ) ) ), ...
+                        ' is above maximum value ', ...
+                        int2str( maxNSRET( iR ) ) ];
+            error( msgStr ) 
+        end
+        for iC = 1 : nCT
+            propVal{ iOutTrgEmbComponent }( iC, iR ) = setPartition( propVal{ iOutTrgEmbComponent }( iC, iR ), partition( iR ) );
+        end 
+    end
+
+    % Setup target embedded component tags, directories, and filenames
+    for iR = 1 : nRO
+        for iC = 1 : nCT
+
+            propVal{ iOutTrgEmbComponent }( iC, iR ) = ...
+                setDefaultTag( propVal{ iOutTrgEmbComponent }( iC, iR ) );
+            propVal{ iOutTrgEmbComponent }( iC, iR ) = ...
+                setComponentTag( ...
+                    propVal{ iOutTrgEmbComponent }( iC, iR ), ...
+                    getComponentTag( propVal{ iOutTrgComponent }( iC, 1 ) ) );
+            propVal{ iOutTrgEmbComponent }( iC, iR ) = ...
+                setRealizationTag( ...
+                    propVal{ iOutTrgEmbComponent }( iC, iR ), ...
+                    getRealizationTag( propVal{ iOutTrgComponent }( 1, iR ) ) );
+
+            tag  = getTag( propVal{ iOutTrgEmbComponent }( iC, iR ) );
+            pth  = fullfile( modelPath, 'embedded_data', ...
+                             strjoin_e( tag, '_' ) );
+            
+            propVal{ iOutTrgEmbComponent }( iC, iR ) = ...
+                setPath( propVal{ iOutTrgEmbComponent }( iC, iR ), pth );
+
+            propVal{ iOutTrgEmbComponent }( iC, iR ) = ...
+                setDefaultSubpath( propVal{ iOutTrgEmbComponent }( iC, iR ) );
+
+
+            propVal{ iOutTrgEmbComponent }( iC, iR ) = ...
+                setDefaultFile( propVal{ iOutTrgEmbComponent }( iC, iR ) );
+        end
+    end
+    mkdir( propVal{ iOutTrgEmbComponent } )
+end
 
 %% OSE PAIRWISE DISTANCE
 % Parse OSE distance template and set OSE distance partition
@@ -532,7 +690,7 @@ for i = 1 : 2 : nargin
         if ~isempty( propVal{ iOseEmbComponent } )
             error( 'OSE templates have been already specified' )
         end
-        if ~isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent_ose_n' ) ...
+        if isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent_ose_n' ) ...
                && isscalar( varargin{ i + 1 } )
             propVal{ iOseEmbComponent } = repmat( ...
                 varargin{ i + 1 }, [ nCT 1 ] );

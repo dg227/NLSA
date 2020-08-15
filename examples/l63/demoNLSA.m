@@ -59,7 +59,7 @@
 %
 % A figure, figPhiCoherence.png, depicting the extracted coherent observables 
 % from the '64k_dt0.01_nEL800' experiment, is included for reference in 
-% subdirectory ./figs/64k_dt0.01_nEL800.
+% subdirectory ./figsNLSA/64k_dt0.01_nEL800.
 %
 % References:
 % 
@@ -74,16 +74,16 @@
 % [3] D. Giannakis, A. J. Majda (2012), "Nonlinear Laplacian spectral analysis
 %     for time series with intermittency and low-frequency variability", 
 %     Proc. Natl. Acad. Sci., 109(7), 2222, 
-%     http://dx.doi.org/10.1073/pnas.1118984109.
+%     https://dx.doi.org/10.1073/pnas.1118984109.
 %
 % [4] D. Giannakis (2019), "Data-driven spectral decomposition and forecasting
 %     of ergodic dynamical systems", Appl. Comput. Harmon. Anal., 62(2), 
-%     338-396, http://dx.doi.org/10.1016/j.acha.2017.09.001.
+%     338-396, https://dx.doi.org/10.1016/j.acha.2017.09.001.
 % 
 % [5] D. Giannakis (2020), "Delay-coordinate maps, coherence, and approximate 
 %     spectra of evolution operators", https://arxiv.org/abs/2007.02195.  
 %
-% Modified 2020/07/22
+% Modified 2020/08/06
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
 %experiment = '6.4k_dt0.01_nEL0'; 
@@ -93,10 +93,11 @@ experiment = '64k_dt0.01_nEL800';
 
 ifSourceData     = false; % generate source data
 ifNLSA           = false; % run NLSA (kernel eigenfunctions)
-ifPCA            = true;  % run PCA (for comparison with NLSA)
+ifPCA            = false; % run PCA (for comparison with NLSA)
 ifPlotPhi        = false; % plot eigenfunctions
 ifPlotCoherence  = false; % figure illustrating coherence of NLSA eigenfunctions
-ifMovieCoherence = true; % make eigenfunction movie illustrating coherence
+ifMovieCoherence = false; % make eigenfunction movie illustrating coherence
+ifNLSAPhases     = true;  % identify "lifecycle" phases from eigenfunctions
 ifPrintFig       = false; % print figures to file
 
 %% BATCH PROCESSING
@@ -104,48 +105,53 @@ iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
 
 %% GLOBAL PARAMETERS
-% idxPhiPlt:   Eigenfunctions to plot
-% nShiftPlt:   Temporal shift applied to eigenfunctions to illustrate action
-%              of Koopman operator
-% idxTPlt:     Time interval to plot
-% figDir:      Output directory for plots
-% markerSize:  For eigenfunction scatterplots
-% signPC:      Sign multiplication factors for principal components
-% signPhiPlt:  Sign multiplication factors for plotted eigenfunctions 
+% idxPhi:     Eigenfunctions to plot
+% nShift:     Temporal shift applied to eigenfunctions to illustrate action
+%             of Koopman operator
+% idxTLim:    Time interval to plot
+% figDir:     Output directory for plots
+% markerSize: For eigenfunction scatterplots
+% signPC:     Sign multiplication factors for principal components
+% signPhi:    Sign multiplication factors for plotted eigenfunctions 
+
+decayFactor  = 4; 
 
 switch experiment
 
 case '6.4k_dt0.01_nEL0'
-    idxPhiPlt  = [ 2 3 ];     
-    signPhiPlt = [ 1 -1 ];   
-    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
-    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
+    idxPhi     = [ 2 3 ];     
+    signPhi    = [ 1 -1 ];   
+    nShift     = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    idxTLim    = [ 2001 3000 ]; % approx 10 Lyapunov times
     markerSize = 7;         
     signPC     = [ -1 1 ];
 
 case '6.4k_dt0.01_nEL800'
-    idxPhiPlt  = [ 2 3 ];     
-    signPhiPlt = [ 1 -1 ];   
-    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
-    idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov times
+    idxPhi     = [ 2 3 ];     
+    signPhi    = [ 1 -1 ];   
+    nShift     = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    idxTLim    = [ 2001 3001 ]; % approx 10 Lyapunov times
     markerSize = 7;         
     signPC     = [ -1 1 ];
 
 case '64k_dt0.01_nEL0'
-    idxPhiPlt  = [ 2 3 ];     
-    signPhiPlt = [ 1 -1 ];   
-    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
-    idxTPlt    = [ 2001 3000 ]; % approx 10 Lyapunov times
+    idxPhi     = [ 2 3 ];     
+    signPhi    = [ 1 -1 ];   
+    nShift     = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    idxTLim    = [ 2001 3000 ]; % approx 10 Lyapunov times
     markerSize = 3;         
     signPC     = [ -1 1 ];
 
 case '64k_dt0.01_nEL800'
-    idxPhiPlt  = [ 2 3 ];     
-    signPhiPlt = [ 1 -1 ];   
-    nShiftPlt  = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
-    idxTPlt    = [ 2001 3001 ]; % approx 10 Lyapunov times
+    idxPhi     = [ 2 3 ];     
+    signPhi    = [ 1 -1 ];   
+    nShift     = [ 0 100 200 ]; % approx [ 0 1 2 ] Lyapunov times
+    idxTLim    = [ 2001 3001 ]; % approx 10 Lyapunov times
     markerSize = 3;         
     signPC     = [ -1 1 ];
+    nPhase     = 16;
+    nSPhase    = 200;
+    
 
 otherwise
     error( 'Invalid experiment.' )
@@ -153,7 +159,7 @@ end
 
 
 % Figure/movie directory
-figDir = fullfile( pwd, 'figs', experiment );
+figDir = fullfile( pwd, 'figsNLSA', experiment );
 if ~isdir( figDir )
     mkdir( figDir )
 end
@@ -281,8 +287,8 @@ if ifPlotPhi
 
 
     % Set up figure and axes 
-    Fig.nTileX     = numel( nShiftPlt ) + 1;
-    Fig.nTileY     = numel( idxPhiPlt );
+    Fig.nTileX     = numel( nShift ) + 1;
+    Fig.nTileY     = numel( idxPhi );
     Fig.units      = 'inches';
     Fig.figWidth   = 15 / 4 * Fig.nTileX; 
     Fig.deltaX     = .2;
@@ -306,12 +312,12 @@ if ifPlotPhi
     % Loop over the time shifts
     for iShift = 1 : Fig.nTileX - 1
 
-        xPlt = x( :, 1 : end - nShiftPlt( iShift ) );
+        xPlt = x( :, 1 : end - nShift( iShift ) );
 
         % Loop over the eigenfunctions
         for iPhi = 1 : Fig.nTileY
 
-            phiPlt = phi( 1 + nShiftPlt( iShift ) : end, idxPhiPlt( iPhi ) );
+            phiPlt = phi( 1 + nShift( iShift ) : end, idxPhi( iPhi ) );
 
             set( gcf, 'currentAxes', ax( iShift, iPhi ) )
             scatter3( xPlt( 1, : ), xPlt( 2, : ), xPlt( 3, : ), markerSize, ...
@@ -322,13 +328,13 @@ if ifPlotPhi
             
             if iShift == 1
                 titleStr = sprintf( '\\phi_{%i}, \\lambda_{%i} = %1.3g', ...
-                                    idxPhiPlt( iPhi ) - 1, ...
-                                    idxPhiPlt( iPhi ) - 1, ...
-                                    lambda( idxPhiPlt( iPhi ) ) );
+                                    idxPhi( iPhi ) - 1, ...
+                                    idxPhi( iPhi ) - 1, ...
+                                    lambda( idxPhi( iPhi ) ) );
             else
                 titleStr = sprintf( 'U^t\\phi_{%i},   t = %1.2f', ...
-                                    idxPhiPlt( iPhi ) - 1, ...
-                                    nShiftPlt( iShift ) * In.dt ); 
+                                    idxPhi( iPhi ) - 1, ...
+                                    nShift( iShift ) * In.dt ); 
             end
             title( titleStr )
         end
@@ -337,13 +343,13 @@ if ifPlotPhi
 
     % EIGENFUNCTION TIME SERIES PLOTS
 
-    tPlt = t( idxTPlt( 1 ) : idxTPlt( 2 ) );
+    tPlt = t( idxTLim( 1 ) : idxTLim( 2 ) );
     tPlt = tPlt - tPlt( 1 ); % set time origin to 1st plotted point
 
     % Loop over the eigenfunctions
     for iPhi = 1 : Fig.nTileY
 
-        phiPlt = phi( idxTPlt( 1 ) : idxTPlt( 2 ), idxPhiPlt( iPhi ) );
+        phiPlt = phi( idxTLim( 1 ) : idxTLim( 2 ), idxPhi( iPhi ) );
 
         set( gcf, 'currentAxes', ax( Fig.nTileX, iPhi ) )
         plot( tPlt, phiPlt, '-' )
@@ -366,7 +372,7 @@ if ifPlotPhi
 
     % Print figure
     if ifPrintFig
-        figFile = sprintf( 'figPhi%s.png', idx2str( idxPhiPlt, '_' ) );
+        figFile = sprintf( 'figPhi%s.png', idx2str( idxPhi, '_' ) );
         figFile = fullfile( figDir, figFile );
         print( fig, figFile, '-dpng', '-r300' ) 
     end
@@ -382,7 +388,7 @@ if ifPlotCoherence
     [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
 
     % Construct coherent observables based on phi's
-    z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
+    z = phi( :, idxPhi ) .* signPhi / sqrt( 2 );
     a = max( abs( z ), [], 1 ); % z amplitude
     angl = angle( complex( z( :, 1 ), z( :, 2 ) ) ); % z phase
 
@@ -393,7 +399,7 @@ if ifPlotCoherence
     aPC = max( abs( zPC ), [], 1 ); % PC amplitude 
 
     % Determine number of temporal samples; assign timestamps
-    nFrame = idxTPlt( 2 ) - idxTPlt( 1 ) + 1;
+    nFrame = idxTLim( 2 ) - idxTLim( 1 ) + 1;
     t = ( 0 : nFrame - 1 ) * In.dt;  
 
     % Set up figure and axes 
@@ -422,9 +428,9 @@ if ifPlotCoherence
     set( gcf, 'currentAxes', ax( 1, 1 ) )
     scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, zPC( :, 1 ), ...
               'filled'  )
-    plot3( x( 1, idxTPlt( 1 ) : idxTPlt( 2 ) ), ...
-           x( 2, idxTPlt( 1 ) : idxTPlt( 2 ) ), ...
-           x( 3, idxTPlt( 1 ) : idxTPlt( 2 ) ), 'k-', ...
+    plot3( x( 1, idxTLim( 1 ) : idxTLim( 2 ) ), ...
+           x( 2, idxTLim( 1 ) : idxTLim( 2 ) ), ...
+           x( 3, idxTLim( 1 ) : idxTLim( 2 ) ), 'k-', ...
            'lineWidth', 2 )
               
     title( '(a) PC_1 on L63 attracror' )
@@ -446,9 +452,9 @@ if ifPlotCoherence
     scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, anglPC, ...
               'filled'  )
     %scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-    plot3( x( 1, idxTPlt( 1 ) : idxTPlt( 2 ) ), ...
-           x( 2, idxTPlt( 1 ) : idxTPlt( 2 ) ), ...
-           x( 3, idxTPlt( 1 ) : idxTPlt( 2 ) ), 'k-', ...
+    plot3( x( 1, idxTLim( 1 ) : idxTLim( 2 ) ), ...
+           x( 2, idxTLim( 1 ) : idxTLim( 2 ) ), ...
+           x( 3, idxTLim( 1 ) : idxTLim( 2 ) ), 'k-', ...
            'lineWidth', 2 )
     title( '(b) (PC_1, PC_2) angle on L63 attractor' )
     axis off
@@ -469,8 +475,8 @@ if ifPlotCoherence
 
     % (PC1,PC2) projection
     set( gcf, 'currentAxes', ax( 3, 1 ) )
-    plot( zPC( idxTPlt( 1 ) : idxTPlt( 2 ), 1 ), ...
-          zPC( idxTPlt( 1 ) : idxTPlt( 2 ), 2 ), ...
+    plot( zPC( idxTLim( 1 ) : idxTLim( 2 ), 1 ), ...
+          zPC( idxTLim( 1 ) : idxTLim( 2 ), 2 ), ...
           'b-', 'linewidth', 1.5 ) 
     %scatter( zPC( iT, 1 ), zPC( iT, 2 ), 70, 'r', 'filled' ) 
     xlim( [ -2 2 ] )
@@ -483,7 +489,7 @@ if ifPlotCoherence
     
     % PC1 time series
     set( gcf, 'currentAxes', ax( 4, 1 ) )
-    plot( t, zPC( idxTPlt( 1 ) : idxTPlt( 2 ), 1 ), 'b-', ...
+    plot( t, zPC( idxTLim( 1 ) : idxTLim( 2 ), 1 ), 'b-', ...
           'linewidth', 1.5 )
     %scatter( t( iFrame ), zPC( iT, 1 ), 70, 'r', 'filled' ) 
     grid on
@@ -498,10 +504,10 @@ if ifPlotCoherence
     scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, z( :, 1 ), ...
               'filled'  )
     %scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-    %plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
-    %       x( 3, idxTPlt( 1 ) : iT ), 'k-', ...
+    %plot3( x( 1, idxTLim( 1 ) : iT ), x( 2, idxTLim( 1 ) : iT ), ...
+    %       x( 3, idxTLim( 1 ) : iT ), 'k-', ...
     %        'lineWidth', 2 )
-    title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxPhiPlt( 1 ) - 1 ) )
+    title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxPhi( 1 ) - 1 ) )
     axis off
     view( 0, 0 )
     set( gca, 'cLim', [ -1 1 ] * a( 1 ) )
@@ -520,12 +526,12 @@ if ifPlotCoherence
     set( gcf, 'currentAxes', ax( 2, 2 ) )
     scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, angl, 'filled'  )
     %scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-    %plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
-    %       x( 3, idxTPlt( 1 ) : iT ), 'm-', ...
+    %plot3( x( 1, idxTLim( 1 ) : iT ), x( 2, idxTLim( 1 ) : iT ), ...
+    %       x( 3, idxTLim( 1 ) : iT ), 'm-', ...
     %        'lineWidth', 3 )
     title( sprintf( [ '(f) (\\phi_{%i}, \\phi_{%i}) angle on L63 ' ...
                       'attractor' ], ...
-                    idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
+                    idxPhi( 1 ) - 1, idxPhi( 2 ) - 1 ) )
     axis off
     view( 90, 0 )
     set( gca, 'cLim', [ -pi pi  ] )
@@ -542,27 +548,27 @@ if ifPlotCoherence
 
     % (phi1,phi2) projection
     set( gcf, 'currentAxes', ax( 3, 2 ) )
-    plot( z( idxTPlt( 1 ) : idxTPlt( 2 ), 1 ), ...
-          z( idxTPlt( 1 ) : idxTPlt( 2 ), 2 ), ...
+    plot( z( idxTLim( 1 ) : idxTLim( 2 ), 1 ), ...
+          z( idxTLim( 1 ) : idxTLim( 2 ), 2 ), ...
           'b-', 'linewidth', 1.5 ) 
     %scatter( z( iT, 1 ), z( iT, 2 ), 50, 'r', 'filled' ) 
     xlim( [ -1.5 1.5 ] )
     ylim( [ -1.5 1.5 ] )
     grid on
     title( sprintf( '(g) (\\phi_{%i}, \\phi_{%i}) projection', ...
-           idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
-    xlabel( sprintf( '\\phi_{%i}', idxPhiPlt( 1 ) - 1 ) )
-    ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
+           idxPhi( 1 ) - 1, idxPhi( 2 ) - 1 ) )
+    xlabel( sprintf( '\\phi_{%i}', idxPhi( 1 ) - 1 ) )
+    ylabel( sprintf( '\\phi_{%i}', idxPhi( 2 ) - 1 ) )
 
     % phi1 time series
     set( gcf, 'currentAxes', ax( 4, 2 ) )
-    plot( t, z( idxTPlt( 1 ) : idxTPlt( 2 ), 2 ), 'b-', ...
+    plot( t, z( idxTLim( 1 ) : idxTLim( 2 ), 2 ), 'b-', ...
           'linewidth', 1.5 )
     %scatter( t( iFrame ), z( iT, 2 ), 50, 'r', 'filled' ) 
     grid on
     xlim( [ t( 1 ) t( end ) ] )
     ylim( [ -1.5 1.5 ] )
-    title( sprintf( '(h) \\phi_{%i} time series', idxPhiPlt( 1 ) - 1 ) )
+    title( sprintf( '(h) \\phi_{%i} time series', idxPhi( 1 ) - 1 ) )
     xlabel( 't' )
 
 
@@ -585,7 +591,7 @@ if ifMovieCoherence
     [ phi, ~, lambda ] = getDiffusionEigenfunctions( model );
 
     % Construct coherent observables based on phi's
-    z = phi( :, idxPhiPlt ) .* signPhiPlt / sqrt( 2 );
+    z = phi( :, idxPhi ) .* signPhi / sqrt( 2 );
     a = max( abs( z ), [], 1 ); % z amplitude
     angl = angle( complex( z( :, 1 ), z( :, 2 ) ) ); % z phase
 
@@ -596,7 +602,7 @@ if ifMovieCoherence
     aPC = max( abs( zPC ), [], 1 ); % PC amplitude 
 
     % Determine number of movie frames; assign timestamps
-    nFrame = idxTPlt( 2 ) - idxTPlt( 1 ) + 1;
+    nFrame = idxTLim( 2 ) - idxTLim( 1 ) + 1;
     t = ( 0 : nFrame - 1 ) * In.dt;  
 
     % Set up figure and axes 
@@ -632,15 +638,15 @@ if ifMovieCoherence
     % Loop over the frames
     for iFrame = 1 : nFrame
 
-        iT = idxTPlt( 1 ) + iFrame - 1;
+        iT = idxTLim( 1 ) + iFrame - 1;
 
         % Scatterplot of PC1
         set( gcf, 'currentAxes', ax( 1, 1 ) )
         scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, zPC( :, 1 ), ...
                   'filled'  )
         scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-        plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
-               x( 3, idxTPlt( 1 ) : iT ), 'k-', ...
+        plot3( x( 1, idxTLim( 1 ) : iT ), x( 2, idxTLim( 1 ) : iT ), ...
+               x( 3, idxTLim( 1 ) : iT ), 'k-', ...
                 'lineWidth', 1.5 )
                   
         title( '(a) PC1 on L63 attracror' )
@@ -662,8 +668,8 @@ if ifMovieCoherence
         scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, anglPC, ...
                   'filled'  )
         scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-        plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
-               x( 3, idxTPlt( 1 ) : iT ), 'm-', ...
+        plot3( x( 1, idxTLim( 1 ) : iT ), x( 2, idxTLim( 1 ) : iT ), ...
+               x( 3, idxTLim( 1 ) : iT ), 'm-', ...
                 'lineWidth', 3 )
         title( '(b) (PC_1, PC_2) angle on L63 attractor' )
         axis off
@@ -684,7 +690,7 @@ if ifMovieCoherence
 
         % (PC1,PC2) projection
         set( gcf, 'currentAxes', ax( 3, 1 ) )
-        plot( zPC( idxTPlt( 1 ) : iT, 1 ), zPC( idxTPlt( 1 ) : iT, 2 ), ...
+        plot( zPC( idxTLim( 1 ) : iT, 1 ), zPC( idxTLim( 1 ) : iT, 2 ), ...
               'b-', 'linewidth', 1.5 ) 
         scatter( zPC( iT, 1 ), zPC( iT, 2 ), 70, 'r', 'filled' ) 
         xlim( [ -2 2 ] )
@@ -697,7 +703,7 @@ if ifMovieCoherence
         
         % PC1 time series
         set( gcf, 'currentAxes', ax( 4, 1 ) )
-        plot( t( 1 : iFrame ), zPC( idxTPlt( 1 ) : iT, 1 ), 'b-', ...
+        plot( t( 1 : iFrame ), zPC( idxTLim( 1 ) : iT, 1 ), 'b-', ...
               'linewidth', 1.5 )
         scatter( t( iFrame ), zPC( iT, 1 ), 70, 'r', 'filled' ) 
         grid on
@@ -712,10 +718,10 @@ if ifMovieCoherence
         scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, z( :, 1 ), ...
                   'filled'  )
         scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-        plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
-               x( 3, idxTPlt( 1 ) : iT ), 'k-', ...
+        plot3( x( 1, idxTLim( 1 ) : iT ), x( 2, idxTLim( 1 ) : iT ), ...
+               x( 3, idxTLim( 1 ) : iT ), 'k-', ...
                 'lineWidth', 2 )
-        title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxPhiPlt( 1 ) - 1 ) )
+        title( sprintf( '(e) \\phi_{%i} on L63 attractor', idxPhi( 1 ) - 1 ) )
         axis off
         view( 0, 0 )
         set( gca, 'cLim', [ -1 1 ] * a( 1 ) )
@@ -734,12 +740,12 @@ if ifMovieCoherence
         set( gcf, 'currentAxes', ax( 2, 2 ) )
         scatter3( x( 1, : ), x( 2, : ), x( 3, : ), markerSize, angl, 'filled'  )
         scatter3( x( 1, iT ), x( 2, iT ), x( 3, iT ), 70, 'r', 'filled' ) 
-        plot3( x( 1, idxTPlt( 1 ) : iT ), x( 2, idxTPlt( 1 ) : iT ), ...
-               x( 3, idxTPlt( 1 ) : iT ), 'm-', ...
+        plot3( x( 1, idxTLim( 1 ) : iT ), x( 2, idxTLim( 1 ) : iT ), ...
+               x( 3, idxTLim( 1 ) : iT ), 'm-', ...
                 'lineWidth', 3 )
         title( sprintf( [ '(f) (\\phi_{%i}, \\phi_{%i}) angle on L63 ' ...
                           'attractor' ], ...
-                        idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
+                        idxPhi( 1 ) - 1, idxPhi( 2 ) - 1 ) )
         axis off
         view( 90, 0 )
         set( gca, 'cLim', [ -pi pi  ] )
@@ -756,26 +762,26 @@ if ifMovieCoherence
 
         % (phi1,phi2) projection
         set( gcf, 'currentAxes', ax( 3, 2 ) )
-        plot( z( idxTPlt( 1 ) : iT, 1 ), z( idxTPlt( 1 ) : iT, 2 ), ...
+        plot( z( idxTLim( 1 ) : iT, 1 ), z( idxTLim( 1 ) : iT, 2 ), ...
               'b-', 'linewidth', 1.5 ) 
         scatter( z( iT, 1 ), z( iT, 2 ), 50, 'r', 'filled' ) 
         xlim( [ -1.5 1.5 ] )
         ylim( [ -1.5 1.5 ] )
         grid on
         title( sprintf( '(g) (\\phi_{%i}, \\phi_{%i}) projection', ...
-               idxPhiPlt( 1 ) - 1, idxPhiPlt( 2 ) - 1 ) )
-        xlabel( sprintf( '\\phi_{%i}', idxPhiPlt( 1 ) - 1 ) )
-        ylabel( sprintf( '\\phi_{%i}', idxPhiPlt( 2 ) - 1 ) )
+               idxPhi( 1 ) - 1, idxPhi( 2 ) - 1 ) )
+        xlabel( sprintf( '\\phi_{%i}', idxPhi( 1 ) - 1 ) )
+        ylabel( sprintf( '\\phi_{%i}', idxPhi( 2 ) - 1 ) )
 
         % phi1 time series
         set( gcf, 'currentAxes', ax( 4, 2 ) )
-        plot( t( 1 : iFrame ), z( idxTPlt( 1 ) : iT, 2 ), 'b-', ...
+        plot( t( 1 : iFrame ), z( idxTLim( 1 ) : iT, 2 ), 'b-', ...
               'linewidth', 1.5 )
         scatter( t( iFrame ), z( iT, 2 ), 50, 'r', 'filled' ) 
         grid on
         xlim( [ t( 1 ) t( end ) ] )
         ylim( [ -1.5 1.5 ] )
-        title( sprintf( '(h) \\phi_{%i} time series', idxPhiPlt( 1 ) - 1 ) )
+        title( sprintf( '(h) \\phi_{%i} time series', idxPhi( 1 ) - 1 ) )
         xlabel( 't' )
 
         title( axTitle, sprintf( 't = %1.2f', t( iFrame ) ) )
@@ -799,3 +805,128 @@ end
 
         
     
+%% COMPUTE AND PLOT L63 "PHASES" BASED ON NLSA EIGENFUNCTIONS
+if ifNLSAPhases
+
+    disp( 'NLSA-based L63 phases...' ); t = tic;
+
+    % Construct coherent observables based on phi's
+    z = phi( :, idxPhi ) .* signPhi / sqrt( 2 );
+
+    % Compute ENSO phases based on NLSA
+    [ selectInd, angles, ~, weights ] = ...
+        computeLifecyclePhasesWeighted( z, z( :, 1 ), nPhase, nSPhase, ...
+                                        decayFactor );
+
+
+    % Start and end time indices in data arrays
+    iStart  = 1 + nSB + nShiftTakens;
+    iEnd    = iStart + nSE - 1;  
+    compPhi = computePhaseComposites( model, selectInd, ...
+                                      iStart, iEnd, weights );
+    compPhi = compPhi{ 1 };
+
+    toc( t )
+
+
+    % Set up figure and axes 
+    Fig.nTileX     = 2;
+    Fig.nTileY     = 1;
+    Fig.units      = 'inches';
+    Fig.figWidth   = 9; 
+    Fig.deltaX     = .7;
+    Fig.deltaX2    = .2;
+    Fig.deltaY     = .65;
+    Fig.deltaY2    = .4;
+    Fig.gapX       = .70;
+    Fig.gapY       = 1;
+    Fig.gapT       = 0; 
+    Fig.aspectR    = 1;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 12;
+    Fig.tickLength = [ 0.02 0 ];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    [ fig, ax ] = tileAxes( Fig );
+
+    % Plot phases
+    set( gcf, 'currentAxes', ax( 1, 1 ) )
+    c = distinguishable_colors( nPhase );
+    plot( z( :, 1 ), z( :, 2 ), '-', 'color', [ 1 1 1 ] * .7 )
+
+    for iPhase = 1 : nPhase
+        plot( z( selectInd{ iPhase }, 1 ), ...
+              z( selectInd{ iPhase }, 2 ), ...
+              '.', 'markersize', 15, 'color', c( iPhase, : ) )
+    end
+    grid on
+    title( sprintf( '(a) (\\phi_{%i}, \\phi_{%i}) phases', ...
+           idxPhi( 1 ) - 1, idxPhi( 2 ) - 1 ) )
+    xlabel( sprintf( '\\phi_{%i}', idxPhi( 1 ) - 1 ) )
+    ylabel( sprintf( '\\phi_{%i}', idxPhi( 2 ) - 1 ) )
+    xlim( [ -1.5 1.5 ] )
+    ylim( [ -1.5 1.5 ] )
+
+    % Plot phase composites
+    set( gcf, 'currentAxes', ax( 2, 1 ) )
+    compPlt = [ compPhi compPhi( :, 1 ) ]; % augment periodically
+    plot3( compPlt( 1, : ), compPlt( 2, : ), compPlt( 3, : ), '-', ...
+           'color', [ 1 1 1 ] * 0 ) 
+    for iPhase = 1 : nPhase
+        scatter3( compPhi( 1, iPhase ), compPhi( 2, iPhase ), ...
+                  compPhi( 3, iPhase ), 50, c( iPhase, : ), 'filled' )
+    end
+    view( 50, 20 )
+    grid on
+    title( '(b) Phase composites of state vector' )
+    xlabel( 'x' )
+    ylabel( 'y' )
+    zlabel( 'z' )
+
+    % Print figure
+    if ifPrintFig
+        figFile = fullfile( figDir, 'figPhiLifecycle.png' );
+        print( fig, figFile, '-dpng', '-r300' ) 
+    end
+
+end
+
+
+%% AUXILIARY FUNCTIONS
+%
+% Function to compute phase composites from target data of NLSA model
+function comp = computePhaseComposites( model, selectInd, iStart, iEnd, ...
+                                        weights )
+nC = size( model.trgComponent, 1 ); % number of observables to be composited
+nPhase = numel( selectInd ); % number of phases       
+ifWeights = nargin == 5; % 
+
+comp = cell( 1, nC );
+
+% Loop over the components
+for iC = 1 : nC
+
+    % Read data from NLSA model  
+    y = getData( model.trgComponent( iC ) );
+    y = y( :, iStart : iEnd ); 
+        
+    nD = size( y, 1 ); % data dimension
+    comp{ iC } = zeros( nD, nPhase );
+
+        % Loop over the phases
+        for iPhase = 1 : nPhase
+
+            % Compute phase conditional average
+            if ifWeights
+                comp{ iC }( :, iPhase ) = y * weights{ iPhase };
+            else    
+                comp{ iC }( :, iPhase ) = ...
+                    mean( y( :, selectInd{ iPhase } ), 2 );
+            end
+
+        end
+    end
+end
+
+

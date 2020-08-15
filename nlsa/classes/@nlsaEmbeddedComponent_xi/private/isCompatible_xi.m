@@ -1,14 +1,14 @@
 function [ ifC, Test ] = isCompatible_xi( obj )
 % ISCOMPATIBLE_XI Check compatibility of nlsaEmbeddedComponent_xi objects 
 %
-% Modified 2013/12/27
+% Modified 2020/08/02
 
 [ ~, nR ]       = size( obj );
 Test.fDOrd      = getFDOrder( obj( :, 1 ) );
 Test.fDType     = getFDType( obj( :, 1 ) );
-Test.passFDord  = false;
+Test.passFDord  = true;
 Test.passFDType = true;
-ifC              = true;
+ifC             = true;
 
 
 % Check that finite-difference order and type are the same for each realization

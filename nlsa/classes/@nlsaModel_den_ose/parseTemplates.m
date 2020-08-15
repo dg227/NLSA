@@ -127,7 +127,6 @@ function constrArgs = parseTemplates( varargin )
 %
 %   'outRealizationName': Similar to 'outComponentName', but used to compress
 %      the realization-dependent part of the pairwise distance directory.
-%
 % 
 %   'oseDiffusionOperatorTemplate': An nlsaDiffusionOperator_ose object
 %       specifying the OSE operator in the data analysis model.
@@ -155,7 +154,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/03/17    
+%   Modified 2020/08/01    
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -1374,7 +1373,7 @@ for i = 1 : 2 : nargin
         if ~isempty( propVal{ iOseEmbComponent } )
             error( 'OSE templates have been already specified' )
         end
-        if ~isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent_ose_n' ) ...
+        if isa( varargin{ i + 1 }, 'nlsaEmbeddedComponent_ose_n' ) ...
                && isscalar( varargin{ i + 1 } )
             propVal{ iOseEmbComponent } = repmat( ...
                 varargin{ i + 1 }, [ nCT 1 ] );
