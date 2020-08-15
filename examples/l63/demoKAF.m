@@ -16,17 +16,24 @@
 % experiments which can take the following values:
 %
 % '6.4k_dt0.01_idxX1_2_3_nEL0': 6400 samples, dt=0.01, fully observed, 0 delays 
-% '6.4k_dt0.01_idxX_nEL0': 6400 samples, dt=0.01, x1 only, 0 delays 
-% '6.4k_dt0.01_idxX_nEL10': 6400 samples, dt=0.01, x1 only, 10 delays 
+% '6.4k_dt0.01_idxX1_nEL0': 6400 samples, dt=0.01, x1 only, 0 delays 
+% '6.4k_dt0.01_idxX1_nEL15': 6400 samples, dt=0.01, x1 only, 10 delays 
+%
 % '64k_dt0.01_idxX1_2_3_nEL0': 64000 samples, dt=0.01, fully observed, 0 delays 
-% '64k_dt0.01_idxX_nEL0': 64000 samples, dt=0.01, x1 only, 0 delays 
-% '64k_dt0.01_idxX_nEL10': 64000 samples, dt=0.01, x1 only, 10 delays 
+% '64k_dt0.01_idxX1_nEL0': 64000 samples, dt=0.01, x1 only, 0 delays 
+% '64k_dt0.01_idxX1_nEL10': 64000 samples, dt=0.01, x1 only, 10 delays 
 %
 % The kernel employed is a variable-bandwidth Gaussian kernel, normalized to a
 % symmetric Markov kernel. This requires a kernel density estimation step to
 % compute the bandwidth functions, followed by a normalization step to form the
 % kernel matrix. See pseudocode in Appendix B of reference [2] below for 
-% further details. 
+% further details. The original references for the variable-bandwith kernel
+% formulation and symmetric Markov normalization are [3] and [4], respectively.
+%
+% All experiments use the same verification dataset consisting of 6400 samples
+% on an independent trajectory from the training data. Using a longer 
+% verification dataset will improve the accuracy of forecast skill scores (at
+% the expense of longer runtimes). 
 %
 % References:
 % 
@@ -38,22 +45,30 @@
 %     space compactification of unitary evolution groups", 
 %     https://arxiv.org/abs/1808.01515.
 %
+% [3] T. Berry, J. Harlim (2016), "Variable bandwidth diffusion kernels", 
+%     Appl. Comput. Harmon. Anal., 40(1), 68-96, 
+%     https://doi.org/10.1016/j.acha.2015.01.001.
+%
+% [4] R. Coifman, R. Hirn (2013), "Bistochastic kernels via asymmetric 
+%     affinity functions", Appl. Comput. Harmon. Anal., 35(1), 177--180,
+%     https://doi.org/j.acha.2013.01.001.
+%
 % Modified 2020/08/08
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = '6.4k_dt0.01_idxX1_2_3_nEL0';
-%experiment = '6.4k_dt0.01_idxX_nEL0';
-%experiment = '6.4k_dt0.01_idxX_nEL10'; 
+%experiment = '6.4k_dt0.01_idxX1_2_3_nEL0';
+%experiment = '6.4k_dt0.01_idxX1_nEL0';
+%experiment = '6.4k_dt0.01_idxX1_nEL15'; 
 %experiment = '64k_dt0.01_idxX1_2_3_nEL0';
 %experiment = '64k_dt0.01_idxX_nEL0';
 %experiment = '64k_dt0.01_idxX_nEL10'; 
 
-ifSourceData   = false; % generate source data
-ifTestData     = false; % generate test (verification) data
-ifNLSA         = false; % run NLSA (kernel eigenfunctions)
-ifOse          = false; % do out-of-sample extension of eigenfunctions
-ifReadKAFData  = false; % read training/test data for KAF
-ifKAF          = true;  % perform KAF 
+ifSourceData   = true; % generate source data
+ifTestData     = true; % generate test (verification) data
+ifNLSA         = true; % run NLSA (kernel eigenfunctions)
+ifOse          = true; % do out-of-sample extension of eigenfunctions
+ifReadKAFData  = true; % read training/test data for KAF
+ifKAF          = true; % perform KAF 
 ifPlotForecast = true; % plot representative forecast trajectories
 ifPlotError    = true; % plot forecast error
 ifPrintFig     = true; % print figures to file
@@ -63,27 +78,36 @@ iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
 
 %% GLOBAL PARAMETERS
-% nL:         Number of eigenfunctions to use for KAF target function
+% nL:         Number of eigenfunctions for KAF target function
+% nL2:        Number of eigenfunctions used for error estimation
 % nT:         Number of timesteps to predict (including 0)
 % idxTPlt:    Initial conditions for which to plot forecast trajectories
+% tStr:       Figure title
 % figDir:     Output directory for plots
-% markerSize: For eigenfunction scatterplots
 
 switch experiment
 
 case '6.4k_dt0.01_idxX1_2_3_nEL0'
-    nL = 501;
-    nT = 501; 
+    nL  = 401;
+    nL2 = 901;
+    nT  = 501; 
     idxTPlt = [ 2101 2201 2301 ];
-    markerSize = 7;         
     tStr = '6.4k, full obs.';
 
 case '6.4k_dt0.01_idxX1_nEL0'
-    nT = 501; 
-    idxTPlt = [ 2000 3000 ];
-    signZPlt = [ 1 -1 ];   
-    markerSize = 7;         
-    signPC     = [ -1 1 ];
+    nL  = 201;
+    nL2 = 901;
+    nT  = 501; 
+    idxTPlt = [ 2101 2201 2301 ];
+    tStr = '6.4k, x1 obs.';
+
+case '6.4k_dt0.01_idxX1_nEL15'
+    nL  = 401;
+    nL2 = 901;
+    nT  = 501; 
+    idxTPlt = [ 2101 2201 2301 ];
+    tStr = '6.4k, x1 obs.';
+
 
 otherwise
     error( 'Invalid experiment.' )
@@ -118,11 +142,28 @@ end
 % idxT1 is the initial time stamp in the covariante data ("origin") where 
 % delay embedding is performed. We remove samples 1 to idxT1 from the response
 % data so that they always lie in the future of the delay embedding window.
+%
+% nSX is the total  number of covariate samples available after delay 
+% embedding.
+% 
+% nR is the number of training realizations (ensemble members).
+%
+% nSXR = nSX / nR is the number of traning samples in each realization. In 
+% this implementation of KAF, every realization should contain the same 
+% number of training samples.
 disp( 'Building NLSA model...' ); t = tic;
 [ model, In, Out ] = demoKAF_nlsaModel( experiment ); 
 toc( t )
 
 idxT1 = getOrigin( model.embComponent );
+nR    = size( model.embComponent, 2 );
+nSXR  = getNSample( model.embComponent( 1 ) );
+if nR > 1 && any( getNSample( model.embComponent( 1, 2 : end ) ) ~= nSXR )  
+    msgStr = [ 'This implementation of KAF only supports equal sample ' ...
+               'numbers in each realization.' ];  
+    error( msgStr )
+end 
+nSX = nSXR * nR;
 
 % Create parallel pool if running NLSA and the NLSA model has been set up
 % with parallel workers. This part can be commented out if no parts of the
@@ -263,6 +304,7 @@ if ifReadKAFData
     % Response variable
     y = getData( model.trgComponent );
     y = y( :, idxT1 : end );
+    yStd = std( y, 0, 2 );
 
     % Eigenfunctions 
     [ phi, mu ] = getDiffusionEigenfunctions( model ); 
@@ -277,19 +319,43 @@ if ifReadKAFData
 end
 
 %% PERFORM KAF
+% yT is an array of size [ 3 nT nSO ] such that yT( :, iT, iSO ) is the 
+% predicted state vector at ( iT - 1 ) timesteps in the future given the 
+% iSO-th initial condition in the test dataset. 
+%
+% yTErr is an array of size [ 3 nT nSO ] such that yTErr( :, iT, iSO ) is
+% a vector of estimates of the forecast error (conditional standard deviation)
+% in the components of yT( :, iT, iSO ).
+%
+% See /nlsa/utils/forecasting/analogForecast.m for further details on the 
+% forecast function employed.
+%
+% Because this implementation of KAF employs the Nystrom out-of-sample 
+% extension method, the forecasts of the suare error are not guaranteed to 
+% be non-negative. As a result we take absolute values. 
 if ifKAF
     tic 
     disp( 'Performing KAF...' ); t = tic;
-    yT = analogForecast( y, phi( :, 1 : nL ), mu, phiO( :, 1 : nL ), nT );
+    [ yT, ~, yTErr ] = analogForecast( y, phi, mu, phiO, nT, nL, nL2 );
+           
+    yTErr = sqrt( abs( yTErr ) );
     toc( t )
 
     tic
-    disp( 'Computing forecast error...' ); t = tic;
+    disp( 'Computing forecast skill scores...' ); t = tic;
     [ ~, yRMSE, yPC ] = forecastError( yO, yT );
-    yRMSE = yRMSE ./ std( y, 0, 2 );
+    yRMSE = yRMSE ./ yStd;
     toc( t )
+
+    tic
+    disp( 'Computing estimated RMSE...' ); t = tic;
+    yRMSE_est = sqrt( mean( yTErr .^ 2, 3 ) ) ./ yStd;
+    toc( t )
+
 end
 
+
+     
 %% PLOT FORECAST TRAJECTORIES
 if ifPlotForecast
 
@@ -321,20 +387,22 @@ if ifPlotForecast
 
     [ fig, ax, axTitle ] = tileAxes( Fig );
 
-    % Plot skill scores
+    % Plot true and forecast signals
     for iT = 1 : Fig.nTileY; 
 
         % Initialization time, true and forecast signal
         t0 = ( idxTPlt( iT ) - 1 ) * In.dt;
         yTrue = yO( :, idxTPlt( iT ) : idxTPlt( iT ) + nT - 1 );
         yPred = squeeze( yT( :, :, idxTPlt( iT ) ) );
-
+        yErr = squeeze( yTErr( :, :, idxTPlt( iT ) ) );
 
         % Loop over the components of the response vector
         for iY = 1 : 3
+
             set( gcf, 'currentAxes', ax( iY, iT ) )
-            plot( t, yTrue( iY, : ), 'k-' )
-            plot( t, yPred( iY, : ), 'b-' )
+            [ hPred, hErr ] = boundedline( t, yPred( iY, : ), ...
+                                           yErr( iY, : ), 'b-' ); 
+            hTrue = plot( t, yTrue( iY, : ), 'k-' );
 
             xlim( [ t( 1 ) t( end ) ] )
             ylim( yLm( iY, : ) )
@@ -354,7 +422,11 @@ if ifPlotForecast
                 set( gca, 'xTickLabel', [] )
             end
             if iT == 1 && iY == 1
-                legend( 'true', 'forecast', 'location', 'northwest' )
+                hL = legend( [ hTrue hPred hErr ],  'true', 'forecast', ...
+                               'est. error', 'location', 'northWest' );
+                sL = hL.ItemTokenSize;
+                sL( 1 ) = .5 * sL( 1 );
+                hL.ItemTokenSize = sL;
             end
         end
     end
@@ -406,7 +478,8 @@ if ifPlotError
 
         % Normalized RMSE
         set( gcf, 'currentAxes', ax( iY, 1 ) )
-        plot( t, yRMSE( iY, : ) )
+        plot( t, yRMSE( iY, : ), 'k-' )
+        plot( t, yRMSE_est( iY, : ), 'b-' )
 
         grid on
         ylim( [ 0 1.2 ] )
@@ -415,6 +488,7 @@ if ifPlotError
                   'xTickLabel', [] )  
         if iY == 1
             ylabel( 'Normalized RMSE' )
+            legend( 'true error', 'estimated error', 'location', 'southEast' )
         else
             set( gca, 'yTickLabel', [] )
         end

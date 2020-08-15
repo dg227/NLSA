@@ -78,7 +78,10 @@ Data.mu = mu;
 
 %% CREATE DATASETS WITH PARTIAL OBS
 if isfield( Opts, 'idxX' )
-    for iObs = 1 : numel( idxX )
+    if ~iscell( Opts.idxX )
+        Opts.idxX = { Opts.idxX };
+    end
+    for iObs = 1 : numel( Opts.idxX )
         x = Data.x( Opts.idxX{ iObs }, : );
         filenameOut = [ 'dataX_idxX' sprintf( '_%i', Opts.idxX{ iObs } ) ];
         filenameOut = fullfile( pth, [ filenameOut '.mat' ] );  
