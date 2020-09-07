@@ -83,12 +83,12 @@
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
 experiment = 'a0.7';  
 
-ifSourceData         = false; % generate source data
-ifNLSA               = false; % run NLSA (kernel eigenfunctions)
-ifKoopman            = false; % compute Koopman eigenfunctions 
+ifSourceData         = true; % generate source data
+ifNLSA               = true; % run NLSA (kernel eigenfunctions)
+ifKoopman            = true; % compute Koopman eigenfunctions 
 ifPlotZ              = false; % plot generator eigenfunctions
-ifPlotRectification  = false; % show dynamical rectification by generator eig  
-ifMovieRectification = true;  % make dynamical rectification movie
+ifPlotRectification  = true; % show dynamical rectification by generator eig  
+ifMovieRectification = false;  % make dynamical rectification movie
 ifPrintFig           = false; % print figures to file
 ifPool               = false; % create Matltab parallel pool
 

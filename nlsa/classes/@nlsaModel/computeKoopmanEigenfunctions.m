@@ -2,10 +2,11 @@ function computeKoopmanEigenfunctions( obj, varargin )
 % COMPUTEKOOPMANEIGENFUNCTIONS Compute Koopman eigenfunctions of nlsaModel 
 % objects  
 % 
-% Modified 2020/04/15
+% Modified 2020/08/28
 
-Opt.ifComputeOperator = true;
-Opt.ifWriteOperator   = false;
+Opt.ifComputeOperator    = true;
+Opt.ifWriteOperator      = false;
+Opt.ifLeftEigenfunctions = false;
 Opt = parseargs( Opt, varargin{ : } );
 logFile = 'dataZeta.log';
 
@@ -15,9 +16,11 @@ if Opt.ifComputeOperator
     computeEigenfunctions( koopmanOp, diffOp, ...
                            'logPath', getEigenfunctionPath( koopmanOp ), ...
                            'logFile', logFile, ...
-                           'ifWriteOperator', Opt.ifWriteOperator );
+                           'ifWriteOperator', Opt.ifWriteOperator, ...
+                           'ifLeftEigenfunctions', Opt.ifLeftEigenfunctions );
 else                           
      computeEigenfunctions( koopmanOperator, ...
                            'logPath', getEigenfunctionPath( diffOp ), ...
+                           'ifLeftEigenfunctions', Opt.ifLeftEigenfunctions, ...
                            'logFile', logFile );
 end

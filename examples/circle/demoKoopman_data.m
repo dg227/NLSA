@@ -9,7 +9,7 @@ function demoKoopman_data( experiment )
 %
 % The data is then generated and saved on disk using the circleData function. 
 %
-% Modified 2020/06/06
+% Modified 2020/09/07
 
 %% SET EXPERIMENT-SPECIFIC PARAMETERS
 switch experiment
@@ -20,7 +20,7 @@ case 'a0.7'
     DataSpecs.Pars.a      = 0.7;   % nonlinearity parameter
     DataSpecs.Pars.r1     = 1;     % ellipse axis 1
     DataSpecs.Pars.r2     = 1;     % ellipse axis 2
-    DataSpecs.Time.dt     = 0.01 * sqrt( 2 );  % sampling interval
+    DataSpecs.Time.dt     = 0.01;  % sampling interval
     DataSpecs.Time.nSProd = 6400;  % production samples
     DataSpecs.Time.nSSpin = 0;     % spinup samples
     DataSpecs.Time.nEL    = 0;     % embedding window length (extra samples)

@@ -34,11 +34,6 @@ function constrArgs = parseTemplates( varargin )
 %      diffusion eigenfunctions. 'projectionTemplate' must be a vector of size 
 %      [ nCT 1 ], where nCT is the number of target components.   
 %
-%   'koopmanProjectionTemplate': An array of nlsaProjection objects 
-%      specifying the projections of the target data in delay-embedding space 
-%      onto the Koopman eigenfunctions. 'projectionTemplate' must be a vector 
-%      of size [ nCT 1 ], where nCT is the number of target components.   
-%
 %   'reconstructionPartition': An [ 1 nR ]-sized vector of nlsaPartition objects
 %      specifying how each realization of the reconstructed data is to be 
 %      partitioned. That is, in the resulting nlsaModel_base object, the
@@ -55,6 +50,14 @@ function constrArgs = parseTemplates( varargin )
 %      specifying the reconstruction of the eigenfunction-projected target
 %      data. 'reconstructionTemplate' must be either a scalar or a vector of
 %      size [ 1 nR ], where nR is the number of realizations. 
+%
+%   'koopmanProjectionTemplate': An array of nlsaProjection objects 
+%      specifying the projections of the target data in delay-embedding space 
+%      onto the Koopman eigenfunctions. 'projectionTemplate' must be a vector 
+%      of size [ nCT 1 ], where nCT is the number of target components.   
+%
+%   'koopmanReconstructionTemplate': Similar to 'reconstructionTemplate', but
+%      for reconstruction using Koopman eigenfunctions.
 %
 %   'linearMapTemplate': An nlsaLinearMap object implementing the SVD of the
 %      projected data. 'linearMapTemplate' can be either a scalar or a vector; 
@@ -84,7 +87,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/07/27 
+%   Modified 2020/08/28 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -315,57 +318,6 @@ propVal{ iDiffOp } = setPath( propVal{ iDiffOp }, modelPathL );
 mkdir( propVal{ iDiffOp } )
 propVal{ iDiffOp } = setDefaultFile( propVal{ iDiffOp } );
 
-%% KOOPMAN OPERATOR
-% Parse Koopman operator template 
-for iProp = 1 : nProp 
-    if strcmp( propName{ iProp }, 'koopmanOperator' )
-        iKoopmanOp = iProp;
-        break
-    end  
-end
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'koopmanOperatorTemplate' )
-        if ~isempty( propVal{ iKoopmanOp } )
-            error( 'A Koopman operator template has been already specified' )
-        end
-        if isa( varargin{ i + 1 }, 'nlsaKoopmanOperator' ) ...
-           && isscalar( varargin{ i + 1 } )
-            propVal{ iKoopmanOp } = varargin{ i + 1 };
-        else
-            msgStr = [ 'The Koopman operator template must be specified ' ...
-                       'as a scalar nlsaKoopmanOperator object' ];
-            error( msgStr )
-        end
-        ifProp( iKoopmanOp ) = true;
-    end
-end
-
-if ifProp( iKoopmanOp )
-    propVal{ iKoopmanOp } = setPartition( propVal{ iKoopmanOp }, partition );
-    propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
-                                partitionQ );
-    idxPhi = getBasisFunctionIndices( propVal{ iKoopmanOp } );
-    if any( idxPhi > nPhi )
-        msgStr = [ 'Diffusion eigenfunctions requested for Koopman ' ...
-                   'operator approximation exceeds available ' ...
-                   'eigenfunctions.' ];
-        error( msgStr )
-    end
-    tag = getTag( propVal{ iKoopmanOp } );
-    if ~isempty( tag )
-        tag = [ tag '_' ];
-    end
-    propVal{ iKoopmanOp } = setTag( propVal{ iKoopmanOp }, ...
-            [ tag getDefaultTag( propVal{ iKoopmanOp } ) ] ); 
-
-    % Assign Koopman operator  paths and filenames
-    modelPathK = fullfile( modelPathL, getTag( propVal{ iKoopmanOp } ) );
-    propVal{ iKoopmanOp } = setDefaultSubpath( propVal{ iKoopmanOp } );
-    propVal{ iKoopmanOp } = setPath( propVal{ iKoopmanOp }, modelPathK );
-    mkdir( propVal{ iKoopmanOp } )
-    propVal{ iKoopmanOp } = setDefaultFile( propVal{ iKoopmanOp } );
-end
-
 
 %% PROJECTED DATA
 
@@ -455,6 +407,173 @@ if ~isCompatible( propVal{ iPrjComponent }, propVal{ iDiffOp } )
     error( 'Incompatible projection components and diffusion operator' )
 end
 mkdir( propVal{ iPrjComponent } )
+
+
+%% RECONSTRUCTED COMPONENTS
+% Parse reconstruction templates
+for iProp = 1 : nProp 
+    if strcmp( propName{ iProp }, 'recComponent' )
+        iRecComponent = iProp;
+        break
+    end
+end
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'reconstructionTemplate' )
+        if ~isempty( propVal{ iRecComponent } )
+            error( 'A reconstruction template has been already specified' )
+        end
+        if isa( varargin{ i + 1 }, 'nlsaComponent_rec_phi' ) ...
+            && isvector( varargin{ i + 1 } ) 
+            nRecPhi = numel( varargin{ i + 1 } );
+            propVal{ iRecComponent } = repmat( ...
+                reshape( varargin{ i + 1 }, [ 1 1 nRecPhi ] ), [ nCT nR ] );
+        else
+            msgStr = [ 'The reconstruction template must be specified as ' ...
+                       'a vector of nlsaComponent_rec_phi objects.' ];
+            error( msgStr ) 
+        end
+        ifProp( iRecComponent ) = true;
+    end
+end
+if isempty( propVal{ iRecComponent } )
+    for iR = nR : -1 : 1
+        for iC = nCT : -1 : 1
+            propVal{ iRecComponent }( iC, iR ) = ...
+                nlsaComponent_rec_phi( 'basisFunctionIdx', 1 );
+        end
+    end
+    ifProp( iRecComponent ) = true;
+end
+nRecPhi = size( propVal{ iRecComponent }, 3 );
+
+% Determine maximum number of samples in each realization of the reconstructed
+% data
+maxNSRR = zeros( 1, nR );
+for iR = 1 : nR
+    maxNSRR( iR ) = getNSample( ...
+                      parentConstrArgs{ iTrgEmbComponent }( 1, iR )  )...
+                  + getEmbeddingWindow( ...
+                      parentConstrArgs{ iTrgEmbComponent }( 1, iR ) ) ...
+                  - 1;
+end
+
+% Parse reconstruction partition templates
+isSet = false;
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'reconstructionPartition' )
+        if isSet
+            error( 'Partition templates for the reconstructed data have been already specified' )
+        end
+        if isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
+           && isscalar( varargin{ i + 1 } )
+            recPartition = repmat( varargin{ i + 1 }, [ 1 nR ] );
+        elseif isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
+               && isvector( varargin{ i + 1 } ) ...
+               && numel( varargin{ i + 1 } ) == nR
+            recPartition = varargin{ i + 1 };
+        else
+            error( 'Data partitions must be specified as a scalar nlsaPartition object, or a vector of nlsaPartition objects of size equal to the number of ensemble realizations' )
+        end
+        isSet = true;
+    end
+end
+if ~isSet
+    for iR = nR : -1 : 1
+        recPartition( iR ) = nlsaPartition( 'nSample', maxNSRR( iR ) );
+    end
+end
+for iR = 1 : nR
+    if getNSample( recPartition( iR ) ) > maxNSRR( iR )
+        error( 'Number of reconstructed samples is above maximum value' )
+    end
+end
+
+% Setup reconstructed component partitions, tags, directories, and filenames
+for iRec = 1 : nRecPhi
+    for iR = 1 : nR
+        for iC = 1 : nCT
+            propVal{ iRecComponent }( iC, iR, iRec ) = setDimension( ...
+               propVal{ iRecComponent }( iC, iR, iRec ), ...
+               getDimension( parentConstrArgs{ iTrgComponent }( iC, iR ) ) );
+            propVal{ iRecComponent }( iC, iR, iRec ) = setPartition( ...
+                propVal{ iRecComponent }( iC, iR, iRec ), recPartition( iR ) );
+            propVal{ iRecComponent }( iC, iR, iRec ) = setDefaultTag( ...
+                propVal{ iRecComponent }( iC, iR, iRec ) );
+            propVal{ iRecComponent }( iC, iR, iRec ) = setComponentTag( ...
+                propVal{ iRecComponent }( iC, iR, iRec ), ...
+                getComponentTag( ...
+                    parentConstrArgs{ iTrgComponent }( iC, iR ) ) );
+            propVal{ iRecComponent }( iC, iR, iRec ) = setRealizationTag( ...
+               propVal{ iRecComponent }( iC, iR, iRec ), ...
+               getRealizationTag( ...
+                   parentConstrArgs{ iTrgComponent }( iC, iR ) ) );    
+            propVal{ iRecComponent }( iC, iR, iRec ) = setDefaultSubpath( ...
+                propVal{ iRecComponent }( iC, iR, iRec ) );
+            propVal{ iRecComponent }( iC, iR, iRec ) = setDefaultFile( ...
+                propVal{ iRecComponent }( iC, iR, iRec ) );
+
+            pth = strjoin_e( getTag( ...
+                parentConstrArgs{ iTrgEmbComponent }( iC, iR ) ), '_' );   
+            pth = fullfile( modelPathL, pth, ...
+                getBasisFunctionTag( ...
+                    propVal{ iRecComponent }( iC, iR, iRec ) ) );
+            propVal{ iRecComponent }( iC, iR, iRec ) = ...
+                setPath( propVal{ iRecComponent }( iC, iR, iRec ), pth );
+        end
+    end
+end
+mkdir( propVal{ iRecComponent } )
+
+%% KOOPMAN OPERATOR
+% Parse Koopman operator template 
+for iProp = 1 : nProp 
+    if strcmp( propName{ iProp }, 'koopmanOperator' )
+        iKoopmanOp = iProp;
+        break
+    end  
+end
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'koopmanOperatorTemplate' )
+        if ~isempty( propVal{ iKoopmanOp } )
+            error( 'A Koopman operator template has been already specified' )
+        end
+        if isa( varargin{ i + 1 }, 'nlsaKoopmanOperator' ) ...
+           && isscalar( varargin{ i + 1 } )
+            propVal{ iKoopmanOp } = varargin{ i + 1 };
+        else
+            msgStr = [ 'The Koopman operator template must be specified ' ...
+                       'as a scalar nlsaKoopmanOperator object' ];
+            error( msgStr )
+        end
+        ifProp( iKoopmanOp ) = true;
+    end
+end
+
+if ifProp( iKoopmanOp )
+    propVal{ iKoopmanOp } = setPartition( propVal{ iKoopmanOp }, partition );
+    propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
+                                partitionQ );
+    idxPhi = getBasisFunctionIndices( propVal{ iKoopmanOp } );
+    if any( idxPhi > nPhi )
+        msgStr = [ 'Diffusion eigenfunctions requested for Koopman ' ...
+                   'operator approximation exceeds available ' ...
+                   'eigenfunctions.' ];
+        error( msgStr )
+    end
+    tag = getTag( propVal{ iKoopmanOp } );
+    if ~isempty( tag )
+        tag = [ tag '_' ];
+    end
+    propVal{ iKoopmanOp } = setTag( propVal{ iKoopmanOp }, ...
+            [ tag getDefaultTag( propVal{ iKoopmanOp } ) ] ); 
+
+    % Assign Koopman operator  paths and filenames
+    modelPathK = fullfile( modelPathL, getTag( propVal{ iKoopmanOp } ) );
+    propVal{ iKoopmanOp } = setDefaultSubpath( propVal{ iKoopmanOp } );
+    propVal{ iKoopmanOp } = setPath( propVal{ iKoopmanOp }, modelPathK );
+    mkdir( propVal{ iKoopmanOp } )
+    propVal{ iKoopmanOp } = setDefaultFile( propVal{ iKoopmanOp } );
+end
 
 
 %% KOOPMAN-PROJECTED DATA
@@ -565,123 +684,100 @@ if ifProp( iKoopmanOp )
 end
 
 
-
-%% RECONSTRUCTED COMPONENTS
-
+%% KOOPMAN-RECONSTRUCTED COMPONENTS
 % Parse reconstruction templates
-for iProp = 1 : nProp 
-    if strcmp( propName{ iProp }, 'recComponent' )
-        iRecComponent = iProp;
-        break
-    end
-end
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'reconstructionTemplate' )
-        if ~isempty( propVal{ iRecComponent } )
-            error( 'A reconstruction template has been already specified' )
+% We only assign Koopman-reconstructed components if Koopman operator has been
+% specified
+if ifProp( iKoopmanOp )
+    for iProp = 1 : nProp 
+        if strcmp( propName{ iProp }, 'koopmanRecComponent' )
+            iKoopmanRecComponent = iProp;
+            break
         end
-        if isa( varargin{ i + 1 }, 'nlsaComponent_rec_phi' ) ...
-            && isscalar( varargin{ i + 1 } ) 
-            propVal{ iRecComponent } = repmat( varargin{ i + 1 }, [ nCT nR ] );
-        elseif isa( varargin{ i + 1 }, 'nlsaComponent_rec_phi' ) ...
-           && isvector( varargin{ i + 1 } ) ...
-           && numel( varargin{ i + 1 } ) == nR
-            propVal{ iRecComponent } = varargin{ i + 1 };
-            if iscolumn( propVal{ iRecComponent } )
-                propVal{ iRecComponent } = propVal{ iRecComponent }';
+    end
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'koopmanReconstructionTemplate' )
+            if ~isempty( propVal{ iKoopmanRecComponent } )
+                msgStr = [ 'A Koopman reconstruction template has been ' ...
+                           'already specified.' ];
+                error( msgStr  )
             end
-            propVal{ iRecComponent } = repmat( propVal{ iRecComponent }, ...
-                                               [ nCT 1 ] );
-        else
-            error( 'The reconstruction template must be specified as a scalar nlsaComponent_rec_phi object, or vector of nlsaComponent_rec_phi objects of size equal to the number of realizations' )
+            if isa( varargin{ i + 1 }, 'nlsaComponent_rec_phi' ) ...
+                && isvector( varargin{ i + 1 } ) 
+                nRecKoop = numel( varargin{ i + 1 } );
+                propVal{ iKoopmanRecComponent } = repmat( ... 
+                    reshape( varargin{ i + 1 }, [ 1 1 nRecKoop ] ), ...
+                             [ nCT nR ] );
+            else
+
+                msgStr = [ 'The Koopman reconstruction template must be ' ...
+                           'specified as a vector of nlsaComponent_rec_phi ' ...
+                           'objects.' ];
+                error( msgStr ) 
+            end
+            ifProp( iKoopmanRecComponent ) = true;
         end
-        ifProp( iRecComponent ) = true;
     end
-end
-if isempty( propVal{ iRecComponent } )
-    for iR = nR : -1 : 1
-        for iC = nCT : -1 : 1
-            propVal{ iRecComponent }( iC, iR ) = ...
-                nlsaComponent_rec_phi( 'basisFunctionIdx', 1 );
+    if isempty( propVal{ iKoopmanRecComponent } )
+        for iR = nR : -1 : 1
+            for iC = nCT : -1 : 1
+                propVal{ iKoopmanRecComponent }( iC, iR ) = ...
+                    nlsaComponent_rec_phi( 'basisFunctionIdx', 1 );
+            end
+        end
+        ifProp( iKoopmanRecComponent ) = true;
+    end
+    nRecKoop = size( propVal{ iKoopmanRecComponent }, 3 );
+
+    % Setup reconstructed component tags, directories, and filenames
+    for iRec = 1 : nRecKoop
+        for iR = 1 : nR
+            for iC = 1 : nCT
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setDimension( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), ...
+                        getDimension( ...
+                            parentConstrArgs{ iTrgComponent }( iC, iR ) ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setPartition( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), ...
+                        recPartition( iR ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setDefaultTag( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setComponentTag( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), ...
+                        getComponentTag( ...
+                            parentConstrArgs{ iTrgComponent }( iC, iR ) ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setRealizationTag( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), ...
+                        getRealizationTag( ...
+                            parentConstrArgs{ iTrgComponent }( iC, iR ) ) );    
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setDefaultSubpath( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setDefaultFile( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ) );
+
+                pth = strjoin_e( getTag( ...
+                    parentConstrArgs{ iTrgEmbComponent }( iC, iR ) ), ...
+                    '_' );   
+                pth = fullfile( modelPathK, pth, ...
+                    getBasisFunctionTag( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ) ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setPath( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), pth );
+            end
         end
     end
-    ifProp( iRecComponent ) = true;
+    mkdir( propVal{ iKoopmanRecComponent } )
 end
 
-% Determine maximum number of samples in each realization of the reconstructed
-% data
-maxNSRR = zeros( 1, nR );
-for iR = 1 : nR
-    maxNSRR( iR ) = getNSample( ...
-                      parentConstrArgs{ iTrgEmbComponent }( 1, iR )  )...
-                  + getEmbeddingWindow( ...
-                      parentConstrArgs{ iTrgEmbComponent }( 1, iR ) ) ...
-                  - 1;
-end
 
-% Parse reconstruction partition templates
-isSet = false;
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'reconstructionPartition' )
-        if isSet
-            error( 'Partition templates for the reconstructed data have been already specified' )
-        end
-        if isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
-           && isscalar( varargin{ i + 1 } )
-            recPartition = repmat( varargin{ i + 1 }, [ 1 nR ] );
-        elseif isa( varargin{ i + 1 }, 'nlsaPartition' ) ...
-               && isvector( varargin{ i + 1 } ) ...
-               && numel( varargin{ i + 1 } ) == nR
-            recPartition = varargin{ i + 1 };
-        else
-            error( 'Data partitions must be specified as a scalar nlsaPartition object, or a vector of nlsaPartition objects of size equal to the number of ensemble realizations' )
-        end
-        isSet = true;
-    end
-end
-if ~isSet
-    for iR = nR : -1 : 1
-        recPartition( iR ) = nlsaPartition( 'nSample', maxNSRR( iR ) );
-    end
-end
-for iR = 1 : nR
-    if getNSample( recPartition( iR ) ) > maxNSRR( iR )
-        error( 'Number of reconstructed samples is above maximum value' )
-    end
-    for iC = 1 : nCT
-        propVal{ iRecComponent }( iC, iR ) = setPartition( propVal{ iRecComponent }( iC, iR ), recPartition( iR ) );
-    end
-end
-
-% Setup reconstructed component tags, directories, and filenames
-for iR = 1 : nR
-    for iC = 1 : nCT
-        propVal{ iRecComponent }( iC, iR ) = setDimension( ...
-           propVal{ iRecComponent }( iC, iR ), ...
-           getDimension( parentConstrArgs{ iTrgComponent }( iC, iR ) ) );
-        propVal{ iRecComponent }( iC, iR ) = setDefaultTag( ...
-            propVal{ iRecComponent }( iC, iR ) );
-        propVal{ iRecComponent }( iC, iR ) = setComponentTag( ...
-            propVal{ iRecComponent }( iC, iR ), ...
-            getComponentTag( parentConstrArgs{ iTrgComponent }( iC, iR ) ) );
-        propVal{ iRecComponent }( iC, iR ) = setRealizationTag( ...
-            propVal{ iRecComponent }( iC, iR ), ...
-            getRealizationTag( parentConstrArgs{ iTrgComponent }( iC, iR ) ) );    
-        propVal{ iRecComponent }( iC, iR ) = setDefaultSubpath( ...
-            propVal{ iRecComponent }( iC, iR ) );
-        propVal{ iRecComponent }( iC, iR ) = setDefaultFile( ...
-            propVal{ iRecComponent }( iC, iR ) );
-
-        pth = strjoin_e( ...
-             getTag( parentConstrArgs{ iTrgEmbComponent }( iC, iR ) ), '_' );   
-        pth = fullfile( modelPathL, ...
-            pth, ...
-            getBasisFunctionTag( propVal{ iRecComponent }( iC, iR ) ) );
-        propVal{ iRecComponent }( iC, iR ) = ...
-            setPath( propVal{ iRecComponent }( iC, iR ), pth );
-    end
-end
-mkdir( propVal{ iRecComponent } )
 
 %% LINEAR MAPS
 % Setup collective tags for target data

@@ -1,31 +1,11 @@
-function [ c, gamma, zeta, mu, cL, zetaL ] = computeEigenfunctions( obj, ...
-                                                 diffOp, varargin )
-% COMPUTEEIGENFUNCTIONS Compute eigenvalues, eigenfunctions, and left 
-% eigenfunctions of Koopman generator.
+function [ c, gamma, zeta, mu ] = computeLeftEigenfunctions( obj, diffOp, ...
+                                                             varargin )
+% COMPUTELEFTEIGENFUNCTIONS Compute eigenvalues and eigenfunctions of Koopman
+% generator.
 %
 % diffOp is an nlsaKernelOperator object providing the basis functions.
 %
-% Output arguments:
-% 
-% c: A matrix of size [ nPhi nEig ] storing the expansion coefficients of the
-%    Koopman eigenfunctions. nPhi is the number of diffusion eigenfunctions
-%    employed, and nEig is the number of computed Koopman eigenfunctions.
-%
-% gamma: A row vector of size [ 1 nEig ] storing the generator eigenvalues.
-%
-% zeta: A matrix of size [ nS nPhi ] storing the values of the Koopman 
-%      eigenfunctions. nS is the number of samples. 
-%
-% mu: A column vector of size [ nS 1 ] storing the inner product weights with
-%     repect to which the phi are orthonormal. 
-%
-% cL: A matrix of size [ nPhi nEig ] storing the expansion coefficients of the
-%     left eigenfunctions. 
-%
-% zetaL: A matrix of size [ nS nPhi ] storing the values of the left 
-%        eigenfunctions. 
-%
-% Modified 2020/08/28
+% Modified 2020/08/27
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -39,7 +19,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse options, setup logfile and write calculation summary
 Opt.ifCalcOperator                   = true;
-Opt.ifLeftEigenfunctions             = false;
 Opt.ifWriteOperator                  = false;
 Opt.ifWriteEigenfunctions            = true; 
 Opt.ifWriteEigenfunctionCoefficients = true; 
@@ -57,9 +36,7 @@ else
     logId = fopen( fullfile( Opt.logPath, Opt.logFile ), ...
                    Opt.logFilePermissions );
 end
-ifZeta  = Opt.ifWriteEigenfunctions || nargout > 2;
-ifCL    = Opt.ifLeftEigenfunctions || nargout > 4;
-ifZetaL = ( ifCL && Opt.ifWriteEigenfunctions ) || nargout == 5;  
+ifZeta = Opt.ifWriteEigenfunctions || nargout > 2;
 clk = clock;
 [ ~, hostname ] = unix( 'hostname' );
 fprintf( logId, 'computeEigenfunctions starting on %i/%i/%i %i:%i:%2.1f \n', ...
@@ -71,7 +48,7 @@ fprintf( logId, 'Basis function incices         = %s \n', idx2str( idxPhi ) );
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Read or compute the generator matrix
+% Read or compute the adjoint generator matrix
 if ~Opt.ifCalcOperator
     tWall0 = tic;
     V = getOperator( obj ); 
@@ -89,53 +66,30 @@ else
         logId = fopen( fullfile( Opt.logPath, Opt.logFile ), 'a' );
     end
 end
+V = V';
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Solve the generator eigenvalue problem
+% Solve the adjoing generator eigenvalue problem
 % c is a matrix storing the expansion coefficients of the eigenfunctions of
-% the generator in the eigenbasis of diffOp
+% the adjoint generator in the eigenbasis of diffOp
 tWall0 = tic;
 [ c, gamma ]  = eig( V );
-gamma         = diag( gamma ).';
+gamma         = diag( gamma );
+c             = c( :, 1 : nEig );
+gamma         = gamma( 1 : nEig ) .'; % gamma is a row vector
 tWall         = toc( tWall0 );
 fprintf( logId, 'EIGV %2.4f \n', tWall );
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% If requested compute the left eigenvectors. 
-% cL is a matrix storing the expansion coefficients of the left eigenfunctions 
-% the generator in the eigenbasis of diffOp
-if ifCL
-    tWall0 = tic;
-    S = c * c';  % analysis operator
-    cL = S \ c;  % dual basis
-    tWall         = toc( tWall0 );
-    fprintf( logId, 'EIGVL %2.4f \n', tWall );
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Truncate to the selected number of eigenfunctions
-c = c( :, 1 : nEig );
-gamma = gamma( 1 : nEig ) .'; % gamma is a row vector
-if ifCL
-    cL  = cL( :, 1 : nEig );
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % If requested, evaluate the eigenfunctions
 if ifZeta
     tWall0 = tic;
     [ phi, mu ] = getEigenfunctions( diffOp );
-    phi = phi( :, idxPhi ); 
+    phi = phi( :, getBasisFunctionIndices( obj ) ); 
     zeta = phi * c;
     tWall = toc( tWall0 );
     fprintf( logId, 'EVALEIG %2.4f \n', tWall );
-end
-if ifZetaL
-    tWall0 = tic;
-    zetaL = phi * cL;
-    tWall = toc( tWall0 );
-    fprintf( logId, 'EVALEIGL %2.4f \n', tWall );
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -144,15 +98,9 @@ tWall0 = tic;
 if Opt.ifWriteEigenfunctionCoefficients
     setEigenvalues( obj, gamma )
     setEigenfunctionCoefficients( obj, c )
-    if Opt.ifLeftEigenfunctions
-        setLeftEigenfunctionCoefficients( obj, cL )
-    end
 end
 if Opt.ifWriteEigenfunctions
-    setEigenfunctions( obj, zeta, mu, '-v7.3' )
-    if Opt.ifLeftEigenfunctions
-        setLeftEigenfunctions( obj, zetaL, mu, '-v7.3' )
-    end
+    setLeftEigenfunctions( obj, zeta, mu, '-v7.3' )
 end
 tWall = toc( tWall0 );
 fprintf( logId, 'WRITEEIG %2.4f \n', tWall );

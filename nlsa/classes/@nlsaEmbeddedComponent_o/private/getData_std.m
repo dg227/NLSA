@@ -2,7 +2,7 @@ function x = getData_std( obj, iB, iR, iC, iA )
 % GETDATA_STD  Read data from an array of nlsaEmbeddedComponent_o objects 
 % using the standard calling syntax
 %
-% Modified 2020/08/08
+% Modified 2020/09/02
 
 % Validate input arguments, assign default values
 siz = size( obj );
@@ -10,7 +10,7 @@ if ~isCompatible( obj ) || numel( siz ) > 3
     error( 'First argument must be an array of compatible nlsaEmbeddedComponent objects of at most rank 3' )
 end
 
-partition  = getPartition( obj( 1, : ) );
+partition  = getPartition( obj( 1, :, 1 ) );
 nBTot      = getNTotalBatch( partition );
 
 if nargin < 2 || isempty( iB )
@@ -56,10 +56,10 @@ if any( ~ispi( iB ) ) || any( iB > getNBatch( partition( iR ) ) )
     error( 'Batch index argument iB must be a vector of positive integers less than or equal to the batch number for the corresponding realization index argument iR.' )
 end
 
-if isscalar( iB ) && isscalar( iC )
-    idxE = getEmbeddingIndices( obj( iC  ) );
-    file = fullfile( getDataPath( obj( iC, iR ) ), ...
-                     getDataFile( obj( iC, iR ), iB ) ) ;
+if isscalar( iB ) && isscalar( iC ) && isscalar( iA )
+    idxE = getEmbeddingIndices( obj( iC ) );
+    file = fullfile( getDataPath( obj( iC, iR, iA ) ), ...
+                     getDataFile( obj( iC, iR, iA ), iB ) ) ;
     load( file, 'x' )
     x = lembed( x, [ idxE( end ) size( x, 2 ) ], idxE );
 else
@@ -67,22 +67,26 @@ else
     nS = sum( getBatchSize( partitionG, iBG ) );
     nD = getDataSpaceDimension( obj( iC, 1 ) );
     nDTot = sum( nD );
-    x = zeros( nDTot, nS );
-    iS1 = 1;
-    for j = 1 : numel( iB )
-        iS2 = iS1 + getBatchSize( partition( iR( j ) ), iB( j ) ) - 1;
-        iD1 = 1;
-        for i = 1 : numel( iC )
-            iD2 = iD1 + nD( iC ) - 1;
-            idxE = getEmbeddingIndices( obj( iC( i ) ) );
-            file = fullfile( getDataPath( obj( iC( i ), iR( j ) ) ), ...
-                             getDataFile( obj( iC( i ), iR( j ) ), iB( j ) ) );
-            B = load( file, 'x' );
-            B.x = lembed( B.x, [ idxE( end ) size( B.x, 2 ) ], idxE );
-            x( iD1 : iD2, iS1 : iS2 ) = B.x;
-            iD1 = iD2 + 1;
+    nA = numel( iA );
+    x = zeros( nDTot, nS, nA );
+    for k = 1 : nA
+        iS1 = 1;
+        for j = 1 : numel( iB )
+            iS2 = iS1 + getBatchSize( partition( iR( j ) ), iB( j ) ) - 1;
+            iD1 = 1;
+            for i = 1 : numel( iC )
+                iD2 = iD1 + nD( iC ) - 1;
+                idxE = getEmbeddingIndices( obj( iC( i ) ) );
+                file = fullfile( ...
+                    getDataPath( obj( iC( i ), iR( j ), iA( k ) ) ), ...
+                    getDataFile( obj( iC( i ), iR( j ), iA( k ) ), iB( j ) ) );
+                B = load( file, 'x' );
+                B.x = lembed( B.x, [ idxE( end ) size( B.x, 2 ) ], idxE );
+                x( iD1 : iD2, iS1 : iS2, k ) = B.x;
+                iD1 = iD2 + 1;
+            end
+            iS1 = iS2 + 1;
         end
-        iS1 = iS2 + 1;
     end
 end
 

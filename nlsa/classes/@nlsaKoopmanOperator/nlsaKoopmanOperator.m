@@ -2,7 +2,7 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
 %NLSAKOOPMANOPERATOR Class definition and constructor of Koopman/Perron-
 % Frobenius generators based on temporal finite differences.
 % 
-% Modified 2020/04/15    
+% Modified 2020/08/28    
 
     %% PROPERTIES
     properties
@@ -15,7 +15,9 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
         idxBasis   = 1;                % basis function indices
         fileEVal   = 'dataGamma.mat';  % eigenvalues
         fileEFunc  = 'dataZeta.mat';   % eigenfunctions
+        fileEFuncL = 'dataZetaL.mat';  % left eigenfunctions
         fileCoeff  = 'dataC.mat';      % eigenfunction expansion coefficients 
+        fileCoeffL = 'dataCL.mat';     % left eigenfunction expansion coeffs. 
         fileOp     = 'dataV.mat';      % operator file
         pathOp     = 'dataV';          % path for operator storage
         pathEig    = 'dataPhi';        % path for eigenvalues/eigenfunctions 
@@ -36,7 +38,9 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
             iAntisym       = [];
             iFileEVal      = [];
             iFileEFunc     = [];
+            iFileEFuncL    = [];
             iFileCoeff     = [];
+            iFileCoeffL    = [];
             iFileOp        = [];
             iPathOp        = [];
             iPathEig       = [];
@@ -67,8 +71,14 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
                     case 'eigenfunctionFile'
                         iFileEFunc = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
+                    case 'leftEigenfunctionFile'
+                        iFileEFuncL = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
                     case 'coefficientFile'
                         iFileCoeff = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'leftCoefficientFile'
+                        iFileCoeffL = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'operatorFile'
                         iFileOp = i + 1;
@@ -164,15 +174,27 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
             end
             if ~isempty( iFileEFunc )
                 if ~isrowstr( varargin{ iFileEFunc } )
-                    error( 'Invalid coefficient file specification' )
+                    error( 'Invalid eigenfunction file specification' )
                 end
                 obj.fileEFunc = varargin{ iFileEFunc };
+            end
+            if ~isempty( iFileEFuncL )
+                if ~isrowstr( varargin{ iFileEFuncL } )
+                    error( 'Invalid left eigenfunction file specification' )
+                end
+                obj.fileEFuncL = varargin{ iFileEFuncL };
             end
             if ~isempty( iFileCoeff )
                 if ~isrowstr( varargin{ iFileCoeff } )
                     error( 'Invalid coefficient file specification' )
                 end
                 obj.fileCoeff = varargin{ iFileCoeff };
+            end
+            if ~isempty( iFileCoeffL )
+                if ~isrowstr( varargin{ iFileCoeffL } )
+                    error( 'Invalid left coefficient file specification' )
+                end
+                obj.fileCoeffL = varargin{ iFileCoeffL };
             end
             if ~isempty( iFileOp )
                 if ~isrowstr( varargin{ iFileOp } )
@@ -194,5 +216,4 @@ classdef nlsaKoopmanOperator < nlsaKernelOperator
             end
         end
     end
-
 end    

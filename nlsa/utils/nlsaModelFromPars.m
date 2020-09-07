@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2020/08/08
+% Modified 2020/08/29
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -723,11 +723,44 @@ linMap = nlsaLinearMap_gl( 'basisFunctionIdx', In.idxPhiSVD );
 
 %% RECONSTRUCTED TARGET COMPONENTS -- IN-SAMPLE DATA
 % Reconstructed data from diffusion eigenfnunctions
-recComponent = nlsaComponent_rec_phi( 'basisFunctionIdx', In.idxPhiRec );
+if ~isfield( In, 'idxPhiRec' )
+    In.idxPhiRec = 1;
+end
+if ~iscell( In.idxPhiRec )
+    idxPhiRec = { In.idxPhiRec };
+else
+    idxPhiRec = In.idxPhiRec;
+end
+for iRec = numel( idxPhiRec ) : -1 : 1
+    recComponent( iRec ) = ...
+        nlsaComponent_rec_phi( 'basisFunctionIdx', idxPhiRec{ iRec } );
+end
 
 % Reconstructed data from SVD 
+if ~isfield( In, 'idxVTRec' )
+    In.idxVTRec = 1;
+end
 svdRecComponent = nlsaComponent_rec_phi( 'basisFunctionIdx', In.idxVTRec );
 
+
+% Reconstructed data from Koopman
+if ifKoopman
+    if ~isfield( In, 'idxKoopmanRec' )
+        In.idxKoopmanRec = 1;
+    end
+    if ~iscell( In.idxKoopmanRec )
+        idxKoopmanRec = { In.idxKoopmanRec };
+    else
+        idxKoopmanRec = In.idxKoopmanRec; 
+    end
+    for iRec = numel( idxKoopmanRec ) : -1 : 1
+        koopmanRecComponent( iRec ) = nlsaComponent_rec_phi( ...
+            'basisFunctionIdx',  idxKoopmanRec{ iRec } );
+    end
+    koopmanOperatorTemplateArg = [ koopmanOperatorTemplateArg ...
+                                   'koopmanReconstructionTemplate' ... 
+                                   { koopmanRecComponent } ];
+end
 
 %% RECONSTRUCTED TARGET COMPONENTS -- OUT-OF-SAMPLE DATA
 if ifOse
@@ -759,10 +792,10 @@ if ifOse
                    'pairwiseDistanceTemplate',         pDist, ...
                    'symmetricDistanceTemplate',        sDist, ...
                    'diffusionOperatorTemplate',        diffOp, ...
-                   koopmanOperatorTemplateArg{ : },    ...
                    'projectionTemplate',               prjComponent, ...
-                   'reconstructionTemplate',           recComponent, ...
                    'reconstructionPartition',          recPartition, ...
+                   'reconstructionTemplate',           recComponent, ...
+                   koopmanOperatorTemplateArg{ : },    ...
                    'linearMapTemplate',                linMap, ...
                    'svdReconstructionTemplate',        svdRecComponent, ...
                    'outComponent',                     outComponent, ...

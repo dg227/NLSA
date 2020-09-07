@@ -1,13 +1,13 @@
-function computeReconstruction( obj, iB, iC, iR, iRec, nPar )
-% COMPUTERECONSTRUCTION Reconstruct the target data from the projections onto
-% the diffusion eigenfunctions of an nlsaModel object
+function computeKoopmanReconstruction( obj, iB, iC, iR, iRec, nPar )
+% COMPUTEKOOPMANRECONSTRUCTION Reconstruct the target data from the 
+% projections onto the Koopman eigenfunctions of an nlsaModel object.
 %
-% Modified 2020/08/26
+% Modified 2020/08/31
 
 trgEmbComponent = getTrgEmbComponent( obj );
-prjComponent    = getPrjComponent( obj );
-diffOp          = getDiffusionOperator( obj);
-recComponent    = getRecComponent( obj );
+prjComponent    = getKoopmanPrjComponent( obj );
+koopOp          = getKoopmanOperator( obj);
+recComponent    = getKoopmanRecComponent( obj );
 
 nCT  = size( recComponent, 1 );
 nR   = size( recComponent, 2 );
@@ -37,7 +37,7 @@ logFile   = 'dataX_rec.log';
 parfor( i = 1 : numel( iC ), nPar )
     pth = getDataPath( recComponent( iC( i ), iR( i ), iRec( i ) ) );
     computeData( recComponent( iC( i ), iR( i ), iRec( i ) ), ...
-                 prjComponent, diffOp, ...
+                 prjComponent, koopOp, ...
                  iC( i ), iR( i ), ...
                  'batch',   iB, ...
                  'logPath', pth, ... 

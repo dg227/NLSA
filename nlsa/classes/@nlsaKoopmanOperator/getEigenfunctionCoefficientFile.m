@@ -1,5 +1,5 @@
-function file = getEigenfunctionCoefficientsFile( obj )
-% GETEIGENFUNCTIONFILE  Get eigenfunction coefficients file of an 
+function file = getEigenfunctionCoefficientFile( obj )
+% GETEIGENFUNCTIONCOEFFICIENTFILE  Get eigenfunction coefficients file of an 
 % nlsaKoopmanOperator object
 %
 % Modified 2020/04/15

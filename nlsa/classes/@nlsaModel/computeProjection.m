@@ -1,29 +1,22 @@
-function computeProjection( obj, iProc, nProc, varargin )
+function computeProjection( obj, iC )
 % COMPUTEPROJECTION Compute projection of the target data onto the diffusion
 % eigenfunctions of an nlsaModel object
 %
-% Modified 2014/06/24
-
-if nargin == 1
-    iProc = 1;
-    nProc = 1;
-end
-
-%Opt.ifWriteXi = true;
-%Opt = parseargs( Opt, varargin{ : } );
+% Modified 2020/08/31
 
 trgEmbComponent = getTrgEmbComponent( obj );
 prjComponent    = getPrjComponent( obj );
 diffOp          = getDiffusionOperator( obj);
+
 nCT = size( trgEmbComponent, 1 );
 
+if nargin == 1
+    iC = 1 : nCT;
+end
 
-pPartition = nlsaPartition( 'nSample', nCT, ...
-                            'nBatch',  nProc );
-iCLim   = getBatchLimit( pPartition, iProc );
 logFile = sprintf( 'dataA_%i-%i.log', iProc, nProc );
 
 computeProjection( prjComponent, trgEmbComponent, diffOp, ...
-                   'component', iCLim( 1 ) : iCLim( 2 ), ...
+                   'component', iC, ...
                    'logPath', getProjectionPath( prjComponent( 1 ) ), ...
                    'logFile', logFile );

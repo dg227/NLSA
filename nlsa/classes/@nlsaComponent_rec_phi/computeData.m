@@ -2,7 +2,7 @@ function computeData( obj, srcX, srcT, iCRec, iRRec, varargin )
 % COMPUTEDATA Perform reconstruction in physical space from spatial and
 % temporal patterns
 %
-% Modified 2016/04/05
+% Modified 2020/09/04
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
@@ -34,7 +34,7 @@ if nS ~= nSE + nE - 1
     error( 'Incompatible number of samples' )
 end
 idxPhi = getBasisFunctionIndices( obj );
-idxPhi = idxPhi( idxPhi <= nDE );
+%idxPhi = idxPhi( idxPhi <= nDE );
 u = getSpatialPatterns( srcX, iCRec );
 
 
@@ -86,7 +86,7 @@ for iBRec = 1 : numel( Opt.batch )
             iSE2 = min( iSE2, nSERec );
             nSAdd = iSE2 - iSE1 + 1;
             iV2  = iV1 + nSAdd - 1;
-            xE( :, iSE1 : iSE2 ) = u( :, idxPhi ) * v( iV1 : iV2, idxPhi )';
+            xE( :, iSE1 : iSE2 ) = u( :, idxPhi ) * v( iV1 : iV2, idxPhi ).';
             deficit = deficit - nSAdd;
             iWant( 1 ) = iWant( 1 ) + nSAdd;
             iSE1 = iSE2 + 1;
@@ -101,7 +101,7 @@ for iBRec = 1 : numel( Opt.batch )
         % jE and iE are the column and row indices, respectively, in xE that 
         % will be summed over. idxE are the corresponding linear array indices
         jE = repmat( jE( iJE1 : iJE2 ), [ nD 1 ] ); 
-        iE = bsxfun( @plus, ( 0 : nD - 1 )', nDE - nD + 1 : -nD : 1 );
+        iE = ( 0 : nD - 1 )' + ( nDE - nD + 1 : -nD : 1 );
         iE = iE( :,  iJE1 : iJE2 );
         idxE = sub2ind( [ nDE nSERec ], iE, jE );
         x( :, iSB ) = mean( xE( idxE ), 2 );

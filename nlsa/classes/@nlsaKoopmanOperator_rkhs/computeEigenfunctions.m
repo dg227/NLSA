@@ -104,6 +104,7 @@ Lambda = Lambda( idxPhi );
 Lambda = Lambda( : );
 E = sum( abs( c ) .^ 2 ./ Lambda );
 
+
 %Lambda = getEigenvalues( diffOp );
 %Lambda = Lambda( idxPhi );
 %Lambda = Lambda( : );
