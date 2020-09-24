@@ -2,7 +2,7 @@ function eta = computeRegularizingEigenvalues( obj, diffOp )
 % COMPUTEREGULARIZINGEIGENVALUES Compute eigenvalues of the regularizing 
 % operator for an nlsaKoopmanOperator_diff object.
 %
-% Modified 2020/08/05
+% Modified 2020/09/24
 
 % Validate input arguments
 if ~isa( diffOp, 'nlsaDiffusionOperator' ) || ~isscalar( diffOp )
@@ -37,6 +37,5 @@ case 'inv'
     eta = eta / eta( 2 );
 
 end
-
-iNrm = find( eta > 0, 1, 'first' );
+iNrm = find( eta > 1E-7, 1, 'first' );
 eta = eta / eta( iNrm );
