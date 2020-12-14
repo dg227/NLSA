@@ -1,7 +1,7 @@
 function [ model, In, Out ] = demoKoopmanForecastRKHS_nlsaModel( experiment )
 % DEMOKOOPAMNRKHS_NLSAMODEL Construct NLSA model for Koopman-based forecasting
 % of Lorenz 63 data using reproducing kernel Hilbert space compactification.
-%
+
 % Input arguments:
 %
 % experiment: A string identifier for the data analysis experiment. 

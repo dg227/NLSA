@@ -41,12 +41,12 @@ experiment = '64k_dt0.01_nEL0';
 ifSourceData       = false; % generate source data
 ifTestData         = false; % generate test data for forescasting
 ifNLSA             = false; % run NLSA (kernel eigenfunctions)
-ifKoopman          = true; % compute Koopman eigenfunctions
+ifKoopman          = false; % compute Koopman eigenfunctions
 ifOse              = false; % do out-of-sample extension (for forecasting)
-ifReadForecastData = true;  % read training/test data for forecasting 
-ifForecast         = true;  % perform forecasting
-ifPlotForecast     = true; % plot representative forecast trajectories
-ifPlotError        = true; % plot forecast error
+ifReadForecastData = false;  % read training/test data for forecasting 
+ifForecast         = false;  % perform forecasting
+ifPlotForecast     = false; % plot representative forecast trajectories
+ifPlotError        = false; % plot forecast error
 ifPrintFig         = false; % print figures to file
 
 %% BATCH PROCESSING
