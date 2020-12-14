@@ -1,4 +1,4 @@
-function [ c, gamma, E, zeta, mu ] = computeEigenfunctions( ...
+function [ c, gamma, E, zeta, mu, cL, zetaL ] = computeEigenfunctions( ...
     obj, diffOp, varargin )
 % COMPUTEEIGENFUNCTIONS Compute eigenvalues and eigenfunctions of compactified
 % Koopman generator.
@@ -22,7 +22,13 @@ function [ c, gamma, E, zeta, mu ] = computeEigenfunctions( ...
 % mu: A column vector of size [ nS 1 ] storing the inner product weights with
 %     repect to which the phi are orthonormal. 
 %
-% Modified 2020/08/07
+% cL: A matrix of size [ nPhi nEig ] storing the expansion coefficients of the
+%     left eigenfunctions. 
+%
+% zetaL: A matrix of size [ nS nPhi ] storing the values of the left 
+%        eigenfunctions. 
+%
+% Modified 2020/11/14
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -36,6 +42,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse options, setup logfile and write calculation summary
 Opt.ifCalcOperator                   = true;
+Opt.ifLeftEigenfunctions             = false;
 Opt.ifWriteOperator                  = false;
 Opt.ifWriteEigenfunctions            = true; 
 Opt.ifWriteEigenfunctionCoefficients = true; 
@@ -54,6 +61,9 @@ else
                    Opt.logFilePermissions );
 end
 ifZeta = Opt.ifWriteEigenfunctions || nargout > 2;
+ifCL    = Opt.ifLeftEigenfunctions || nargout > 5;
+ifZetaL = ( ifCL && Opt.ifWriteEigenfunctions ) || nargout == 6;  
+clk = clock;
 clk = clock;
 [ ~, hostname ] = unix( 'hostname' );
 fprintf( logId, 'computeEigenfunctions starting on %i/%i/%i %i:%i:%2.1f \n', ...
@@ -98,6 +108,18 @@ fprintf( logId, 'EIGV %2.4f \n', tWall );
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tWall0 = tic;
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% If requested compute the left eigenvectors. 
+% cL is a matrix storing the expansion coefficients of the left eigenfunctions 
+% the generator in the eigenbasis of diffOp
+if ifZetaL
+    tWall0 = tic;
+    cL = c;
+    tWall         = toc( tWall0 );
+    fprintf( logId, 'EIGVL %2.4f \n', tWall );
+end
+
 % Compute Dirichlet energies of eigenvectors
 Lambda = getEigenvalues( diffOp );
 Lambda = Lambda( idxPhi );
@@ -127,6 +149,10 @@ E = E( 1 : nEig );
 idxE = idxE( 1 : nEig );
 gamma = gamma( idxE );
 c = c( :, idxE );
+if ifCL
+    cL  = cL( :, idxE );
+end
+tWall = toc( tWall0 );
 tWall = toc( tWall0 );
 fprintf( logId, 'ENGY %2.4f \n', tWall );
 
@@ -142,6 +168,12 @@ if ifZeta
     tWall = toc( tWall0 );
     fprintf( logId, 'EVALEIG %2.4f \n', tWall );
 end
+if ifZetaL
+    tWall0 = tic;
+    zetaL = phi * cL;
+    tWall = toc( tWall0 );
+    fprintf( logId, 'EVALEIGL %2.4f \n', tWall );
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -149,9 +181,15 @@ tWall0 = tic;
 setEigenvalues( obj, gamma, E )
 if Opt.ifWriteEigenfunctionCoefficients
     setEigenfunctionCoefficients( obj, c )
+    if Opt.ifLeftEigenfunctions
+        setLeftEigenfunctionCoefficients( obj, cL )
+    end
 end
 if Opt.ifWriteEigenfunctions
     setEigenfunctions( obj, zeta, mu, '-v7.3' )
+    if Opt.ifLeftEigenfunctions
+        setLeftEigenfunctions( obj, zetaL, mu, '-v7.3' )
+    end
 end
 tWall = toc( tWall0 );
 fprintf( logId, 'WRITEEIG %2.4f \n', tWall );
