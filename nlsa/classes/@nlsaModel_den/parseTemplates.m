@@ -77,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/07/27 
+%   Modified 2021/01/21 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -1141,62 +1141,6 @@ propVal{ iDiffOp } = setPath( propVal{ iDiffOp }, modelPathL );
 mkdir( propVal{ iDiffOp } )
 propVal{ iDiffOp } = setDefaultFile( propVal{ iDiffOp } );
 
-
-%% KOOPMAN OPERATOR
-% Parse Koopman operator template 
-for iProp = 1 : nProp 
-    if strcmp( propName{ iProp }, 'koopmanOperator' )
-        iKoopmanOp = iProp;
-        break
-    end  
-end
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'koopmanOperatorTemplate' )
-        if ~isempty( propVal{ iKoopmanOp } )
-            error( 'A Koopman operator template has been already specified' )
-        end
-        if isa( varargin{ i + 1 }, 'nlsaKoopmanOperator' ) ...
-           && isscalar( varargin{ i + 1 } )
-            propVal{ iKoopmanOp } = varargin{ i + 1 };
-        else
-            msgStr = [ 'The Koopman operator template must be specified ' ...
-                       'as a scalar nlsaKoopmanOperator object' ];
-            error( msgStr )
-        end
-        ifProp( iKoopmanOp ) = true;
-    end
-end
-
-if ifProp( iKoopmanOp )
-    propVal{ iKoopmanOp } = setPartition( propVal{ iKoopmanOp }, partition );
-    propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
-                                partitionQ );
-    idxPhi = getBasisFunctionIndices( propVal{ iKoopmanOp } );
-    if any( idxPhi > nPhi )
-        msgStr = [ 'Diffusion eigenfunctions requested for Koopman ' ...
-                   'operator approximation exceeds available ' ...
-                   'eigenfunctions.' ];
-        error( msgStr )
-    end
-    tag = getTag( propVal{ iKoopmanOp } );
-    if ~isempty( tag )
-        tag = [ tag '_' ];
-    end
-    propVal{ iKoopmanOp } = setTag( propVal{ iKoopmanOp }, ...
-            [ tag getDefaultTag( propVal{ iKoopmanOp } ) ] ); 
-
-    % Assign Koopman operator  paths and filenames
-    modelPathK = fullfile( modelPathL, getTag( propVal{ iKoopmanOp } ) );
-    propVal{ iKoopmanOp } = setDefaultSubpath( propVal{ iKoopmanOp } );
-    propVal{ iKoopmanOp } = setPath( propVal{ iKoopmanOp }, modelPathK );
-    mkdir( propVal{ iKoopmanOp } )
-    propVal{ iKoopmanOp } = setDefaultFile( propVal{ iKoopmanOp } );
-end
-
-
-
-
-
 %% PROJECTED DATA
 
 % Parse projection templates
@@ -1270,115 +1214,6 @@ if ~isCompatible( propVal{ iPrjComponent }, propVal{ iDiffOp } )
     error( 'Incompatible projection components and diffusion operator' )
 end
 mkdir( propVal{ iPrjComponent } )
-
-%% KOOPMAN-PROJECTED DATA
-
-% Parse projection templates
-for iProp = 1 : nProp 
-    if strcmp( propName{ iProp }, 'koopmanPrjComponent' )
-        iKoopmanPrjComponent = iProp;
-        break
-    end
-end
-for i = 1 : 2 : nargin
-    if strcmp( varargin{ i }, 'koopmanProjectionTemplate' )
-        if ~isempty( propVal{ iKoopmanPrjComponent } )
-            error( 'A projection template has been already specified' )
-        end
-        if isa( varargin{ i + 1 }, 'nlsaProjectedComponent' ) ...
-            && isscalar( varargin{ i + 1 } ) 
-            propVal{ iKoopmanPrjComponent } = repmat( varargin{ i + 1 }, ...
-                                                      [ nCT 1 ] );
-        elseif isa( varargin{ i + 1 }, 'nlsaProjectedComponent' ) ...
-           && isvector( varargin{ i + 1 } ) ...
-           && numel( varargin{ i + 1 } ) == nCT
-            propVal{ iKoopmanPrjComponent } = varargin{ i + 1 };
-            if isrow( propVal{ iKoopmanPrjComponent } )
-                propVal{ iKoopmanPrjComponent } = ...
-                    propVal{ iKoopmanPrjComponent }';
-            end
-        else
-            error( 'The projection template must be specified as a scalar nlsaProjectedComponent object, or vector of nlsaProjectedComponent objects of size equal to the number of target components' )
-        end
-        ifProp( iKoopmanPrjComponent ) = true;
-    end
-end
-if ifProp( iKoopmanPrjComponent ) && ~ifProp( iKoopmanOp ) 
-    msgStr =[ 'Koopman projection templates cannot be specified without ' ...
-              'spcifying a Koopman operator template.' ];  
-    error( msgStr ) 
-end
-
-% We only assign Koopman-projected components if Koopman operator has been
-% specified
-if ifProp( iKoopmanOp )
-    if isempty( propVal{ iKoopmanPrjComponent } )
-        for iC = nCT : -1 : 1
-            propVal{ iKoopmanPrjComponent }( iC ) = ...
-                nlsaProjectedComponent( 'nBasisFunction', nPhi );
-        end
-        ifProp( iKoopmanPrjComponent ) = true;
-    end
-
-    % Setup collective tags for projected data
-    isSet = false;
-    for i = 1 : 2 : nargin
-        if strcmp( varargin{ i }, 'projectionRealizationName' )
-            if ~isSet
-                pthR = varargin{ i + 1 };
-                isSet = true;
-                break
-            else
-                msgStr = [ 'Projection realization name has been already ' ...
-                           'specified.' ];
-                error( msgStr  )
-            end      
-        end  
-    end
-
-    for iC = 1 : nCT
-        pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
-        isSet = false;
-        for i = 1 : 2 : nargin
-            if strcmp( varargin{ i }, 'targetRealizationName' )
-                if ~isSet
-                    pth{ 2 } = varargin{ i + 1 };
-                    isSet = true;
-                    break
-                else
-                    msgStr = [ 'Target realization name has been already ' ...
-                               'specified.' ];
-                    error( msgStr  )
-                end      
-            end  
-        end
-        pth = strjoin_e( pth, '_' );
-
-        propVal{ iKoopmanPrjComponent }( iC ) = setPartition( ...
-            propVal{ iKoopmanPrjComponent }( iC ), partition );
-        propVal{ iKoopmanPrjComponent }( iC ) = setPath( ...
-            propVal{ iKoopmanPrjComponent }( iC ), ...
-            fullfile( modelPathK, pth ) );
-        propVal{ iKoopmanPrjComponent }( iC ) = setEmbeddingSpaceDimension( ...
-           propVal{ iKoopmanPrjComponent }( iC ), ...
-           getEmbeddingSpaceDimension( ...
-               parentConstrArgs{ iTrgEmbComponent }( iC, 1 ) ) );
-        propVal{ iKoopmanPrjComponent }( iC ) = setDefaultSubpath( ...
-            propVal{ iKoopmanPrjComponent }( iC ) );
-        propVal{ iKoopmanPrjComponent }( iC ) = setDefaultFile( ...
-            propVal{ iKoopmanPrjComponent }( iC ) );
-        mkdir( propVal{ iKoopmanPrjComponent }( iC ) )
-    end
-    if ~isCompatible( propVal{ iKoopmanPrjComponent } )
-        error( 'Incompatible projection components' )
-    end
-    if ~isCompatible( propVal{ iKoopmanPrjComponent }, propVal{ iKoopmanOp } )
-        error( 'Incompatible projection components and Koopman operator' )
-    end
-    mkdir( propVal{ iKoopmanPrjComponent } )
-end
-
-
 
 
 %% RECONSTRUCTED COMPONENTS
@@ -1499,6 +1334,261 @@ for iR = 1 : nR
     end
 end
 mkdir( propVal{ iRecComponent } )
+
+%% KOOPMAN OPERATOR
+% Parse Koopman operator template 
+for iProp = 1 : nProp 
+    if strcmp( propName{ iProp }, 'koopmanOperator' )
+        iKoopmanOp = iProp;
+        break
+    end  
+end
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'koopmanOperatorTemplate' )
+        if ~isempty( propVal{ iKoopmanOp } )
+            error( 'A Koopman operator template has been already specified' )
+        end
+        if isa( varargin{ i + 1 }, 'nlsaKoopmanOperator' ) ...
+           && isscalar( varargin{ i + 1 } )
+            propVal{ iKoopmanOp } = varargin{ i + 1 };
+        else
+            msgStr = [ 'The Koopman operator template must be specified ' ...
+                       'as a scalar nlsaKoopmanOperator object' ];
+            error( msgStr )
+        end
+        ifProp( iKoopmanOp ) = true;
+    end
+end
+
+if ifProp( iKoopmanOp )
+    propVal{ iKoopmanOp } = setPartition( propVal{ iKoopmanOp }, partition );
+    propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
+                                partitionQ );
+    idxPhi = getBasisFunctionIndices( propVal{ iKoopmanOp } );
+    if any( idxPhi > nPhi )
+        msgStr = [ 'Diffusion eigenfunctions requested for Koopman ' ...
+                   'operator approximation exceeds available ' ...
+                   'eigenfunctions.' ];
+        error( msgStr )
+    end
+    tag = getTag( propVal{ iKoopmanOp } );
+    if ~isempty( tag )
+        tag = [ tag '_' ];
+    end
+    propVal{ iKoopmanOp } = setTag( propVal{ iKoopmanOp }, ...
+            [ tag getDefaultTag( propVal{ iKoopmanOp } ) ] ); 
+
+    % Assign Koopman operator  paths and filenames
+    modelPathK = fullfile( modelPathL, getTag( propVal{ iKoopmanOp } ) );
+    propVal{ iKoopmanOp } = setDefaultSubpath( propVal{ iKoopmanOp } );
+    propVal{ iKoopmanOp } = setPath( propVal{ iKoopmanOp }, modelPathK );
+    mkdir( propVal{ iKoopmanOp } )
+    propVal{ iKoopmanOp } = setDefaultFile( propVal{ iKoopmanOp } );
+end
+
+
+%% KOOPMAN-PROJECTED DATA
+
+% Parse projection templates
+for iProp = 1 : nProp 
+    if strcmp( propName{ iProp }, 'koopmanPrjComponent' )
+        iKoopmanPrjComponent = iProp;
+        break
+    end
+end
+for i = 1 : 2 : nargin
+    if strcmp( varargin{ i }, 'koopmanProjectionTemplate' )
+        if ~isempty( propVal{ iKoopmanPrjComponent } )
+            error( 'A projection template has been already specified' )
+        end
+        if isa( varargin{ i + 1 }, 'nlsaProjectedComponent' ) ...
+            && isscalar( varargin{ i + 1 } ) 
+            propVal{ iKoopmanPrjComponent } = repmat( varargin{ i + 1 }, ...
+                                                      [ nCT 1 ] );
+        elseif isa( varargin{ i + 1 }, 'nlsaProjectedComponent' ) ...
+           && isvector( varargin{ i + 1 } ) ...
+           && numel( varargin{ i + 1 } ) == nCT
+            propVal{ iKoopmanPrjComponent } = varargin{ i + 1 };
+            if isrow( propVal{ iKoopmanPrjComponent } )
+                propVal{ iKoopmanPrjComponent } = ...
+                    propVal{ iKoopmanPrjComponent }';
+            end
+        else
+            error( 'The projection template must be specified as a scalar nlsaProjectedComponent object, or vector of nlsaProjectedComponent objects of size equal to the number of target components' )
+        end
+        ifProp( iKoopmanPrjComponent ) = true;
+    end
+end
+if ifProp( iKoopmanPrjComponent ) && ~ifProp( iKoopmanOp ) 
+    msgStr =[ 'Koopman projection templates cannot be specified without ' ...
+              'spcifying a Koopman operator template.' ];  
+    error( msgStr ) 
+end
+
+% We only assign Koopman-projected components if Koopman operator has been
+% specified
+if ifProp( iKoopmanOp )
+    if isempty( propVal{ iKoopmanPrjComponent } )
+        for iC = nCT : -1 : 1
+            propVal{ iKoopmanPrjComponent }( iC ) = ...
+                nlsaProjectedComponent( 'nBasisFunction', nPhi );
+        end
+        ifProp( iKoopmanPrjComponent ) = true;
+    end
+
+    % Setup collective tags for projected data
+    isSet = false;
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'projectionRealizationName' )
+            if ~isSet
+                pthR = varargin{ i + 1 };
+                isSet = true;
+                break
+            else
+                msgStr = [ 'Projection realization name has been already ' ...
+                           'specified.' ];
+                error( msgStr  )
+            end      
+        end  
+    end
+
+    for iC = 1 : nCT
+        pth = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC, : ) );
+        isSet = false;
+        for i = 1 : 2 : nargin
+            if strcmp( varargin{ i }, 'targetRealizationName' )
+                if ~isSet
+                    pth{ 2 } = varargin{ i + 1 };
+                    isSet = true;
+                    break
+                else
+                    msgStr = [ 'Target realization name has been already ' ...
+                               'specified.' ];
+                    error( msgStr  )
+                end      
+            end  
+        end
+        pth = strjoin_e( pth, '_' );
+
+        propVal{ iKoopmanPrjComponent }( iC ) = setPartition( ...
+            propVal{ iKoopmanPrjComponent }( iC ), partition );
+        propVal{ iKoopmanPrjComponent }( iC ) = setPath( ...
+            propVal{ iKoopmanPrjComponent }( iC ), ...
+            fullfile( modelPathK, pth ) );
+        propVal{ iKoopmanPrjComponent }( iC ) = setEmbeddingSpaceDimension( ...
+           propVal{ iKoopmanPrjComponent }( iC ), ...
+           getEmbeddingSpaceDimension( ...
+               parentConstrArgs{ iTrgEmbComponent }( iC, 1 ) ) );
+        propVal{ iKoopmanPrjComponent }( iC ) = setDefaultSubpath( ...
+            propVal{ iKoopmanPrjComponent }( iC ) );
+        propVal{ iKoopmanPrjComponent }( iC ) = setDefaultFile( ...
+            propVal{ iKoopmanPrjComponent }( iC ) );
+        mkdir( propVal{ iKoopmanPrjComponent }( iC ) )
+    end
+    if ~isCompatible( propVal{ iKoopmanPrjComponent } )
+        error( 'Incompatible projection components' )
+    end
+    if ~isCompatible( propVal{ iKoopmanPrjComponent }, propVal{ iKoopmanOp } )
+        error( 'Incompatible projection components and Koopman operator' )
+    end
+    mkdir( propVal{ iKoopmanPrjComponent } )
+end
+
+
+%% KOOPMAN-RECONSTRUCTED COMPONENTS
+% Parse reconstruction templates
+% We only assign Koopman-reconstructed components if Koopman operator has been
+% specified
+if ifProp( iKoopmanOp )
+    for iProp = 1 : nProp 
+        if strcmp( propName{ iProp }, 'koopmanRecComponent' )
+            iKoopmanRecComponent = iProp;
+            break
+        end
+    end
+    for i = 1 : 2 : nargin
+        if strcmp( varargin{ i }, 'koopmanReconstructionTemplate' )
+            if ~isempty( propVal{ iKoopmanRecComponent } )
+                msgStr = [ 'A Koopman reconstruction template has been ' ...
+                           'already specified.' ];
+                error( msgStr  )
+            end
+            if isa( varargin{ i + 1 }, 'nlsaComponent_rec_phi' ) ...
+                && isvector( varargin{ i + 1 } ) 
+                nRecKoop = numel( varargin{ i + 1 } );
+                propVal{ iKoopmanRecComponent } = repmat( ... 
+                    reshape( varargin{ i + 1 }, [ 1 1 nRecKoop ] ), ...
+                             [ nCT nR ] );
+            else
+
+                msgStr = [ 'The Koopman reconstruction template must be ' ...
+                           'specified as a vector of nlsaComponent_rec_phi ' ...
+                           'objects.' ];
+                error( msgStr ) 
+            end
+            ifProp( iKoopmanRecComponent ) = true;
+        end
+    end
+    if isempty( propVal{ iKoopmanRecComponent } )
+        for iR = nR : -1 : 1
+            for iC = nCT : -1 : 1
+                propVal{ iKoopmanRecComponent }( iC, iR ) = ...
+                    nlsaComponent_rec_phi( 'basisFunctionIdx', 1 );
+            end
+        end
+        ifProp( iKoopmanRecComponent ) = true;
+    end
+    nRecKoop = size( propVal{ iKoopmanRecComponent }, 3 );
+
+    % Setup reconstructed component tags, directories, and filenames
+    for iRec = 1 : nRecKoop
+        for iR = 1 : nR
+            for iC = 1 : nCT
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setDimension( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), ...
+                        getDimension( ...
+                            parentConstrArgs{ iTrgComponent }( iC, iR ) ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setPartition( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), ...
+                        recPartition( iR ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setDefaultTag( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setComponentTag( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), ...
+                        getComponentTag( ...
+                            parentConstrArgs{ iTrgComponent }( iC, iR ) ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setRealizationTag( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), ...
+                        getRealizationTag( ...
+                            parentConstrArgs{ iTrgComponent }( iC, iR ) ) );    
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setDefaultSubpath( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setDefaultFile( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ) );
+
+                pth = strjoin_e( getTag( ...
+                    parentConstrArgs{ iTrgEmbComponent }( iC, iR ) ), ...
+                    '_' );   
+                pth = fullfile( modelPathK, pth, ...
+                    getBasisFunctionTag( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ) ) );
+                propVal{ iKoopmanRecComponent }( iC, iR, iRec ) = ...
+                    setPath( ...
+                        propVal{ iKoopmanRecComponent }( iC, iR, iRec ), pth );
+            end
+        end
+    end
+    mkdir( propVal{ iKoopmanRecComponent } )
+end
+
+
 
 %% LINEAR MAPS
 % Setup collective tags for target data
