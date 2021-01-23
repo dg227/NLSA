@@ -10,6 +10,12 @@ This project provides a Matlab implementation of nonlinear Laplacian spectral an
 addpath(genpath('nlsa'))
 ``` 
 
+## Examples
+
+### Extraction of an approximately cyclical observable of the Lorenz 63 chaotic system
+
+`cd` into `/examples/l63` and run `demoNLSA.m`.
+
 ## Acknowledgement 
 
 Research funded by the [National Science Foundation](https://nsf.gov) (grants DMS-1521775, 1842538, DMS-1854383) and [Office of Naval Research](https://onr.navy.mil) (grants N00014-14-1-0150, N00014-16-1-2649, N00014-19-1-2421).
