@@ -17,7 +17,13 @@ addpath(genpath('nlsa'))
 /examples/circle/demoCircle.m
 ``` 
 - Extraction of an approximately cyclical observable of the Lorenz 63 (L53) chaotic system.
+```matlab
+/examples/circle/demoNLSA.m
+``` 
 - Kernel analog forecasting of the L63 state vector components.
+```matlab
+/examples/circle/demoKAF.m
+``` 
 
 
 ## Acknowledgement 
