@@ -1,1 +1,6 @@
+title: NLSA
+logo: /pages/img/logo.png
+description: Kernel methods for statistical modeling of dynamical systems
+show_downloads: true
+google_analytics:   
 theme: jekyll-theme-minimal
