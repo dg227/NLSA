@@ -9,3 +9,7 @@ This project provides a Matlab implementation of nonlinear Laplacian spectral an
 ```matlab
 addpath(genpath('nlsa'))
 ``` 
+
+## Acknowledgement 
+
+Research funded by the [National Science Foundation](https://nsf.gov) (grants DMS-1521775, 1842538, DMS-1854383) and [Office of Naval Research](https://onr.navy.mil) (grants N00014-14-1-0150, N00014-16-1-2649, N00014-19-1-2421).
