@@ -5,16 +5,20 @@ This project provides a Matlab implementation of nonlinear Laplacian spectral an
 ## Usage
 
 1. Clone down the project repository (`git clone https://github.com/dg227/NLSA`).
-2. Launch Matlab, `cd` into the project's directory, and add `/nlsa` to the Matlab search path. This can be done by executing the command:
+2. Launch Matlab, `cd` into the project's directory, and add `/nlsa` to the Matlab search path. This can be done by executing the Matlab command:
 ```matlab
 addpath(genpath('nlsa'))
 ``` 
 
 ## Examples
 
-### Extraction of an approximately cyclical observable of the Lorenz 63 chaotic system
+- Rectification of variable speed oscillator. 
+```matlab
+/examples/circle/demoCircle.m
+``` 
+- Extraction of an approximately cyclical observable of the Lorenz 63 (L53) chaotic system.
+- Kernel analog forecasting of the L63 state vector components.
 
-`cd` into `/examples/l63` and run `demoNLSA.m`.
 
 ## Acknowledgement 
 
