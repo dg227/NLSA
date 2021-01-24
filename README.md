@@ -1,6 +1,6 @@
 # NLSA
 
-This project provides a Matlab implementation of nonlinear Laplacian spectral analysis (NLSA) and related kernel algorithms for feature extraction and prediction of observables of dynamical systems. 
+This project provides a MATLAB implementation of nonlinear Laplacian spectral analysis (NLSA) and related kernel algorithms for feature extraction and prediction of observables of dynamical systems. 
 
 ## Usage
 
@@ -8,7 +8,7 @@ This project provides a Matlab implementation of nonlinear Laplacian spectral an
 ```shell
 git clone https://github.com/dg227/NLSA
 ```
-2. Launch Matlab, `cd` into the project's directory, and add `/nlsa` to the Matlab search path. This can be done by executing the Matlab command:
+2. Launch MATLAB, `cd` into the project's directory, and add `/nlsa` to the MATLAB search path. This can be done by executing the MATLAB command:
 ```matlab
 addpath(genpath('nlsa'))
 ``` 
@@ -30,7 +30,7 @@ addpath(genpath('nlsa'))
 
 ## Implementation
 
-NLSA implements a Matlab class ``nlsaModel`` which encodes the attributes of the machine learning procedure to be carried out. This includes:
+NLSA implements a MATLAB class ``nlsaModel`` which encodes the attributes of the machine learning procedure to be carried out. This includes:
 - Specification of training and test data.
 - Delay-coordinate embedding.
 - Pairwise distance functions.
@@ -40,7 +40,7 @@ NLSA implements a Matlab class ``nlsaModel`` which encodes the attributes of the
 - Projection and reconstruction of target data.   
 - Nystrom out-of-sample extension.
 
-Each of the elements above are implemented as Matlab classes. See ``/nlsa/classes`` for further information and basic documentation.
+Each of the elements above are implemented as MATLAB classes. See ``/nlsa/classes`` for further information and basic documentation.
 
 Results from each stage of the computation are written on disk in a directory tree with (near-) unique names based on the nlsaModel parameters. 
 
