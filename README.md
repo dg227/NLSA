@@ -15,15 +15,15 @@ addpath(genpath('nlsa'))
 ## Examples
 
 - Rectification of variable-speed periodic oscillator using Koopman eigenfunctions. 
-```matlab
+```shell
 /examples/circle/demoKoopman.m
 ``` 
 - Extraction of an approximately cyclical observable of the Lorenz 63 (L53) chaotic system using kernel integral operators with delays.
-```matlab
+```shell
 /examples/circle/demoNLSA.m
 ``` 
 - Kernel analog forecasting of the L63 state vector components.
-```matlab
+```shell
 /examples/circle/demoKAF.m
 ``` 
 ## Implementation
