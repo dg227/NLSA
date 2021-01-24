@@ -12,17 +12,18 @@ git clone https://github.com/dg227/NLSA
 ```matlab
 addpath(genpath('nlsa'))
 ``` 
+
 ## Examples
 
-- Rectification of variable-speed periodic oscillator using Koopman eigenfunctions. 
+- Rectification of variable-speed periodic oscillator using Koopman eigenfunctions: 
 ```shell
 /examples/circle/demoKoopman.m
 ``` 
-- Extraction of an approximately cyclical observable of the Lorenz 63 (L53) chaotic system using kernel integral operators with delays.
+- Extraction of an approximately cyclical observable of the Lorenz 63 (L53) chaotic system using kernel integral operators with delays:
 ```shell
 /examples/circle/demoNLSA.m
 ``` 
-- Kernel analog forecasting of the L63 state vector components.
+- Kernel analog forecasting of the L63 state vector components:
 ```shell
 /examples/l63/demoKAF.m
 ``` 
