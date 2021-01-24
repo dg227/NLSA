@@ -9,14 +9,13 @@ This project provides a Matlab implementation of nonlinear Laplacian spectral an
 ```matlab
 addpath(genpath('nlsa'))
 ``` 
-
 ## Examples
 
-- Rectification of variable speed oscillator. 
+- Rectification of variable-speed periodic oscillator using Koopman eigenfunctions. 
 ```matlab
-/examples/circle/demoCircle.m
+/examples/circle/demoKoopman.m
 ``` 
-- Extraction of an approximately cyclical observable of the Lorenz 63 (L53) chaotic system.
+- Extraction of an approximately cyclical observable of the Lorenz 63 (L53) chaotic system using kernel integral operators with delays.
 ```matlab
 /examples/circle/demoNLSA.m
 ``` 
@@ -24,7 +23,24 @@ addpath(genpath('nlsa'))
 ```matlab
 /examples/circle/demoKAF.m
 ``` 
+## Implementation
 
+NLSA implements a Matlab class ``nlsaModel`` which encodes the attributes of the machine learning procedure to be carried out. This includes:
+- Training and test data.
+- Delay-coordinate embedding.
+- Pairwise distance functions.
+- Density estimation for variable-bandwidth kernels.
+- Symmetric and non-symmetric Markov kernels.
+- Koopman operators.
+- Projection and reconstruction of target data.   
+- Nystrom out-of-sample extension.
+
+Each of the elements above are implemented as Matlab classes. See ``/nlsa/classes`` for further information and basic documentation.
+
+Results from each stage of the computation are written on disk in a directory tree with (near-) unique names based on the nlsaModel parameters. 
+
+## Known issues
+-  In Windows environments, errors can occur due to long file/directory names. 
 
 ## Acknowledgement 
 
