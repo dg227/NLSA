@@ -24,7 +24,7 @@ addpath(genpath('nlsa'))
 ``` 
 - Kernel analog forecasting of the L63 state vector components.
 ```shell
-/examples/circle/demoKAF.m
+/examples/l63/demoKAF.m
 ``` 
 ## Implementation
 
