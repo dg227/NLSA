@@ -30,7 +30,7 @@ addpath(genpath('nlsa'))
 ## Implementation
 
 NLSA implements a Matlab class ``nlsaModel`` which encodes the attributes of the machine learning procedure to be carried out. This includes:
-- Training and test data.
+- Specification of training and test data.
 - Delay-coordinate embedding.
 - Pairwise distance functions.
 - Density estimation for variable-bandwidth kernels.
