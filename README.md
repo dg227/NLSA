@@ -27,6 +27,7 @@ addpath(genpath('nlsa'))
 ```shell
 /examples/l63/demoKAF.m
 ``` 
+
 ## Implementation
 
 NLSA implements a Matlab class ``nlsaModel`` which encodes the attributes of the machine learning procedure to be carried out. This includes:
@@ -44,6 +45,7 @@ Each of the elements above are implemented as Matlab classes. See ``/nlsa/classe
 Results from each stage of the computation are written on disk in a directory tree with (near-) unique names based on the nlsaModel parameters. 
 
 ## Known issues
+
 -  In Windows environments, errors can occur due to long file/directory names. 
 
 ## Acknowledgement 
