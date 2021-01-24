@@ -19,7 +19,7 @@ addpath(genpath('nlsa'))
 ```shell
 /examples/circle/demoKoopman.m
 ``` 
-- Extraction of an approximately cyclical observable of the Lorenz 63 (L53) chaotic system using kernel integral operators with delays:
+- Extraction of an approximately cyclical observable of the Lorenz 63 (L63) chaotic system using kernel integral operators with delays:
 ```shell
 /examples/circle/demoNLSA.m
 ``` 
