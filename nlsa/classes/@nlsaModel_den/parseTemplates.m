@@ -77,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2021/01/21 
+%   Modified 2021/03/18 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -1362,8 +1362,10 @@ end
 
 if ifProp( iKoopmanOp )
     propVal{ iKoopmanOp } = setPartition( propVal{ iKoopmanOp }, partition );
+    %propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
+    %                            partitionQ );
     propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
-                                partitionQ );
+                                partition );
     idxPhi = getBasisFunctionIndices( propVal{ iKoopmanOp } );
     if any( idxPhi > nPhi )
         msgStr = [ 'Diffusion eigenfunctions requested for Koopman ' ...

@@ -22,6 +22,7 @@ end
 [ partitionG, idxG ] = mergePartitions( partitionO ); % global partition
 nR  = numel( partitionO );
 nST = getNTotalSample( partition );
+beta = getBeta( obj );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup logfile and write calculation summary
@@ -79,7 +80,13 @@ for iBG = Opt.batch
         phiO( :, iPhi ) = sum( pVal .* phiVals( pInd ), 2 );  
     end
     phiO  = bsxfun( @rdivide, phiO, lambda' );
-    muO = phiO( :, 1 ) .^ 2;
+    if beta ~= 0
+        muO = phiO( :, 1 ) .^ 2;
+    else
+        nSO = size( phiO, 1 ); 
+        muO = ones( nSO, 1 ) / nST;
+    end
+
     tWall = toc;
     fprintf( logId, 'PHIOSE %i/%i %i/%i %2.4f \n', iR, nR, iB, nB, tWall );
 

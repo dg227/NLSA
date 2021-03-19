@@ -108,9 +108,9 @@ classdef nlsaModel_den < nlsaModel
 %      snapshots comprising the delay-embedded source data. In the latter case,
 %      the snapshots within the embedding window are scaled individually by
 %      the delay-embedded densities.
-
+%
 %   'embKernelDensityT': Similar to property 'embComponentT' of the
-%      nlsaModel_base paernt class, but for the embKernelDensity data.
+%      nlsaModel_base parent class, but for the embKernelDensity data.
 %      'embKernelDensityT' must be an [ nC 1 ]-sized array of 
 %      nlsaEmbeddedComponent_e objects with the same partition as 
 %      'embComponentT'. 

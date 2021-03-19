@@ -2,7 +2,7 @@ function d = computeDegree( obj, distO, diffOp, varargin )
 % COMPUTEDEGREE Compute kernel degree from out-of-sample distance data distO. diffOp
 % is the in-sample diffusion operator.
 % 
-% Modified 2019/07/14
+% Modified 2021/02/27
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
@@ -28,8 +28,10 @@ elseif isa( distO, 'nlsaPairwiseDistance' )
 end
 [ partitionG, idxG ] = mergePartitions( partition );
 nR       = numel( partition );
+nSO      = getNTotalSample( partition );
 epsilon  = getBandwidth( obj ) * getBandwidth( diffOp );
 alpha    = getAlpha( obj );
+beta      = getBeta( obj );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse optional input arguments 
@@ -109,7 +111,11 @@ for iBG = iBatch
     end
 
     tic
-    d = sum( yVal, 2 );
+    if beta ~= 0
+        d = sum( yVal, 2 );
+    else
+        d = ones( nSO, 1 );
+    end
     tWall = toc;
     fprintf( logId, 'DEGREE %i/%i %i/%i %2.4f \n', iR, nR, iB, nB, tWall ); 
 

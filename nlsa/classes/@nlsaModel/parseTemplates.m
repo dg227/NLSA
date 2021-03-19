@@ -87,7 +87,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/08/28 
+%   Modified 2021/03/18 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -298,7 +298,8 @@ if nPhi > getNTotalSample( partition )
     error( msgStr )
 end
 propVal{ iDiffOp } = setPartition( propVal{ iDiffOp }, partition );
-propVal{ iDiffOp } = setPartitionTest( propVal{ iDiffOp }, partitionQ );
+propVal{ iDiffOp } = setPartitionTest( propVal{ iDiffOp }, partition );
+%propVal{ iDiffOp } = setPartitionTest( propVal{ iDiffOp }, partitionQ );
 if isa( propVal{ iDiffOp }, 'nlsaDiffusionOperator_batch' )
     propVal{ iDiffOp } = setNNeighbors( ...
                             propVal{ iDiffOp }, ...
@@ -551,8 +552,10 @@ end
 
 if ifProp( iKoopmanOp )
     propVal{ iKoopmanOp } = setPartition( propVal{ iKoopmanOp }, partition );
+    %propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
+    %                            partitionQ );
     propVal{ iKoopmanOp } = setPartitionTest( propVal{ iKoopmanOp }, ...
-                                partitionQ );
+                                partition );
     idxPhi = getBasisFunctionIndices( propVal{ iKoopmanOp } );
     if any( idxPhi > nPhi )
         msgStr = [ 'Diffusion eigenfunctions requested for Koopman ' ...

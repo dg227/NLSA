@@ -1,7 +1,7 @@
 function [ l, q, d ] = computeOperator( obj, dist, varargin )
 % COMPUTETEOPERATOR Compute heat kernel from symmetrized distance data dist
 % 
-% Modified 2019/11/21
+% Modified 2021/02/27
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Validate input arguments
@@ -18,6 +18,7 @@ end
 nS      = getNTotalSample( partition );
 epsilon = getBandwidth( obj );
 alpha   = getAlpha( obj );
+beta    = getBeta( obj );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup logfile and write calculation summary
@@ -83,11 +84,15 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Form the normalized Laplacian
 tic
-d = full( sum( l, 1 ) );
-d = d';
-rootD = sqrt( d );
-yVal = yVal ./ rootD( yRow ) ./ rootD( yCol );
-l = sparse( yRow, yCol, yVal, nS, nS, nNZ );
+if beta ~= 0
+    d = full( sum( l, 1 ) ) .^ beta;
+    d = d';
+    rootD = sqrt( d );
+    yVal = yVal ./ rootD( yRow ) ./ rootD( yCol );
+    l = sparse( yRow, yCol, yVal, nS, nS, nNZ );
+else
+    d = ones( nS, 1 );
+end
 l = abs( l + l' ) / 2; % iron out numerical wrinkles
 tWall = toc;
 fprintf( logId, 'NORMALIZATION (Markov) %2.4f, \n',  tWall );

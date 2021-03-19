@@ -1,22 +1,23 @@
-function [ model, In, Out ] = climateNLSAModel( In, Out )
-% CLIMATENLSAMODEL Low-level function to build NLSA models for climate datasets
+function [ model, In, Out ] = climateVSAModel( In, Out )
+% CLIMATEVSAMODEL Low-level function to build vector-valued spectral analysis
+% (VSA) models for climate datasets.
 %
-%  [ model, In ] = climateNLSAModel( In ) builds an NLSA model based on 
+%  [ model, In ] = climateVSAModel( In ) builds a VSA model based on 
 %  the model parameters specified in the structure In. 
 %
-%  [ model, In, Out ] = climateNLSAModel( In, Out ) builds an NLSA model
+%  [ model, In, Out ] = climateVSAModel( In, Out ) builds a VSA model
 %  with support for out-of-sample (test) data. The model parameters for the
 %  in-sample (training) and out-of-sample (test) data are specified in the 
 %  structures In and Out, respectively. 
 %
-%  climateNLSAModel uses the parameter values in In and Out to create arrays of 
+%  climateVSAModel uses the parameter values in In and Out to create arrays of 
 %  nlsaComponent objects representing the in-sample and out-of-sample data, 
 %  respectively. Then, it passses these arrays along with the parameter values 
-%  to function /utils/nlsaModelFromPars. The latter, prepares appropriate 
+%  to function /utils/vsaModelFromPars. The latter, prepares appropriate 
 %  arguments for the nlsaModel class constructors, and then calls the 
 %  constructors to build the model.
 %
-%  climateNLSAModel is meant to be called by higher-level functions tailored to 
+%  climateVSAModel is meant to be called by higher-level functions tailored to 
 %  specific data analysis/forecasting experiments. 
 %
 %  For additional information see:
@@ -32,7 +33,7 @@ function [ model, In, Out ] = climateNLSAModel( In, Out )
 %
 %  Structure field Res represents different realizations (ensemble members)
 %
-% Modified 2021/03/18
+% Modified 2021/93/18
  
 %% PRELIMINARY CHECKS
 % Check number of input arguments, and if we are doing out-of-sample extension
@@ -123,7 +124,7 @@ nXAMax = max( In.nXA, In.nXAT );
 In.nR  = numel( In.Res ); % number of realizations, in-sample data
 % Determine number of samples for in-sample data.
 for iR = In.nR : -1 : 1
-    % In.Res( iR ).tNum:      timestemps (e.g., Matlab serial date numbers)
+    % In.Res( iR ).tNum:  timestemps (e.g., Matlab serial date numbers)
     % In.Res( iR ).nS:    number of samples
     % In.Res( iR ).idxT1: time origin for delay embedding
     % In.Res( iR ).nSE:   number of samples after delay embedding
@@ -193,13 +194,42 @@ if ifOse
 end
 
 %% IN-SAMPLE DATA COMPONENTS
-fList = nlsaFilelist( 'file', 'dataX.mat' ); % filename for source data
+% Prepare realization-specific data.
+% idxGR stores flattened indices corresponding to gridpoint-realization pairs.
+% In.nRG is total number of gridpoint-realization pairs.
+idxGR = cell( 1, In.nR ); 
+iGR0 = 0;
+In.nRG = 0;
+for iR = 1 : In.nR
+    idxGR{ iR } = iGR0 + ( 1 : In.Res( iR ).nG );
+    iGR0 = idxGR{ iR }( end );
+    In.nRG = In.nRG + numel( idxGR{ iR } );
+end
+
+% Replicate timestamp, sample count, and embedding fields of In.Res over the 
+% gridpoints. We do this in reverse index order to force allocation of the 
+% entire structure array at the first iterationl
+iRG = In.nRG;
+for iR = In.nR : -1 : 1
+    for iG = In.Res( iR ).nG : -1 : 1
+        In.ResG( iRG ).nB    = In.Res( iR ).nB;
+        In.ResG( iRG ).nBRec = In.Res( iR ).nBRec;
+        In.ResG( iRG ).tNum  = In.Res( iR ).tNum;
+        In.ResG( iRG ).idxT1 = In.Res( iR ).idxT1;
+        In.ResG( iRG ).nSE   = In.Res( iR ).nSE; 
+        In.ResG( iRG ).nSRec = In.Res( iR ).nSRec;
+        iRG = iRG - 1;
+    end
+end
 
 % Loop over realizations for in-sample data
+resName = cell( 1, In.nR );
 for iR = In.nR : -1 : 1
 
     tStr = [ In.Res( iR ).tLim{ 1 } '-' In.Res( iR ).tLim{ 2 } ]; 
     tagR = [ In.Res( iR ).experiment '_' tStr ];
+    
+    resName{ iR } = tagR;
                                     
     % Source data assumed to be stored in a single batch
     partition = nlsaPartition( 'nSample', In.Res( iR ).nS ); 
@@ -219,15 +249,26 @@ for iR = In.nR : -1 : 1
                                                    
         tagC = [ In.Src( iC ).field '_' xyStr ];
 
-        load( fullfile( pathC, 'dataGrid.mat' ), 'nD' )
+        load( fullfile( pathC, 'dataGrid.mat' ), 'nDG' )
+
+        % Loop over gridpoints
+        for iG = In.Res( iR ).nG : -1 : 1
+
+            % Filename for source data
+            fList = nlsaFilelist( 'file', sprintf( 'dataX_%i.mat', iG ) ); 
         
-        srcComponent( iC, iR ) = nlsaComponent( ...
-                                    'partition',      partition, ...
-                                    'dimension',      nD, ...
-                                    'path',           pathC, ...
-                                    'file',           fList, ...
-                                    'componentTag',   tagC, ...
-                                    'realizationTag', tagR  );
+            % Realization tag for source data
+            tagGR = [ tagR '_' int2str( iG ) ];
+
+            iGR = idxGR{ iR }( iG );
+            srcComponent( iC, iGR ) = nlsaComponent( ...
+                                        'partition',      partition, ...
+                                        'dimension',      nDG, ...
+                                        'path',           pathC, ...
+                                        'file',           fList, ...
+                                        'componentTag',   tagC, ...
+                                        'realizationTag', tagGR  );
+        end
 
     end
 
@@ -246,26 +287,74 @@ for iR = In.nR : -1 : 1
                                                    
         tagC = [ In.Trg( iC ).field '_' xyStr ];
 
-        load( fullfile( pathC, 'dataGrid.mat' ), 'nD'  )
 
-        trgComponent( iC, iR ) = nlsaComponent( ...
-                                    'partition',      partition, ...
-                                    'dimension',      nD, ...
-                                    'path',           pathC, ...
-                                    'file',           fList, ...
-                                    'componentTag',   tagC, ...
-                                    'realizationTag', tagR  );
+        load( fullfile( pathC, 'dataGrid.mat' ), 'nDG'  )
+
+        % Loop over gridpoints
+        for iG = In.Res( iR ).nG : -1 : 1
+
+            % Filename for source data
+            fList = nlsaFilelist( 'file', sprintf( 'dataX_%i.mat', iG ) ); 
+        
+            % Realization tag for source data
+            tagGR = [ tagR '_' int2str( iG ) ];
+
+            iGR = idxGR{ iR }( iG );
+            trgComponent( iC, iGR ) = nlsaComponent( ...
+                                        'partition',      partition, ...
+                                        'dimension',      nDG, ...
+                                        'path',           pathC, ...
+                                        'file',           fList, ...
+                                        'componentTag',   tagC, ...
+                                        'realizationTag', tagGR  );
+        end
     end
 
 end
+In.sourceRealizationName  = strjoin( resName, '_' ); 
+In.targetRealizationName  = In.sourceRealizationName;
+In.densityRealizationName = In.sourceRealizationName;
 
 %% OUT-OF-SAMPLE DATA COMPONENTS 
 if ifOse
-    fList = nlsaFilelist( 'file', 'dataX.mat' ); % filename for source data
+
+    % Prepare realization-specific data. 
+    % idxGR stores flattened indices corresponding to gridpoint-realization 
+    % pairs.
+    % Out.nRG is total number of gridpoint-realization pairs.
+    idxGR = cell( 1, Out.nR ); 
+    iGR0 = 0;
+    Out.nRG = 0;
+    for iR = 1 : Out.nR
+        idxGR{ iR } = iGR0 + ( 1 : Out.Res( iR ).nG );
+        iGR0 = idxGR{ iR }( end );
+        Out.nRG = Out.nRG + numel( idxGR{ iR } );
+    end
+
+    % Replicate timestamp, sample count, and embedding fields of Out.Res over 
+    % the gridpoints. We do this in reverse index order to force allocation of 
+    % the entire structure array at the first iteration.
+    iRG = Out.nRG;
+    for iR = Out.nR : -1 : 1
+        for iG = Out.Res( iR ).nG : -1 : 1
+            Out.ResG( iRG ).nB    = Out.Res( iR ).nB;
+            Out.ResG( iRG ).nBRec = Out.Res( iR ).nBRec;
+            Out.ResG( iRG ).tNum  = Out.Res( iR ).tNum;
+            Out.ResG( iRG ).idxT1 = Out.Res( iR ).idxT1;
+            Out.ResG( iRG ).nSE   = Out.Res( iR ).nSE; 
+            Out.ResG( iRG ).nSRec = Out.Res( iR ).nSRec;
+            iRG = iRG - 1;
+        end
+    end
+
+    % Loop over realizations for in-sample data
+    resName = cell( 1, Out.nR );
     for iR = Out.nR : -1 : 1
 
         tStr = [ Out.Res( iR ).tLim{ 1 } '-' Out.Res( iR ).tLim{ 2 } ];
         tagR = [ Out.Res( 1 ).experiment '_' tStr ];
+
+        resName{ iR } = tagR;
 
         % Source data assumed to be stored in a single batch
         partition = nlsaPartition( 'nSample', Out.Res( iR ).nS ); 
@@ -286,15 +375,26 @@ if ifOse
             tagC = [ Out.Src( iC ).field '_' xyStr ];
 
             % number of gridpoints
-            load( fullfile( pathC, 'dataGrid.mat' ), 'nD' ) 
+            load( fullfile( pathC, 'dataGrid.mat' ), 'nDG' ) 
 
-            outComponent( iC, iR ) = nlsaComponent( ...
-                                        'partition',      partition, ...
-                                        'dimension',      nD, ...
-                                        'path',           pathC, ...
-                                        'file',           fList, ...
-                                        'componentTag',   tagC, ...
-                                        'realizationTag', tagR  );
+            % Loop over gridpoints
+            for iG = Out.Res( iR ).nG : -1 : 1
+
+                % Filename for out-of-sample source data
+                fList = nlsaFilelist( 'file', sprintf( 'dataX_%i.mat', iG ) ); 
+        
+                % Realization tag for out-of-sample source data
+                tagGR = [ tagR '_' int2str( iG ) ];
+
+                iGR = idxGR{ iR }( iG );
+                outComponent( iC, iGR ) = nlsaComponent( ...
+                                            'partition',      partition, ...
+                                            'dimension',      nDG, ...
+                                            'path',           pathC, ...
+                                            'file',           fList, ...
+                                            'componentTag',   tagC, ...
+                                            'realizationTag', tagGR  );
+            end
         end
 
         if ifOutTrg
@@ -315,17 +415,38 @@ if ifOse
                 tagC = [ Out.Trg( iC ).field '_' xyStr ];
 
                 % number of gridpoints
-                load( fullfile( pathC, 'dataGrid.mat' ), 'nD' ) 
+                load( fullfile( pathC, 'dataGrid.mat' ), 'nDG' ) 
 
-                outTrgComponent( iC, iR ) = nlsaComponent( ...
-                                            'partition',      partition, ...
-                                            'dimension',      nD, ...
-                                            'path',           pathC, ...
-                                            'file',           fList, ...
-                                            'componentTag',   tagC, ...
-                                            'realizationTag', tagR  );
+
+                % Loop over gridpoints
+                for iG = Out.Res( iR ).nG : -1 : 1
+
+                    % Filename for out-of-sample target data
+                    fList = nlsaFilelist( 'file', ...
+                                          sprintf( 'dataX_%i.mat', iG ) ); 
+        
+                    % Realization tag for out-of-sample target data
+                    tagGR = [ tagR '_' int2str( iG ) ];
+
+                    iGR = idxGR{ iR }( iG );
+                    outTrgComponent( iC, iR ) = nlsaComponent( ...
+                                                'partition',      partition, ...
+                                                'dimension',      nDG, ...
+                                                'path',           pathC, ...
+                                                'file',           fList, ...
+                                                'componentTag',   tagC, ...
+                                                'realizationTag', tagGR  );
+                end
             end
         end
+    end
+
+    Out.outRealizationName = strjoin( resName, '_' ); 
+    if ifOutTrg
+        Out.outTargetRealizationName = Out.outRealizationName;
+    end
+    if ifDen
+        Out.outDensityRealizationName = Out.outRealizationName;
     end
 end
 
@@ -339,8 +460,10 @@ if ifOutTrg
     Data.outTrg = outTrgComponent;
 end
 Pars.In = In;
+Pars.In.Res = Pars.In.ResG; % Modify In.Res structure for VSA
 if ifOse
     Pars.Out = Out;
+    Pars.Out.Res = Pars.Out.ResG; % Modify Out.Res structure for VSA
 end
 
 model = nlsaModelFromPars( Data, Pars );

@@ -17,7 +17,7 @@ function [ fErr, fRMSE, fPC ] = forecastError( fTrue, fPred )
 %
 % fErr:  Error array of size [ nD, nT, nSO ] 
 %
-% Modified 2020/08/07
+% Modified 2021/02/13
 
 % Get array sizes
 [ nD, nST ] = size( fTrue );
@@ -49,7 +49,11 @@ end
 % Compute PC score
 fPC = zeros( nD, nT );
 for iT = 1 : nT
-    fPC( :, iT ) = pc( fTrue( :, iT : nSCount + iT - 1 ), ...
-                       squeeze( fPred( :, iT, 1 : nSCount ) ) ); 
+    x = fTrue( :, iT : nSCount + iT - 1 );
+    y = squeeze( fPred( :, iT, 1 : nSCount ) );
+    if nD == 1
+        y = y.';
+    end
+    fPC( :, iT ) = pc( x, y ); 
 end
 

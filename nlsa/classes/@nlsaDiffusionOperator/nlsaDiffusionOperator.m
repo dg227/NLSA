@@ -4,22 +4,19 @@ classdef nlsaDiffusionOperator < nlsaKernelOperator
 % 
 %  R. R. Coifman and S. Lafon (2006), "Diffusion Maps", Appl. 
 %  Comput. Harmon. Anal., 21, 5, doi:10.1016/j.acha.2006.04.006
+%
+% The property values beta = 0, alpha = 0 correspond to RBF kernel.
+%
+% The property values beta = 1, 0 <= alpha <= 1 correspond to the class of
+% Markov-normalized kernels in diffusion maps. 
 %  
-% The following properties are defined:
 %
-% 'mode': A string specifying wether eigendecomposition or singular 
-%    value decomposition is to be perfomed. mode = 'eig' performs 
-%    eigendecomposition. mode = 'svd' performs SVD, saving the 
-%    left singular vectors and the squares of the eigenvalues. This is
-%    equivalent to computing the eigenvalues and eigenvectors of the suymmetric
-%    matrix PP^*.
-%
-%
-% Modified 2018/06/10    
+% Modified 2021/02/27    
 
     %% PROPERTIES
     properties
         alpha      = 0;
+        beta       = 1; 
         epsilon    = 1;
         epsilonT   = []; % reverts to epsilon if empty
         fileLambda = 'dataLambda.mat';
@@ -36,6 +33,7 @@ classdef nlsaDiffusionOperator < nlsaKernelOperator
  
             % Parse input arguments
             iAlpha         = [];
+            iBeta          = [];
             iEpsilon       = [];
             iEpsilonT      = []; 
             iFileLambda    = [];
@@ -46,6 +44,9 @@ classdef nlsaDiffusionOperator < nlsaKernelOperator
                 switch varargin{ i }
                     case 'alpha'
                         iAlpha = i + 1;
+                        ifParentArg( [ i i + 1 ] ) = false;
+                    case 'beta'
+                        iBeta = i + 1;
                         ifParentArg( [ i i + 1 ] ) = false;
                     case 'epsilon'
                         iEpsilon = i + 1;
@@ -77,8 +78,12 @@ classdef nlsaDiffusionOperator < nlsaKernelOperator
                 end
                 obj.alpha = varargin{ iAlpha };
             end
-
-            % Set caller-defined values
+            if ~isempty( iBeta )
+                if ~isrs( varargin{ iBeta } )
+                    error( 'Normalization parameter beta must be a real scalar' )
+                end
+                obj.beta = varargin{ iBeta };
+            end
             if ~isempty( iEpsilon )
                 if ~isps( varargin{ iEpsilon } )
                     error( 'The bandwidth parameter must be a positive scalar' )

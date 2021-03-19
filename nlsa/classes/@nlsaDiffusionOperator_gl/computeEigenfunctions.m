@@ -2,8 +2,9 @@ function [ phi, lambda, mu ] = computeEigenfunctions( obj, varargin )
 % COMPUTEEIGENFUNCTIONS Compute diffusion eigenfunctions and Riemannian 
 % measure 
 %
-% Modified 2020/03/28
+% Modified 2021/02/27
 
+beta = getBeta( obj );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup logfile and write calculation summary
@@ -37,6 +38,7 @@ fprintf( logId, 'Path %s \n', obj.path );
 fprintf( logId, 'Number of samples            = %i, \n', getNTotalSample( obj ) );
 fprintf( logId, 'Gaussian width (epsilon)     = %2.4f, \n', getBandwidth( obj ) );
 fprintf( logId, 'Weight normalization (alpha) = %2.4f, \n', getAlpha( obj ) );
+fprintf( logId, 'Weight normalization (beta)  = %2.4f, \n', beta );
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -68,9 +70,18 @@ opts.disp      = Opt.eigsDisp;
 lambda         = diag( lambda );
 [ lambda, ix ] = sort( lambda, 'descend' );
 v              = v( 1 : end, ix );
-mu             = v( :, 1 ) .^ 2;
-if v( 1, 1 ) < 0
-    v( :, 1 ) = -v( :, 1 );
+
+% Compute inner product weights. We distinguish between the cases beta = 0
+% (RBF kernel) and beta ~= 0 (left-normalized kernels, including Markov if
+% beta = 1).
+if beta ~= 0
+    mu             = v( :, 1 ) .^ 2;
+    if v( 1, 1 ) < 0
+        v( :, 1 ) = -v( :, 1 );
+    end
+else
+    nS = size( v, 1 );
+    mu = ones( nS, 1 ) / nS;
 end
 tWall          = toc;
 fprintf( logId, 'EIGP %2.4f \n', tWall );
