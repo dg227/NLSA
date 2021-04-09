@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2021/03/18
+% Modified 2021/04/03
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -276,7 +276,7 @@ if ifOse
                                     'nSample', Out.Res( iR ).nSE, ...
                                     'nBatch',  Out.Res( iR ).nB  );
         oseRecPartition( iR ) = nlsaPartition( ...
-                                    'nSample', Out.Res( iR ).nSERec, ...
+                                    'nSample', Out.Res( iR ).nSRec, ...
                                     'nBatch',  Out.Res( iR ).nBRec ); 
     end
 end
