@@ -154,7 +154,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2020/08/01    
+%   Modified 2021/04/10    
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -923,7 +923,7 @@ for iD = nDen : -1 : 1
             [ tag getDefaultTag( propVal{ iOseDen }( iD ) ) ] ); 
 
     % Assign kernel density paths and filenames
-    modelPathDDO = fullfile( getPath( parentConstrArgs{ iDenPDist } ), ...
+    modelPathDDO = fullfile( getPath( parentConstrArgs{ iDenPDist }( iD ) ), ...
                              pth, ...
                              getTag( propVal{ iOseDenPDist }( iD ) ) ); 
 

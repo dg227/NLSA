@@ -77,7 +77,7 @@ function constrArgs = parseTemplates( varargin )
 %
 %   Contact: dimitris@cims.nyu.edu
 %
-%   Modified 2021/03/18 
+%   Modified 2021/06/13 
 
 
 %% CONSTRUCTOR PROPERTY LIST
@@ -1324,8 +1324,12 @@ for iR = 1 : nR
         propVal{ iRecComponent }( iC, iR ) = setDefaultFile( ...
             propVal{ iRecComponent }( iC, iR ) );
            
-        tg = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC ) );
-        pth = strjoin_e( tg, '_' );
+        % The lines of code below were used in a previous version, but lead to
+        % incorrect directory assignment in VSA. 
+        %tg = concatenateTags( parentConstrArgs{ iTrgEmbComponent }( iC ) );
+        %pth = strjoin_e( tg, '_' );
+        pth = strjoin_e( getTag( ...
+            parentConstrArgs{ iTrgEmbComponent }( iC, iR ) ), '_' );   
         pth = fullfile( modelPathL, ...
             pth, ...
             getBasisFunctionTag( propVal{ iRecComponent }( iC, iR ) ) );
