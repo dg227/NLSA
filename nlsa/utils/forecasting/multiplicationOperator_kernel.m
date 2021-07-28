@@ -22,7 +22,7 @@ function M = multiplicationOperator_kernel( phiO, lambda, c, nPar )
 % M:       Array of size [ nL, nL ] containing the matrix elements of the 
 %          multiplication operator associated with the kernel features.
 %
-% Modified 2021/03/07.
+% Modified 2021/03/07
 
 if nargin <= 4 
     nPar = 0;

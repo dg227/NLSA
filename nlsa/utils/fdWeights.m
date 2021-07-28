@@ -1,7 +1,7 @@
 function w = fdWeights( nOrd, fdType )
 % FDWEIGHTS Finite difference weights for first derivative
 %
-% Modified 2013/12/22
+% Modified 2021/06/17
 
 switch fdType
     case 'central'
@@ -12,6 +12,8 @@ switch fdType
                 w = [ 1/12 -2/3 0 2/3 -1/12 ];
             case 6
                 w = [ -1/60 3/20 -3/4 0 3/4 -3/20 1/60 ];
+            case 8
+                w = [ 1/280 -4/105 1/5 -4/5 0 4/5 -1/5 4/105 -1/280 ];  
         end
     case 'forward'
         switch nOrd

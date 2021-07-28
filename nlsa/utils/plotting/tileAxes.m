@@ -12,7 +12,6 @@ function [ fig, ax, axTitle, Fig ] = tileAxes( Fig )
 % Fig.deltaY2:    top margin
 % Fig.gapX:       horizontal gap between panels
 % Fig.gapY:       vertical gap between panels
-% Fig.gapT:       extra vertical gap for title
 % Fig.nTileX:     number of rows
 % Fig.nTileY:     number of columns
 % Fig.aspectR:    vartical/horizontal aspect ratio of panels
@@ -37,6 +36,9 @@ if ~isfield( Fig, 'paperUnits' )
 end
 if strcmp( Fig.paperUnits, 'pixels' )
     Fig.paperUnits = 'points';
+end
+if ~isfield( Fig, 'gapT' ) 
+    Fig.gapT = 0;
 end
 
 % Determine panel sizes and figure position

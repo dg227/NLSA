@@ -1,5 +1,5 @@
 function idx = getBatchIndices( obj, varargin )
-% GETBATCHINDICES  Get indices for batches of nlsaPartition object
+% GETBATCHINDICES  Get indices of batches of an nlsaPartition object.
 %
 % Modified 2020/03/05
 
@@ -11,6 +11,6 @@ if nB == 1
 else
     idx = cell( nB, 1 );
     for iB = 1 : nB
-        idx{ iB } = lim( 1, iB ) : lim( 2, iB );
+        idx{ iB } = lim( iB, 1 ) : lim( iB, 2 );
     end
 end
