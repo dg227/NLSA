@@ -10,7 +10,7 @@
 % coordinate maps, illustrating the recovery of forecast skill as expected
 % from "Embedology" results.
 % 
-% Each test case has variants utiilizing 6400 or 64000 training samples, taken
+% Each test case has variants utilizing 6400 or 64000 training samples, taken
 % near thee L63 attractor at a sampling interval dt of 0.01 natural time 
 % units.  These experiments are selected using a character variable 
 % experiments which can take the following values:
@@ -29,6 +29,10 @@
 % kernel matrix. See pseudocode in Appendix B of reference [2] below for 
 % further details. The original references for the variable-bandwith kernel
 % formulation and symmetric Markov normalization are [3] and [4], respectively.
+%
+% In addition, for some of the test cases, we provide variants using standard
+% RBF kernels as opposed to variable-bandwidth kernels for comparison. These
+% experiments have the string identifiers '..._rbf'.
 %
 % All experiments use the same verification dataset consisting of 6400 samples
 % on an independent trajectory from the training data. Using a longer 
@@ -53,12 +57,15 @@
 %     affinity functions", Appl. Comput. Harmon. Anal., 35(1), 177--180,
 %     https://doi.org/j.acha.2013.01.001.
 %
-% Modified 2020/08/08
+% Modified 2021/02/27
 
 %% EXPERIMENT SPECIFICATION AND SCRIPT EXECUTION OPTIONS
-experiment = '6.4k_dt0.01_idxX1_2_3_nEL0';
+%experiment = '6.4k_dt0.01_idxX1_2_3_nEL0';
+%experiment = '6.4k_dt0.01_idxX1_2_3_nEL0_rbf';
 %experiment = '6.4k_dt0.01_idxX1_nEL0';
 %experiment = '6.4k_dt0.01_idxX1_nEL15'; 
+experiment = '6.4k_dt0.01_idxX1_2_3_nEL15';
+% experiment = '6.4k_dt0.01_idxX1_2_3_nEL15_rbf';
 %experiment = '64k_dt0.01_idxX1_2_3_nEL0';
 %experiment = '64k_dt0.01_idxX_nEL0';
 %experiment = '64k_dt0.01_idxX_nEL15'; 
@@ -93,6 +100,27 @@ case '6.4k_dt0.01_idxX1_2_3_nEL0'
     nT  = 501; 
     idxTPlt = [ 2101 2201 2301 ];
     tStr = '6.4k, full obs.';
+
+case '6.4k_dt0.01_idxX1_2_3_nEL0_rbf'
+    nL  = 401;
+    nL2 = 901;
+    nT  = 501; 
+    idxTPlt = [ 2101 2201 2301 ];
+    tStr = '6.4k, full obs., RBF';
+
+case '6.4k_dt0.01_idxX1_2_3_nEL15'
+    nL  = 401;
+    nL2 = 901;
+    nT  = 501; 
+    idxTPlt = [ 2101 2201 2301 ];
+    tStr = '6.4k, full obs.';
+
+case '6.4k_dt0.01_idxX1_2_3_nEL15_rbf'
+    nL  = 401;
+    nL2 = 901;
+    nT  = 501; 
+    idxTPlt = [ 2101 2201 2301 ];
+    tStr = '6.4k, full obs., RBF';
 
 case '6.4k_dt0.01_idxX1_nEL0'
     nL  = 201;
@@ -139,6 +167,7 @@ end
 % In and Out are data structures containing the NLSA parameters for the 
 % training and test data, respectively.
 %
+% nE is the number of Takens delays applied to the covariate data. 
 % idxT1 is the initial time stamp in the covariante data ("origin") where 
 % delay embedding is performed. We remove samples 1 to idxT1 from the response
 % data so that they always lie in the future of the delay embedding window.
@@ -155,6 +184,7 @@ disp( 'Building NLSA model...' ); t = tic;
 [ model, In, Out ] = demoKAF_nlsaModel( experiment ); 
 toc( t )
 
+nE    = getEmbeddingWindow( model.embComponent );
 idxT1 = getOrigin( model.embComponent );
 nR    = size( model.embComponent, 2 );
 nSXR  = getNSample( model.embComponent( 1 ) );
@@ -198,26 +228,32 @@ if ifNLSA
     toc( t )
 
 
-    fprintf( 'Pairwise distances for density data, %i/%i...\n', iProc, nProc ); 
-    t = tic;
-    computeDenPairwiseDistances( model, iProc, nProc )
-    toc( t )
+    % The following steps are needed only if we are using variable-bandwidth
+    % kernels.
+    if isa( model, 'nlsaModel_den' )
+        fprintf( 'Pairwise distances for density data, %i/%i...\n', ...
+                  iProc, nProc ); 
+        t = tic;
+        computeDenPairwiseDistances( model, iProc, nProc )
+        toc( t )
 
-    disp( 'Distance normalization for kernel density steimation...' ); t = tic;
-    computeDenBandwidthNormalization( model );
-    toc( t )
+        disp( 'Distance normalization for kernel density steimation...' );
+        t = tic;
+        computeDenBandwidthNormalization( model );
+        toc( t )
 
-    disp( 'Kernel bandwidth tuning for density estimation...' ); t = tic;
-    computeDenKernelDoubleSum( model );
-    toc( t )
+        disp( 'Kernel bandwidth tuning for density estimation...' ); t = tic;
+        computeDenKernelDoubleSum( model );
+        toc( t )
 
-    disp( 'Kernel density estimation...' ); t = tic;
-    computeDensity( model );
-    toc( t )
+        disp( 'Kernel density estimation...' ); t = tic;
+        computeDensity( model );
+        toc( t )
 
-    disp( 'Takens delay embedding for density data...' ); t = tic;
-    computeDensityDelayEmbedding( model );
-    toc( t )
+        disp( 'Takens delay embedding for density data...' ); t = tic;
+        computeDensityDelayEmbedding( model );
+        toc( t )
+    end
 
     fprintf( 'Pairwise distances (%i/%i)...\n', iProc, nProc ); t = tic;
     computePairwiseDistances( model, iProc, nProc )
@@ -244,22 +280,27 @@ if ifOse
     computeOutDelayEmbedding( model )
     toc( t )
 
-    fprintf( 'OSE pairwise distances for density data... %i/%i\n', iProc, ...
-        nProc ); t = tic;
-    computeOseDenPairwiseDistances( model, iProc, nProc )
-    toc( t )
+    % The following steps are needed only if we are using variable-bandwidth
+    % kernels.
+    if isa( model, 'nlsaModel_den' )
+        fprintf( 'OSE pairwise distances for density data... %i/%i\n', ...
+                  iProc, nProc ); 
+        t = tic;
+        computeOseDenPairwiseDistances( model, iProc, nProc )
+        toc( t )
 
-    disp( 'OSE density bandwidth normalization...' ); t = tic;
-    computeOseDenBandwidthNormalization( model )
-    toc( t )
+        disp( 'OSE density bandwidth normalization...' ); t = tic;
+        computeOseDenBandwidthNormalization( model )
+        toc( t )
 
-    disp( 'OSE kernel density estimation...' ); t = tic;
-    computeOseDensity( model )
-    toc( t )
+        disp( 'OSE kernel density estimation...' ); t = tic;
+        computeOseDensity( model )
+        toc( t )
 
-    disp( 'OSE density delay embedding...' ); t = tic; 
-    computeOseDensityDelayEmbedding( model );
-    toc( t )
+        disp( 'OSE density delay embedding...' ); t = tic; 
+        computeOseDensityDelayEmbedding( model );
+        toc( t )
+    end
 
     fprintf( 'OSE pairwise distances... %i/%i\n', iProc, nProc ); t = tic; 
     computeOsePairwiseDistances( model, iProc, nProc )
@@ -433,7 +474,8 @@ if ifPlotForecast
 
 
     % Add figure title
-    titleStr = sprintf( '%s, number of basis functions = %i', tStr, nL );
+    titleStr = sprintf( [ '%s, Takens delays = %i, ' ...
+                          'number of basis functions = %i' ], tStr, nE, nL );
     title( axTitle, titleStr )
             
 
@@ -511,7 +553,8 @@ if ifPlotError
     end
 
     % Add figure title
-    titleStr = sprintf( '%s, number of basis functions = %i', tStr, nL );
+    titleStr = sprintf( [ '%s, Takens delays = %i, ' ...
+                          'number of basis functions = %i' ], tStr, nE, nL );
     title( axTitle, titleStr )
 
     % Print figure

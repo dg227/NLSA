@@ -9,7 +9,7 @@ function demoKAF_data( experiment )
 %
 % The data is then generated and saved on disk using the l63Data function. 
 %
-% Modified 2020/08/06
+% Modified 2021/02/27
 
 
 %% SET EXPERIMENT-SPECIFIC PARAMETERS
@@ -36,6 +36,16 @@ case '6.4k_dt0.01_idxX1_nEL0'
     DataSpecs.Ode.x0     = [ 0 1 1.05 ]; % initial conditions
 
     DataSpecs.Opts.idxX = 1; % partial observations
+
+% 6400 samples, sampling interval 0.01, 15 delays, full obs. 
+case '6.4k_dt0.01_idxX1_2_3_nEL15'
+
+    DataSpecs.Time.dt     = 0.01;  % sampling interval
+    DataSpecs.Time.nSSpin = 64000; % spinup samples
+    DataSpecs.Time.nSProd = 6400;  % production samples
+    DataSpecs.Time.nEL    = 15;     % embedding window length (extra samples)
+
+    DataSpecs.Ode.x0     = [ 0 1 1.05 ]; % initial conditions
 
 % 6400 samples, sampling interval 0.01, 15 delays, x1 only
 case '6.4k_dt0.01_idxX1_nEL15'
