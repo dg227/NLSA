@@ -1,0 +1,19 @@
+5/13/2022
+- Ran experiments with quantum feature map based on RBF kernel without nearest neighbor truncation. 
+- Autotuner yields an estimated dimension of 7.17.
+- Explored scaling the autotuned bandwidth by factors of 2 and 1/2, and best performance appears to be with the default autotuned bandwidth. 
+
+5/14/2022
+- Implemented bump kernel. Kernel shows significant sensitivity to tuning as there may be out-of-sample points with only zero kernel values against the training data.
+- Bump kernel appears to provide some improvement over RBF kernel. 
+- So far, best results from bump kernel were found by inflating the autotuned bandwidth by a factor of sqrt(2). 
+- Using variable-bandwidth bump kernel with the default autotuned bandwidth led to noticeable improvement, best results thus far.
+
+5/15/2022
+- Ran experiments using variable-bandwidth RBF kernel as the obs kernel, the bump kernel seems to provide a modest improvement over RBF. 
+
+5/30/2022
+- Increasing nL to 2000 from 1000 led to a small forecast skill improvement for short lead times but skill degradation for later times.
+
+6/28/2022
+- Ran a suite of experiments using lagged Nino 3.4 indices only as training data. There was an improvement in short-term forecast skill, and the filter seemed to "respond" more to observational updates, but the long-term skill was degraded. 
