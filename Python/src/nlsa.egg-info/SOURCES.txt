@@ -1,0 +1,17 @@
+README
+pyproject.toml
+setup.cfg
+setup.py
+../LICENSE
+src/nlsa/__init__.py
+src/nlsa/abstract_algebra.py
+src/nlsa/dynamics.py
+src/nlsa/function_algebra.py
+src/nlsa/matrix_algebra.py
+src/nlsa/py.typed
+src/nlsa/utils.py
+src/nlsa.egg-info/PKG-INFO
+src/nlsa.egg-info/SOURCES.txt
+src/nlsa.egg-info/dependency_links.txt
+src/nlsa.egg-info/requires.txt
+src/nlsa.egg-info/top_level.txt

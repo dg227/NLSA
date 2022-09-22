@@ -1,0 +1,12 @@
+To create requirements.txt:
+    pip freeze > requirements.txt
+
+To install:
+    pip install -e
+
+To run from interpreter:
+   import importlib as i
+   nl = i.import_module('nlsa')
+   i.reload(nl)
+
+    
