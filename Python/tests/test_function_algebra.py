@@ -1,6 +1,7 @@
 import numpy as np
 from nlsa import abstract_algebra as alg
 from nlsa import function_algebra as fun
+from nlsa import scalars as scl
 from nlsa.abstract_algebra import compose_by
 from nptyping import Int, NDArray, Shape
 from typing import Callable, TypeVar
@@ -114,7 +115,6 @@ def test_matmul():
     assert np.all(h(0) == 0)
 
 
-
 def test_higher_order_matmul():
     def a(f: FM) -> M:
         return f(-1)
@@ -125,6 +125,18 @@ def test_higher_order_matmul():
 
     c = fun.matmul(a, b)
     assert np.all(c(e) == -1 * np.eye(2))  
+
+
+def test_integer_valued_matmul():
+    def f(x: int) -> int:
+        y = 2 * x
+        return y
+    def g(x: int) -> int:
+        y = 3 * x
+        return y
+
+    h = fun.lift_from(scl).matmul(f, g)
+    assert h(1) == 6
 
 
 def test_compose():

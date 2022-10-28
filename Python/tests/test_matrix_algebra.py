@@ -27,3 +27,14 @@ def test_compose_by():
     u = compose_by(mat, v)
     w = u(m)
     assert np.all(w == 1)
+
+
+def test_pure_state():
+    m: M = np.diag([1, 2, 3])
+    v: V = np.array([0, 1, 0])
+    omega = mat.pure_state(v)
+    print(v)
+    print(m)
+    y = omega(m)
+    print(y)
+    assert y == 2

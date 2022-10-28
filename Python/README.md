@@ -38,6 +38,8 @@ port install nodejs18
 port install pandoc
 port install py-wheel
 port install py-pip
+port install yarn
+port select --set gcc mp-gcc12
 ```
 
 2. Install `nlsa` module and dependencies by running the following command from within the `Python` directory:
