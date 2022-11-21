@@ -1,7 +1,6 @@
-function s = evaluateScaling( obj, I )
+function s = evaluateScaling(obj, I)
 %% EVALUATESCALING  Evaluate density power law scaling 
 %
-% Modified 2015/01/05
+% Modified 2022/11/06
 
-p = getExponent( obj );
-s = I.q .^ p;
+s = I.q .^ I.p;

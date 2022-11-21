@@ -1,20 +1,21 @@
-function D = importData( obj, dat, iC, iB, iR )
+function D = importData(obj, dat, iC, iB, iR)
 %% IMPORTDATA  Get scaling data from an nlsaDistanceData_scl object
 %
-% Modified 2015/10/31
+% Modified 2022/11/06
 
-dat = getSclComponent( dat );
-nE  = getEmbeddingWindow( dat );
+dat = getSclComponent(dat);
+nE  = getEmbeddingWindow(dat);
 
-if iC > 1 && size( dat, 1 ) == 1 
+if iC > 1 && size(dat, 1) == 1 
     iC = 1;
 end
 
-switch getMode( obj )
+switch getMode(obj)
     case 'explicit'
         outFormat = 'evector';
     case 'implicit'
         outFormat = 'overlap';
 end
-D.q = getData( dat( iC, iR ), iB, outFormat );
+D.p = getExponent(obj, iC);
+D.q = getData(dat(iC, iR), iB, outFormat);
 

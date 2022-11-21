@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2021/04/03
+% Modified 2022/11/06
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -123,6 +123,20 @@ if ~isfield( In, 'Res' ) || numel( In.Res ) ~= In.nR
 end
 if ~isfield( In, 'Trg' ) || numel( In.Trg ) ~= In.nCT
     error( 'Incompatible target components and parameter array.' )
+end
+if ifDen
+    if In.nC > 1 && isscalar(In.denND)
+        In.denND = repmat(In.denND, [In.nC 1]);
+    elseif In.nC > 1 && numel(In.denND) ~= In.nC
+        error('Incompatible source components and dimension array for KDE.')
+    end
+end
+if ifDen && ifOse
+    if Out.nC > 1 && isscalar(Out.denND)
+        Out.denND = repmat(Out.denND, [Out.nC 1]);
+    elseif Out.nC > 1 && numel(Out.denND) ~= Out.nC
+        error('Incompatible OS source components and dimension array for KDE.')
+    end
 end
 if ifOse 
     Out.nC = size( Data.out, 1 );
@@ -237,6 +251,18 @@ if ifOse
     end
     if Out.nNO == 0
         Out.nNO = nSETot;
+    end
+end
+
+%% DIMENSION ESTIMATES
+if ifDen
+    if In.nC > 1 && isscalar(In.denND)
+        In.denND = repmat(In.denND, [In.nC 1]);
+    end
+    if ifOse
+        if Out.nC > 1 && isscalar(Out.denND)
+            Out.denND = repmat(Out.denND, [Out.nC 1]);
+        end
     end
 end
 
@@ -523,45 +549,48 @@ end
 
 %% KERNEL DENSITY ESTIMATION FOR IN-SAMPLE DATA
 if ifDen 
-    switch In.denType
-        case 'fb' % fixed bandwidth
-            den = nlsaKernelDensity_fb( ...
-                     'dimension',              In.denND, ...
-                     'epsilon',                In.denEpsilon, ...
-                     'bandwidthBase',          In.denEpsilonB, ...
-                     'bandwidthExponentLimit', In.denEpsilonE, ...
-                     'nBandwidth',             In.denNEpsilon );
+    for iC = In.nC : -1 : 1
+        switch In.denType
+            case 'fb' % fixed bandwidth
+                den(iC) = nlsaKernelDensity_fb( ...
+                           'dimension',              In.denND(iC), ...
+                           'epsilon',                In.denEpsilon, ...
+                           'bandwidthBase',          In.denEpsilonB, ...
+                           'bandwidthExponentLimit', In.denEpsilonE, ...
+                           'nBandwidth',             In.denNEpsilon );
 
-        case 'vb' % variable bandwidth 
-            den = nlsaKernelDensity_vb( ...
-                     'dimension',              In.denND, ...
-                     'epsilon',                In.denEpsilon, ...
-                     'kNN',                    In.denNN, ...
-                     'bandwidthBase',          In.denEpsilonB, ...
-                     'bandwidthExponentLimit', In.denEpsilonE, ...
-                     'nBandwidth',             In.denNEpsilon );
+            case 'vb' % variable bandwidth 
+                den(iC) = nlsaKernelDensity_vb( ...
+                           'dimension',              In.denND(iC), ...
+                           'epsilon',                In.denEpsilon, ...
+                           'kNN',                    In.denNN, ...
+                           'bandwidthBase',          In.denEpsilonB, ...
+                           'bandwidthExponentLimit', In.denEpsilonE, ...
+                           'nBandwidth',             In.denNEpsilon );
+        end
     end
-
-    den = repmat( den, [ In.nC 1 ] );
+    den = den'; % make den a column vector
+    % den = repmat( den, [ In.nC 1 ] );
 end
 
 %% KERNEL DENSITY ESTIMATION FOR OUT-OF-SAMPLE DATA
 if ifDen && ifOse
-    switch Out.denType
-        case 'fb' % fixed bandwidth
-            oseDen = nlsaKernelDensity_ose_fb( ...
-                     'dimension',              Out.denND, ...
-                     'epsilon',                Out.denEpsilon );
+    for iC = Out.nC : -1 : 1
+        switch Out.denType
+            case 'fb' % fixed bandwidth
+                oseDen(iC) = nlsaKernelDensity_ose_fb( ...
+                               'dimension',            Out.denND(iC), ...
+                               'epsilon',              Out.denEpsilon );
 
-        case 'vb' % variable bandwidth 
-            oseDen = nlsaKernelDensity_ose_vb( ...
-                     'dimension',              Out.denND, ...
-                     'kNN',                    Out.denNN, ...
-                     'epsilon',                Out.denEpsilon );
+            case 'vb' % variable bandwidth 
+                oseDen(iC) = nlsaKernelDensity_ose_vb( ...
+                               'dimension',            Out.denND(iC), ...
+                               'kNN',                  Out.denNN, ...
+                               'epsilon',              Out.denEpsilon );
+        end
     end
-
-
-    oseDen = repmat( oseDen, [ Out.nC 1 ] );
+    oseDen = oseDen'; % make oseDen a column vector
+    % oseDen = repmat( oseDen, [ Out.nC 1 ] );
 end
 
 %% PAIRWISE DISTANCES FOR IN-SAMPLE DATA
@@ -580,7 +609,7 @@ switch In.lDist
                                         'alpha', In.coneAlpha );
 end
 if ifDen
-    lScl = nlsaLocalScaling_pwr( 'pwr', 1 / In.denND );
+    lScl = nlsaLocalScaling_pwr( 'pwr', 1 ./ In.denND );
     dFunc = nlsaLocalDistanceFunction_scl( 'localDistance', lDist, ...
                                            'localScaling', lScl );
 else
@@ -608,7 +637,7 @@ if ifOse
     end
 
     if ifDen
-        lScl = nlsaLocalScaling_pwr( 'pwr', 1 / Out.denND );
+        lScl = nlsaLocalScaling_pwr( 'pwr', 1 ./ Out.denND );
         oseDFunc = nlsaLocalDistanceFunction_scl( 'localDistance', lDist, ...
                                                   'localScaling', lScl );
     else
