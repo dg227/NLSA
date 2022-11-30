@@ -33,7 +33,7 @@ function Data = importData_ersstV5( DataSpecs )
 % Longitude range is [ 0 358 ] 
 % Latitude range is [ -88 88 ] 
 %
-% Modified 2020/05/20
+% Modified 2022/11/30
 
 
 
@@ -139,8 +139,14 @@ lat  = netcdf.getVar( ncId, idLat );
 nX  = length( lon );
 nY  = length( lat );
 [ X, Y ] = ndgrid( lon, lat );
-rngMin = netcdf.getAtt( ncId, idFld, 'valid_min' );
-rngMax = netcdf.getAtt( ncId, idFld, 'valid_max' );
+try
+    rngMin = netcdf.getAtt( ncId, idFld, 'valid_min' );
+    rngMax = netcdf.getAtt( ncId, idFld, 'valid_max' );
+catch
+    rng = netcdf.getAtt( ncId, idFld, 'valid_range' );
+    rngMin = rng(1);
+    rngMax = rng(2);
+end
 
 % Close currently open netCDF file
 netcdf.close( ncId );
