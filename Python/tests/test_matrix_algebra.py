@@ -33,8 +33,12 @@ def test_pure_state():
     m: M = np.diag([1, 2, 3])
     v: V = np.array([0, 1, 0])
     omega = mat.pure_state(v)
-    print(v)
-    print(m)
     y = omega(m)
-    print(y)
     assert y == 2
+
+
+def test_state_vector_bayes():
+    m: M = np.diag([1, 1, 1])
+    v: V = np.array([0, 1, 0])
+    w = mat.state_vector_bayes(v, m)
+    assert np.all(w == np.array([0, 1, 0]))

@@ -8,7 +8,6 @@ def bind(instance, func, as_name=None):
     /python-bind-an-unbound-method#comment8431145_1015405
 
     """
-
     if as_name is None:
         as_name = func.__name__
     bound_method = func.__get__(instance, instance.__class__)

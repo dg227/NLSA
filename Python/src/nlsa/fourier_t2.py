@@ -6,6 +6,7 @@ spaces and reproducing kernel Hilbert algebras (RKHAs) on the 2-torus T2.
 import nlsa.fourier_s1 as f1
 import numpy as np
 from nptyping import Complex, Double, Int, NDArray, Shape
+from scipy.special import iv
 from typing import Callable, Tuple, TypeVar
 
 N = TypeVar("N")
@@ -13,8 +14,12 @@ K = NDArray[Shape["2, N"], Int]
 X = NDArray[Shape["*, 2"], Double]
 Y = NDArray[Shape["*"], Double]
 XK = NDArray[Shape["*, N"], Complex]
-V = NDArray[Shape["N"], Complex]
-M = NDArray[Shape["N, N"], Complex]
+V = TypeVar("V", NDArray[Shape["N"], Double], NDArray[Shape["N"], Complex])
+VR = NDArray[Shape["N"], Double]
+VC = NDArray[Shape["N"], Complex]
+M = TypeVar("M",
+            NDArray[Shape["N, N"], Double],
+            NDArray[Shape["N, N"], Complex])
 
 
 def dual_group(k_max: Tuple[int, int]) -> K:
@@ -47,18 +52,16 @@ def dual_size(k_max: Tuple[int, int]):
     return n
 
 
-def fourier_basis(k_max: Tuple[int, int]) -> Callable[[X], XK]:
+def fourier_basis(k: K) -> Callable[[X], XK]:
     """Fourier basis functions on the 2-torus up to maximal wavenumbers.
 
-    :k_max: 2-tuple specifying maximal wavenumbers.
+    :k: Array of Fourier wavenumbers.
     :returns: Function phi that takes as inputs two-dimensional vectors or
     arrays of shape [..., 2], representing points on the circle, and returns an
     array of complex numbers that contains the values of the corresponding
     Fourier functions.
 
     """
-    k = dual_group(k_max)
-
     def phi(x: X) -> XK:
         y = np.exp(1j * x @ k)
         # y = np.exp(1j * np.einsum('...i,ij->...j', x, k))
@@ -66,25 +69,25 @@ def fourier_basis(k_max: Tuple[int, int]) -> Callable[[X], XK]:
     return phi
 
 
-def rkha_weights(p: float, tau: float) -> Callable[[K], V]:
+def rkha_weights(p: float, tau: float) -> Callable[[K], VR]:
     """Weight function for RKHA on the circle.
 
     :p: RKHA exponent parameter. p should lie in the interval (0, 1).
     :tau: RKHA "heat flow" parameter. tau should be strictly positive
-    :returns: Function w that computes the RKHA weights on the dual group Z of
-    S1.
+    :returns: Function w that computes the RKHA weights on the dual group Z2 of
+    T2.
 
     """
     w1 = f1.rkha_weights(p, tau)
 
-    def w(k: K) -> V:
-        y: V = np.prod(w1(k), axis=0)
+    def w(k: K) -> VR:
+        y: VR = np.prod(w1(k), axis=0)
         return y
     return w
 
 
-def mult_op_fourier(k: Tuple[int, int]) -> Callable[[V], M]:
-    """Multiplication operator in the Fourier basis.
+def make_mult_op(k: Tuple[int, int]) -> Callable[[V], M]:
+    """Make multiplication operator in the Fourier basis of T2.
 
     :k: Maximal Fourier wavenumber.
     :returns: Function that constructs a multiplication operator from a vector
@@ -92,13 +95,8 @@ def mult_op_fourier(k: Tuple[int, int]) -> Callable[[V], M]:
 
     """
     n = dual_size(k)
-    k2 = (2 * k[0], 2 * k[1])
     js = dual_group(k)
-    ks = js[:, :, np.newaxis] - js[:, np.newaxis, :] 
-    # print(ks[0, ...])
-    # print('hello0')
-    # print(ks[1, ...])
-    # print('hello1')
+    ks = js[:, :, np.newaxis] - js[:, np.newaxis, :]
     idxs = np.ravel_multi_index((ks[1, ...] + 2 * k[1], ks[0, ...] + 2 * k[0]),
                                 (4 * k[1] + 1, 4 * k[0] + 1))
 
@@ -112,10 +110,6 @@ def mult_op_fourier(k: Tuple[int, int]) -> Callable[[V], M]:
         """
         m: M = np.reshape(v[idxs], (n, n))
         return m
-        # n = (k[0] + 1) * k[1] + k[0] * (k[1] + 1)
-        # c = v[n:]
-        # r = np.flip(v[:n + 1])
-        # m: M = toeplitz(c, r)
     return op
 
 
@@ -158,6 +152,26 @@ def von_mises_fourier(kappa: Tuple[float, float],
     return f_hat
 
 
+def von_mises_feature_map(kappa: Tuple[float, float], k_max: Tuple[int, int]) \
+        -> Callable[[X], XK]:
+    """Von Mises feature map on T2.
+
+    :kappa: 2-tuple of Von Mises concentration parameters.
+    :k_max: 2-tuple of maximal wavenumbers.
+    :returns: Vector-valued function xi (feature map).
+
+    """
+    k = dual_group(k_max)
+    phi = fourier_basis(k)
+
+    def xi(x: X) -> XK:
+        y: XK = iv(np.abs(k[0, :]), kappa[0] / 2) / iv(0, kappa[0]) \
+                * iv(np.abs(k[1, :]), kappa[1] / 2) / iv(0, kappa[1]) \
+                * np.conj(phi(x))
+        return y
+    return xi
+
+
 def rotation_koopman_eigs(a: Tuple[float, float]) -> Callable[[K], V]:
     """Returns a function that computes the eigenvalues of the Koopman operator
     associated with a discrete-time rotation on the 2-torus.
@@ -175,7 +189,7 @@ def rotation_koopman_eigs(a: Tuple[float, float]) -> Callable[[K], V]:
     return g
 
 
-def rotation_generator_eigs(a: Tuple[float, float]) -> Callable[[K], V]:
+def rotation_generator_eigs(a: Tuple[float, float]) -> Callable[[K], VC]:
     """Returns a function that computes the eigenvalues of the Koopman
     generator associated with a continuous-time rotation on the 2-torus.
 
@@ -186,7 +200,7 @@ def rotation_generator_eigs(a: Tuple[float, float]) -> Callable[[K], V]:
     e1 = f1.rotation_generator_eigs(a[0])
     e2 = f1.rotation_generator_eigs(a[1])
 
-    def g(k: K) -> V:
+    def g(k: K) -> VC:
         y = e1(k[0, :]) + e2(k[1, :])
         return y
     return g

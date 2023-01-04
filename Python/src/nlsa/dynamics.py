@@ -1,18 +1,23 @@
-"""Provides functions for dynamical systems computations."""
+"""Provides functions for dynamical systems computations.
+
+"""
 from nptyping import Double, NDArray, Shape
 from scipy import sparse
 from scipy.integrate import solve_ivp
-from typing import Callable, Generator, TypeVar, Tuple
+from typing import Callable, Generator, Iterable, TypeVar, Tuple
 # import numba as nb
 import numpy as np
 
-N = TypeVar("N")
-T = TypeVar("T")
-X = NDArray[Shape["N"], Double]
-Xs = NDArray[Shape["*, N"], Double]
-M = NDArray[Shape["N, N"], Double]
-R2 = NDArray[Shape["2"], Double]
-T2s = NDArray[Shape["*, 2"], Double]
+N = TypeVar('N')
+T = TypeVar('T')
+S = TypeVar('S')
+X = NDArray[Shape['N'], Double]
+Xs = NDArray[Shape['*, N'], Double]
+M = NDArray[Shape['N, N'], Double]
+R2 = NDArray[Shape['2'], Double]
+R2s = NDArray[Shape['*, 2'], Double]
+T2s = NDArray[Shape['*, 2'], Double]
+S1s = TypeVar('S1s', float, NDArray[Shape['*'], Double])
 
 
 def flow(v: Callable[[X], X], t: float) -> Callable[[X], X]:
@@ -32,7 +37,7 @@ def flow(v: Callable[[X], X], t: float) -> Callable[[X], X]:
 
     def phi(x: X) -> X:
         out = solve_ivp(vt, [0, t], x, t_eval=[t], atol=1e-8, rtol=1e-8)
-        y: T = out.y[:, 0]
+        y: X = out.y[:, 0]
         return y
     return phi
 
@@ -45,6 +50,29 @@ def orbit(x0: T, f: Callable[[T], T]) -> Generator[T, None, None]:
         x = f(x)
 
 
+def cocycle_orbit(y0: T, xs: Iterable[S], f: Callable[[S, T], T])\
+        -> Generator[T, None, None]:
+    """TODO: Orbit of a point under a cocycle.
+
+    :y0: Initial condition.
+    :xs: Base space trajectory.
+    :returns: Generator of cocycle trajectory.
+
+    """
+    y = y0
+    for x in xs:
+        yield y
+        y = f(x, y)
+
+
+def circle_rotation(a: float) -> Callable[[S1s], S1s]:
+    """Circle rotation."""
+    def phi(x: S1s) -> S1s:
+        y = (x + a) % (2 * np.pi)
+        return y
+    return phi
+
+
 def torus_rotation(a: Tuple[float, float]) -> Callable[[T2s], T2s]:
     """Torus rotation."""
     def phi(x: T2s) -> T2s:
@@ -53,6 +81,17 @@ def torus_rotation(a: Tuple[float, float]) -> Callable[[T2s], T2s]:
     return phi
 
 
+def circle_embedding_r2(x: S1s) -> R2s:
+    """Standard embedding of the circle into R2."""
+    y = np.empty((*x.shape, 2))
+    y[..., 0] = np.cos(x)
+    y[..., 1] = np.sin(x)
+    return y
+
+
+# TODO: Consider flattening the signature of stepanoff_vec to (float, R2) -> R2
+# and using numba jit for improved efficiency. The current high-order
+# implementation does not work with numba.
 def stepanoff_vec(alpha: float) -> Callable[[R2], R2]:
     """Vector field of the Stepanoff flow on the 2-torus.
 

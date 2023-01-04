@@ -20,7 +20,7 @@ def test_rkha_weights_s1():
 
 def test_fourier_basis_s1():
     k = 2
-    phi = f1.fourier_basis(k)
+    phi = f1.fourier_basis(f1.dual_group(k))
     x = np.array([0, np.pi])
     y = phi(x)
     # assert np.all(y == np.array([[1, 1, 1, 1, 1], [1, -1, 1, -1, 1]]))
@@ -31,7 +31,7 @@ def test_rkha_basis_s1():
     p = 0.5
     tau = 0.1
     k = 2
-    psi = f1.rkha_basis(p, tau, k)
+    psi = f1.rkha_basis(p, tau, f1.dual_group(k))
     x = np.array([0, np.pi])
     y = psi(x)
     # assert np.all(y == np.array([[1, 1, 1, 1, 1], [1, -1, 1, -1, 1]]))
@@ -46,7 +46,7 @@ def test_synthesis_fourier_s1():
     x = np.linspace(0, 2 * np.pi, n)
     f_hat = f1.von_mises_fourier(kappa, mu)
     c = f_hat(f1.dual_group(k))
-    phi = f1.fourier_basis(k)
+    phi = f1.fourier_basis(f1.dual_group(k))
     f = fun.synthesis(phi, c)
     y = f(x)
     assert np.all(np.shape(y) == np.array([n]))
@@ -55,7 +55,7 @@ def test_synthesis_fourier_s1():
 def test_mult_op_s1():
     k_max = 1
     v = np.array([-2, -1, 0, 1, 2])
-    mult_op = f1.mult_op_fourier(k_max)
+    mult_op = f1.make_mult_op(k_max)
     m = mult_op(v)
     assert np.all(np.diag(m, k=-2) == v[4])
     assert np.all(np.diag(m, k=-1) == v[3])
@@ -64,11 +64,20 @@ def test_mult_op_s1():
     assert np.all(np.diag(m, k=2) == v[0])
 
 
-def test_von_mises_feature_map():
+def test_mult_op0_s1():
+    k_max = 1
+    v = np.array([-2, -1, 0, 1, 2])
+    mult_op = f1.make_mult_op0(k_max)
+    m = mult_op(v)
+    print(m.shape)
+    assert np.all(m.shape == (2, 2))
+
+
+def test_von_mises_feature_map_s1():
     k_max = 3
-    epsilon = 0.1
+    kappa = 10.0
     x = np.array([0, 1, 2, 3])
-    xi = f1.von_mises_feature_map(epsilon, k_max)
+    xi = f1.von_mises_feature_map(kappa, f1.dual_group(k_max))
     y = xi(x)
     assert np.all(y.shape == np.array([4, 7]))
 
@@ -95,7 +104,7 @@ def test_fourier_basis_t2():
     k = (1, 2)
     n_x = 7
     n_k = f2.dual_size(k)
-    phi = f2.fourier_basis(k)
+    phi = f2.fourier_basis(f2.dual_group(k))
     x1 = np.linspace(0, 2 * np.pi, n_x)
     x2 = (x1 + np.pi) % (2 * np.pi) 
     x = np.vstack((x1, x2)).T
@@ -114,7 +123,7 @@ def test_synthesis_fourier_t2():
     x = np.vstack((x1, x2)).T
     f_hat = f2.von_mises_fourier(kappa, mu)
     c = f_hat(f2.dual_group(k))
-    phi = f2.fourier_basis(k)
+    phi = f2.fourier_basis(f2.dual_group(k))
     f = fun.synthesis(phi, c)
     y = f(x)
     assert np.all(np.shape(y) == np.array([n_x]))
@@ -125,7 +134,17 @@ def test_mult_op_t2():
     v1 = np.arange(-2 * k[0], 2 * k[0] + 1)
     v2 = np.arange(-2 * k[1], 2 * k[1] + 1)
     v = np.kron(v2, v1)
-    mult_op = f2.mult_op_fourier(k)
+    mult_op = f2.make_mult_op(k)
     m = mult_op(v)
     n = f2.dual_size(k)
     assert np.all(np.shape(m) == np.array([n, n]))
+
+
+def test_von_mises_feature_map_s2():
+    k_max = (3, 3)
+    kappa = (10, 10)
+    x = np.array([[0, 0], [1, 1], [2, 2], [3, 3]])
+    xi = f2.von_mises_feature_map(kappa, k_max)
+    y = xi(x)
+    assert np.all(y.shape == np.array([4, 49]))
+

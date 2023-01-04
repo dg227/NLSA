@@ -1,3 +1,4 @@
+import nlsa.matrix_algebra as mat
 import numpy as np
 from nlsa import vector_algebra as vec
 from nlsa.abstract_algebra import compose_by, conjugate_by
@@ -30,7 +31,7 @@ def test_compose_by():
     assert np.all(w == m)
 
 
-def conjugate_by():
+def test_conjugate_by():
     u: V = np.array([2, 2, 2])
     v: V = np.array([3, 3, 3])
     m = np.identity(3, dtype=int)
@@ -39,5 +40,21 @@ def conjugate_by():
     assert np.all(w == 6 * m)
 
 
+def test_condition_by():
+    m: M = np.diag([1, 1, 1])
+    v: V = np.array([0, 1, 0])
+    w = vec.condition_by(mat, m, v)
+    assert np.all(w == np.array([0, 1, 0]))
 
 
+def test_algdiv():
+    u: V = np.array([4, 4, 4])
+    v: V = np.array([2, 2, 2])
+    w = vec.algdiv(u, v)
+    assert np.all(w == np.array([2, 2, 2]))
+
+
+def test_sqrt():
+    u: V = np.array([4, 4, 4])
+    w = vec.sqrt(u)
+    assert np.all(w == np.array([2, 2, 2]))

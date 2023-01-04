@@ -12,29 +12,31 @@ ifTestData         = false;  % test data
 ifTrainingTestData = false;  % generate training and test data in parallel  
 
 % NLSA
-ifNLSA    = true; % perform NLSA (source data, training phase)
-ifNLSAObs = true; % perform NLSA (observed data, training phase)
-ifNLSAOut = true; % perform out-of-sample extension (data assimilation phase)
+ifNLSA    = false; % perform NLSA (source data, training phase)
+ifNLSAObs = false; % perform NLSA (observed data, training phase)
+ifNLSAOut = false; % perform out-of-sample extension (data assimilation phase)
 
 % Data assimilation
-ifDATrainingData  = true; % read training data for data assimilation
-ifDATestData      = true; % read test data for data assimilation
-ifKoopmanOp       = true; % compute Koopman operators
-ifObservableOp    = true; % compute quantum mechanical observable operators  
-ifAutotune        = true;  % tune the observation kernel
-ifFeatureOp       = true; % compute quantum mechanical feature operators
-ifDA              = true; % perform data assimilation
-ifDAErr           = true; % compute forecast errors
+ifDATrainingData  = false; % read training data for data assimilation
+ifDATestData      = false; % read test data for data assimilation
+ifKoopmanOp       = false; % compute Koopman operators
+ifObservableOp    = false; % compute quantum mechanical observable operators  
+ifAutotune        = false;  % tune the observation kernel
+ifFeatureOp       = false; % compute quantum mechanical feature operators
+ifDA              = false; % perform data assimilation
+ifDAErr           = false; % compute forecast errors
 
 % IO options
-ifSaveData        = true;  % save DA output to disk
-ifLoadData        = false;  % load data from disk
-ifPrintFig        = false; % print figures to file
+ifSaveData        = false;  % save DA output to disk
+ifLoadData        = true; % load DA output from disk
+ifSaveOperators   = false;  % save operators (e.g., for use by Python code) 
+ifPrintFig        = true; % print figures to file
 
 % Plotting options
-ifPlotPrb    = true; % running probability forecast
-ifPlotErr    = true; % plot forecast error
-ifShowObs    = false; % show observations in plots
+ifPlotPrb       = true; % running probability forecast
+ifPlotErr       = true; % plot forecast error
+ifPlotErrMulti  = false; % plot forecast errors from multiple experiments
+ifShowObs       = false; % show observations in plots
 
 
 %% DATA & NLSA PARAMETERS
@@ -83,10 +85,12 @@ NLSA.epsilon   = 1 / 128;       % Timesscale parameter for fast variables
 NLSA.dt        = 0.05;          % Sampling interval
 NLSA.nS        = 40000;         % Number of training samples
 NLSA.nSOut     = 7000;          % Number of test samples 
-% NLSA.idxXSrc   = 1 : NLSA.nX;   % State vector components to use for training
-NLSA.idxXSrc   = {1 : NLSA.nX, 1};  % State vector components to use for training
+NLSA.idxXSrc   = 1 : NLSA.nX;   % State vector components to use for training
+% NLSA.idxXSrc   = {1 : NLSA.nX, 1};  % State vector components to use for training
 NLSA.idxXObs   = 1 : NLSA.nX;   % State vector components for observations
-NLSA.embWindow = 25;             % Delay embedding window
+NLSA.embWindow = 1;             % Delay embedding window
+% NLSA.embWindow = 15;             % Delay embedding window
+% NLSA.embWindow = 25;             % Delay embedding window
 NLSA.kernel    = 'l2';          % Kernel type
 NLSA.ifDen     = true;          % Set true to use variable-bandwidth kernel 
 
@@ -183,6 +187,84 @@ case 'F10.0_eps0.00781_dt0.05_nS40000_nSOut7000_idxXSrc1-+1-9_idxXObs1-+1-9_emb2
     NPar.observableOp = 0; % Observable operator calculation 
     NPar.featureOp    = 0; % Feature operator calculation
     NPar.da           = 0; % Main QMDA loop
+
+    % Plotting parameters
+    Plt.tLim = [65 85];
+    Plt.idxTF = [0 : 25 : 100] + 1; % lead times for running forecast
+    Plt.idxY = 1; % estimated components for running probability forecast
+    Plt.yLim = [-7 12]; % y axis limit for plots
+
+% Chaotic regime -- dataset as in Burov et al. (2020) MMS
+% Shorter embedding window
+case 'F10.0_eps0.00781_dt0.05_nS40000_nSOut7000_idxXSrc1-+1-9_idxXObs1-+1-9_emb15_l2_den'
+    idxY  = [1]; % predicted components 
+    idxR  = 1;     % realization (ensemble member) in assimilation phase   
+
+    % QMDA parameters
+    QMDA.nL    = 1000;  % eigenfunctions used for operator approximation
+    % QMDA.nL    = 2000;  % eigenfunctions used for operator approximation
+    QMDA.nQ    = 31;    % quantization levels 
+    QMDA.nTO   = 1;     % timesteps between obs
+    QMDA.nTF   = 300;   % number of forecast timesteps (must be at least nTO)
+    QMDA.epsilonScl = 1; % bandwidth scaling factor 
+    %QMDA.shape_fun = @rbf; % kernel shape function
+    QMDA.shape_fun = @bump;  % kernel shape function
+    QMDA.ifVB       = true; % use variable-bandwidth kernel  
+    QMDA.ifSqrtm    = false; % apply square root to matrix-valued feature map
+    
+    % Number of parallel workers
+    NPar.emb          = 0; % delay embedding
+    NPar.nN           = 0; % nearest neighbor computation
+    NPar.koopmanOp    = 0; % Koopman operator calculation  
+    NPar.observableOp = 0; % Observable operator calculation 
+    NPar.featureOp    = 0; % Feature operator calculation
+    NPar.da           = 0; % Main QMDA loop
+
+    % Plotting parameters
+    Plt.tLim = [65 85];
+    Plt.idxTF = [0 : 25 : 100] + 1; % lead times for running forecast
+    Plt.idxY = 1; % estimated components for running probability forecast
+    Plt.yLim = [-7 12]; % y axis limit for plots
+
+% Chaotic regime -- dataset as in Burov et al. (2020) MMS
+% No embedding
+case 'F10.0_eps0.00781_dt0.05_nS40000_nSOut7000_idxXSrc1-+1-9_idxXObs1-+1-9_emb1_l2_den'
+    idxY  = [1]; % predicted components 
+    idxR  = 1;     % realization (ensemble member) in assimilation phase   
+
+    % QMDA parameters
+    % QMDA.nL    = 500;  % eigenfunctions used for operator approximation
+    % QMDA.nL    = 1000;  % eigenfunctions used for operator approximation
+    % QMDA.nL    = 512;  % eigenfunctions used for operator approximation
+    QMDA.nL    = 2000;  % eigenfunctions used for operator approximation
+    QMDA.nQ    = 31;    % quantization levels 
+    QMDA.nTO   = 1;     % timesteps between obs
+    QMDA.nTF   = 300;   % number of forecast timesteps (must be at least nTO)
+    % QMDA.epsilonScl = 0.6; % bandwidth scaling factor 
+    QMDA.epsilonScl = 0.8; % bandwidth scaling factor 
+    % QMDA.epsilonScl = 1; % bandwidth scaling factor 
+    %QMDA.shape_fun = @rbf; % kernel shape function
+    QMDA.shape_fun = @bump;  % kernel shape function
+    QMDA.ifVB       = true; % use variable-bandwidth kernel  
+    QMDA.ifSqrtm    = false; % apply square root to matrix-valued feature map
+    
+    % Number of parallel workers
+    NPar.emb          = 0; % delay embedding
+    NPar.nN           = 0; % nearest neighbor computation
+    NPar.koopmanOp    = 0; % Koopman operator calculation  
+    NPar.observableOp = 0; % Observable operator calculation 
+    NPar.featureOp    = 0; % Feature operator calculation
+    NPar.da           = 0; % Main QMDA loop
+
+    % Plotting parameters
+    Plt.tLim = [65 85];
+    Plt.idxTF = [0 : 25 : 100] + 1; % lead times for running forecast
+    Plt.idxY = 1; % estimated components for running probability forecast
+    Plt.yLim = [-7 12]; % y axis limit for plots
+
+    % Saving parameters
+    Sav.idxU = [1]; % Koopman operators to save
+    Sav.idxK = [1 : 200]; % Feature operators to save
 
 % Chaotic regime -- dataset as in Burov et al. (2020) MMS.
 % Both x and x1 are used for training.
@@ -433,7 +515,7 @@ end
 
 %% OUTPUT DIRECTORY
 outDir = fullfile(pwd, 'figs', experiment, q_experiment);
-if (ifPrintFig || ifSaveData) && ~isdir(outDir)
+if (ifPrintFig || ifSaveData || ifSaveOperators) && ~isdir(outDir)
     mkdir(outDir)
 end
 
@@ -655,8 +737,18 @@ if ifKoopmanOp
     tic
     disp(sprintf('Computing Koopman operators for %i timesteps...', nTF))
     t = tic;
-    U = koopmanOperator(1 : nTF, phi(:, 1 : nL), mu, NPar.koopmanOp);
+    U = koopmanOperator(1 : nTF, phi(:, 1 : nL), mu, nPar=NPar.koopmanOp);
     toc(t)
+
+    if ifSaveOperators
+        t  = tic;
+        disp('Saving Koopman operators...')
+        U_sav = U(:, :, Sav.idxU);
+        dataFile = fullfile(outDir, 'u.mat');
+        outVars = {'NLSA' 'QMDA' 'Sav' 'U_sav'};  
+        save(dataFile, outVars{:}, '-v7.3')
+        toc(t)
+    end
 end
 
 %% MULTIPLICATION OPERATORS FOR TARGET OBSERVABLES
@@ -715,6 +807,18 @@ if ifObservableOp
     end
 
     toc(t)
+
+    if ifSaveOperators
+        t  = tic;
+        disp('Saving multiplication operators...')
+        dataFile = fullfile(outDir, 'm.mat');
+        outVars = {'NLSA' 'QMDA' 'M', 'M2'};  
+        if nQ > 0
+            outVars = [outVars {'yQ' 'dyQ' 'MEval' 'MEvec'}];
+        end
+        save(dataFile, outVars{:}, '-v7.3')
+        toc(t)
+    end
 end
 
 %% KERNEL TUNING
@@ -774,6 +878,16 @@ if ifFeatureOp
     t = tic;
     K = multiplicationOperator(k, phi(:, 1 : nL), mu, NPar.featureOp);
     toc(t)
+
+    if ifSaveOperators
+        t  = tic;
+        disp('Saving feature operators...')
+        K_sav = K(:, :, Sav.idxK);
+        dataFile = fullfile(outDir, 'k.mat');
+        outVars = {'NLSA' 'QMDA' 'Sav' 'K_sav'};  
+        save(dataFile, outVars{:}, '-v7.3')
+        toc(t)
+    end
 end
 
 
@@ -826,7 +940,12 @@ end
 if ifDAErr
     disp('Computing forecast errors...')
     t = tic;
-    [~, yRMSE, yPC] = forecastError(yOut, yExp, nTO);
+    if ifSaveOperators
+        [~, yRMSE, yPC, yRef] = forecastError(yOut, yExp, nTO);
+        yRef = yRef(:, :, Sav.idxK);
+    else
+        [~, yRMSE, yPC] = forecastError(yOut, yExp, nTO);
+    end
     yRMSE = yRMSE ./ yL2;
     yRMSE_est = sqrt(mean(yStd .^ 2, 3)) ./ yL2;
     toc(t)
@@ -834,6 +953,10 @@ if ifDAErr
     if ifSaveData
         dataFile = fullfile(outDir, 'forecast_error.mat');
         save(dataFile, 'NLSA', 'QMDA', 'tF', 'yRMSE', 'yRMSE_est', 'yPC')
+    end
+    if ifSaveOperators
+        dataFile = fullfile(outDir, 'y.mat');
+        save(dataFile, 'NLSA', 'QMDA', 'Sav', 'yRef', '-v7.3')
     end
 end
 
@@ -1019,9 +1142,8 @@ if ifPlotErr
     Fig.nextPlot   = 'add'; 
 
     % Plot skill scores
+    [fig, ax, axTitle] = tileAxes(Fig);
     for iY = 1 : nY 
-
-        [fig, ax, axTitle] = tileAxes(Fig);
 
         % Normalized RMSE
         set(gcf, 'currentAxes', ax(1, iY))
@@ -1070,6 +1192,98 @@ if ifPlotErr
     end
 end
 
+%% PLOT ERROR SCORES FROM MULTIPLE EXPERIMENTS
+if ifPlotErrMulti
+
+    nLs = [512 1000 2000];
+    nExp = numel(nLs);
+
+    % Load data to plot
+    QMDAs = repmat(QMDA, 1, nExp);
+    yRMSEs = zeros(nY, nTF + 1, nExp);
+    yPCs = zeros(nY, nTF + 1, nExp);
+    for iExp = 1 : nExp
+        QMDAs(iExp).nL = nLs(iExp);
+        outDirExp = fullfile(pwd, 'figs', experiment, qmdaStr(QMDAs(iExp)));
+        dataFile = fullfile(outDirExp, 'forecast_error.mat');
+        load(dataFile, 'tF', 'yRMSE', 'yRMSE_est', 'yPC')
+        yRMSEs(:, :, iExp) = yRMSE;
+        yPCs(:, :, iExp) = yPC;
+    end
+
+    % nYPlt = numel(Plt.idxY); % number of target variables to plot
+
+    % Set up figure and axes 
+    clear Fig
+    Fig.nTileX     = 2;
+    Fig.nTileY     = nY;
+    Fig.units      = 'inches';
+    Fig.figWidth   = 8; 
+    Fig.deltaX     = .6;
+    Fig.deltaX2    = .6;
+    Fig.deltaY     = .5;
+    Fig.deltaY2    = .25;
+    Fig.gapX       = .3;
+    Fig.gapY       = .3;
+    Fig.gapT       = 0.05; 
+    Fig.aspectR    = 3 / 4;
+    Fig.fontName   = 'helvetica';
+    Fig.fontSize   = 10;
+    Fig.tickLength = [0.02 0];
+    Fig.visible    = 'on';
+    Fig.nextPlot   = 'add'; 
+
+    % Plot skill scores
+    [fig, ax, axTitle] = tileAxes(Fig);
+    legendStr = cell(1, nExp);
+    for iY = 1 : nY 
+        % Normalized RMSE
+        set(gcf, 'currentAxes', ax(1, iY))
+        for iExp = 1 : nExp
+            plot(tLead, yRMSEs(iY, :, iExp), 'lineWidth', 1.5)
+            legendStr{iExp} = sprintf('L = %i', nLs(iExp));
+        end
+        grid on
+        ylim([0 1.1])
+        xlim([tLead(1) tLead(end)])
+        set(gca, 'yTick', 0 : .2 : 1.2)  
+        ylabel('Normalized RMSE')
+        legend(legendStr{:}, 'location', 'southEast')
+        if iY == nY
+            xlabel('Lead time \tau (model time units)')
+        else
+            set(gca, 'xTickLabel', [])
+        end
+        text(0.32, 1.03, '(a)')
+            
+        % Anomaly correlation
+        set(gcf, 'currentAxes', ax(2, iY))
+        for iExp = 1 : nExp
+            plot(tLead, yPCs(iY, :, iExp), 'lineWidth', 1.5)
+        end
+        grid on
+        ylim([0 1.1])
+        xlim([tLead(1) tLead(end)])
+        set(gca, 'yTick', 0 : .2 : 1.2, 'yAxisLocation', 'right')   
+        ylabel('Anomaly correlation')
+        if iY == nY
+            xlabel('Lead time \tau (model time units)')
+        else
+            set(gca, 'xTickLabel', [])
+        end
+        text(13.7, 1.03, '(b)')
+    end
+    title(axTitle, 'Forecast skill: Lorenz 96 multiscale')
+
+    % Print figure
+    if ifPrintFig
+        figFile = sprintf('figErrMulti_%s.png', targetVar{Plt.idxY});
+        figFile = fullfile(outDir, figFile);
+        print(fig, figFile, '-dpng', '-r300') 
+    end
+end
+
+
 %% HELPER FUNCTIONS
 
 % String identifier for data analysis experiment
@@ -1079,7 +1293,7 @@ function s = experimentStr(P)
     else
         idxXSrc = P.idxXSrc;
     end
-    nC = numel(P.idxXSrc);
+    nC = numel(idxXSrc);
     str = cell(1, nC);
     for iC = 1 : nC
         str{iC} = idx2str(idxXSrc{iC}, 'idxXSrc');

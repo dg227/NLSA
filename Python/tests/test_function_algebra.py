@@ -1,8 +1,10 @@
 import numpy as np
+from functools import partial
+from more_itertools import take
 from nlsa import abstract_algebra as alg
 from nlsa import function_algebra as fun
 from nlsa import scalars as scl
-from nlsa.abstract_algebra import compose_by
+from nlsa.abstract_algebra import compose_by, id_map, iterate
 from nptyping import Int, NDArray, Shape
 from typing import Callable, TypeVar
 
@@ -103,7 +105,16 @@ def test_function_valued_sub():
     assert a(1) == 2
 
 
-def test_matmul():
+def test_fmap():
+    def f(x: int) -> int:
+        return 2 * x
+    g = fun.fmap(f)
+    h = g(id_map)
+    assert h(0) == 0
+    assert h(1) == 2
+
+
+def test_algmul():
     def f(x: int) -> M:
         y = np.diag([x, 0, x])
         return y
@@ -111,11 +122,11 @@ def test_matmul():
         y = np.diag([0, x, 0])
         return y
 
-    h: FM = fun.matmul(f, g)
+    h: FM = fun.algmul(f, g)
     assert np.all(h(0) == 0)
 
 
-def test_higher_order_matmul():
+def test_higher_order_algmul():
     def a(f: FM) -> M:
         return f(-1)
     def b(f: FM) -> M:
@@ -123,11 +134,11 @@ def test_higher_order_matmul():
     def e(x: int) -> M:
         return np.diag([x, x])
 
-    c = fun.matmul(a, b)
+    c = fun.algmul(a, b)
     assert np.all(c(e) == -1 * np.eye(2))  
 
 
-def test_integer_valued_matmul():
+def test_integer_valued_algmul():
     def f(x: int) -> int:
         y = 2 * x
         return y
@@ -135,7 +146,7 @@ def test_integer_valued_matmul():
         y = 3 * x
         return y
 
-    h = fun.lift_from(scl).matmul(f, g)
+    h = fun.lift_from(scl).algmul(f, g)
     assert h(1) == 6
 
 
@@ -144,6 +155,30 @@ def test_compose():
     g: F = lambda i: i - 1
     h: F = fun.compose(f, g)
     assert h(0) == 0
+
+
+def test_compose2():
+    f = lambda i: 2 * i
+    g = lambda i, j: i + j
+    h = fun.compose2(f, g)
+    assert h(2, 1) == 6
+    
+def test_evaluate_at():
+    f = lambda i: 2 * i
+    x = 1
+    assert fun.evaluate_at(x, f) == 2
+
+
+def test_iterate():
+    f = lambda i: 2 * i
+    f_iter = iterate(fun, f)
+    x = 1
+    evalx = partial(fun.evaluate_at, x)
+    fx = map(evalx, f_iter) 
+    assert np.all(take(3, fx) == np.array([2, 4, 8]))
+    f_iter = iterate(fun, f, initial=id_map)
+    fx = map(evalx, f_iter) 
+    assert np.all(take(4, fx) == np.array([1, 2, 4, 8]))
 
 
 def test_compose_by():

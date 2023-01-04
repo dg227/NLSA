@@ -19,6 +19,8 @@ K = NDArray[Shape["N"], Int]
 X = NDArray[Shape["*, ..."], Double]
 XK = NDArray[Shape["*, N"], Complex]
 V = TypeVar("V", NDArray[Shape["N"], Double], NDArray[Shape["N"], Complex])
+VR = NDArray[Shape["N"], Double]
+VC = NDArray[Shape["N"], Complex]
 M = TypeVar("M", NDArray[Shape["L, L"], Double],
             NDArray[Shape["L, L"], Complex])
 
@@ -36,6 +38,19 @@ def dual_group(k_max: int) -> K:
     return k
 
 
+def dual_group0(k_max: int) -> K:
+    """Compute elements of the dual group Z (Fourier wavenumbers) of S1 up to
+    a maximal wavenumber, excluding the zero wavenumber.
+
+    :k_max: Maximal wavenumber.
+    :returns: Integer array of shape [2 * k_max,] containing the wavenumbers
+    in the range -k to k excluding 0.
+
+    """
+    k: K = np.concatenate((np.arange(-k_max, 0), np.arange(1, k_max + 1)))
+    return k
+
+
 def dual_size(k_max: int):
     """Number of elements in the dual group returned by the dual_group
     function.
@@ -48,7 +63,7 @@ def dual_size(k_max: int):
     return n
 
 
-def rkha_weights(p: float, tau: float) -> Callable[[K], V]:
+def rkha_weights(p: float, tau: float) -> Callable[[K], VR]:
     """Weight function for RKHA on the circle.
 
     :p: RKHA exponent parameter. p should lie in the interval (0, 1).
@@ -57,38 +72,34 @@ def rkha_weights(p: float, tau: float) -> Callable[[K], V]:
     S1.
 
     """
-    def w(k: K) -> V:
-        y: V = np.exp(tau * np.abs(k) ** p)
+    def w(k: K) -> VR:
+        y: VR = np.exp(tau * np.abs(k) ** p)
         return y
     return w
 
 
-def fourier_basis(k_max: int) -> Callable[[X], XK]:
+def fourier_basis(k: K) -> Callable[[X], XK]:
     """Returns Fourier basis functions on the circle up to a maximal
     wavenumber.
 
-    :k_max: Maximal wavenumber.
+    :k: Vector of wavenumbers.
     :returns: A function phi that takes as inputs floats or arrays of floats,
     representing points on the circle, and returns an array of complex numbers
     that contains the values of the corresponding Fourier functions.
 
     """
-    # TODO: This function should be rewritten to take in arbitrary collection of
-    # k's rather than k_max.
-    k = dual_group(k_max)
-
     def phi(x: X) -> XK:
         y = np.exp(1j * k * x[..., np.newaxis])
         return y
     return phi
 
 
-def rkha_basis(p: float, tau: float, k_max: int) -> Callable[[X], object]:
+def rkha_basis(p: float, tau: float, k: K) -> Callable[[X], object]:
     """Returns RKHA basis functions on the circle up to a maximal wavenumber.
 
     :p: RKHA exponent parameter. p should lie in the interval (0, 1).
     :tau: RKHA "heat flow" parameter. tau should be strictly positive
-    :k_max: Maximal wavenumber.
+    :k: Vector of wavenumbers.
     :returns: Function psi that takes as inputs floats or arrays of floats,
     representing points on the circle, and returns an array of floats that
     contains the values of the corresponding RKHA basis functions.
@@ -99,14 +110,19 @@ def rkha_basis(p: float, tau: float, k_max: int) -> Callable[[X], object]:
     # does not know that we can pass arrays of points in X as function
     # arguments, which is what we do throughout this module for efficiency.
     w = rkha_weights(p, tau)
-    lam = w(dual_group(k_max))
-    phi = fourier_basis(k_max)
+    lam = w(k)
+    phi = fourier_basis(k)
     psi = fun.mul(lam, phi)
     return psi
 
 
-def mult_op_fourier(k: int) -> Callable[[V], M]:
-    """Multiplication operator in the Fourier basis.
+# TODO: In addition to (or instead of) representing multiplication operators by
+# matrices in the Fourier basis, represent them as convolution operators. The
+# matrix representation could then be computed automatically by acting by the
+# convolution operators on basis vectors.
+
+def make_mult_op(k: int) -> Callable[[V], M]:
+    """Make multiplication operator in the Fourier basis of S1.
 
     :k: Maximal Fourier wavenumber.
     :returns: Function that constructs a multiplication operator from a vector
@@ -116,8 +132,8 @@ def mult_op_fourier(k: int) -> Callable[[V], M]:
     def op(v: V) -> M:
         """Multiplication operator function.
 
-        :v: Vector of shape [2 * k + 1].
-        :returns: Toeplitz matrix m of shape [k + 1, k + 1].
+        :v: Vector of shape (2 * 4 + 1,).
+        :returns: Toeplitz matrix m of shape (2 * k + 1, 2 * k + 1).
 
         """
         c = v[2 * k:]
@@ -125,6 +141,32 @@ def mult_op_fourier(k: int) -> Callable[[V], M]:
         m: M = toeplitz(c, r)
         return m
     return op
+
+
+def make_mult_op0(k: int):
+    """Make multiplication operator in the Fourier basis of S1, excluding the
+    excluding the constant Fourier function (zero wavenumber).
+
+    :k: Maximal Fourier wavenumber.
+    :returns: Function that constructs a multiplication operator from a vector
+    of Fourier expansion coefficients.
+
+    """
+    op = make_mult_op(k)
+    i = np.concatenate((np.arange(0, k), np.arange(k + 1, 2 * k + 1)))
+    j = i[:, np.newaxis]
+
+    def op0(v: V) -> M:
+        """Multiplication operator function.
+
+        :v: Vector of shape (2 * 4 + 1,).
+        :returns: Toeplitz matrix m of shape (2 * k, 2 * k).
+
+        """
+        m = op(v)
+        m0: M = m[i, j]
+        return m0
+    return op0
 
 
 def von_mises(kappa: float, loc: float = 0) -> Callable[[X], X]:
@@ -136,7 +178,7 @@ def von_mises(kappa: float, loc: float = 0) -> Callable[[X], X]:
 
     """
     def f(x: X) -> X:
-        y = 2 * np.pi * vonmises.pdf(x, kappa, loc=loc)
+        y: X = 2 * np.pi * vonmises.pdf(x, kappa, loc=loc)
         return y
     return f
 
@@ -157,19 +199,18 @@ def von_mises_fourier(kappa: float, loc: float = 0) -> Callable[[K], V]:
     return f_hat
 
 
-def von_mises_feature_map(kappa: float, k_max: int) -> Callable[[X], XK]:
+def von_mises_feature_map(kappa: float, k: K) -> Callable[[X], XK]:
     """Von Mises feature map on S1.
 
     :kappa: Von Mises concentration parameter.
-    :k_max: Maximal wavenumber
+    :k: Fourier wavenumbers.
     :returns: Vector-valued function xi (feature map).
 
     """
-    k = dual_group(k_max)
-    phi = fourier_basis(k_max)
+    phi = fourier_basis(k)
 
     def xi(x: X) -> XK:
-        y: V = iv(np.abs(k), kappa / 2) * np.conj(phi(x)) / iv(0, kappa)
+        y: XK = iv(np.abs(k), kappa / 2) * np.conj(phi(x)) / iv(0, kappa)
         return y
     return xi
 
@@ -207,7 +248,7 @@ def rotation_koopman_eigs(a: float) -> Callable[[K], V]:
     return g
 
 
-def rotation_generator_eigs(a: float) -> Callable[[K], V]:
+def rotation_generator_eigs(a: float) -> Callable[[K], VC]:
     """Returns a function that computes the eigenvalues of the Koopman
     generator associated with a continuous-time circle rotation.
 
@@ -215,8 +256,8 @@ def rotation_generator_eigs(a: float) -> Callable[[K], V]:
     :returns: Function g that computes the eigenvalues of the Koopman operator.
 
     """
-    def g(k: K) -> V:
-        y = 1j * a * k
+    def g(k: K) -> VC:
+        y: VC = 1j * a * k
         return y
     return g
 
