@@ -12,6 +12,15 @@
 % ifPrintFig are set to true. Setting ifLoadData to true then allows using the
 % DA output (e.g., for plotting figures) without re-running the DA code. 
 %
+% The script provides options to run two cases: 
+%   - A test case with small training and verification data. This will not lead 
+%     to high-quality output, but is useful for testing the code.
+%   - A case with larger training and verification data that will reproduce the
+%     results in Figs. 4 and 5 of Freeman et al. The training and test data
+%     specifications are as in Wang et al. (2020), "Extended-range statistical 
+%     ENSO prediction through operator- theoretic techniques for nonlinear 
+%     dynamics", Sci. Rep., 10, 2636, https://doi.org/10.1038/s41598-020-59128-7.
+
 % Modified 2023/01/19
     
 %% SCRIPT EXECUTION OPTIONS
@@ -32,54 +41,36 @@ ifDATrainingData  = true; % read training data for data assimilation
 ifDATestData      = true; % read test data for data assimilation
 ifKoopmanOp       = true; % compute Koopman operators
 ifObservableOp    = true; % compute quantum mechanical observable operators  
-ifAutotune        = true;  % tune the observation kernel
+ifAutotune        = true; % tune the observation kernel
 ifFeatureOp       = true; % compute quantum mechanical feature operators
 ifDA              = true; % perform data assimilation
 ifDAErr           = true; % compute forecast errors
 
 % IO options
 ifSaveData        = true;  % save DA output to disk
-ifLoadData        = false;  % load data from disk
+ifLoadData        = false; % load data from disk
 ifPrintFig        = false; % print figures to file
 
 % Plotting/movie options
-ifPlotPrb    = true; % running probability forecast
-ifPlotErr   = true; % plot forecast errors
-ifPlotErrMulti  = false; % plot forecast errors from multiple experiments
-ifShowObs   = false; % show observations in plots
+ifPlotPrb      = true; % running probability forecast
+ifPlotErr      = true; % plot forecast errors
+ifPlotErrMulti = false; % plot forecast errors from multiple experiments
+ifShowObs      = false; % show observations in plots
 
 
 %% NLSA PARAMETERS
-% ERSSTv4 reanalysis
-% NLSA.dataset           = 'ersstV4';
-%NLSA.trainingPeriod    = {'197001' '202002'};
-%NLSA.climatologyPeriod = {'198101' '201012'};
-%NLSA.sourceVar         = {'IPSST'};
-%NLSA.targetVar         = {'Nino3.4'};
-%NLSA.embWindow         = 48; 
-%NLSA.kernel            = 'cone';
-%NLSA.ifDen             = false;
 
-% CCSM4 control run
-NLSA.dataset           = 'ccsm4Ctrl';
-NLSA.trainingPeriod    = {'000101' '109912'};
-NLSA.testPeriod        = {'110001' '130012'};
-NLSA.climatologyPeriod = NLSA.trainingPeriod;
-% NLSA.sourceVar         = {'IPSST'};
-% NLSA.sourceVar         = {'Nino3.4'};
-NLSA.sourceVar         = {'IPSST' 'Nino3.4'};
-NLSA.obsVar            = {'IPSST'};
-NLSA.targetVar         = {'Nino3.4' 'Nino4' 'Nino3' 'Nino1+2'};
-% NLSA.embWindow         = 9;
-NLSA.embWindow         = 11; 
-% NLSA.embWindow         = 13; 
-% NLSA.embWindow         = 17; 
-% NLSA.embWindow         = 23; 
-% NLSA.embWindow         = 12; 
-NLSA.kernel            = 'l2';
-NLSA.ifDen             = true;
-% NLSA.kernel            = 'cone';
-% NLSA.ifDen             = false;
+% CCSM4 control run as used in Freeman et al. (2023)
+% NLSA.dataset           = 'ccsm4Ctrl';
+% NLSA.trainingPeriod    = {'000101' '109912'};
+% NLSA.testPeriod        = {'110001' '130012'};
+% NLSA.climatologyPeriod = NLSA.trainingPeriod;
+% NLSA.sourceVar         = {'IPSST' 'Nino3.4'};
+% NLSA.obsVar            = {'IPSST'};
+% NLSA.targetVar         = {'Nino3.4' 'Nino4' 'Nino3' 'Nino1+2'};
+% NLSA.embWindow         = 11; 
+% NLSA.kernel            = 'l2';
+% NLSA.ifDen             = true;
 
 % CCSM4 control run -- small datasaet for testing
 NLSA.dataset           = 'ccsm4Ctrl';
@@ -88,108 +79,16 @@ NLSA.testPeriod        = {'120001' '121212'};
 NLSA.climatologyPeriod = NLSA.trainingPeriod;
 NLSA.sourceVar         = {'IPSST' 'Nino3.4'};
 NLSA.targetVar         = {'Nino3.4' 'Nino4' 'Nino3' 'Nino1+2'};
+NLSA.obsVar            = {'IPSST'};
 NLSA.embWindow         = 3; 
 NLSA.kernel            = 'l2';
 NLSA.ifDen             = true;
 
 experiment = experimentStr(NLSA);
 
+
 %% SETUP GLOBAL PARAMETERS 
 switch experiment
-
-case 'ccsm4Ctrl_000101-109912_110001-130012_IPSST_IPSST_emb11_l2_den'
-
-    idxY  = [1]; % predicted  components (Nino 3.4 index) 
-    idxR  = 1;     % realization (ensemble member) in assimilation phase   
-
-    % QMDA parameters
-    QMDA.nL         = 1500;  % eigenfunctions used for operator approximation
-    % QMDA.nL         = 3000;  % eigenfunctions used for operator approximation
-    QMDA.nQ         = 31;     % number of spectral bins
-    QMDA.nTO        = 1;     % timesteps between obs
-    QMDA.nTF        = 12;    % number of forecast timesteps (must be at least nTO)
-    QMDA.epsilonScl = 1.03; % bandwidth scaling factor 
-    QMDA.shape_fun  = @bump; % kernel shape function
-    % QMDA.shape_fun  = @rbf;  % kernel shape function
-    QMDA.ifVB       = true; % use variable-bandwidth kernel  
-    QMDA.ifSqrtm    = false; % apply square root to matrix-valued feature map
-
-    % Number of parallel workers
-    NPar.koopmanOp    = 0; % Koopman operator calculation  
-    NPar.observableOp = 0; % Observable operator calculation 
-    NPar.featureOp    = 0; % Feature operator calculation
-    NPar.qmda         = 0; % Main QMDA loop
-
-    % Plotting parameters
-    Plt.tLim = {'120005' '122005'}; % time limit to plot
-    Plt.idxTF = [0 : 3 : 12] + 1; % lead times for running forecast
-    Plt.idxY = 1; % estimated components for running probability forecast
-    Plt.yQLim = [-3 3];
-
-case 'ccsm4Ctrl_000101-109912_110001-130012_Nino3.4_IPSST_emb11_l2_den'
-    idxY  = [1]; % predicted  components (Nino 3.4 index) 
-    idxR  = 1;     % realization (ensemble member) in assimilation phase   
-
-    % QMDA parameters
-    % QMDA.nL         = 1500;  % eigenfunctions used for operator approximation
-    QMDA.nL         = 3000;  % eigenfunctions used for operator approximation
-    QMDA.nQ         = 31;     % number of spectral bins
-    QMDA.nTO        = 1;     % timesteps between obs
-    QMDA.nTF        = 12;    % number of forecast timesteps (must be at least nTO)
-    QMDA.epsilonScl = 1.03; % bandwidth scaling factor 
-    QMDA.shape_fun  = @bump; % kernel shape function
-    % QMDA.shape_fun  = @rbf;  % kernel shape function
-    QMDA.ifVB       = true; % use variable-bandwidth kernel  
-    QMDA.ifSqrtm    = false; % apply square root to matrix-valued feature map
-
-    % Number of parallel workers
-    NPar.koopmanOp    = 0; % Koopman operator calculation  
-    NPar.observableOp = 0; % Observable operator calculation 
-    NPar.featureOp    = 0; % Feature operator calculation
-    NPar.qmda         = 0; % Main QMDA loop
-
-    % Plotting parameters
-    Plt.tLim = {'120005' '122005'}; % time limit to plot
-    Plt.idxTF = [0 : 3 : 12] + 1; % lead times for running forecast
-    Plt.idxY = 1; % estimated components for running probability forecast
-    Plt.yQLim = [-3 3];
-
-
-case 'ccsm4Ctrl_000101-109912_110001-130012_IPSST+Nino3.4_IPSST_emb11_l2_den'
-    % Cased used in Freeman et al. (2023), PNAS.
-
-    idxY  = [1]; % predicted  components (Nino 3.4 index) 
-    idxR  = 1;     % realization (ensemble member) in assimilation phase   
-
-    % QMDA parameters
-    % QMDA.nL         = 500;  % eigenfunctions used for operator approximation
-    % QMDA.nL         = 1000;  % eigenfunctions used for operator approximation
-    QMDA.nL         = 1500;  % eigenfunctions used for operator approximation
-    % QMDA.nL         = 2000;  % eigenfunctions used for operator approximation
-    QMDA.nQ         = 31;     % number of spectral bins
-    QMDA.nTO        = 1;     % timesteps between obs
-    QMDA.nTF        = 12;    % number of forecast timesteps (must be at least nTO)
-    % QMDA.epsilonScl = 1.03; % bandwidth scaling factor 
-    QMDA.epsilonScl = 1.0; % bandwidth scaling factor 
-    % QMDA.epsilonScl = 0.97; % bandwidth scaling factor 
-    % QMDA.epsilonScl = 0.93; % bandwidth scaling factor 
-    QMDA.shape_fun  = @bump; % kernel shape function
-    % QMDA.shape_fun  = @rbf;  % kernel shape function
-    QMDA.ifVB       = true; % use variable-bandwidth kernel  
-    QMDA.ifSqrtm    = false; % apply square root to matrix-valued feature map
-    QMDA.ifPolar    = false; % perform polar decomposition of Koopman 
-
-    % Number of parallel workers
-    NPar.koopmanOp    = 0; % Koopman operator calculation  
-    NPar.observableOp = 0; % Observable operator calculation 
-    NPar.featureOp    = 0; % Feature operator calculation
-    NPar.qmda         = 0; % Main QMDA loop
-
-    % Plotting parameters
-    Plt.tLim = {'120005' '122005'}; % time limit to plot
-    Plt.idxTF = [0 : 3 : 12] + 1; % lead times for running forecast
-    Plt.idxY = 1; % estimated components for running probability forecast
-    Plt.yQLim = [-3 3];
 
 case 'ccsm4Ctrl_000101-003012_120001-121212_IPSST+Nino3.4_IPSST_emb3_l2_den'
     % Small dataset for testing
@@ -215,30 +114,27 @@ case 'ccsm4Ctrl_000101-003012_120001-121212_IPSST+Nino3.4_IPSST_emb3_l2_den'
     NPar.qmda         = 0; % Main QMDA loop
 
     % Plotting parameters
-    Plt.tLim = {'120005' '121005'}; % time limit to plot
+    Plt.tLim  = {'120005' '121005'}; % time limit to plot
     Plt.idxTF = [0 : 3 : 12] + 1; % lead times for running forecast
-    Plt.idxY = 1; % estimated components for running probability forecast
+    Plt.idxY  = 1; % estimated components for running probability forecast
     Plt.yQLim = [-3 3];
 
-case 'ccsm4Ctrl_000101-109912_110001-130012_IPSST+Nino3.4_IPSST+Nino3.4_emb11_l2_den'
+case 'ccsm4Ctrl_000101-109912_110001-130012_IPSST+Nino3.4_IPSST_emb11_l2_den'
+    % Case used in Freeman et al. (2023), PNAS. Reproduces Figs. 4 and 5.
 
     idxY  = [1]; % predicted  components (Nino 3.4 index) 
     idxR  = 1;     % realization (ensemble member) in assimilation phase   
 
     % QMDA parameters
-    QMDA.nL         = 1000;  % eigenfunctions used for operator approximation
-    % QMDA.nL         = 1500;  % eigenfunctions used for operator approximation
-    % QMDA.nL         = 2000;  % eigenfunctions used for operator approximation
-    % QMDA.nL         = 3000;  % eigenfunctions used for operator approximation
+    QMDA.nL         = 1500;  % eigenfunctions used for operator approximation
     QMDA.nQ         = 31;     % number of spectral bins
     QMDA.nTO        = 1;     % timesteps between obs
     QMDA.nTF        = 12;    % number of forecast timesteps (must be at least nTO)
-    % QMDA.epsilonScl = 1.03; % bandwidth scaling factor 
-    QMDA.epsilonScl = 1;
+    QMDA.epsilonScl = 1.0; % bandwidth scaling factor 
     QMDA.shape_fun  = @bump; % kernel shape function
-    % QMDA.shape_fun  = @rbf;  % kernel shape function
     QMDA.ifVB       = true; % use variable-bandwidth kernel  
     QMDA.ifSqrtm    = false; % apply square root to matrix-valued feature map
+    QMDA.ifPolar    = false; % perform polar decomposition of Koopman 
 
     % Number of parallel workers
     NPar.koopmanOp    = 0; % Koopman operator calculation  
@@ -247,10 +143,10 @@ case 'ccsm4Ctrl_000101-109912_110001-130012_IPSST+Nino3.4_IPSST+Nino3.4_emb11_l2
     NPar.qmda         = 0; % Main QMDA loop
 
     % Plotting parameters
-    Plt.tLim = {'120005' '122005'}; % time limit to plot
+    Plt.tLim  = {'120005' '122005'}; % time limit to plot
     Plt.idxTF = [0 : 3 : 12] + 1; % lead times for running forecast
-    Plt.idxY = 1; % estimated components for running probability forecast
-    Plt.yQLim = [-3 3];
+    Plt.idxY  = 1; % estimated components for running probability forecast
+    Plt.yQLim = [-3 3]; % y axis limit for plots
 
 otherwise
     error(['Invalid experiment '  experiment])
@@ -261,9 +157,11 @@ q_experiment = qmdaStr(QMDA);
 disp(['EXPERIMENT: ' experiment])
 disp(['QMDA parameters: ' q_experiment])
 
+
 %% BATCH PROCESSING
 iProc = 1; % index of batch process for this script
 nProc = 1; % number of batch processes
+
 
 %% EXTRACT SOURCE DATA
 if ifDataSrc
@@ -278,6 +176,7 @@ if ifDataSrc
     end
 end
 
+
 %% EXTRACT TARGET DATA
 if ifDataTrg
     for iVar = 1 : numel(NLSA.targetVar)
@@ -290,6 +189,7 @@ if ifDataTrg
         toc(t)
     end
 end
+
 
 %% EXTRACT OBSERVED DATA
 if ifDataObs
@@ -304,6 +204,7 @@ if ifDataObs
     end
 end
 
+
 %% EXTRACT OUT-OF-SAMPLE OBSERVED DATA
 if ifDataOutObs
     for iVar = 1 : numel(NLSA.obsVar)
@@ -317,6 +218,7 @@ if ifDataOutObs
     end
 end
 
+
 %% EXTRACT OUT-OF-SAMPLE TARGET DATA
 if ifDataOutTrg
     for iVar = 1 : numel(NLSA.targetVar)
@@ -329,6 +231,7 @@ if ifDataOutTrg
         toc(t)
     end
 end
+
 
 %% BUILD NLSA MODELS, DETERMINE BASIC ARRAY SIZES
 % In and InObs are data structures containing the NLSA parameters for the 
@@ -379,8 +282,6 @@ nE           = floor((getEmbeddingWindow(model.embComponent) - 1) / 2);
 idxT1        = getOrigin(model.trgEmbComponent(1)); 
 idxT1Obs     = getOrigin(modelObs.trgEmbComponent(1)); 
 nShiftTakens = idxT1 - nE - idxT1Obs;
-% nShiftTakens = 8; % Temporary change for testing
-% nShiftTakens = 0; % Temporary change for testing
 
 if nShiftTakens < 0
     error(['Negative Takens delay embedding window shift. ' ...
@@ -422,6 +323,7 @@ outDir = fullfile(pwd, 'figs', experiment, q_experiment);
 if (ifPrintFig || ifSaveData) && ~isdir(outDir)
     mkdir(outDir)
 end
+
 
 %% PERFORM NLSA FOR SOURCE DATA
 % Output from each step is saved on disk.
@@ -488,7 +390,6 @@ end
 
 %% PERFORM NLSA FOR OBSERVED DATA
 if ifNLSAObs
-
     % Execute NLSA steps. Output from each step is saved on disk.
 
     disp('Takens delay embedding for observed data...'); t = tic; 
@@ -530,6 +431,7 @@ if ifNLSAObs
         toc(t)
     end
 end
+
 
 %% DO OUT-OF-SAMPLE EXTENSION FOR OBSERVED DATA
 if ifNLSAOut
@@ -603,6 +505,7 @@ if ifDATrainingData
     toc(t)
 end
 
+
 %% READ TEST DATA FOR DATA ASSIMILATION
 if ifDATestData
     disp('Retrieving data assimilation test data...'); 
@@ -634,6 +537,7 @@ if ifDATestData
     toc(t)
 end
     
+
 %% KOOPMAN OPERATORS
 if ifKoopmanOp
     disp(sprintf('Computing Koopman operators for %i timesteps...', nTF))
@@ -642,6 +546,7 @@ if ifKoopmanOp
                         nPar=NPar.koopmanOp, polar=QMDA.ifPolar);
     toc(t)
 end
+
 
 %% MULTIPLICATION OPERATORS FOR TARGET OBSERVABLES
 if ifObservableOp
@@ -691,6 +596,7 @@ if ifObservableOp
     end
     toc(t)
 end
+
 
 %% KERNEL TUNING
 if ifAutotune
@@ -756,6 +662,7 @@ if ifFeatureOp
     toc(t)
 end
 
+
 %% DATA ASSIMILATION
 if ifDA 
     % xi0 is the initial wavefunction. We set xi0 to the constant wavefunction 
@@ -784,13 +691,14 @@ if ifDA
     if ifSaveData
         dataFile = fullfile(outDir, 'forecast.mat');
         outVars = {'NLSA' 'QMDA' 'tNumVer' 'tNumObs' 'tNumOut' 'yOut' ...
-                    'yExp' 'yStd' 'yExp0' 'yStd0'};  
+                   'yExp' 'yStd' 'yExp0' 'yStd0'};  
         if nQ > 0
             outVars = [outVars {'yQ' 'yPrb' 'yDen' 'yPrb0' 'yDen0'}];
         end
         save(dataFile, outVars{:}, '-v7.3')
     end
 end
+
 
 %% DATA ASSIMILATION ERRORS
 % yRMSE is an array of size [nY, nTF + 1] such that yRMSE(i, j) is the 
@@ -836,7 +744,6 @@ if ifPlotPrb
     tNumLimPlt = datenum(Plt.tLim, 'yyyymm');
     [idxTLimPlt, ~] = find(tNumObs == tNumLimPlt', 2);
     idxTPlt = idxTLimPlt(1) : idxTLimPlt(2);
-
 
     % Figure parameters
     Fig.nTileX     = nYPlt;
@@ -962,6 +869,7 @@ if ifPlotPrb
     end
 end
 
+
 %% PLOT ERROR SCORES
 if ifPlotErr
 
@@ -1043,8 +951,11 @@ if ifPlotErr
     end
 end
 
+
 %% PLOT ERROR SCORES FROM MULTIPLE EXPERIMENTS
 if ifPlotErrMulti
+    % Plots Fig. S2 in the SI Appendix of Freeman et al. (2023). This requires
+    % QMDA is run for the Hilbert space dimensions in the vector nLs below. 
 
     nLs = [500 1000 1500 2000];
     nExp = numel(nLs);
@@ -1061,8 +972,6 @@ if ifPlotErrMulti
         yRMSEs(:, :, iExp) = yRMSE;
         yPCs(:, :, iExp) = yPC;
     end
-
-    % nYPlt = numel(Plt.idxY); % number of target variables to plot
 
     % Set up figure and axes 
     clear Fig

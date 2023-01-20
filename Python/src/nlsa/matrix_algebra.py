@@ -97,15 +97,15 @@ def eig_sorted(a: A, n: Optional[int] = None,
 
     """
     wv = la.eig(a)
-    if which == 'LA' or 'SA' or 'LR' or 'SR':
+    if which in ('LA', 'SA', 'LR', 'SR'):
         idx = wv[0].real.argsort()
-    elif which == 'LI' or 'SI':
+    elif which in ('LI', 'SI'):
         idx = wv[0].imag.argsort()
-    elif which == 'LM' or 'SM':
+    elif which in ('LM', 'SM'):
         idx = wv[0].abs.argsort()
     if n is None:
         n = len(a)
-    if which == 'LA' or 'LM' or 'LR' or 'LI':
+    if which in ('LA', 'LM', 'LR', 'LI'):
         idx = idx[::-1]
     w: W = wv[0][idx[0:n]]
     v: A = wv[1][:, idx[0:n]]
@@ -135,7 +135,7 @@ def eigs_sorted(a: A, n: Optional[int] = None, which: WhichEigs = 'LR',
     else:
         wv = sla.eigs(a, n, which=which)
     idx = np.arange(0, n)
-    if which == 'LA' or 'LM' or 'LR' or 'LI':
+    if which in ('LA', 'LM', 'LR', 'LI'):
         idx = idx[::-1]
     w: W = wv[0][idx[0:n]]
     v: A = wv[1][:, idx[0:n]]

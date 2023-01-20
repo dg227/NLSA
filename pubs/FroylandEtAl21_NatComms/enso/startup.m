@@ -1,1 +1,2 @@
-addpath( genpath( fullfile( '../../../', 'nlsa' ) ) )
+addpath(genpath(fullfile('../../../', 'nlsa')))
+beep off

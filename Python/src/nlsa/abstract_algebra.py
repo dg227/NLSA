@@ -3,7 +3,7 @@
 from functools import partial
 from itertools import accumulate, repeat
 from typing import Callable, Iterator, Optional, Protocol, TypeVar, \
-        runtime_checkable, Generic
+        runtime_checkable
 
 B = TypeVar('B')
 B_contra = TypeVar('B_contra', contravariant=True)
@@ -52,7 +52,7 @@ class Indexable(Protocol[T_co]):
         ...
 
 
-class SupportsAdd(Protocol[T]):
+class SupportsAdd(Protocol):
     """Represents types supporting addition."""
     def __add__(a: T, b: T) -> T:
         ...
@@ -333,7 +333,7 @@ def make_l2_innerp(impl: ImplementsStarAlgebra[T], mu: Callable[[T], S])\
     return ip
 
 
-def riesz_dual(w: Callable[[U, T], S], u: U) -> Callable[[T], S]:
+def riesz_dual(w: Callable[[U, U], S], u: U) -> Callable[[U], S]:
     """Riesz dual vector associated with bilinear form.
 
     :w: Bilinear form

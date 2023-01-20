@@ -1,4 +1,4 @@
-function demoKoopman_data( dataset, tLim, fld, tClim )
+function demoKoopman_data(dataset, tLim, fld, tClim)
 % DEMOKOOPMAN_DATA Read monthly data from NetCDF files, and output in format 
 % appropriate for NLSA code. 
 %
@@ -17,11 +17,9 @@ function demoKoopman_data( dataset, tLim, fld, tClim )
 % Modified 2021/09/14
 
 rootDataPath = '/Users/dg227/GoogleDrive/physics/climate/data';
-%rootDataPath = '/Volumes/TooMuch/physics/climate/data'; 
-%rootDataPath = '/kontiki_array5/data';
 
 % Convert date range into string
-period = strjoin_e( tLim, '-' );
+period = strjoin_e(tLim, '-');
 
 DataSpecs.Time.tLim  = tLim;  % time limits
 
@@ -40,7 +38,7 @@ case 'ersstV5'
     DataSpecs.In.dir = rootDataPath; 
 
     % Output data specification
-    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
+    DataSpecs.Out.dir = fullfile(pwd, 'data/raw', dataset);
 
     % Time specification
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
@@ -51,7 +49,7 @@ case 'ersstV5'
     case 'globalSST'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v5');
         DataSpecs.In.file = 'ersst.v5'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -62,8 +60,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '188001';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 0 359 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359]; % longitude limits
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -74,13 +72,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV5( DataSpecs )
+        importData_ersstV5(DataSpecs)
 
     %% Indo-Pacific SST (from ERSST)
     case 'IPSST'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v5');
         DataSpecs.In.file = 'ersst.v5'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -91,8 +89,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '188001';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+        DataSpecs.Domain.xLim = [28 290]; % longitude limits
+        DataSpecs.Domain.yLim = [-60 20]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -103,13 +101,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV5( DataSpecs )
+        importData_ersstV5(DataSpecs)
 
     %% Nino 4 index (from ERSST)
     case 'Nino4'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v5');
         DataSpecs.In.file = 'ersst.v5'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -120,8 +118,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '188001';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 160 210 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [160 210]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -132,13 +130,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV5( DataSpecs )
+        importData_ersstV5(DataSpecs)
 
     %% Nino 3.4 index (from ERSST)
     case 'Nino3.4'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v5');
         DataSpecs.In.file = 'ersst.v5'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -149,8 +147,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '188001';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 190 240 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [190 240]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -161,13 +159,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV5( DataSpecs )
+        importData_ersstV5(DataSpecs)
 
     %% Nino 3 index (from ERSST)
     case 'Nino3'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v5');
         DataSpecs.In.file = 'ersst.v5'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -178,8 +176,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '188001';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 210 270 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [210 270]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -190,13 +188,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV5( DataSpecs )
+        importData_ersstV5(DataSpecs)
 
     %% Nino 1+2 index (from ERSST)
     case 'Nino1+2'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v5');
         DataSpecs.In.file = 'ersst.v5'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -207,8 +205,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '188001';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 270 280 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -10 0 ];    % latitude limits
+        DataSpecs.Domain.xLim = [270 280]; % longitude limits 
+        DataSpecs.Domain.yLim = [-10 0];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -219,13 +217,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV5( DataSpecs )
+        importData_ersstV5(DataSpecs)
 
     %% Global SST (from ERSST)
     case 'SST' 
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v5' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v5');
         DataSpecs.In.file = 'ersst.v5'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -236,8 +234,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '188001';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -248,13 +246,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV5( DataSpecs )
+        importData_ersstV5(DataSpecs)
 
     % Global SSH (from GODAS)
     case 'SSH'
 
         % Input data 
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'godas' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'godas');
         DataSpecs.In.file = 'sshg'; % input filename
         DataSpecs.In.var  = 'sshg';
 
@@ -266,8 +264,8 @@ case 'ersstV5'
         DataSpecs.Time.tEnd   = '202004'; % end time in dataset
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -278,13 +276,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_godas( DataSpecs )
+        importData_godas(DataSpecs)
 
     %% Global SAT (from NCEP/NCAR)
-    case( 'SAT' )
+    case('SAT')
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ncep');
         DataSpecs.In.file = 'air.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'air';
 
@@ -295,8 +293,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '194801';  % start time in dataset
 
         % Spatial domain 
-        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim   = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim   = [-89 89]; % latitude limits
         DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
@@ -309,13 +307,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
-        importData_ncep( DataSpecs ) 
+        importData_ncep(DataSpecs) 
 
     %% Global precipitation rate (from CMAP)
     case 'precip'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'cmap' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'cmap');
         DataSpecs.In.file = 'precip.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'precip';
 
@@ -326,8 +324,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '197901'; % start time in dataset
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -338,13 +336,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_cmap( DataSpecs )
+        importData_cmap(DataSpecs)
 
     %% Global zonal wind (from NCEP/NCAR)
     case 'uwind' 
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ncep');
         DataSpecs.In.file = 'uwnd.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'uwnd';
 
@@ -355,8 +353,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart = '194801'; % start time in dataset
 
         % Spatial domain 
-        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim   = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim   = [-89 89]; % latitude limits
         DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
@@ -368,13 +366,13 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ncep( DataSpecs ) 
+        importData_ncep(DataSpecs) 
 
     %% Global meridional wind (from NCEP/NCAR)
     case 'vwind' 
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ncep');
         DataSpecs.In.file = 'vwnd.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'vwnd';
 
@@ -385,8 +383,8 @@ case 'ersstV5'
         DataSpecs.Time.tStart  = '194801'; % start time in dataset 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim   = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim   = [-89 89]; % latitude limits
         DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
@@ -398,11 +396,11 @@ case 'ersstV5'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ncep( DataSpecs ) 
+        importData_ncep(DataSpecs) 
 
     otherwise
 
-        error( 'Invalid variable' )
+        error('Invalid variable')
 
     end
 
@@ -414,18 +412,18 @@ case 'ersstV4'
     DataSpecs.In.dir = rootDataPath; 
 
     % Output data specification
-    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
+    DataSpecs.Out.dir = fullfile(pwd, 'data/raw', dataset);
 
     % Time specification
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
 
-    switch( fld )
+    switch(fld)
 
     %% Global SST (from ERSST)
     case 'globalSST'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -436,8 +434,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 0 359 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359]; % longitude limits
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -448,13 +446,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Sub-global SST (from ERSST)
     case 'subglobalSST'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -465,8 +463,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 0 359 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -67 67 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359]; % longitude limits
+        DataSpecs.Domain.yLim = [-67 67]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -477,14 +475,14 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
 
     %% Indo-Pacific SST (from ERSST)
     case 'IPSST'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -495,8 +493,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+        DataSpecs.Domain.xLim = [28 290]; % longitude limits
+        DataSpecs.Domain.yLim = [-60 20]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -507,14 +505,14 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
 
     %% Indo-Pacific SST anomalies (from ERSST)
     case 'IPSSTA'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -525,8 +523,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+        DataSpecs.Domain.xLim = [28 290]; % longitude limits
+        DataSpecs.Domain.yLim = [-60 20]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -537,13 +535,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Nino 4 index (from ERSST)
     case 'Nino4'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -554,8 +552,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 160 210 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [160 210]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -566,13 +564,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Nino 3.4 index (from ERSST)
     case 'Nino3.4'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -583,8 +581,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 190 240 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [190 240]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -595,13 +593,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Nino 3 index (from ERSST)
     case 'Nino3'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -612,8 +610,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 210 270 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [210 270]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -624,13 +622,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Nino 1+2 index (from ERSST)
     case 'Nino1+2'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -641,8 +639,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 270 280 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -10 0 ];    % latitude limits
+        DataSpecs.Domain.xLim = [270 280]; % longitude limits 
+        DataSpecs.Domain.yLim = [-10 0];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -653,13 +651,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Global SST (from ERSST)
     case 'SST' 
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ersst.v4' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ersst.v4');
         DataSpecs.In.file = 'sst.mnmean.v4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -670,8 +668,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -682,13 +680,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     % Global SSH (from GODAS)
     case 'SSH'
 
         % Input data 
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'godas' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'godas');
         DataSpecs.In.file = 'sshg'; % input filename
         DataSpecs.In.var  = 'sshg';
 
@@ -700,8 +698,8 @@ case 'ersstV4'
         DataSpecs.Time.tEnd   = '202004'; % end time in dataset
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -712,13 +710,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_godas( DataSpecs )
+        importData_godas(DataSpecs)
 
     %% Global SAT (from NCEP/NCAR)
-    case( 'SAT' )
+    case('SAT')
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ncep');
         DataSpecs.In.file = 'air.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'air';
 
@@ -729,8 +727,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '194801';  % start time in dataset
 
         % Spatial domain 
-        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim   = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim   = [-89 89]; % latitude limits
         DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
@@ -743,13 +741,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
-        importData_ncep( DataSpecs ) 
+        importData_ncep(DataSpecs) 
 
     %% Global precipitation rate (from CMAP)
     case 'precip'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'cmap' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'cmap');
         DataSpecs.In.file = 'precip.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'precip';
 
@@ -760,8 +758,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '197901'; % start time in dataset
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -772,13 +770,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_cmap( DataSpecs )
+        importData_cmap(DataSpecs)
 
     %% Global zonal wind (from NCEP/NCAR)
     case 'uwind' 
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ncep');
         DataSpecs.In.file = 'uwnd.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'uwnd';
 
@@ -789,8 +787,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart = '194801'; % start time in dataset
 
         % Spatial domain 
-        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim   = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim   = [-89 89]; % latitude limits
         DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
@@ -802,13 +800,13 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ncep( DataSpecs ) 
+        importData_ncep(DataSpecs) 
 
     %% Global meridional wind (from NCEP/NCAR)
     case 'vwind' 
 
         % Input data
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'ncep' );
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'ncep');
         DataSpecs.In.file = 'vwnd.mon.mean.nc'; % input filename
         DataSpecs.In.var  = 'vwnd';
 
@@ -819,8 +817,8 @@ case 'ersstV4'
         DataSpecs.Time.tStart  = '194801'; % start time in dataset 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim   = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim   = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim   = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim   = [-89 89]; % latitude limits
         DataSpecs.Domain.levels = 1;          % levels  
 
         % Output options
@@ -832,10 +830,10 @@ case 'ersstV4'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ncep( DataSpecs ) 
+        importData_ncep(DataSpecs) 
 
     otherwise
-        error( 'Invalid variable' )
+        error('Invalid variable')
 
     end
 
@@ -847,18 +845,18 @@ case '20CR'
     DataSpecs.In.dir  = '/Volumes/TooMuch/physics/climate/data/noaa'; 
 
     % Output data specification
-    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
+    DataSpecs.Out.dir = fullfile(pwd, 'data/raw', dataset);
 
     % Time specification
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
 
-    switch( fld )
+    switch(fld)
 
     %% Indo-Pacific SST
     case 'IPSST'
 
         % Input data
-        DataSpecs.In.dir  = fullfile( rootDataPath, 'noaa' ); 
+        DataSpecs.In.dir  = fullfile(rootDataPath, 'noaa'); 
         DataSpecs.In.file = 'sst.mnmean.v4-4.nc'; % input filename
         DataSpecs.In.var  = 'sst';
 
@@ -869,8 +867,8 @@ case '20CR'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+        DataSpecs.Domain.xLim = [28 290]; % longitude limits
+        DataSpecs.Domain.yLim = [-60 20]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -880,7 +878,7 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Nino 4 index
     case 'Nino4'
@@ -896,8 +894,8 @@ case '20CR'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 160 210 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [160 210]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -907,7 +905,7 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Nino 3.4 index
     case 'Nino3.4'
@@ -923,8 +921,8 @@ case '20CR'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 190 240 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [190 240]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -934,7 +932,7 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Nino 3 index
     case 'Nino3'
@@ -950,8 +948,8 @@ case '20CR'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 210 270 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [210 270]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -961,7 +959,7 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Nino 1+2 index
     case 'Nino1+2'
@@ -977,8 +975,8 @@ case '20CR'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 270 280 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -10 0 ];    % latitude limits
+        DataSpecs.Domain.xLim = [270 280]; % longitude limits 
+        DataSpecs.Domain.yLim = [-10 0];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -988,10 +986,10 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Global SST
-    case( 'SST' )
+    case('SST')
 
         % Input data
         DataSpecs.In.file = 'sst.mnmean.v4-4.nc'; % input filename
@@ -1004,8 +1002,8 @@ case '20CR'
         DataSpecs.Time.tStart  = '185401';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1015,14 +1013,14 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ersstV4( DataSpecs )
+        importData_ersstV4(DataSpecs)
 
     %% Global SAT
     % Start dates/end dates for possible source files are as follows:
     %
     % air.2m.mon.mean-2.nc: 187101 to 201212
     % air.mon.anom.v5.nc:   188001 to 201908 
-    case( 'SAT' )
+    case('SAT')
 
         % Input data
         DataSpecs.In.file = 'air.2m.mon.mean-2.nc'; % input filename
@@ -1036,8 +1034,8 @@ case '20CR'
         DataSpecs.Time.tStart  = '188001';            % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1047,10 +1045,10 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_noaa( DataSpecs )
+        importData_noaa(DataSpecs)
 
     %% Global precipitation rate
-    case( 'precip' )
+    case('precip')
 
         % Input data
         DataSpecs.In.file = 'prate.mon.mean.nc'; % input filename
@@ -1062,8 +1060,8 @@ case '20CR'
         % Time specification
         DataSpecs.Time.tStart  = '185101';              % start time in nc file 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1073,13 +1071,13 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_noaa( DataSpecs )
+        importData_noaa(DataSpecs)
 
     %% Global zonal wind
     % Start dates/end dates for possible source files are as follows:
     % 
     % uwnd.10m.mon.mean.nc: 185101 to 201412
-    case( 'uwind' )
+    case('uwind')
 
         % Input data
         DataSpecs.In.file = 'uwnd.10m.mon.mean.nc'; % input filename
@@ -1091,8 +1089,8 @@ case '20CR'
         % Time specification
         DataSpecs.Time.tStart  = '185101';              % start time in nc file 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1102,13 +1100,13 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_noaa( DataSpecs )
+        importData_noaa(DataSpecs)
 
     %% Global meridional wind
     % Start dates/end dates for possible source files are as follows:
     % 
     % vwnd.10m.mon.mean.nc: 185101 to 201412
-    case( 'vwind' )
+    case('vwind')
 
         % Input data
         DataSpecs.In.file = 'vwnd.10m.mon.mean.nc'; % input filename
@@ -1120,8 +1118,8 @@ case '20CR'
         % Time specification
         DataSpecs.Time.tStart  = '185101';              % start time in nc file 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1131,22 +1129,22 @@ case '20CR'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_noaa( DataSpecs )
+        importData_noaa(DataSpecs)
     end
 
 %%CCSM4 PRE-INDUSTRIAL CONTROL RUN 
 case 'ccsm4Ctrl'
 
     % Input data directory 
-    DataSpecs.In.dir = fullfile( rootDataPath, 'ccsm4/b40.1850' );
+    DataSpecs.In.dir = fullfile(rootDataPath, 'ccsm4/b40.1850');
 
     % Output data specification
-    DataSpecs.Out.dir = fullfile( pwd, 'data/raw', dataset );
+    DataSpecs.Out.dir = fullfile(pwd, 'data/raw', dataset);
 
     % Time specification
     DataSpecs.Time.tFormat = 'yyyymm';              % time format
 
-    switch( fld )
+    switch(fld)
 
     %% Global SST
     case 'globalSST'
@@ -1158,7 +1156,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'sst';      
@@ -1167,8 +1165,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 0 359 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359]; % longitude limits
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1178,7 +1176,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
 
     %% Indo-Pacific SST
@@ -1191,7 +1189,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'sst';      
@@ -1200,8 +1198,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+        DataSpecs.Domain.xLim = [28 290]; % longitude limits
+        DataSpecs.Domain.yLim = [-60 20]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1211,7 +1209,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Indo-Pacific SST anomalies
     case 'IPSSTA'
@@ -1223,7 +1221,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'sst';      
@@ -1232,8 +1230,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain
-        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+        DataSpecs.Domain.xLim = [28 290]; % longitude limits
+        DataSpecs.Domain.yLim = [-60 20]; % latitude limits
     
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1243,7 +1241,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
 
     %% Nino 4 index
@@ -1256,7 +1254,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'sst';
@@ -1265,8 +1263,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 160 210 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [160 210]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1276,7 +1274,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Nino 3.4 index
     case 'Nino3.4'
@@ -1288,7 +1286,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'sst';
@@ -1297,8 +1295,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 190 240 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [190 240]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1308,7 +1306,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Nino 3 index
     case 'Nino3'
@@ -1320,7 +1318,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'sst';
@@ -1329,8 +1327,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 210 270 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -5 5 ];    % latitude limits
+        DataSpecs.Domain.xLim = [210 270]; % longitude limits 
+        DataSpecs.Domain.yLim = [-5 5];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1340,7 +1338,7 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Nino 1+2 index
     case 'Nino1+2'
@@ -1352,7 +1350,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'sst';
@@ -1361,8 +1359,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 270 280 ]; % longitude limits 
-        DataSpecs.Domain.yLim = [ -10 0 ];    % latitude limits
+        DataSpecs.Domain.xLim = [270 280]; % longitude limits 
+        DataSpecs.Domain.yLim = [-10 0];    % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1372,10 +1370,10 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Global SST
-    case( 'SST' )
+    case('SST')
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SST'; 
@@ -1384,7 +1382,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SST';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'sst';
@@ -1393,8 +1391,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1404,10 +1402,10 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Global SSH
-    case( 'SSH' )
+    case('SSH')
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SSH'; 
@@ -1416,7 +1414,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SSH';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'ssh';
@@ -1425,8 +1423,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1437,10 +1435,10 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Indo-Pacific SSH
-    case( 'IPSSH' )
+    case('IPSSH')
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.pop.h.SSH'; 
@@ -1449,7 +1447,7 @@ case 'ccsm4Ctrl'
         DataSpecs.In.area = 'TAREA';
         DataSpecs.In.msk  = 'REGION_MASK';
         DataSpecs.In.var  = 'SSH';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'ssh';
@@ -1458,8 +1456,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 28 290 ]; % longitude limits
-        DataSpecs.Domain.yLim = [ -60 20 ]; % latitude limits
+        DataSpecs.Domain.xLim = [28 290]; % longitude limits
+        DataSpecs.Domain.yLim = [-60 20]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1470,17 +1468,17 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Global SAT
-    case( 'SAT' )
+    case('SAT')
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.TS'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
         DataSpecs.In.var  = 'TS';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
 
         % Output data
@@ -1490,8 +1488,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1502,17 +1500,17 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Global precipitation data
-    case( 'precip' )
+    case('precip')
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.PREC'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
         DataSpecs.In.var  = 'PREC';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, DataSpecs.In.var ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, DataSpecs.In.var); 
 
         % Output data
         DataSpecs.Out.fld = 'prate';      
@@ -1521,8 +1519,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1532,17 +1530,17 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Global zonal wind data
-    case( 'uwind' )
+    case('uwind')
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.USurf'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
         DataSpecs.In.var  = 'U';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'USurf' ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'USurf'); 
 
         % Output data
         DataSpecs.Out.fld = 'uwnd';      
@@ -1551,8 +1549,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1562,17 +1560,17 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
     %% Global meridional wind data
-    case( 'vwind' )
+    case('vwind')
 
         % Input data
         DataSpecs.In.file = 'b40.1850.track1.1deg.006.cam2.h0.VSurf'; 
         DataSpecs.In.lon  = 'lon';
         DataSpecs.In.lat  = 'lat';
         DataSpecs.In.var  = 'V';
-        DataSpecs.In.dir  = fullfile( DataSpecs.In.dir, 'VSurf' ); 
+        DataSpecs.In.dir  = fullfile(DataSpecs.In.dir, 'VSurf'); 
 
         % Output data
         DataSpecs.Out.fld = 'vwnd';      
@@ -1581,8 +1579,8 @@ case 'ccsm4Ctrl'
         DataSpecs.Time.tStart  = '000101';           % start time in nc file 
 
         % Spatial domain 
-        DataSpecs.Domain.xLim = [ 0 359 ];  % longitude limits 
-        DataSpecs.Domain.yLim = [ -89 89 ]; % latitude limits
+        DataSpecs.Domain.xLim = [0 359];  % longitude limits 
+        DataSpecs.Domain.yLim = [-89 89]; % latitude limits
 
         % Output options
         DataSpecs.Opts.ifCenter      = false; % don't remove global climatology
@@ -1592,12 +1590,12 @@ case 'ccsm4Ctrl'
         DataSpecs.Opts.ifNormalize   = false; % don't normalize to unit L2 norm
         DataSpecs.Opts.ifWrite       = true;  % write data to disk
 
-        importData_ccsm4Ctrl( DataSpecs ) 
+        importData_ccsm4Ctrl(DataSpecs) 
 
 
     end
 
 otherwise
-    error( 'Invalid dataset.' )
+    error('Invalid dataset.')
 end
 

@@ -16,8 +16,7 @@ X_co = TypeVar('X_co', covariant=True)
 X2 = TypeVar('X2')
 Y = TypeVar('Y')
 Z = TypeVar('Z')
-# A = TypeVar('A', bound=SupportsAdd)
-A = TypeVar('A')
+A = TypeVar('A', bound=SupportsAdd)
 S = TypeVar('S', bound=SupportsSub)
 K = TypeVar('K', bound=SupportsMul[object, object])
 M = TypeVar('M', bound=SupportsMatmul)
@@ -108,10 +107,9 @@ class ImplementsIncl(Protocol[X_co, T_contra, V_co]):
         ...
 
 
-def add(f: Callable[[X], SupportsAdd[A]], g: Callable[[X], SupportsAdd[A]])\
-        -> Callable[[X], SupportsAdd[A]]:
+def add(f: Callable[[X], A], g: Callable[[X], A]) -> Callable[[X], A]:
     """Implements function addition."""
-    def h(x: X) -> SupportsAdd[A]:
+    def h(x: X) -> A:
         y = f(x) + g(x)
         return y
     return h

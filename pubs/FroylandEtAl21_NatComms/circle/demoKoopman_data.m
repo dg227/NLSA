@@ -1,4 +1,4 @@
-function demoKoopman_data( experiment )
+function demoKoopman_data(experiment)
 % DEMOKOOPMAN_DATA Helper function to generate datasets for Koopman demo of 
 % variable-speed circle rotation.
 %
@@ -17,17 +17,17 @@ switch experiment
 case 'a0.7'
 % Ensure that the period is 4
 
-    DataSpecs.Pars.f      = ( 2 * pi / sqrt( 0.7 ) ) / 4; % frequency parameter
+    DataSpecs.Pars.f      = (2 * pi / sqrt(0.7)) / 4; % frequency parameter
     DataSpecs.Pars.a      = 0.7;   % nonlinearity parameter
     DataSpecs.Pars.r1     = 1;     % ellipse axis 1
     DataSpecs.Pars.r2     = 1;     % ellipse axis 2
-    DataSpecs.Time.dt     = 0.01 / sqrt( 2 );  % sampling interval
+    DataSpecs.Time.dt     = 0.01 / sqrt(2);  % sampling interval
     DataSpecs.Time.nSProd = 6400;  % production samples
     DataSpecs.Time.nSSpin = 0;     % spinup samples
     DataSpecs.Time.nEL    = 0;     % embedding window length (extra samples)
 
 otherwise
-    error( 'Invalid experiment' )
+    error('Invalid experiment')
 end
 
 
@@ -46,6 +46,6 @@ DataSpecs.Opts.ifCenter = false;     % don't do data centering
 DataSpecs.Opts.ifWrite  = true;       % write data to disk  
 
 %% GENERATE DATA
-circleData( DataSpecs );
+circleData(DataSpecs);
 
 

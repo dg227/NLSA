@@ -1,4 +1,4 @@
-function [ model, In, Out ] = demoKoopman_nlsaModel( experiment )
+function [model, In, Out] = demoKoopman_nlsaModel(experiment)
 % DEMOKOOPMAN_NLSAMODEL Construct NLSA model for Koopman spectral  analysis 
 % of variable-speed flow on the circle.
 %
@@ -25,8 +25,8 @@ switch experiment
 
     case 'a0.7'
         % In-sample dataset parameters
-        In.Res.dt       = 0.01 / sqrt( 2 ); % sampling interval
-        In.Res.f        = ( 2 * pi / sqrt( 0.7 ) ) / 4; % frequency parameter
+        In.Res.dt       = 0.01 / sqrt(2); % sampling interval
+        In.Res.f        = (2 * pi / sqrt(0.7)) / 4; % frequency parameter
         In.Res.a        = 0.7;       % nonlinearity parameter
         In.Res.nSProd   = 6400;      % number of "production" samples
         In.Res.nSSpin   = 0;         % spinup samples
@@ -64,7 +64,7 @@ switch experiment
         In.diffOpType = 'gl_mb_bs'; % diffusion operator type
         In.epsilon    = .5;         % kernel bandwidth parameter 
         In.epsilonB   = 2;          % kernel bandwidth base
-        In.epsilonE   = [ -20 20 ]; % kernel bandwidth exponents 
+        In.epsilonE   = [-20 20]; % kernel bandwidth exponents 
         In.nEpsilon   = 200;        % number of exponents for bandwidth tuning
         In.alpha      = .5;         % diffusion maps normalization 
         In.nPhi       = 101;        % diffusion eigenfunctions to compute
@@ -83,7 +83,7 @@ switch experiment
         In.denConeAlpha = 0;             % cone kernel velocity exponent 
         In.denEpsilon   = .5;            % kernel bandwidth
         In.denEpsilonB  = 2;             % kernel bandwidth base 
-        In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
+        In.denEpsilonE  = [-20 20];    % kernel bandwidth exponents 
         In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
 
         % Koopman generator parameters; in-sample data
@@ -95,21 +95,21 @@ switch experiment
         In.koopmanEpsilon = 5E-3;      % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
         In.idxPhiKoopman  = 1 : 07;   % diffusion eigenfunctions used as basis
-        In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+        In.nPhiKoopman    = numel(In.idxPhiKoopman); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
     otherwise
-        error( 'Invalid experiment' )
+        error('Invalid experiment')
 end
 
 
 %% CHECK IF WE ARE DOING OUT-OF-SAMPLE EXTENSION
-ifOse = exist( 'Out', 'var' );
+ifOse = exist('Out', 'var');
 
 %% CONSTRUCT NLSA MODEL
 if ifOse
-    args = { In Out };
+    args = {In Out};
 else
-    args = { In };
+    args = {In};
 end
-[ model, In, Out ] = circleNLSAModel( args{ : } );
+[model, In, Out] = circleNLSAModel(args{:});

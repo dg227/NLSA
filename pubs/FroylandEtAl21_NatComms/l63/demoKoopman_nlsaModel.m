@@ -1,4 +1,4 @@
-function [ model, In, Out ] = demoKoopman_nlsaModel( experiment )
+function [model, In, Out] = demoKoopman_nlsaModel(experiment)
 % DEMOKOOPMAN_NLSAMODEL Construct NLSA model for analysis of Lorenz 63 data
 %
 % Input arguments:
@@ -47,7 +47,7 @@ switch experiment
         In.Res.sigma  = 10;           % L63 parameter sigma
         In.Res.nSProd = 16000;        % number of "production" samples
         In.Res.nSSpin = 64000;        % spinup samples
-        In.Res.x0     = [ 0 1 1.05 ]; % initial conditions
+        In.Res.x0     = [0 1 1.05]; % initial conditions
         In.Res.relTol = 1E-8;         % relative tolerance for ODE solver 
         In.Res.ifCent = false;        % data centering
 
@@ -83,7 +83,7 @@ switch experiment
         In.diffOpType = 'gl_mb_bs'; % diffusion operator type
         In.epsilon     = 1;         % kernel bandwidth parameter 
         In.epsilonB    = 2;         % kernel bandwidth base
-        In.epsilonE    = [ -20 20 ];% kernel bandwidth exponents 
+        In.epsilonE    = [-20 20];% kernel bandwidth exponents 
         In.nEpsilon    = 200;       % number of exponents for bandwidth tuning
         In.alpha       = .5;        % diffusion maps normalization 
         In.nPhi        = 401;       % diffusion eigenfunctions to compute
@@ -102,7 +102,7 @@ switch experiment
         In.denConeAlpha = 0;             % cone kernel velocity exponent 
         In.denEpsilon   = 1;             % kernel bandwidth
         In.denEpsilonB  = 2;             % kernel bandwidth base 
-        In.denEpsilonE  = [ -20 20 ];    % kernel bandwidth exponents 
+        In.denEpsilonE  = [-20 20];    % kernel bandwidth exponents 
         In.denNEpsilon  = 200;       % number of exponents for bandwidth tuning
 
         % Koopman generator parameters
@@ -114,21 +114,21 @@ switch experiment
         In.koopmanEpsilon = 5E-4;      % regularization parameter
         In.koopmanRegType = 'inv';     % regularization type
         In.idxPhiKoopman  = 1 : 201;   % diffusion eigenfunctions used as basis
-        In.nPhiKoopman    = numel( In.idxPhiKoopman ); % Koopman eigenfunctions to compute
+        In.nPhiKoopman    = numel(In.idxPhiKoopman); % Koopman eigenfunctions to compute
         In.nKoopmanPrj    = In.nPhiKoopman; % Koopman eigenfunctions for projection
 
     otherwise
-        error( 'Invalid experiment' )
+        error('Invalid experiment')
 end
 
 
 %% CHECK IF WE ARE DOING OUT-OF-SAMPLE EXTENSION
-ifOse = exist( 'Out', 'var' );
+ifOse = exist('Out', 'var');
 
 %% CONSTRUCT NLSA MODEL
 if ifOse
-    args = { In Out };
+    args = {In Out};
 else
-    args = { In };
+    args = {In};
 end
-[ model, In, Out ] = l63NLSAModel( args{ : } );
+[model, In, Out] = l63NLSAModel(args{:});

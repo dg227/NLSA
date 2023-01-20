@@ -1,36 +1,55 @@
-%% QUANTUM MECHANICAL DATA ASSIMILATION OF THE TWO-LEVEL LORENZ 96 MODEL
+%% QUANTUM MECHANICAL DATA ASSIMILATION OF THE LORENZ 96 MULTISCALE MODEL
 %
 % Observed data are the slow variables x_1, ..., x_K.
 % Predicted data is x_1. 
 %
-% Modified 2022/06/28
+% This script requires that CCSM4 model output in NetCDF format (typically 
+% downloaded from public repositories; e.g.: 
+%
+% https://www.earthsystemgrid.org/dataset/ucar.cgd.ccsm4.joc.b40.1850.track1.1deg.006.html), 
+% has been placed in the directory 'rootDataPath' specified in the importData.m
+% function in this directory. Within this directory, the NetCDF files for each 
+% variable should be placed in the directory specified in the variable 
+% Dataspecs.In.dir. For example, for the SST data used in Freeman et al. (2023),
+% PNAS, the NetCDF files should be placed in 'rootDataPath'/ccsm4/b40.1850/SST.  
+
+% Output from each step of the deta generation and NLSA parts is saved on disk
+% in directory 'data'. These parts of the script need only be run once unless
+% changes to the dataset and/or NLSA parameters are made. 
+%
+% Output fom the data assimilation (DA) portion of the script is saved in 
+% directory 'figs' if any of the variables ifSaveData, ifSaveOperators, or 
+% ifPrintFig are set to true. Setting ifLoadData to true then allows using the
+% DA output (e.g., for plotting figures) without re-running the DA code. 
+% 
+% Modified 2023/01/19
     
 %% SCRIPT EXECUTION OPTIONS
 % Data generation
-ifTrainingData     = false;  % training data
-ifTestData         = false;  % test data
+ifTrainingData     = true;  % training data
+ifTestData         = true;  % test data
 ifTrainingTestData = false;  % generate training and test data in parallel  
 
 % NLSA
-ifNLSA    = false; % perform NLSA (source data, training phase)
-ifNLSAObs = false; % perform NLSA (observed data, training phase)
-ifNLSAOut = false; % perform out-of-sample extension (data assimilation phase)
+ifNLSA    = true; % perform NLSA (source data, training phase)
+ifNLSAObs = true; % perform NLSA (observed data, training phase)
+ifNLSAOut = true; % perform out-of-sample extension (data assimilation phase)
 
 % Data assimilation
-ifDATrainingData  = false; % read training data for data assimilation
-ifDATestData      = false; % read test data for data assimilation
-ifKoopmanOp       = false; % compute Koopman operators
-ifObservableOp    = false; % compute quantum mechanical observable operators  
-ifAutotune        = false;  % tune the observation kernel
-ifFeatureOp       = false; % compute quantum mechanical feature operators
-ifDA              = false; % perform data assimilation
-ifDAErr           = false; % compute forecast errors
+ifDATrainingData  = true; % read training data for data assimilation
+ifDATestData      = true; % read test data for data assimilation
+ifKoopmanOp       = true; % compute Koopman operators
+ifObservableOp    = true; % compute quantum mechanical observable operators  
+ifAutotune        = true;  % tune the observation kernel
+ifFeatureOp       = true; % compute quantum mechanical feature operators
+ifDA              = true; % perform data assimilation
+ifDAErr           = true; % compute forecast errors
 
 % IO options
-ifSaveData        = false;  % save DA output to disk
-ifLoadData        = true; % load DA output from disk
-ifSaveOperators   = false;  % save operators (e.g., for use by Python code) 
-ifPrintFig        = true; % print figures to file
+ifSaveData        = true;  % save DA output to disk
+ifLoadData        = false; % load DA output from disk (for plotting)
+ifSaveOperators   = true;  % save DA operators (e.g., for use by Python code) 
+ifPrintFig        = true;  % print figures to file
 
 % Plotting options
 ifPlotPrb       = true; % running probability forecast
@@ -79,7 +98,7 @@ NLSA.relTol    = 1E-5;  % Relative tolerance for ODE solver
 %NLSA.kernel    = 'l2';          % Kernel type
 %NLSA.ifDen     = true;          % Set true to use variable-bandwidth kernel 
 
-% Chaotic regime
+% Chaotic regime -- dataset as in Burov et al. (2020) MMS. 
 NLSA.F         = 10;            % Forcing parameter
 NLSA.epsilon   = 1 / 128;       % Timesscale parameter for fast variables
 NLSA.dt        = 0.05;          % Sampling interval
@@ -93,6 +112,22 @@ NLSA.embWindow = 1;             % Delay embedding window
 % NLSA.embWindow = 25;             % Delay embedding window
 NLSA.kernel    = 'l2';          % Kernel type
 NLSA.ifDen     = true;          % Set true to use variable-bandwidth kernel 
+
+% Chaotic regime -- small dataset for testing
+% NLSA.F         = 10;            % Forcing parameter
+% NLSA.epsilon   = 1 / 128;       % Timesscale parameter for fast variables
+% NLSA.dt        = 0.05;          % Sampling interval
+% NLSA.nS        = 1000;         % Number of training samples
+% NLSA.nSOut     = 100;          % Number of test samples 
+% NLSA.nSSpin    = 100;           % Number of spinup samples
+% NLSA.idxXSrc   = 1 : NLSA.nX;   % State vector components to use for training
+% NLSA.idxXSrc   = {1 : NLSA.nX, 1};  % State vector components to use for training
+% NLSA.idxXObs   = 1 : NLSA.nX;   % State vector components for observations
+% NLSA.embWindow = 1;             % Delay embedding window
+% NLSA.embWindow = 15;             % Delay embedding window
+% NLSA.embWindow = 25;             % Delay embedding window
+% NLSA.kernel    = 'l2';          % Kernel type
+% NLSA.ifDen     = true;          % Set true to use variable-bandwidth kernel 
 
 experiment   = experimentStr(NLSA);        % String identifier
 TrainingPars = getTrainingDataPars(NLSA);  % Training data parameters
@@ -194,6 +229,45 @@ case 'F10.0_eps0.00781_dt0.05_nS40000_nSOut7000_idxXSrc1-+1-9_idxXObs1-+1-9_emb2
     Plt.idxY = 1; % estimated components for running probability forecast
     Plt.yLim = [-7 12]; % y axis limit for plots
 
+% Chaotic regime -- small dataset for testing
+% No embedding
+case 'F10.0_eps0.00781_dt0.05_nS1000_nSOut100_idxXSrc1-+1-9_idxXObs1-+1-9_emb1_l2_den'
+    idxY  = [1]; % predicted components 
+    idxR  = 1;     % realization (ensemble member) in assimilation phase   
+
+    % QMDA parameters
+    % QMDA.nL    = 500;  % eigenfunctions used for operator approximation
+    % QMDA.nL    = 1000;  % eigenfunctions used for operator approximation
+    % QMDA.nL    = 512;  % eigenfunctions used for operator approximation
+    % QMDA.nL    = 1024;  % eigenfunctions used for operator approximation
+    QMDA.nL    = 100;  % eigenfunctions used for operator approximation
+    QMDA.nQ    = 11;    % quantization levels 
+    QMDA.nTO   = 1;     % timesteps between obs
+    % QMDA.nTF   = 100;   % number of forecast timesteps (must be at least nTO)
+    QMDA.nTF   = 50;   % number of forecast timesteps (must be at least nTO)
+    QMDA.epsilonScl = 1; % bandwidth scaling factor 
+    QMDA.shape_fun = @bump;  % kernel shape function
+    QMDA.ifVB       = true; % use variable-bandwidth kernel  
+    QMDA.ifSqrtm    = false; % apply square root to matrix-valued feature map
+    
+    % Number of parallel workers
+    NPar.emb          = 0; % delay embedding
+    NPar.nN           = 0; % nearest neighbor computation
+    NPar.koopmanOp    = 0; % Koopman operator calculation  
+    NPar.observableOp = 0; % Observable operator calculation 
+    NPar.featureOp    = 0; % Feature operator calculation
+    NPar.da           = 0; % Main QMDA loop
+
+    % Plotting parameters
+    Plt.tLim = [0 4];
+    Plt.idxTF = [0 : 25 : 50] + 1; % lead times for running forecast
+    Plt.idxY = 1; % estimated components for running probability forecast
+    Plt.yLim = [-7 12]; % y axis limit for plots
+
+    % Saving parameters
+    Sav.idxU = [1 : 5]; % Koopman operators to save
+    Sav.idxK = [1 : 5]; % Feature operators to save
+
 % Chaotic regime -- dataset as in Burov et al. (2020) MMS
 % Shorter embedding window
 case 'F10.0_eps0.00781_dt0.05_nS40000_nSOut7000_idxXSrc1-+1-9_idxXObs1-+1-9_emb15_l2_den'
@@ -236,12 +310,14 @@ case 'F10.0_eps0.00781_dt0.05_nS40000_nSOut7000_idxXSrc1-+1-9_idxXObs1-+1-9_emb1
     % QMDA.nL    = 500;  % eigenfunctions used for operator approximation
     % QMDA.nL    = 1000;  % eigenfunctions used for operator approximation
     % QMDA.nL    = 512;  % eigenfunctions used for operator approximation
+    % QMDA.nL    = 1024;  % eigenfunctions used for operator approximation
     QMDA.nL    = 2000;  % eigenfunctions used for operator approximation
     QMDA.nQ    = 31;    % quantization levels 
     QMDA.nTO   = 1;     % timesteps between obs
+    % QMDA.nTF   = 100;   % number of forecast timesteps (must be at least nTO)
     QMDA.nTF   = 300;   % number of forecast timesteps (must be at least nTO)
     % QMDA.epsilonScl = 0.6; % bandwidth scaling factor 
-    QMDA.epsilonScl = 0.8; % bandwidth scaling factor 
+    QMDA.epsilonScl = 0.6; % bandwidth scaling factor 
     % QMDA.epsilonScl = 1; % bandwidth scaling factor 
     %QMDA.shape_fun = @rbf; % kernel shape function
     QMDA.shape_fun = @bump;  % kernel shape function
@@ -263,7 +339,7 @@ case 'F10.0_eps0.00781_dt0.05_nS40000_nSOut7000_idxXSrc1-+1-9_idxXObs1-+1-9_emb1
     Plt.yLim = [-7 12]; % y axis limit for plots
 
     % Saving parameters
-    Sav.idxU = [1]; % Koopman operators to save
+    Sav.idxU = [1 : 100]; % Koopman operators to save
     Sav.idxK = [1 : 200]; % Feature operators to save
 
 % Chaotic regime -- dataset as in Burov et al. (2020) MMS.
@@ -484,14 +560,14 @@ end
 [model, In, modelObs, InObs, OutObs] = modelFunc(experiment);
 
 nY    = numel(idxY);
-nSE   = getNTotalEmbSample(model);    
+nSE   = getNTotalEmbSample(model); 
 nSB   = getNXB(model.embComponent);
 nSOut = getNTotalOutSample(modelObs);
 nSO   = getNTotalOutEmbSample(modelObs);
-nTO = QMDA.nTO;
-nTF = QMDA.nTF;
-nL  = QMDA.nL;
-nQ  = QMDA.nQ;
+nTO   = QMDA.nTO;
+nTF   = QMDA.nTF;
+nL    = QMDA.nL;
+nQ    = QMDA.nQ;
 
 nE           = floor((getEmbeddingWindow(model.embComponent) - 1) / 2);
 idxT1        = getOrigin(model.trgEmbComponent(1)); 
@@ -511,6 +587,19 @@ targetVar = {modelObs.trgComponent.tagC};
 for iVar = 1 : numel(targetVar)
     targetVar{iVar} = ['x' targetVar{iVar}(5 : end)];
 end
+
+% Initialization/verification timestamps
+iStart = idxT1Obs;
+iEnd   = idxT1Obs + nSO - 1;
+tOut   = (0 : nSOut - 1) * In.dt; % timestamps for true signal
+tOut   = tOut(iStart : iEnd); % shift by delay window 
+tObs   = (tOut(1) + (idxTObs - 1) * In.dt)'; % initialization times  
+tLead  = (0 : nTF) * In.dt; % lead times 
+tVer   = repmat(tObs, [1 nTF + 1]); % verification times
+tVer   = (tVer + repmat(tLead, [nDA, 1]))';
+
+% Forecast lead times
+tF = 0 : nTF; 
 
 
 %% OUTPUT DIRECTORY
@@ -715,19 +804,6 @@ if ifDATestData
     % Test (out-of-sample) target data
     yOut = getData(modelObs.outTrgEmbComponent, [], [], idxY); 
     yObs = yOut(:, idxTObs);
-
-    % Initialization/verification timestamps
-    iStart = idxT1Obs;
-    iEnd   = idxT1Obs + nSO - 1;
-    tOut   = (0 : nSOut - 1) * In.dt; % timestamps for true signal
-    tOut   = tOut(iStart : iEnd); % shift by delay window 
-    tObs   = (tOut(1) + (idxTObs - 1) * In.dt)'; % initialization times  
-    tLead  = (0 : nTF) * In.dt; % lead times 
-    tVer   = repmat(tObs, [1 nTF + 1]); % verification times
-    tVer   = (tVer + repmat(tLead, [nDA, 1]))';
-
-    % Forecast lead times
-    tF = 0 : nTF; 
 
     toc(t)
 end

@@ -7,13 +7,29 @@ operations. Instead of broadcasting over the same array dimensions, in
 introduces additional dimensions to implement pairwise evaluation of binary
 operations.
 
+We use the following TypeVar declarations:
+    :N: Array dimension representing vector space dimension.
+    :L, M: Array dimensions representing collections of vectors.
+    :K: Arrays of scalars.
+    :V: Vectors and arrays of vectors.
+    :A: Arbitrary-sized arrays.
+
 """
 import nlsa.vector_algebra as vec
 import numpy as np
 from nptyping import Complex, Double, Int, NDArray, Shape
 from typing import Callable, TypeVar
 
-K = TypeVar('K', complex, float, int)
+L = TypeVar('L')
+M = TypeVar('M')
+N = TypeVar('N')
+K = TypeVar('K',
+            NDArray[Shape['M'], Complex],
+            NDArray[Shape['M'], Double],
+            NDArray[Shape['M'], Int],
+            NDArray[Shape['L, M'], Complex],
+            NDArray[Shape['L, M'], Double],
+            NDArray[Shape['L, M'], Int])
 V = TypeVar('V',
             NDArray[Shape['N'], Complex],
             NDArray[Shape['N'], Double],
@@ -23,10 +39,7 @@ V = TypeVar('V',
             NDArray[Shape['M, N'], Int],
             NDArray[Shape['L, M, N'], Complex],
             NDArray[Shape['L, M, N'], Double],
-            NDArray[Shape['L, M, N'], Int],
-            NDArray[Shape['K, L, M, N'], Complex],
-            NDArray[Shape['K, L, M, N'], Double],
-            NDArray[Shape['K, L, M, N'], Int])
+            NDArray[Shape['L, M, N'], Int])
 A = TypeVar('A',
             NDArray[Shape['*, ...'], Complex],
             NDArray[Shape['*, ...'], Double],
@@ -59,6 +72,6 @@ def innerp(u: V, v: V) -> K:
     :returns: Array of pairwise inner products between u and v.
 
     """
-    w: V = np.einsum('...ji,...ki->...jk',
+    w: K = np.einsum('...ji,...ki->...jk',
                      np.conjugate(np.atleast_2d(u)), np.atleast_2d(v))
     return w

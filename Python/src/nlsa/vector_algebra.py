@@ -4,13 +4,30 @@ abelian algebras with respect to entrywise vector multiplication.
 This module broadcasts algebraic operations over collections of vectors stored
 in higher-rank arrays.
 
+We use the following TypeVar declarations:
+    :N: Array dimension representing vector space dimension.
+    :L, M: Array dimensions representing collections of vectors.
+    :K: Scalars and arrays of scalars.
+    :V: Vectors and arrays of vectors.
+    :A: Arbitrary-sized arrays.
+
 """
 import numpy as np
 from nlsa.abstract_algebra import ImplementsAlgmul
 from nptyping import Complex, Double, Int, NDArray, Shape
 from typing import Literal, TypeVar
 
-K = TypeVar('K', complex, float, int)
+
+L = TypeVar('L')
+M = TypeVar('M')
+N = TypeVar('N')
+K = TypeVar('K', complex, float, int,
+            NDArray[Shape['M'], Complex],
+            NDArray[Shape['M'], Double],
+            NDArray[Shape['M'], Int],
+            NDArray[Shape['L, M'], Complex],
+            NDArray[Shape['L, M'], Double],
+            NDArray[Shape['L, M'], Int])
 V = TypeVar('V',
             NDArray[Shape['N'], Complex],
             NDArray[Shape['N'], Double],
@@ -20,10 +37,7 @@ V = TypeVar('V',
             NDArray[Shape['M, N'], Int],
             NDArray[Shape['L, M, N'], Complex],
             NDArray[Shape['L, M, N'], Double],
-            NDArray[Shape['L, M, N'], Int],
-            NDArray[Shape['K, L, M, N'], Complex],
-            NDArray[Shape['K, L, M, N'], Double],
-            NDArray[Shape['K, L, M, N'], Int])
+            NDArray[Shape['L, M, N'], Int])
 A = TypeVar('A',
             NDArray[Shape['*, ...'], Complex],
             NDArray[Shape['*, ...'], Double],
@@ -120,7 +134,7 @@ def innerp(u: V, v: V) -> K:
     :returns: Inner product between u and v.
 
     """
-    w: V = np.einsum('...i,...i->...', np.conjugate(u), v)
+    w: K = np.einsum('...i,...i->...', np.conjugate(u), v)
     return w
 
 
@@ -136,7 +150,9 @@ def uniform(n: int) -> V:
 
 
 def std_basis(n: int, j: int, shape2d: Literal['row', 'col'] | None = None)\
-        -> V:
+        -> NDArray[Shape['N'], Double]\
+        | NDArray[Shape['1, N'], Double]\
+        | NDArray[Shape['N, 1'], Double]:
     """Standard basis vectors of C^n.
 
     :n: Dimension

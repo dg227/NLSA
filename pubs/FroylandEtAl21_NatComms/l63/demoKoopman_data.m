@@ -1,4 +1,4 @@
-function demoKoopman_data( experiment )
+function demoKoopman_data(experiment)
 % DEMOKOOPMAN_DATA Helper function to generate datasets for Koopman demo for 
 % L63 system.
 %
@@ -29,7 +29,7 @@ case '16k_dt0.01_nEL800'
     DataSpecs.Time.nEL    = 800;   % embedding window length (extra samples)
 
 otherwise
-    error( 'Invalid experiment' )
+    error('Invalid experiment')
 end
 
 
@@ -49,7 +49,7 @@ DataSpecs.Time.nS     = DataSpecs.Time.nSProd ...
                       + DataSpecs.Time.nXA; 
 
 % Initial conditions and tolerance for ODE solver
-DataSpecs.Ode.x0     = [ 0 1 1.05 ]; % initial conditions
+DataSpecs.Ode.x0     = [0 1 1.05]; % initial conditions
 DataSpecs.Ode.relTol = 1E-8;         % relative tolerance for ODE solver 
 
 % Output options
@@ -57,6 +57,6 @@ DataSpecs.Opts.ifCenter = false;     % don't do data centering
 DataSpecs.Opts.ifWrite  = true;       % write data to disk  
 
 %% GENERATE DATA
-l63Data( DataSpecs );
+l63Data(DataSpecs);
 
 
