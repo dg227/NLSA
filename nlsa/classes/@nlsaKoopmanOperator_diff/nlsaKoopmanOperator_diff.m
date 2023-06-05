@@ -38,9 +38,9 @@ classdef nlsaKoopmanOperator_diff < nlsaKoopmanOperator
 
             % Set caller-defined values
             if ~isempty( iEpsilon )
-                if ~isps( varargin{ iEpsilon } )
+                if ~isnns( varargin{ iEpsilon } )
                     msgStr = [ 'The regularization parameter must be a  ' ...
-                               'positive scalar' ];
+                               'non-negative scalar' ];
                     error( msgStr )
                 end
                 obj.epsilon = varargin{ iEpsilon };

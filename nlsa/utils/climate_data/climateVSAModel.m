@@ -1,11 +1,11 @@
-function [ model, In, Out ] = climateVSAModel( In, Out )
+function [model, In, Out] = climateVSAModel(In, Out)
 % CLIMATEVSAMODEL Low-level function to build vector-valued spectral analysis
 % (VSA) models for climate datasets.
 %
-%  [ model, In ] = climateVSAModel( In ) builds a VSA model based on 
+%  [model, In] = climateVSAModel(In) builds a VSA model based on 
 %  the model parameters specified in the structure In. 
 %
-%  [ model, In, Out ] = climateVSAModel( In, Out ) builds a VSA model
+%  [model, In, Out] = climateVSAModel(In, Out) builds a VSA model
 %  with support for out-of-sample (test) data. The model parameters for the
 %  in-sample (training) and out-of-sample (test) data are specified in the 
 %  structures In and Out, respectively. 
@@ -33,7 +33,7 @@ function [ model, In, Out ] = climateVSAModel( In, Out )
 %
 %  Structure field Res represents different realizations (ensemble members)
 %
-% Modified 2021/93/18
+% Modified 2023/06/01
  
 %% PRELIMINARY CHECKS
 % Check number of input arguments, and if we are doing out-of-sample extension
@@ -43,29 +43,29 @@ if nargin == 1
 elseif nargin == 2
     ifOse = true;
 else 
-    error( 'Invalid number of input arguments.' )
+    error('Invalid number of input arguments.')
 end
 
 % Check if we are using kernel density estimation
-if isfield( In, 'denType' )
+if isfield(In, 'denType')
     ifDen = true;
 else
     ifDen = false;
 end
 
 % Check that required high-level fields are present
-if ~isfield( In, 'Src' )
-    error( 'Source field Src missing from in-sample parameters.' )
+if ~isfield(In, 'Src')
+    error('Source field Src missing from in-sample parameters.')
 end
-if ~isfield( In, 'Res' )
-    error( 'Realization field Res missing from in-sample parameters.' )
+if ~isfield(In, 'Res')
+    error('Realization field Res missing from in-sample parameters.')
 end
-if ifOse && ~isfield( Out, 'Res' )
-    warning( [ 'Realization field Res missing from  out-of-sample ' ...
-               'parameters. Reverting to default from in-sample data.' ] )
+if ifOse && ~isfield(Out, 'Res')
+    warning(['Realization field Res missing from  out-of-sample ' ...
+               'parameters. Reverting to default from in-sample data.'])
     Out.Res = In.Res;
 end
-if ifOse && isfield( Out, 'Trg' )
+if ifOse && isfield(Out, 'Trg')
     ifOutTrg = true; % Include out-of-sample target data
 else
     ifOutTrg = false;
@@ -73,66 +73,66 @@ end
 
 %% ROOT DIRECTORY NAMES
 % In-sample data
-if isfield( In, 'dataPath' )
+if isfield(In, 'dataPath')
     inPath = In.dataPath;
 else
-    inPath      = fullfile( pwd, 'data/raw' ); 
+    inPath      = fullfile(pwd, 'data/raw'); 
     In.dataPath = inPath;
 end
 
 % Out-of-sample data
-if isfield( Out, 'dataPath' )
+if isfield(Out, 'dataPath')
     outPath = Out.dataPath;
 else
-    outPath      = fullfile( pwd, 'data/raw' );
+    outPath      = fullfile(pwd, 'data/raw');
     Out.dataPath = outPath;
 end
 
 
 %% DELAY-EMBEDDING ORIGINGS
-In.nC  = numel( In.Src ); % number of source components
-In.nCT = numel( In.Trg ); % number of target compoents
+In.nC  = numel(In.Src); % number of source components
+In.nCT = numel(In.Trg); % number of target compoents
 
 % Maximum number of delay embedding lags, sample left out in the 
 % beginning/end of the analysis interval for source data
-In.nE = In.Src( 1 ).idxE( end ); 
-In.nXB = In.Src( 1 ).nXB; 
-In.nXA = In.Src( 1 ).nXA;
+In.nE = In.Src(1).idxE(end); 
+In.nXB = In.Src(1).nXB; 
+In.nXA = In.Src(1).nXA;
 for iC = 2 : In.nC
-    In.nE = max( In.nE, In.Src( iC ).idxE( end ) );
-    In.nXB = max( In.nXB, In.Src( iC ).nXB );
-    In.nXA = max( In.nXA, In.Src( iC ).nXA );
+    In.nE = max(In.nE, In.Src(iC).idxE(end));
+    In.nXB = max(In.nXB, In.Src(iC).nXB);
+    In.nXA = max(In.nXA, In.Src(iC).nXA);
 end
 
 % Maximum number of delay embedding lags, sample left out in the 
 % beginning/end of the analysis interval for targe data
-nETMin  = In.Trg( 1 ).idxE( end ); % minimum number of delays for target data
-In.nET  = In.Trg( 1 ).idxE( end ); % maximum number of delays for target data
-In.nXBT = In.Trg( 1 ).nXB;
-In.nXAT = In.Trg( 1 ).nXA;
+nETMin  = In.Trg(1).idxE(end); % minimum number of delays for target data
+In.nET  = In.Trg(1).idxE(end); % maximum number of delays for target data
+In.nXBT = In.Trg(1).nXB;
+In.nXAT = In.Trg(1).nXA;
 for iC = 2 : In.nCT
-    In.nET = max( In.nET, In.Trg( iC ).idxE( end ) );
-    nETMin = min( In.nET, In.Trg( iC ).idxE( end ) );
-    In.nXBT = max( In.nXBT, In.Trg( iC ).nXB );
-    In.nXAT = max( In.nXAT, In.Trg( iC ).nXA );
+    In.nET = max(In.nET, In.Trg(iC).idxE(end));
+    nETMin = min(In.nET, In.Trg(iC).idxE(end));
+    In.nXBT = max(In.nXBT, In.Trg(iC).nXB);
+    In.nXAT = max(In.nXAT, In.Trg(iC).nXA);
 end
-nEMax = max( In.nE, In.nET );
-nXBMax = max( In.nXB, In.nXBT );
-nXAMax = max( In.nXA, In.nXAT );
+nEMax = max(In.nE, In.nET);
+nXBMax = max(In.nXB, In.nXBT);
+nXAMax = max(In.nXA, In.nXAT);
 
 %% NUMBER OF STAMPLES FOR IN-SAMPLE DATA
-In.nR  = numel( In.Res ); % number of realizations, in-sample data
+In.nR  = numel(In.Res); % number of realizations, in-sample data
 % Determine number of samples for in-sample data.
 for iR = In.nR : -1 : 1
-    % In.Res( iR ).tNum:  timestemps (e.g., Matlab serial date numbers)
-    % In.Res( iR ).nS:    number of samples
-    % In.Res( iR ).idxT1: time origin for delay embedding
-    % In.Res( iR ).nSE:   number of samples after delay embedding
-    % In.Res( iR ).nSRec: number of samples for reconstruction
-    In.Res( iR ).nS = numel( In.Res( iR ).tNum ); 
-    In.Res( iR ).idxT1 = nEMax + nXBMax;      
-    In.Res( iR ).nSE = In.Res( iR ).nS - In.Res( iR ).idxT1 + 1 - nXAMax; 
-    In.Res( iR ).nSRec = In.Res( iR ).nSE + nETMin - 1; 
+    % In.Res(iR).tNum:  timestemps (e.g., Matlab serial date numbers)
+    % In.Res(iR).nS:    number of samples
+    % In.Res(iR).idxT1: time origin for delay embedding
+    % In.Res(iR).nSE:   number of samples after delay embedding
+    % In.Res(iR).nSRec: number of samples for reconstruction
+    In.Res(iR).nS = numel(In.Res(iR).tNum); 
+    In.Res(iR).idxT1 = nEMax + nXBMax;      
+    In.Res(iR).nSE = In.Res(iR).nS - In.Res(iR).idxT1 + 1 - nXAMax; 
+    In.Res(iR).nSRec = In.Res(iR).nSE + nETMin - 1; 
 end
 
 %% OUT-OF-SAMPLE PARAMETER VALUES INHERITED FROM IN-SAMPLE DATA
@@ -178,18 +178,18 @@ end
 
 %% NUMBER OF SAMPLES AND TIMESTAMPS FOR OUT-OF-SAMPLE DATA
 if ifOse
-    Out.nR  = numel( Out.Res ); % number of realizations, out-of-sample data
+    Out.nR  = numel(Out.Res); % number of realizations, out-of-sample data
     % Determine number of samples for out-of-sample data.
     for iR = Out.nR : -1 : 1
-        % Out.Res( iR ).tNum:  timestemps (e.g., Matlab serial date numbers)
-        % Out.Res( iR ).nS:    number of samples
-        % Out.Res( iR ).idxT1: time origin for delay embedding
-        % Out.Res( iR ).nSE:   number of samples after delay embedding
-        % Out.Res( iR ).nSRec: number of samples for reconstruction
-        Out.Res( iR ).nS = numel( Out.Res( iR ).tNum );
-        Out.Res( iR ).idxT1 = nEMax + nXBMax; 
-        Out.Res( iR ).nSE = Out.Res( iR ).nS - Out.Res( iR ).idxT1 + 1-nXAMax; 
-        Out.Res( iR ).nSRec = Out.Res( iR ).nSE + nETMin - 1; 
+        % Out.Res(iR).tNum:  timestemps (e.g., Matlab serial date numbers)
+        % Out.Res(iR).nS:    number of samples
+        % Out.Res(iR).idxT1: time origin for delay embedding
+        % Out.Res(iR).nSE:   number of samples after delay embedding
+        % Out.Res(iR).nSRec: number of samples for reconstruction
+        Out.Res(iR).nS = numel(Out.Res(iR).tNum);
+        Out.Res(iR).idxT1 = nEMax + nXBMax; 
+        Out.Res(iR).nSE = Out.Res(iR).nS - Out.Res(iR).idxT1 + 1-nXAMax; 
+        Out.Res(iR).nSRec = Out.Res(iR).nSE + nETMin - 1; 
     end
 end
 
@@ -197,13 +197,13 @@ end
 % Prepare realization-specific data.
 % idxGR stores flattened indices corresponding to gridpoint-realization pairs.
 % In.nRG is total number of gridpoint-realization pairs.
-idxGR = cell( 1, In.nR ); 
+idxGR = cell(1, In.nR); 
 iGR0 = 0;
 In.nRG = 0;
 for iR = 1 : In.nR
-    idxGR{ iR } = iGR0 + ( 1 : In.Res( iR ).nG );
-    iGR0 = idxGR{ iR }( end );
-    In.nRG = In.nRG + numel( idxGR{ iR } );
+    idxGR{iR} = iGR0 + (1 : In.Res(iR).nG);
+    iGR0 = idxGR{iR}(end);
+    In.nRG = In.nRG + numel(idxGR{iR});
 end
 
 % Replicate timestamp, sample count, and embedding fields of In.Res over the 
@@ -211,63 +211,67 @@ end
 % entire structure array at the first iterationl
 iRG = In.nRG;
 for iR = In.nR : -1 : 1
-    for iG = In.Res( iR ).nG : -1 : 1
-        In.ResG( iRG ).nB    = In.Res( iR ).nB;
-        In.ResG( iRG ).nBRec = In.Res( iR ).nBRec;
-        In.ResG( iRG ).tNum  = In.Res( iR ).tNum;
-        In.ResG( iRG ).idxT1 = In.Res( iR ).idxT1;
-        In.ResG( iRG ).nSE   = In.Res( iR ).nSE; 
-        In.ResG( iRG ).nSRec = In.Res( iR ).nSRec;
+    for iG = In.Res(iR).nG : -1 : 1
+        In.ResG(iRG).nB    = In.Res(iR).nB;
+        In.ResG(iRG).nBRec = In.Res(iR).nBRec;
+        In.ResG(iRG).tNum  = In.Res(iR).tNum;
+        In.ResG(iRG).idxT1 = In.Res(iR).idxT1;
+        In.ResG(iRG).nSE   = In.Res(iR).nSE; 
+        In.ResG(iRG).nSRec = In.Res(iR).nSRec;
         iRG = iRG - 1;
     end
 end
 
 % Loop over realizations for in-sample data
-resName = cell( 1, In.nR );
+resName = cell(1, In.nR);
 for iR = In.nR : -1 : 1
 
-    tStr = [ In.Res( iR ).tLim{ 1 } '-' In.Res( iR ).tLim{ 2 } ]; 
-    tagR = [ In.Res( iR ).experiment '_' tStr ];
+    if iscellstr(In.Res(iR).tLim)
+        tStr = [In.Res(iR).tLim{1} '-' In.Res(iR).tLim{2}]; 
+    else
+        tStr = sprintf('t%i-%i', In.Res(iR).tLim(1), In.Res(iR).tLim(2));
+    end
+    tagR = [In.Res(iR).experiment '_' tStr];
     
-    resName{ iR } = tagR;
+    resName{iR} = tagR;
                                     
     % Source data assumed to be stored in a single batch
-    partition = nlsaPartition( 'nSample', In.Res( iR ).nS ); 
+    partition = nlsaPartition('nSample', In.Res(iR).nS); 
 
     % Loop over source components
     for iC = In.nC : -1 : 1
 
-        xyStr = sprintf( 'x%i-%i_y%i-%i', In.Src( iC ).xLim( 1 ), ...
-                                          In.Src( iC ).xLim( 2 ), ...
-                                          In.Src( iC ).yLim( 1 ), ...
-                                          In.Src( iC ).yLim( 2 ) );
+        xyStr = sprintf('x%i-%i_y%i-%i', In.Src(iC).xLim(1), ...
+                                          In.Src(iC).xLim(2), ...
+                                          In.Src(iC).yLim(1), ...
+                                          In.Src(iC).yLim(2));
 
-        pathC = fullfile( inPath,  ...
-                          In.Res( iR ).experiment, ...
-                          In.Src( iC ).field,  ...
-                          [ xyStr '_' tStr ] );
+        pathC = fullfile(inPath,  ...
+                          In.Res(iR).experiment, ...
+                          In.Src(iC).field,  ...
+                          [xyStr '_' tStr]);
                                                    
-        tagC = [ In.Src( iC ).field '_' xyStr ];
+        tagC = [In.Src(iC).field '_' xyStr];
 
-        load( fullfile( pathC, 'dataGrid.mat' ), 'nDG' )
+        load(fullfile(pathC, 'dataGrid.mat'), 'nDG')
 
         % Loop over gridpoints
-        for iG = In.Res( iR ).nG : -1 : 1
+        for iG = In.Res(iR).nG : -1 : 1
 
             % Filename for source data
-            fList = nlsaFilelist( 'file', sprintf( 'dataX_%i.mat', iG ) ); 
+            fList = nlsaFilelist('file', sprintf('dataX_%i.mat', iG)); 
         
             % Realization tag for source data
-            tagGR = [ tagR '_' int2str( iG ) ];
+            tagGR = [tagR '_' int2str(iG)];
 
-            iGR = idxGR{ iR }( iG );
-            srcComponent( iC, iGR ) = nlsaComponent( ...
+            iGR = idxGR{iR}(iG);
+            srcComponent(iC, iGR) = nlsaComponent(...
                                         'partition',      partition, ...
                                         'dimension',      nDG, ...
                                         'path',           pathC, ...
                                         'file',           fList, ...
                                         'componentTag',   tagC, ...
-                                        'realizationTag', tagGR  );
+                                        'realizationTag', tagGR );
         end
 
     end
@@ -275,43 +279,43 @@ for iR = In.nR : -1 : 1
     % Loop over target components 
     for iC = In.nCT : -1 : 1
 
-        xyStr = sprintf( 'x%i-%i_y%i-%i', In.Trg( iC ).xLim( 1 ), ...
-                                          In.Trg( iC ).xLim( 2 ), ...
-                                          In.Trg( iC ).yLim( 1 ), ...
-                                          In.Trg( iC ).yLim( 2 ) );
+        xyStr = sprintf('x%i-%i_y%i-%i', In.Trg(iC).xLim(1), ...
+                                          In.Trg(iC).xLim(2), ...
+                                          In.Trg(iC).yLim(1), ...
+                                          In.Trg(iC).yLim(2));
 
-        pathC = fullfile( inPath,  ...
-                          In.Res( iR ).experiment, ...
-                          In.Trg( iC ).field,  ...
-                          [ xyStr '_' tStr ] );
+        pathC = fullfile(inPath,  ...
+                          In.Res(iR).experiment, ...
+                          In.Trg(iC).field,  ...
+                          [xyStr '_' tStr]);
                                                    
-        tagC = [ In.Trg( iC ).field '_' xyStr ];
+        tagC = [In.Trg(iC).field '_' xyStr];
 
 
-        load( fullfile( pathC, 'dataGrid.mat' ), 'nDG'  )
+        load(fullfile(pathC, 'dataGrid.mat'), 'nDG' )
 
         % Loop over gridpoints
-        for iG = In.Res( iR ).nG : -1 : 1
+        for iG = In.Res(iR).nG : -1 : 1
 
             % Filename for source data
-            fList = nlsaFilelist( 'file', sprintf( 'dataX_%i.mat', iG ) ); 
+            fList = nlsaFilelist('file', sprintf('dataX_%i.mat', iG)); 
         
             % Realization tag for source data
-            tagGR = [ tagR '_' int2str( iG ) ];
+            tagGR = [tagR '_' int2str(iG)];
 
-            iGR = idxGR{ iR }( iG );
-            trgComponent( iC, iGR ) = nlsaComponent( ...
+            iGR = idxGR{iR}(iG);
+            trgComponent(iC, iGR) = nlsaComponent(...
                                         'partition',      partition, ...
                                         'dimension',      nDG, ...
                                         'path',           pathC, ...
                                         'file',           fList, ...
                                         'componentTag',   tagC, ...
-                                        'realizationTag', tagGR  );
+                                        'realizationTag', tagGR );
         end
     end
 
 end
-In.sourceRealizationName  = strjoin( resName, '_' ); 
+In.sourceRealizationName  = strjoin(resName, '_'); 
 In.targetRealizationName  = In.sourceRealizationName;
 In.densityRealizationName = In.sourceRealizationName;
 
@@ -322,13 +326,13 @@ if ifOse
     % idxGR stores flattened indices corresponding to gridpoint-realization 
     % pairs.
     % Out.nRG is total number of gridpoint-realization pairs.
-    idxGR = cell( 1, Out.nR ); 
+    idxGR = cell(1, Out.nR); 
     iGR0 = 0;
     Out.nRG = 0;
     for iR = 1 : Out.nR
-        idxGR{ iR } = iGR0 + ( 1 : Out.Res( iR ).nG );
-        iGR0 = idxGR{ iR }( end );
-        Out.nRG = Out.nRG + numel( idxGR{ iR } );
+        idxGR{iR} = iGR0 + (1 : Out.Res(iR).nG);
+        iGR0 = idxGR{iR}(end);
+        Out.nRG = Out.nRG + numel(idxGR{iR});
     end
 
     % Replicate timestamp, sample count, and embedding fields of Out.Res over 
@@ -336,64 +340,68 @@ if ifOse
     % the entire structure array at the first iteration.
     iRG = Out.nRG;
     for iR = Out.nR : -1 : 1
-        for iG = Out.Res( iR ).nG : -1 : 1
-            Out.ResG( iRG ).nB    = Out.Res( iR ).nB;
-            Out.ResG( iRG ).nBRec = Out.Res( iR ).nBRec;
-            Out.ResG( iRG ).tNum  = Out.Res( iR ).tNum;
-            Out.ResG( iRG ).idxT1 = Out.Res( iR ).idxT1;
-            Out.ResG( iRG ).nSE   = Out.Res( iR ).nSE; 
-            Out.ResG( iRG ).nSRec = Out.Res( iR ).nSRec;
+        for iG = Out.Res(iR).nG : -1 : 1
+            Out.ResG(iRG).nB    = Out.Res(iR).nB;
+            Out.ResG(iRG).nBRec = Out.Res(iR).nBRec;
+            Out.ResG(iRG).tNum  = Out.Res(iR).tNum;
+            Out.ResG(iRG).idxT1 = Out.Res(iR).idxT1;
+            Out.ResG(iRG).nSE   = Out.Res(iR).nSE; 
+            Out.ResG(iRG).nSRec = Out.Res(iR).nSRec;
             iRG = iRG - 1;
         end
     end
 
     % Loop over realizations for in-sample data
-    resName = cell( 1, Out.nR );
+    resName = cell(1, Out.nR);
     for iR = Out.nR : -1 : 1
 
-        tStr = [ Out.Res( iR ).tLim{ 1 } '-' Out.Res( iR ).tLim{ 2 } ];
-        tagR = [ Out.Res( 1 ).experiment '_' tStr ];
+        if iscellstr(In.Res(iR).tLim)
+            tStr = [Out.Res(iR).tLim{1} '-' Out.Res(iR).tLim{2}];
+        else
+            tStr = sprintf('t%i-%i', Out.Res(iR).tLim(1), Out.Res(iR).tLim(2));
+        end
+        tagR = [Out.Res(1).experiment '_' tStr];
 
-        resName{ iR } = tagR;
+        resName{iR} = tagR;
 
         % Source data assumed to be stored in a single batch
-        partition = nlsaPartition( 'nSample', Out.Res( iR ).nS ); 
+        partition = nlsaPartition('nSample', Out.Res(iR).nS); 
 
         % Loop over out-of-sample source components
         for iC = Out.nC : -1 : 1
 
-            xyStr = sprintf( 'x%i-%i_y%i-%i', Out.Src( iC ).xLim( 1 ), ...
-                                              Out.Src( iC ).xLim( 2 ), ...
-                                              Out.Src( iC ).yLim( 1 ), ...
-                                              Out.Src( iC ).yLim( 2 ) );
+            xyStr = sprintf('x%i-%i_y%i-%i', Out.Src(iC).xLim(1), ...
+                                              Out.Src(iC).xLim(2), ...
+                                              Out.Src(iC).yLim(1), ...
+                                              Out.Src(iC).yLim(2));
 
-            pathC = fullfile( outPath,  ...
-                              Out.Res( iR ).experiment, ...
-                              Out.Src( iC ).field,  ...
-                              [ xyStr '_' tStr ] );
+            pathC = fullfile(outPath,  ...
+                              Out.Res(iR).experiment, ...
+                              Out.Src(iC).field,  ...
+                              [xyStr '_' tStr]);
 
-            tagC = [ Out.Src( iC ).field '_' xyStr ];
+            tagC = [Out.Src(iC).field '_' xyStr];
 
             % number of gridpoints
-            load( fullfile( pathC, 'dataGrid.mat' ), 'nDG' ) 
+            load(fullfile(pathC, 'dataGrid.mat'), 'nDG') 
 
             % Loop over gridpoints
-            for iG = Out.Res( iR ).nG : -1 : 1
+            for iG = Out.Res(iR).nG : -1 : 1
 
                 % Filename for out-of-sample source data
-                fList = nlsaFilelist( 'file', sprintf( 'dataX_%i.mat', iG ) ); 
+                fList = nlsaFilelist('file', sprintf('dataX_%i.mat', iG)); 
         
                 % Realization tag for out-of-sample source data
-                tagGR = [ tagR '_' int2str( iG ) ];
+                tagGR = [tagR '_' int2str(iG)];
 
-                iGR = idxGR{ iR }( iG );
-                outComponent( iC, iGR ) = nlsaComponent( ...
+                iGR = idxGR{iR}(iG);
+                outComponent(iC, iGR) = nlsaComponent(...
                                             'partition',      partition, ...
                                             'dimension',      nDG, ...
                                             'path',           pathC, ...
                                             'file',           fList, ...
                                             'componentTag',   tagC, ...
-                                            'realizationTag', tagGR  );
+                                            'realizationTag', tagGR );
             end
         end
 
@@ -402,46 +410,46 @@ if ifOse
             % Loop over out-of-sample target components
             for iC = Out.nCT : -1 : 1
 
-                xyStr = sprintf( 'x%i-%i_y%i-%i', Out.Trg( iC ).xLim( 1 ), ...
-                                                  Out.Trg( iC ).xLim( 2 ), ...
-                                                  Out.Trg( iC ).yLim( 1 ), ...
-                                                  Out.Trg( iC ).yLim( 2 ) );
+                xyStr = sprintf('x%i-%i_y%i-%i', Out.Trg(iC).xLim(1), ...
+                                                  Out.Trg(iC).xLim(2), ...
+                                                  Out.Trg(iC).yLim(1), ...
+                                                  Out.Trg(iC).yLim(2));
 
-                pathC = fullfile( outPath,  ...
-                                  Out.Res( iR ).experiment, ...
-                                  Out.Trg( iC ).field,  ...
-                                  [ xyStr '_' tStr ] );
+                pathC = fullfile(outPath,  ...
+                                  Out.Res(iR).experiment, ...
+                                  Out.Trg(iC).field,  ...
+                                  [xyStr '_' tStr]);
 
-                tagC = [ Out.Trg( iC ).field '_' xyStr ];
+                tagC = [Out.Trg(iC).field '_' xyStr];
 
                 % number of gridpoints
-                load( fullfile( pathC, 'dataGrid.mat' ), 'nDG' ) 
+                load(fullfile(pathC, 'dataGrid.mat'), 'nDG') 
 
 
                 % Loop over gridpoints
-                for iG = Out.Res( iR ).nG : -1 : 1
+                for iG = Out.Res(iR).nG : -1 : 1
 
                     % Filename for out-of-sample target data
-                    fList = nlsaFilelist( 'file', ...
-                                          sprintf( 'dataX_%i.mat', iG ) ); 
+                    fList = nlsaFilelist('file', ...
+                                          sprintf('dataX_%i.mat', iG)); 
         
                     % Realization tag for out-of-sample target data
-                    tagGR = [ tagR '_' int2str( iG ) ];
+                    tagGR = [tagR '_' int2str(iG)];
 
-                    iGR = idxGR{ iR }( iG );
-                    outTrgComponent( iC, iR ) = nlsaComponent( ...
+                    iGR = idxGR{iR}(iG);
+                    outTrgComponent(iC, iR) = nlsaComponent(...
                                                 'partition',      partition, ...
                                                 'dimension',      nDG, ...
                                                 'path',           pathC, ...
                                                 'file',           fList, ...
                                                 'componentTag',   tagC, ...
-                                                'realizationTag', tagGR  );
+                                                'realizationTag', tagGR );
                 end
             end
         end
     end
 
-    Out.outRealizationName = strjoin( resName, '_' ); 
+    Out.outRealizationName = strjoin(resName, '_'); 
     if ifOutTrg
         Out.outTargetRealizationName = Out.outRealizationName;
     end
@@ -466,4 +474,4 @@ if ifOse
     Pars.Out.Res = Pars.Out.ResG; % Modify Out.Res structure for VSA
 end
 
-model = nlsaModelFromPars( Data, Pars );
+model = nlsaModelFromPars(Data, Pars);

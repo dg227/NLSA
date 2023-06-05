@@ -1,5 +1,5 @@
-function Data = importData_cmap(DataSpecs)
-% IMPORTDATA_CMAP Read CMAP reanalysis data from NetCDF files, and 
+function Data = importData_gpcp_mon(DataSpecs)
+% IMPORTDATA_GPCP_MON Read monthly GPCP data from NetCDF files, and 
 % output in format appropriate for NLSA code.
 % 
 % DataSpecs is a data structure containing the specifications of the data to
@@ -90,7 +90,7 @@ end
 dataDir = fullfile(Out.dir, ...
                     fldStr, ...
                     [sprintf('x%i-%i',  Domain.xLim) ...
-                      sprintf('_y%i-%i', Domain.yLim) ...
+                     sprintf('_y%i-%i', Domain.yLim) ...
                       '_' Time.tLim{1} '-' Time.tLim{2}]);
 if Opts.ifWrite && ~isdir(dataDir)
     mkdir(dataDir)
