@@ -1,0 +1,16 @@
+function s = experimentStr_rmm(P)
+% String identifier for data analysis experiment
+%
+% Modified 2023/06/08
+
+s = strjoin_e({P.dataset ...
+               P.var ...
+               sprintf('%s-%s', P.tLim{1}, P.tLim{2}) ...
+               sprintf('emb%i', P.embWindow) ...
+               P.kernel}, ...
+               '_');
+if isfield(P, 'ifDen')
+    if P.ifDen
+        s = [s '_den'];
+    end
+end
