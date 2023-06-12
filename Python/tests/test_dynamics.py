@@ -60,6 +60,16 @@ def test_flow2():
     assert np.all(np.shape(xn) == np.array([4, 3]))
 
 
+def test_flows():
+    dt = 1.0
+    x = np.array([0.0])
+    n_iter = 3
+    ts =  dt * np.arange(n_iter)
+    phi = dn.flows(id_map, ts)
+    xs = phi(x) 
+    assert np.all(np.abs(xs - np.arange(n_iter) <= 1E-6))
+
+
 dt = 1.0
 f = dn.flow(id_map, dt)
 def phi0(x):
