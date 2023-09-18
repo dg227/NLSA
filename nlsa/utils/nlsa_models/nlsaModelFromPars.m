@@ -35,7 +35,7 @@ function model = nlsaModelFromPars( Data, Pars )
 %      /nlsa/classes/nlsaModel_den_ose/nlsaModel_den_ose.m
 %
 %
-% Modified 2022/11/06
+% Modified 2023/07/31
  
 %% PRELIMINARY CHECKS
 % Check that in-sample parameters are present
@@ -698,6 +698,16 @@ switch In.diffOpType
                      'bandwidthExponentLimit', In.epsilonE, ...
                      'nBandwidth',             In.nEpsilon );
 
+    case 'gl_mb_bs_pf'
+        diffOp = nlsaDiffusionOperator_gl_mb_bs_pf( ...
+                     'alpha',                  In.alpha, ...
+                     'beta',                   In.beta, ...
+                     'epsilon',                In.epsilon, ...
+                     'nEigenfunction',         In.nPhi, ...
+                     'bandwidthBase',          In.epsilonB, ...
+                     'bandwidthExponentLimit', In.epsilonE, ...
+                     'nBandwidth',             In.nEpsilon );
+
 end
 
 %% DIFFUSION OPERATOR FOR OUT-OF-SAMPLE DATA
@@ -709,6 +719,7 @@ if ifOse
         Out.beta = In.beta;
     end
 
+    %TODO: Add gl_mb_bs_pf case. 
     switch Out.diffOpType
         case 'gl_mb_svd'
             oseDiffOp = nlsaDiffusionOperator_ose_svd( ...
