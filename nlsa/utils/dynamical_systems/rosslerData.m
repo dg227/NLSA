@@ -1,5 +1,5 @@
 function Data = l63Data(DataSpecs)
-% L63DATA Integrate the Lorenz 63 model, and output potentially partial
+% ROSSLERDATA Integrate the Rossler model, and output potentially partial
 % observations in format appropriate for NLSA code.
 %
 % DataSpecs is a data structure containing the specifications of the data to
@@ -9,9 +9,9 @@ function Data = l63Data(DataSpecs)
 %
 % DataSpecs has the following fields:
 %
-% Pars.beta:         L63 parameter beta
-% Pars.rho:          L63 parameter rho
-% Pars.sigma:        L63 parameter sigma
+% Pars.a:            Rossler parameter a
+% Pars.b:            Rossler parameter b
+% Pars.c:            Rossler  parameter c
 % Time.nS:           Number of production samples
 % Time.nSSpin        Spinup samples
 % Time.dt            Sampling interval
@@ -26,7 +26,7 @@ function Data = l63Data(DataSpecs)
 % nD = 3 in the case of full obs, nD = numel(idxX) in the case of partial
 % obs, and nSProd is the number of "production" samples
 %
-% Modified 2020/06/05
+% Modified 2023/10/15
 
 %% UNPACK INPUT DATA STRUCTURE FOR CONVENIENCE
 Pars   = DataSpecs.Pars;
@@ -35,23 +35,23 @@ Ode    = DataSpecs.Ode;
 Opts   = DataSpecs.Opts;
 
 %% OUTPUT DIRECTORY
-strDir = ['beta'    num2str(Pars.beta, '%1.3g') ...
-           '_rho'    num2str(Pars.rho, '%1.3g') ...
-           '_sigma'  num2str(Pars.sigma, '%1.3g') ...
-           '_dt'     num2str(Time.dt, '%1.3g') ...
-           '_x0'     sprintf('_%1.3g', Ode.x0) ...
-           '_nS'     int2str(Time.nS) ...
-           '_nSSpin' int2str(Time.nSSpin) ...
-           '_relTol' num2str(Ode.relTol, '%1.3g') ...
-           '_ifCent' int2str(Opts.ifCenter)];
+strDir = ['a'       num2str(Pars.a, '%1.3g') ...
+          '_b'      num2str(Pars.b, '%1.3g') ...
+          '_c'      num2str(Pars.c, '%1.3g') ...
+          '_dt'     num2str(Time.dt, '%1.3g') ...
+          '_x0'     sprintf('_%1.3g', Ode.x0) ...
+          '_nS'     int2str(Time.nS) ...
+          '_nSSpin' int2str(Time.nSSpin) ...
+          '_relTol' num2str(Ode.relTol, '%1.3g') ...
+          '_ifCent' int2str(Opts.ifCenter)];
 
 
-%% INTEGRATE THE L63 SYSTEM
+%% INTEGRATE THE ROSSLER SYSTEM
 % nS is the number of samples that will finally be retained
-odeH = @(T, X) l63(T, X, Pars.sigma, Pars.rho, Pars.beta );
+odeH = @(T, X) rossler(T, X, Pars.a, Pars.b, Pars.c );
 t = (0 : Time.nS + Time.nSSpin - 1) * Time.dt;
 [tOut, x] = ode45(odeH, t, Ode.x0, odeset('relTol', Ode.relTol, ...
-                                              'absTol', eps));
+                                          'absTol', eps));
 x = x';
 t = tOut';
 
@@ -88,4 +88,3 @@ if isfield(Opts, 'idxX')
         save(filenameOut, '-v7.3', 'x')
     end
 end
-
