@@ -1,1 +1,1 @@
-set path+=$PWD/src**,$PWD/tests**
+set path+=$PWD/src**,$PWD/tests**,$PWD/perf**

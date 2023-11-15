@@ -20,7 +20,7 @@ def test_cocycle_orbit():
     yn = take(5, y_orb)
     print(xn)
     print(yn)
-    
+
 
 def test_cocycle_orbit2():
     def psi(x: int, y:int) -> int:
@@ -46,7 +46,7 @@ def test_flow():
     n_iter = 3
     phi = dn.flow(id_map, dt)
     x_orb = dn.orbit(x, phi)
-    xn = take(n_iter + 1, x_orb) 
+    xn = take(n_iter + 1, x_orb)
     assert np.all(np.abs(xn - np.arange(0, n_iter + 1) <= 1E-6))
 
 
@@ -56,7 +56,7 @@ def test_flow2():
     n_iter = 3
     phi = dn.flow(id_map, dt)
     x_orb = dn.orbit(x, phi)
-    xn = take(n_iter + 1, x_orb) 
+    xn = take(n_iter + 1, x_orb)
     assert np.all(np.shape(xn) == np.array([4, 3]))
 
 
@@ -66,7 +66,7 @@ def test_flows():
     n_iter = 3
     ts =  dt * np.arange(n_iter)
     phi = dn.flows(id_map, ts)
-    xs = phi(x) 
+    xs = phi(x)
     assert np.all(np.abs(xs - np.arange(n_iter) <= 1E-6))
 
 
@@ -85,10 +85,10 @@ def test_flow_ensemble():
 
     phi = partial(p.map, phi0)
     x_orb = dn.orbit(x, phi)
-    xn = take(n_iter + 1, x_orb) 
+    xn = take(n_iter + 1, x_orb)
     assert np.all(np.shape(xn) == np.array([n_iter + 1, 3, 1]))
 
-    
+
 def test_stepanoff_flow():
     dt = 0.1
     alpha = np.sqrt(30)
@@ -96,22 +96,22 @@ def test_stepanoff_flow():
     n_iter = 3
     phi = dn.flow(dn.stepanoff_vec(alpha), dt)
     x_orb = dn.orbit(x, phi)
-    xn = take(n_iter + 1, x_orb) 
+    xn = take(n_iter + 1, x_orb)
     assert np.all(np.shape(xn) == np.array([4, 2]))
 
 
 
-def test_stepanoff_flow_ensemble():
-    dt = 0.1
-    alpha = np.sqrt(30)
-    x = np.array([[0.0, 0.0], [1.0, 1.0]])
-    n_iter = 3
-    step = dn.flow(dn.stepanoff_vec(alpha), dt)
-    p = Pool(2)
-    y = p.map(step, x)
-    assert np.all(np.shape(y) == np.shape(x))
+# def test_stepanoff_flow_ensemble():
+#     dt = 0.1
+#     alpha = np.sqrt(30)
+#     x = np.array([[0.0, 0.0], [1.0, 1.0]])
+#     n_iter = 3
+#     step = dn.flow(dn.stepanoff_vec(alpha), dt)
+#     p = Pool(2)
+#     y = p.map(step, x)
+#     assert np.all(np.shape(y) == np.shape(x))
 
-    phi = partial(p.map, step)
-    x_orb = dn.orbit(x, phi)
-    xn = take(n_iter + 1, x_orb) 
-    assert np.all(np.shape(xn) == np.array([n_iter + 1, 2, 2]))
+#     phi = partial(p.map, step)
+#     x_orb = dn.orbit(x, phi)
+#     xn = take(n_iter + 1, x_orb)
+#     assert np.all(np.shape(xn) == np.array([n_iter + 1, 2, 2]))

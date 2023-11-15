@@ -9,18 +9,16 @@ from nptyping import Complex, Double, Int, NDArray, Shape
 from scipy.linalg import toeplitz
 from scipy.special import iv
 from scipy.stats import vonmises
-from typing import Callable, TypeVar
+from typing import Callable, Literal, TypeVar
 
 # Typevar declarations
 # K represents vectors of elements of the dual group (Fourier wavenumbers)
-N = TypeVar("N")
-L = TypeVar("L")
-K = NDArray[Shape["N"], Int]
+K = NDArray[Literal["N"], Int]
 X = NDArray[Shape["*, ..."], Double]
 XK = NDArray[Shape["*, N"], Complex]
 V = TypeVar("V", NDArray[Shape["N"], Double], NDArray[Shape["N"], Complex])
-VR = NDArray[Shape["N"], Double]
-VC = NDArray[Shape["N"], Complex]
+VR = NDArray[Literal["N"], Double]
+VC = NDArray[Literal["N"], Complex]
 M = TypeVar("M", NDArray[Shape["L, L"], Double],
             NDArray[Shape["L, L"], Complex])
 

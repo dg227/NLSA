@@ -102,7 +102,7 @@ def eig_sorted(a: A, n: Optional[int] = None,
     elif which in ('LI', 'SI'):
         idx = wv[0].imag.argsort()
     elif which in ('LM', 'SM'):
-        idx = wv[0].abs.argsort()
+        idx = np.abs(wv[0]).argsort()
     if n is None:
         n = len(a)
     if which in ('LA', 'LM', 'LR', 'LI'):

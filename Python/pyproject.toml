@@ -21,3 +21,12 @@ warn_return_any = true
 warn_unreachable = true
 warn_unused_configs = true
 no_implicit_reexport = true
+plugins = "numpy.typing.mypy_plugin"
+
+[tool.pyright]
+include = ["src"]
+exclude = ["**/node_modules",
+    "**/__pycache__"
+]
+# typeCheckingMode = "basic"
+typeCheckingMode = "strict"

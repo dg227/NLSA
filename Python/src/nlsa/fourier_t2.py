@@ -7,16 +7,15 @@ import nlsa.fourier_s1 as f1
 import numpy as np
 from nptyping import Complex, Double, Int, NDArray, Shape
 from scipy.special import iv
-from typing import Callable, Tuple, TypeVar
+from typing import Callable, Literal, Tuple, TypeVar
 
-N = TypeVar("N")
 K = NDArray[Shape["2, N"], Int]
 X = NDArray[Shape["*, 2"], Double]
 Y = NDArray[Shape["*"], Double]
 XK = NDArray[Shape["*, N"], Complex]
 V = TypeVar("V", NDArray[Shape["N"], Double], NDArray[Shape["N"], Complex])
-VR = NDArray[Shape["N"], Double]
-VC = NDArray[Shape["N"], Complex]
+VR = NDArray[Literal['N'], Double]
+VC = NDArray[Literal['N'], Complex]
 M = TypeVar("M",
             NDArray[Shape["N, N"], Double],
             NDArray[Shape["N, N"], Complex])
@@ -217,5 +216,5 @@ def rotation_generator(alpha: Tuple[float, float], k: int) -> M:
     """
 
     spec = rotation_generator_eigs(alpha)
-    v = np.diag(spec(dual_group((k, k))))
+    v: M = np.diag(spec(dual_group((k, k))))
     return v

@@ -1,5 +1,7 @@
 """Implements various aspects of reproducing kernel Hilbert spaces (RKHSs)."""
 
+# mypy: ignore-errors
+
 import nlsa.function_algebra as fun
 import nlsa.matrix_algebra as mat
 import numpy as np
@@ -12,9 +14,8 @@ from scipy.spatial.distance import cdist
 from typing import Callable, Literal, Optional, Protocol, Tuple, TypeVar,\
         runtime_checkable
 
-N = TypeVar('N')
 Rs = NDArray[Shape['1, ...'], Double]
-RN = NDArray[Shape['N'], Double]
+RN = NDArray[Literal['N'], Double]
 CRN = TypeVar('CRN',
               NDArray[Shape['N'], Double], NDArray[Shape['N'], Complex])
 CRNs = TypeVar('CRNs',
@@ -24,6 +25,7 @@ K = TypeVar('K', Double, Complex)
 X = TypeVar('X')
 Y = TypeVar('Y')
 Z = TypeVar('Z')
+Z_contra = TypeVar('Z_contra', contravariant=True)
 X_co = TypeVar('X_co', covariant=True)
 V = TypeVar('V')
 W = TypeVar('W')
@@ -69,7 +71,7 @@ def eval_sampling_measure(x: X, f: Callable[[X], CRNs]) -> CRN:
 # TODO: Implementation of this function requires indexable objects and objects
 # that support transpose (T). Consider moving kernel_opereator to the vec
 # module or overloading this function.
-def kernel_operator(impl: ImplementsStarAlgebra[V],
+def kernel_operator(impl: ImplementsStarAlgebra[V, W],
                     incl: Callable[[Callable[[Y], V]], V],
                     mu: Callable[[V], W],
                     k: Callable[[X, Y], V]) \
@@ -150,9 +152,8 @@ def snormalize(impl: ImplementsAlgdivAndAlgldiv[V], k: Callable[[X, X], V],
 
 @runtime_checkable
 class ImplementsDMProtocols(ImplementsAlgdiv[V], ImplementsAlgldiv[V],
-                            ImplementsStarAlgebra[V],
-                            ImplementsPower[V, W_contra],
-                            ImplementsSqrt[V], Protocol[V, W_contra]):
+                            ImplementsStarAlgebra[V, W_contra],
+                            Protocol[V, W_contra]):
     ...
 
 

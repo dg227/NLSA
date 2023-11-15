@@ -7,11 +7,12 @@ import scipy.linalg as la
 from nptyping import Complex, Double, Int, NDArray, Shape
 from qiskit import Aer, QuantumCircuit, transpile
 from qiskit.extensions import UnitaryGate
-from typing import Tuple, TypeVar
+from typing import Literal, Tuple, TypeVar
 
-N = TypeVar('N')
-X = NDArray[Shape['N'], Double]
-Ints = NDArray[Shape['N'], Int]
+# We use Literal instead of Shape because for some reason mypy is giving
+# errors.
+X = NDArray[Literal['N'], Double]
+Ints = NDArray[Literal['N'], Int]
 V = TypeVar('V', NDArray[Shape['N'], Double], NDArray[Shape['N'], Complex])
 M = TypeVar('M',
             NDArray[Shape['N, N'], Double],

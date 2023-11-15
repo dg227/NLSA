@@ -1,3 +1,10 @@
+from typing import Callable, TypeVar
+
+X = TypeVar('X')
+Y = TypeVar('Y')
+Z = TypeVar('Z')
+
+
 def bind(instance, func, as_name=None):
     """
     Bind the function *func* to *instance*, with either provided name *as_name*
@@ -14,3 +21,10 @@ def bind(instance, func, as_name=None):
     setattr(instance, as_name, bound_method)
     return bound_method
 
+
+def swap_args(f: Callable[[X, Y], Z], /) -> Callable[[Y, X], Z]:
+    """Swap arguments of bivariate function."""
+    def g(y: Y, x: X, /) -> Z:
+        z: Z = f(x, y)
+        return z
+    return g

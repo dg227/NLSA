@@ -2,7 +2,7 @@
 
 from functools import partial
 from itertools import accumulate, repeat
-from typing import Callable, Iterator, Optional, Protocol, TypeVar, \
+from typing import Callable, Iterator, Optional, Protocol, Self, TypeVar, \
         runtime_checkable
 
 B = TypeVar('B')
@@ -43,18 +43,10 @@ Y_co = TypeVar('Y_co', covariant=True)
 Y_contra = TypeVar('Y_contra', contravariant=True)
 
 
-# VI = NDArray[Shape['N'], Int] | Indexable[VI]
-# VR = NDArray[Shape['N'], Double] | Indexable[VR]
-# VC = NDArray[Shape['N'], Complex] | Indexable[VC]
-
-class Indexable(Protocol[T_co]):
-    def __getitem__(self, key: int) -> T_co:
-        ...
-
-
+@runtime_checkable
 class SupportsAdd(Protocol):
     """Represents types supporting addition."""
-    def __add__(a: T, b: T) -> T:
+    def __add__(a: Self, b: Self) -> Self:
         ...
 
 
@@ -62,6 +54,13 @@ class SupportsAdd(Protocol):
 class ImplementsAdd(Protocol[T]):
     """Represents types implementing addition."""
     def add(self, a: T, b: T) -> T:
+        ...
+
+
+@runtime_checkable
+class Implements__Add__(Protocol[T]):
+    """Represents types implementing magic method for addition."""
+    def __add__(self, a: T, b: T) -> T:
         ...
 
 
@@ -114,12 +113,18 @@ class ImplementsAlgmul(Protocol[T]):
         ...
 
 
-# @runtime_checkable
-# class ImplementsPairwiseAlgmul(Protocol[T]):
-#     """Represents types implementing pairwise algebraic multiplication."""
-#     def pairwise_algmul(self, a: Indexable[T], b:Indexable[T])\
-#             -> Indexable[T]:
-#         ...
+@runtime_checkable
+class ImplementsPower(Protocol[T, S_contra]):
+    """Represents types implementing algebraic power (exponentiation)."""
+    def power(self, a: T, b: S_contra) -> T:
+        ...
+
+
+@runtime_checkable
+class ImplementsSqrt(Protocol[T]):
+    """Represents types implementing square root."""
+    def sqrt(self, a: T) -> T:
+        ...
 
 
 @runtime_checkable
@@ -130,10 +135,17 @@ class ImplementsStar(Protocol[T]):
 
 
 @runtime_checkable
-class ImplementsStarAlgebra(ImplementsAdd[T], ImplementsAlgmul[T],
-                            ImplementsStar[T], Protocol[T]):
-    """Reperesents types implementing star algebra operations."""
-    pass
+class ImplementsUnit(Protocol[T_co]):
+    """Represents types implementing algebraic unit."""
+    def unit(self) -> T_co:
+        ...
+
+
+@runtime_checkable
+class ImplementsInv(Protocol[T]):
+    """Represents types implementing algebraic inversion."""
+    def inv(self, a: T) -> T:
+        ...
 
 
 @runtime_checkable
@@ -165,12 +177,41 @@ class ImplementsRdiv(Protocol[T, K_contra]):
         ...
 
 
-# @runtime_checkable
-# class ImplementsPairwiseStarAlgebra(ImplementsPairwiseAdd[T],
-#                                     ImplementsPairwiseAlgmul[T],
-#                                     ImplementsStar[T], Protocol[T]):
-#     """Reperesents types implementing pairwise star algebra operations."""
-#     pass
+@runtime_checkable
+class ImplementsVectorSpace(ImplementsAdd[T], ImplementsSub[T],
+                            ImplementsMul[K_contra, T], Protocol[T, K_contra]):
+    """Represents types implementing vector space operations."""
+    ...
+
+
+@runtime_checkable
+class ImplementsAlgebra(ImplementsVectorSpace[T, K_contra], ImplementsAlgmul[T],
+                        ImplementsSqrt[T], ImplementsPower[T, K_contra],
+                        Protocol[T, K_contra]):
+    """Represents types implementing algebra operations."""
+
+
+@runtime_checkable
+class ImplementsStarAlgebra(ImplementsAlgebra[T, K_contra], ImplementsStar[T],
+                            Protocol[T, K_contra]):
+    """Reperesents types implementing star algebra operations."""
+    ...
+
+
+@runtime_checkable
+class ImplementsUnitalAlgebra(ImplementsAlgebra[T, K_contra],
+                              ImplementsAlgdiv[T], ImplementsAlgldiv[T],
+                              ImplementsInv[T], ImplementsUnit[T],
+                              Protocol[T, K_contra]):
+    """Reperesents types implementing unital algebra operations."""
+    ...
+
+
+@runtime_checkable
+class ImplementsUnitalStarAlgebra(ImplementsUnitalAlgebra[T, K_contra],
+                                  ImplementsStar[T], Protocol[T, K_contra]):
+    """Reperesents types implementing unital star algebra operations."""
+    ...
 
 
 @runtime_checkable
@@ -201,20 +242,6 @@ class ImplementsCompose(Protocol[G_contra, F_contra, H_co]):
 
 
 @runtime_checkable
-class ImplementsPower(Protocol[T, S_contra]):
-    """Represents types implementing exponentiation."""
-    def power(self, a: T, b: S_contra) -> T:
-        ...
-
-
-@runtime_checkable
-class ImplementsSqrt(Protocol[T]):
-    """Represents types implementing square root."""
-    def sqrt(self, a: T) -> T:
-        ...
-
-
-@runtime_checkable
 class ImplementsSynthesis(Protocol[B_contra, C_contra, V_co]):
     """Represents types implementing synthesis (linear combination) of vectors
     from a dictionary.
@@ -222,8 +249,8 @@ class ImplementsSynthesis(Protocol[B_contra, C_contra, V_co]):
     B: Dictionary/basis type.
     C: Expansion coefficients type.
     V: Returned vector type.
-
     """
+
     def synthesis(self, b: B_contra, c: C_contra) -> V_co:
         ...
 
@@ -318,7 +345,7 @@ def id_map(x: T) -> T:
     return x
 
 
-def l2_innerp(impl: ImplementsStarAlgebra[T], mu: Callable[[T], S],
+def l2_innerp(impl: ImplementsStarAlgebra[T, S], mu: Callable[[T], S],
               a: T, b: T)\
                       -> S:
     """L2 inner product."""
@@ -326,7 +353,7 @@ def l2_innerp(impl: ImplementsStarAlgebra[T], mu: Callable[[T], S],
     return y
 
 
-def make_l2_innerp(impl: ImplementsStarAlgebra[T], mu: Callable[[T], S])\
+def make_l2_innerp(impl: ImplementsStarAlgebra[T, S], mu: Callable[[T], S])\
         -> Callable[[T, T], S]:
     """Make L2 inner product function."""
     ip = partial(l2_innerp, impl, mu)
@@ -353,3 +380,19 @@ def iterate(impl: ImplementsCompose[F, F, F], f: F, initial: Optional[F] = None)
         initial = f
     itf = accumulate(repeat(f), impl.compose, initial=initial)
     return itf
+
+
+# @runtime_checkable
+# class ImplementsPairwiseAlgmul(Protocol[T]):
+#     """Represents types implementing pairwise algebraic multiplication."""
+#     def pairwise_algmul(self, a: Indexable[T], b:Indexable[T])\
+#             -> Indexable[T]:
+#         ...
+
+
+# @runtime_checkable
+# class ImplementsPairwiseStarAlgebra(ImplementsPairwiseAdd[T],
+#                                     ImplementsPairwiseAlgmul[T],
+#                                     ImplementsStar[T], Protocol[T]):
+#     """Reperesents types implementing pairwise star algebra operations."""
+#     pass
