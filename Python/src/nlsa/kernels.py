@@ -146,8 +146,10 @@ def sym_sqrt_normalize(impl: ImplementsSqrtNormalize[X, V, K],
     func2: BivariateFunctionSpace[X, X, K, K] =\
         BivariateFunctionSpace(codomain=c)
     k_op: Callable[[V], F[X, K]] = make_integral_operator(impl, k)
+
     if unit is None:
         unit = impl.unit()
+
     sfun: Callable[[X], K] = func.sqrt(k_op(unit))
 
     # pyright gives errors when passing sfun directly as a function
@@ -201,3 +203,25 @@ def from_dmsym(impl: alg.ImplementsAlgebraLModule[Vs, K, V], v0: V, vs: Vs)\
     """
 
     return impl.ldiv(v0, vs)
+
+
+def make_tuning_objective(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+                          k_func: Callable[[K], Callable[[X, X], K]], /,
+                          grad: Callable[[F[K, K]], F[K, K]],
+                          unit: Optional[V] = None) -> \
+        Callable[[K], K]:
+    """Make objective function for kernel tuning."""
+
+    # TODO: This will not typecheck. We need to ensure that impl.scl implements
+    # exp10 and log10.
+
+    if unit is None:
+        unit = impl.unit()
+
+    def log_k_sum(log10_eps: K) -> K:
+        epsilon = impl.scl.exp10(log10_eps)
+        k_op = make_integral_operator(impl, k_func(epsilon))
+        s = impl.integrate(impl.incl(k_op(unit)))
+        return impl.scl.log10(s)
+
+    return grad(log_k_sum)

@@ -2,11 +2,11 @@ import jax
 import jax.numpy as jnp
 import time
 from functools import partial
-from jax import Array, jit, vmap
+from jax import Array, grad, jit, vmap
 from nlsa.abstract_algebra2 import ldivide_by, multiply_by
 from nlsa.function_algebra2 import compose
 from nlsa.kernels import dm_normalize, dmsym_normalize, \
-        make_integral_operator, make_exponential_rbf
+        make_integral_operator, make_exponential_rbf, make_tuning_objective
 from nlsa.jax.stats import make_von_mises_density
 from nlsa.jax.vector_algebra import VectorAlgebra, MeasureFnAlgebra, \
         ScalarField, counting_measure, sqeuclidean, veval_at, \
@@ -26,6 +26,7 @@ Xn = Array
 V = Array
 Vm = Array
 W = Array
+K = jnp.float32
 
 S = TypeVar('S')
 T = TypeVar('T')
@@ -33,13 +34,16 @@ F = Callable[[S], T]
 
 Alpha = Literal['0', '0.5', '1']
 
-n: N = 2**5
+n: N = 2**6
+n_bandwidth: int = 16
+log10_bandwidth_lims: tuple[float, float] = (-3., 3.)
 m_eigs: int = 8
 m: M = m_eigs
 n_test = 128
 alpha: Alpha = '0.5'
 kappa: float = 1.
 dtype = jnp.float32
+
 
 @jit
 @vmap
@@ -56,15 +60,35 @@ if __name__ == "__main__":
     print(f'n = {n}')
     print(f'm_eigs = {m_eigs}')
 
+    scl = ScalarField(dtype=dtype)
+
     thetas: T1n = jnp.linspace(0, 2 * jnp.pi, n)
     xs: Xn = embed_r2(thetas)
-    ell2: MeasureFnAlgebra[X, N, R] = \
+    ell2: MeasureFnAlgebra[X, N, K] = \
         MeasureFnAlgebra(dim=n,
                          dtype=dtype,
                          inclusion_map=veval_at(xs),
                          measure=counting_measure)
-    rbf: Callable[[X, X], R] = make_exponential_rbf(ScalarField(dtype=dtype),
-                                                    bandwidth=dtype(0.2))
+
+    start_time = time.perf_counter()
+    log10_bandwidths = jnp.linspace(log10_bandwidth_lims[0],
+                                    log10_bandwidth_lims[1], n_bandwidth)
+    shape_func = partial(make_exponential_rbf, scl)
+
+    def k_func(epsilon: R) -> Callable[[X, X], R]:
+        return  compose(shape_func(epsilon), sqeuclidean)
+
+    k_tune = jit(make_tuning_objective(ell2, k_func, grad))
+    est_dims = jnp.array([2.*k_tune(epsilon) for epsilon in log10_bandwidths])
+    i_opt = jnp.argmax(est_dims)
+    bandwidth = 10. ** log10_bandwidths[i_opt]
+    end_time = time.perf_counter()
+    print(f'Kernel tuning took {end_time - start_time:.3e} s')
+    print(f'Optimal bandwidth index: {i_opt}')
+    print(f'Optimal bandwidth: {bandwidth:.3e}')
+    print(f'Estimated dimension: {est_dims[i_opt]:.3e}')
+
+    rbf: Callable[[X, X], R] = make_exponential_rbf(scl, bandwidth)
     k: Callable[[X, X], R] = compose(rbf, sqeuclidean)
     psym: Callable[[X, X], R] = dmsym_normalize(ell2, alpha, k)
     psym_op: Callable[[V], F[X, R]] = make_integral_operator(ell2, psym)
@@ -96,14 +120,14 @@ if __name__ == "__main__":
     print(laplacian_evals[0:5])
 
     start_time = time.perf_counter()
-    r_m: VectorAlgebra[N, R] = VectorAlgebra(dim=m, dtype=dtype)
-    an = make_vector_analysis_operator(ell2, phi_duals[:, 0 : m])
+    r_m: VectorAlgebra[N, K] = VectorAlgebra(dim=m, dtype=dtype)
+    an = make_vector_analysis_operator(ell2, phi_duals[:, 0:m])
     p: Callable[[X, X], R] = dm_normalize(ell2, alpha, k)
     p_op: Callable[[F[X, R]], V] = make_integral_operator(ell2, p)
     vp_op = vmap(lambda v, x: p_op(v)(x), in_axes=(1, None))
-    basis = partial(vp_op, phis[:, 0 : m])
+    basis = partial(vp_op, phis[:, 0:m])
     synth = make_fn_synthesis_operator(basis)
-    nystrom = compose(synth, ldivide_by(r_m, lambs[0 : m]))
+    nystrom = compose(synth, ldivide_by(r_m, lambs[0:m]))
     f = jit(vmap(make_von_mises_density(kappa, jnp.pi)))
     f_ell2 = f(thetas)
     f_phi = an(f_ell2)
@@ -120,7 +144,7 @@ if __name__ == "__main__":
     end_time = time.perf_counter()
     print(f'Prediction took {end_time - start_time:.3e} s')
     print('First 5 true values:')
-    print(y_trues[0 : 5])
+    print(y_trues[0:5])
     print('First 5 predicted values:')
-    print(y_preds[0 : 5])
+    print(y_preds[0:5])
     print(f'Normalized RMSE = {rmse:.3e}')

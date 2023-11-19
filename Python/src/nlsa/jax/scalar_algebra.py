@@ -42,6 +42,11 @@ def ldiv(s: S, t: S, /) -> S:
     return jnp.divide(t, s)
 
 
+def exp10(s: S, /) -> S:
+    """Exponentiate with  base 10."""
+    return jnp.power(10, s)
+
+
 class ScalarField(Generic[K]):
     """Implement scalar field operations for JAX arrays.
 
@@ -61,4 +66,7 @@ class ScalarField(Generic[K]):
         self.ldiv: Callable[[S, S], S] = ldiv
         self.sqrt: Callable[[S], S] = jnp.sqrt
         self.exp: Callable[[S], S] = jnp.exp
+        self.exp10: Callable[[S], S] = exp10
+        self.log: Callable[[S], S] = jnp.log
+        self.log10: Callable[[S], S] = jnp.log10
         self.power: Callable[[S, S], S] = jnp.power
