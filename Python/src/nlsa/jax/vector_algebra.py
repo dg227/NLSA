@@ -1,14 +1,18 @@
 # pyright: basic
 
+# TODO: Make power have a consistent signature.
+
 import jax
 import jax.numpy as jnp
 import nlsa.abstract_algebra2 as alg
 from jax import Array, jit, pmap, vmap
 from jax.experimental.shard_map import shard_map as shmap
 from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+from jax.scipy.signal import convolve
 from nlsa.jax.scalar_algebra import ScalarField
-from nlsa.function_algebra2 import FunctionSpace
-from typing import Callable, Generic, Optional, Type, TypeAlias, TypeVar
+from nlsa.function_algebra2 import FunctionSpace, compose, make_mpower
+from typing import Callable, Generic, Literal, Optional, Type, TypeAlias, \
+        TypeVar
 
 N = TypeVar('N', bound=int)
 K = TypeVar('K', jnp.float32, jnp.float64)
@@ -24,6 +28,7 @@ T = TypeVar('T')
 T1 = TypeVar('T1')
 T2 = TypeVar('T2')
 F = Callable[[T1], T2]
+ConvMode = TypeVar('ConvMode', bound=Literal['full', 'same', 'valid'])
 
 
 def neg(v: V, /) -> V:
@@ -31,14 +36,14 @@ def neg(v: V, /) -> V:
     return jnp.multiply(-1, v)
 
 
-def make_unit(dim: int, dtype: Type[K]) -> Callable[[], V]:
+def make_unit(dim: int | tuple[int], dtype: Type[K]) -> Callable[[], V]:
     """Make constant function returning vector of all 1s."""
     def unit() -> V:
         return jnp.ones(dim, dtype=dtype)
     return unit
 
 
-def make_inv(dim: int, dtype: Type[K]) -> Callable[[V], V]:
+def make_inv(dim: int | tuple[int], dtype: Type[K]) -> Callable[[V], V]:
     """Make inversion function for specified dimension and dtype."""
     def inv(v: V) -> V:
         return jnp.divide(jnp.ones(dim, dtype=dtype), v)
@@ -62,17 +67,49 @@ def make_weighted_l2_innerp(w: V, /) -> Callable[[V, V], S]:
     return innerp
 
 
-def from_innerp(inner: Callable[[V, V], S], /) -> Callable[[V], S]:
+def to_norm(inner: Callable[[V, V], S], /) -> Callable[[V], S]:
     """Make norm from inner product."""
     def norm(v: V, /) -> S:
         return jnp.sqrt(inner(v, v))
     return norm
 
 
+def to_sqnorm(inner: Callable[[V, V], S], /) -> Callable[[V], S]:
+    """Make square norm from inner product."""
+    def sqnorm(v: V, /) -> S:
+        return inner(v, v)
+    return sqnorm
+
+
+make_weighted_l2_sqnorm = compose(to_sqnorm, make_weighted_l2_innerp)
+
+
+def make_convolution(mode: ConvMode = 'same') -> Callable[[V, V], V]:
+    """Make convolution product between vectors."""
+    def cnv(u: V, v: V) -> V:
+        return convolve(u, v, mode=mode)
+    return cnv
+
+
+def make_weighted_convolution(weight: V, mode: ConvMode = 'same') \
+        -> Callable[[V, V], V]:
+    """Make weighted convolution product between vectors."""
+    def cnv(u: V, v: V) -> V:
+        return convolve(weight * u, weight * v, mode=mode) / weight
+    return cnv
+
+
 def counting_measure(v: V, /) -> S:
-    """Sum the elements of vector."""
+    """Sum the elements of a vector."""
     return jnp.sum(v)
     # return jnp.sum(v, axis=-1)
+
+
+def make_normalized_counting_measure(n: int) -> Callable[[V], S]:
+    """Make normalized counting measure from dimension parameter."""
+    def mu(v: V, /) -> S:
+        return counting_measure(v) / float(n)
+    return mu
 
 
 def eval_at(xs: Xs, /) -> Callable[[F[Xs, V]], V]:
@@ -141,6 +178,11 @@ def peval_at(xs: Xs, /, in_axes=0, axis_name=None) -> Callable[[F[X, Y]], V]:
     return eval
 
 
+def flip_conj(v: V) -> V:
+    """Perform involution (complex-conjugation and flip) convolution algebra."""
+    return jnp.conjugate(jnp.flip(v))
+
+
 def sqeuclidean(u: V, v: V, /) -> S:
     """Compute pairwise squared Euclidean distance."""
     s2 = jnp.sum((u - v) ** 2)
@@ -154,6 +196,13 @@ def make_fn_synthesis_operator(basis: F[X, V]) -> Callable[[V], F[X, S]]:
             b = basis(x)
             return jnp.sum(v * b)
         return f
+    return synth
+
+
+def make_vector_synthesis_operator(basis: Vs) -> Callable[[Ss], V]:
+    """Make synthesis operator for vectors from basis."""
+    def synth(c: Ss) -> V:
+        return basis @ c
     return synth
 
 
@@ -195,9 +244,46 @@ class VectorAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
         if weight is None:
             self.innerp: Callable[[V, V], S] = l2_innerp
         else:
+            # TODO: Add check that weight has the right shape.
             self.innerp: Callable[[V, V], S] = make_weighted_l2_innerp(weight)
 
-        self.norm: Callable[[V], S] = from_innerp(self.innerp)
+        self.norm: Callable[[V], S] = to_norm(self.innerp)
+
+
+class ConvolutionAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
+    """Implement convolution algebra operations for JAX arrays.
+
+    The type variable N parameterizes the dimension of the algebra. The type
+    variable K parameterizes the field of scalars.
+    """
+
+    def __init__(self, dim: N, dtype: Type[K], weight: Optional[V] = None,
+                 conv_mode: Optional[ConvMode] = 'same',
+                 conv_weight: Optional[V] = None):
+        self.dim = dim
+        self.scl = ScalarField(dtype)
+        self.add: Callable[[V, V], V] = jnp.add
+        self.neg: Callable[[V], V] = neg
+        self.sub: Callable[[V, V], V] = jnp.subtract
+        self.smul: Callable[[S, V], V] = jnp.multiply
+
+        if conv_weight is None:
+            self.mul = make_convolution(mode=conv_mode)
+        else:
+            self.mul = make_weighted_convolution(mode=conv_mode,
+                                                 weight=conv_weight)
+
+        self.star: Callable[[V], V] = flip_conj
+        self.sqrt: Callable[[V], V] = jnp.sqrt
+        self.exp: Callable[[V], V] = jnp.exp
+        self.power: Callable[[V, V], V] = make_mpower(self.mul)
+
+        if weight is None:
+            self.innerp: Callable[[V, V], S] = l2_innerp
+        else:
+            self.innerp: Callable[[V, V], S] = make_weighted_l2_innerp(weight)
+
+        self.norm: Callable[[V], S] = to_norm(self.innerp)
 
 
 class MeasurableFnAlgebra(VectorAlgebra[N, K],
@@ -235,7 +321,7 @@ class FnSynthesis(FunctionSpace[T, VectorAlgebra[N, K]], Generic[T, N, K]):
 
 def make_vector_analysis_operator(vec: VectorAlgebra[N, K], basis: Vs) \
         -> Callable[[V], V]:
-    vinnerp = vmap(vec.innerp, in_axes=(1, None))
+    vinnerp = vmap(vec.innerp, in_axes=(-1, None))
 
     def an(v: V) -> Ss:
         return vinnerp(basis, v)

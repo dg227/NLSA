@@ -1,4 +1,8 @@
+"""Provides functions for dynamical systems computations implemented in Numpy.
+
+"""
 import nlsa.abstract_algebra2 as alg
+import nlsa.function_algebra2 as fun
 from functools import partial
 from nlsa.abstract_algebra2 import FromScalarField
 from nlsa.function_algebra2 import FunctionSpace, BivariateFunctionSpace
@@ -33,7 +37,7 @@ def make_exponential_rbf(impl: alg.ImplementsScalarField[S], bandwidth: S)\
         -> Callable[[S], S]:
     """Make exponential radial basis function."""
 
-    neg_concentration = impl.neg(impl.inv(bandwidth))
+    neg_concentration = impl.neg(impl.inv(impl.mul(bandwidth, bandwidth)))
 
     def rbf(s: S) -> S:
         return impl.exp(impl.mul(neg_concentration, s))
@@ -205,6 +209,90 @@ def from_dmsym(impl: alg.ImplementsAlgebraLModule[Vs, K, V], v0: V, vs: Vs)\
     return impl.ldiv(v0, vs)
 
 
+def bs_normalize(impl: ImplementsSqrtNormalize[X, V, K],
+                 k: Callable[[X, X], K], /, unit: Optional[V] = None) \
+     -> Callable[[X, X], K]:
+    """Perform bistochastic kernel normalization."""
+
+    if unit is None:
+        u = impl.unit()
+    else:
+        u = unit
+
+    c = FromScalarField(impl.scl)
+    func: FunctionSpace[X, K, K] = FunctionSpace(codomain=c)
+    func2: BivariateFunctionSpace[X, X, K, K] =\
+        BivariateFunctionSpace(codomain=c)
+    k_op = make_integral_operator(impl, k)
+    d = k_op(u)
+    k_r: Callable[[X, X], K] = func2.rdiv(k, d)
+    k_r_op = make_integral_operator(impl, k_r)
+    q = k_r_op(u)
+    k_q = func2.rdiv(k, func.sqrt(q))
+    k_bs = func2.ldiv(d, k_q)
+    return k_bs
+
+
+class ImplementsMercerKernel(alg.ImplementsAlgebra[V, K],
+                             alg.ImplementsInnerp[V, K],
+                             Protocol[V, K]):
+    """Implement operations required for Mercer kernel summation."""
+    pass
+
+
+def make_mercer_kernel(impl: ImplementsMercerKernel[V, K],
+                       psi_l: F[X_cov, V], psi_r: F[X_cov, V], /, ) \
+       -> Callable[[X_cov, X_cov], K]:
+    """Make Mercer kernel from 'left' and 'right' feature vectors"""
+    def k(x: X_cov, y: X_cov) -> K:
+        return impl.innerp(psi_l(x), psi_r(y))
+    return k
+
+
+def riemannian_vol(impl: alg.ImplementsMeasureUnitalFnAlgebra[X, V, K],
+                   p: Callable[[X, X], K], /,
+                   dim: K, t: K, fourpi: K) -> K:
+    """Compute Riemannian volume using heat trace formula."""
+    scl = impl.scl
+    h: Callable[[X], K] = fun.diag(p)
+    a = scl.power(scl.sqrt(scl.mul(fourpi, t)), dim)
+    vol = scl.mul(a, impl.integrate(impl.incl(h)))
+    return vol
+
+
+def make_bandwidth_function(impl: alg.ImplementsMeasureUnitalFnAlgebra[X, V, K],
+                            k: Callable[[X, X], K], /, dim: K, vol: K,
+                            unit: Optional[V] = None) \
+        -> Callable[[X], K]:
+    """Make bandwidth function for variable-bandwidth kernel."""
+
+    if unit is None:
+        u = impl.unit()
+    else:
+        u = unit
+
+    scl = impl.scl
+    func: FunctionSpace[X, K, K] = FunctionSpace(codomain=FromScalarField(scl))
+    w: Callable[[X, X], K] = sym_normalize(impl, k, unit=u)
+    w_op = make_integral_operator(impl, w)
+    d = w_op(u)
+    d_bar = impl.integrate(impl.incl(d))
+    c = scl.div(vol, d_bar)
+    b = func.power(func.smul(c, d), scl.inv(dim))
+    return b
+
+
+def make_scaled_sqdist(impl: alg.ImplementsMeasureUnitalFnAlgebra[X, V, K],
+                       d2: Callable[[X, X], K], b: Callable[[X], K], /) \
+        -> Callable[[X, X], K]:
+    """Make scaled square distance function from bandwidth function."""
+    func: BivariateFunctionSpace[X, X, K, K] =\
+        BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
+    tensorp = fun.make_bivariate_tensor_product(impl.scl)
+    d2_scl = func.div(d2, tensorp(b, b))
+    return d2_scl
+
+
 def make_tuning_objective(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
                           k_func: Callable[[K], Callable[[X, X], K]], /,
                           grad: Callable[[F[K, K]], F[K, K]],
@@ -216,12 +304,14 @@ def make_tuning_objective(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
     # exp10 and log10.
 
     if unit is None:
-        unit = impl.unit()
+        u = impl.unit()
+    else:
+        u = unit
 
     def log_k_sum(log10_eps: K) -> K:
         epsilon = impl.scl.exp10(log10_eps)
         k_op = make_integral_operator(impl, k_func(epsilon))
-        s = impl.integrate(impl.incl(k_op(unit)))
+        s = impl.integrate(impl.incl(k_op(u)))
         return impl.scl.log10(s)
 
     return grad(log_k_sum)

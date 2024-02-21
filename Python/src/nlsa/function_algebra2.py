@@ -1,4 +1,6 @@
 import nlsa.abstract_algebra2 as alg
+from itertools import repeat
+from functools import reduce
 from typing import Callable, Generic, TypeGuard, TypeVar, TypeVarTuple
 
 A = TypeVar('A')
@@ -12,6 +14,8 @@ X1 = TypeVar('X1')
 X2 = TypeVar('X2')
 Xs = TypeVarTuple('Xs')
 Y = TypeVar('Y')
+Y1 = TypeVar('Y1')
+Y2 = TypeVar('Y2')
 Z = TypeVar('Z')
 F = Callable[[X], Y]
 F2 = Callable[[X1, X2], Y]
@@ -19,15 +23,27 @@ FS = Callable[[*Xs], Y]
 V = TypeVar('V')
 
 
-def identity(x: X) -> X:
+def identity(x: X, /) -> X:
     return x
 
 
-def compose(f: F[Y, Z], g: FS[*Xs, Y]) -> FS[*Xs, Z]:
+def apply(f: F[X, Y], x: X, /) -> Y:
+    return f(x)
+
+
+def compose(f: F[Y, Z], g: FS[*Xs, Y], /) -> FS[*Xs, Z]:
     """Compose two functions."""
     def h(*xs: *Xs) -> Z:
         z = f(g(*xs))
         return z
+    return h
+
+
+def compose2(f: FS[Y1, Y2, Z], gs: tuple[F[X1, Y1], F[X2, Y2]], /) \
+        -> FS[X1, X2, Z]:
+    """Compose a bivariate function with a tuple of univariate functions."""
+    def h(x1: X1, x2: X2) -> Z:
+        return f(gs[0](x1), gs[1](x2))
     return h
 
 
@@ -38,10 +54,34 @@ def eval_at(*xs: *Xs) -> Callable[[FS[*Xs, Y]], Y]:
     return evalx
 
 
-def pair(x: X, y: Y) -> tuple[X, Y]:
+def pair(x: X, y: Y, /) -> tuple[X, Y]:
     """Pack two objects into tuple."""
     z: tuple[X, Y] = (x, y)
     return z
+
+
+def diag(f: F2[X, X, Y], /) -> F[X, Y]:
+    """Make univariate function from bivariate function on diagonal."""
+    def g(x: X) -> Y:
+        return f(x, x)
+    return g
+
+
+def make_bivariate_tensor_product(impl: alg.ImplementsMul[A], /) \
+        -> Callable[[F[X, A], F[Y, A]], F2[X, Y, A]]:
+    """Make tensor product of functions as a bivariate function."""
+    def tensorp(f: F[X, A], g: F[Y, A]) -> F2[X, Y, A]:
+        def h(x: X, y: Y) -> A:
+            return impl.mul(f(x), g(y))
+        return h
+    return tensorp
+
+
+def make_mpower(f: Callable[[A, A], A], /) -> Callable[[A, int], A]:
+    """Make monoidal power from binary operation."""
+    def mpower(a: A, n: int) -> A:
+        return reduce(f, repeat(a, n))
+    return mpower
 
 
 class Lift(Generic[*Xs]):
@@ -154,7 +194,7 @@ def implements_unital_algebra(codomain: Codomain[Y, K])\
 
 
 class FunctionSpace(Generic[*Xs, Y, K]):
-    """Implement function space operations."""
+    """Implement function space structure."""
     def __init__(self, codomain: Codomain[Y, K]):
         self.scl: alg.ImplementsScalarField[K] = codomain.scl
         self.add: Callable[[FS[*Xs, Y], FS[*Xs, Y]], FS[*Xs, Y]]\
@@ -198,7 +238,7 @@ CodomainL = alg.ImplementsLModule[Y, K, L]\
 
 
 class FunctionLModule(FunctionSpace[*Xs, Y, K], Generic[*Xs, Y, K, L]):
-    """Implement function algebra and left module operations."""
+    """Implement function algebra and left module structure."""
     def __init__(self, codomain: CodomainL[Y, K, L]):
         super().__init__(codomain)
         self.lmul: Callable[[L, FS[*Xs, Y]], FS[*Xs, Y]]\
@@ -215,7 +255,7 @@ CodomainR = alg.ImplementsRModule[Y, K, R]\
 
 
 class FunctionRModule(FunctionSpace[*Xs, Y, K], Generic[*Xs, Y, K, R]):
-    """Implement function space and right module operations."""
+    """Implement function space and right module structure."""
     def __init__(self, codomain: CodomainR[Y, K, R]):
         super().__init__(codomain)
         self.rmul: Callable[[FS[*Xs, Y], R], FS[*Xs, Y]]\
@@ -234,7 +274,7 @@ CodomainLR = alg.ImplementsLRModule[Y, K, L, R]\
 class FunctionLRModule(FunctionLModule[*Xs, Y, K, L],
                        FunctionRModule[*Xs, Y, K, R],
                        Generic[*Xs, Y, K, L, R]):
-    """Implement function space and left-right module operations."""
+    """Implement function space and left-right module structure."""
     def __init__(self, codomain: CodomainLR[Y, K, L, R]):
         super().__init__(codomain)
 
@@ -250,7 +290,7 @@ def implements_unital_algebra_lrmodule(codomain: CodomainB[Y, K, L, R])\
 
 class BivariateFunctionSpace(FunctionSpace[X1, X2, Y, K],
                              Generic[X1, X2, Y, K]):
-    """Implement bivariate function operations mapping into an algebra."""
+    """Implement bivariate function structure mapping into an algebra."""
     def __init__(self, codomain: CodomainB[Y, K, Y, Y]):
         super().__init__(codomain)
         self.lmul: Callable[[F[X1, Y], F2[X1, X2, Y]], F2[X1, X2, Y]]\

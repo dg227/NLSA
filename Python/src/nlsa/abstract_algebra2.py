@@ -2,7 +2,7 @@
 
 """
 from nlsa.utils import swap_args
-from typing import Callable, Generic, Protocol, TypeGuard, TypeVar,\
+from typing import Callable, Generic, Protocol, TypeGuard, TypeVar, \
         TypeVarTuple, runtime_checkable
 
 F = TypeVar('F')
@@ -124,8 +124,9 @@ class ImplementsSqrt(Protocol[T]):
 @runtime_checkable
 class ImplementsExp(Protocol[T]):
     """Implement exponentiation."""
-    def exp(self, a: T, /) -> T:
-        ...
+    exp: Callable[[T], T]
+    # def exp(self, a: T, /) -> T:
+    #     ...
 
 
 @runtime_checkable
@@ -598,12 +599,15 @@ def identity(x: T) -> T:
     return x
 
 
-def lapp(impl: ImplementsOperatorSpace[T, V, W, K], a: T, v: V) -> W:
+def lapp(impl: ImplementsOperatorSpace[T, V, W, K], a: T, v: V, /) -> W:
     """Apply linear map to vector."""
     return impl.app(a, v)
 
+# TODO: Consider merging make_linear_map and make_linear_operator into a single
+# overloaded function.
 
-def make_linear_map(impl: ImplementsOperatorSpace[T, V, W, K], a: T)\
+
+def make_linear_map(impl: ImplementsOperatorSpace[T, V, W, K], a: T, /)\
         -> Callable[[V], W]:
     """Make linear map."""
     def op(v: V) -> W:
@@ -611,7 +615,7 @@ def make_linear_map(impl: ImplementsOperatorSpace[T, V, W, K], a: T)\
     return op
 
 
-def make_linear_operator(impl: ImplementsOperatorAlgebra[T, V, K], a: T)\
+def make_linear_operator(impl: ImplementsOperatorAlgebra[T, V, K], a: T, /)\
         -> Callable[[V], V]:
     """Make linear operator."""
     def op(v: V) -> V:
@@ -619,8 +623,16 @@ def make_linear_operator(impl: ImplementsOperatorAlgebra[T, V, K], a: T)\
     return op
 
 
+def make_bilinear_form(impl: ImplementsOperatorAlgebra[T, V, K], a: T)\
+        -> Callable[[V, V], K]:
+    """Make bilinear form."""
+    def b(u: V, v: V) -> K:
+        return impl.hilb.innerp(u, impl.app(a, v))
+    return b
+
+
 def normalize(impl: ImplementsBanachSpace[V, K], v: V) -> V:
-    """Normalize vector in Banach space"""
+    """Normalize vector in Banach space."""
     return impl.sdiv(impl.norm(v), v)
 
 

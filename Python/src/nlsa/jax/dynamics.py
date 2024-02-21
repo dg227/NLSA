@@ -1,14 +1,29 @@
 import jax.numpy as jnp
 from diffrax import Dopri5, ODETerm, PIDController, diffeqsolve
 from jax import Array
+from jax.numpy.fft import ifft, fft
 from typing import Callable, Optional
 
 R2 = Array
+R3 = Array
+Rn = Array
 T2 = Array
+Tn = Array
 X = Array
 V = Array
+Vpos = Array
 M = Array
 I2 = tuple[int, int]
+
+twopi = 2.0 * jnp.pi
+
+
+def from_autonomous(v: Callable[[X], X]) -> Callable[[float, X, object], X]:
+    """Make time-dependent vector field from autonomous vector field."""
+    def f(t: float, x: X, args: object) -> X:
+        y = v(x)
+        return y
+    return f
 
 
 def flow(v: Callable[[X], X], t: float, /, dt0: Optional[float] = None)\
@@ -32,29 +47,98 @@ def flow(v: Callable[[X], X], t: float, /, dt0: Optional[float] = None)\
     return phi
 
 
-def make_stepanoff_vector_field(alpha: float) -> Callable[[R2], R2]:
-    """Make vector field of the Stepanoff flow on the 2-torus."""
+def make_posfreq_to_l2(k_max: int) -> Callable[[Vpos], V]:
+    """Make embedding of positive-frequency subspace into L2."""
+    def iota(vpos: Vpos) -> V:
+        w = jnp.empty(2*k_max + 1)
+        w = w.at[0:k_max + 1].set(ifft(vpos))
+        w = w.at[k_max:] = 0.0
+        return w
+    return iota
 
-    def vec(x: T2) -> R2:
-        y = jnp.empty(2)
-        y = y.at[1].set(alpha * (1 - jnp.cos(x[0] - x[1])))
-        y = y.at[0].set(y[1] + (1 - alpha) * (1 - jnp.cos(x[1])))
+
+def make_l2_to_posfreq(k_max: int) -> Callable[[V], Vpos]:
+    """Make projection from L2 into positive-frequency subspace."""
+    def prj(v: V) -> Vpos:
+        v_hat = fft(v)
+        return v_hat[0:k_max + 1]
+    return prj
+
+
+def make_l63_vector_field(rho: float = 28., sigma: float = 10.,
+                          beta: float = 8. / 3.)\
+      -> Callable[[R3], R3]:
+    """Make vector field of the Lorenz 63 system."""
+    def vec(x: R3) -> R3:
+        y = jnp.empty(3)
+        y = y.at[0].set(sigma*(x[1] - x[0]))
+        y = y.at[1].set(x[0]*(rho - x[2]) - x[1])
+        y = y.at[2].set(x[0]*x[1] - beta*x[2])
         return y
     return vec
 
 
+def make_stepanoff_vector_field(alpha: float, dtype=jnp.float32) \
+        -> Callable[[T2], R2]:
+    """Make vector field of the Stepanoff flow on the 2-torus."""
+    def vec(x: T2) -> R2:
+        y = jnp.empty(2)
+        y = y.at[1].set(alpha * (1. - jnp.cos(x[0] - x[1])))
+        y = y.at[0].set(y[1] + (1. - alpha) * (1. - jnp.cos(x[1])))
+        return y
+    return vec
+
+
+def make_rotation_vector_field(alphas: Rn) -> Callable[[Tn], Rn]:
+    """Make vector field generating linear rotation on the n-torus."""
+    def vec(_: Tn) -> Rn:
+        return alphas
+    return vec
+
+
+def make_rotation_map(angles: Tn, mod: float = twopi) -> Callable[[Tn], Tn]:
+    """Make linear rotation map on the n-torus."""
+    def phi(theta: Tn) -> Tn:
+        return (theta + angles) % mod
+    return phi
+
+
+def make_rotation_generator_fourier(alphas: tuple[float], k: I2,
+                                    hermitian: bool = False,
+                                    dtype=jnp.float32) \
+        -> Callable[[V], V]:
+    """Make rotation generator in the Fourier basis of the 2-torus."""
+    n1 = 2*k[0] + 1
+    n2 = 2*k[1] + 1
+    k1 = jnp.arange(-k[0], k[0] + 1, dtype=dtype)
+    k2 = jnp.arange(-k[1], k[1] + 1, dtype=dtype)
+
+    if hermitian:
+        const = dtype(1.)
+    else:
+        const = 1j
+
+    def gen(u: V) -> V:
+        a = jnp.reshape(u, (n1, n2))
+        b = (k1[:, jnp.newaxis]*alphas[0] + k2[jnp.newaxis, :]*alphas[1]) * a
+        return const * b.reshape(n1 * n2)
+
+    return gen
+
+
 def make_stepanoff_generator_fourier(alpha: float, k: I2,
-                                     hermitian: bool = False) \
+                                     hermitian: bool = False,
+                                     dtype=jnp.float32) \
         -> Callable[[V], V]:
     """Make generator of Stepanoff flow in the Fourier basis of the 2-torus."""
     n1 = 2*k[0] + 1
     n2 = 2*k[1] + 1
-    k1 = jnp.arange(-k[0], k[0] + 1)
-    k2 = jnp.arange(-k[1], k[1] + 1)
+    k1 = jnp.arange(-k[0], k[0] + 1, dtype=dtype)
+    k2 = jnp.arange(-k[1], k[1] + 1, dtype=dtype)
 
     if hermitian:
-        const = 1.
-        b0 = jnp.zeros((n1, n2, 8), dtype=jnp.float32)
+        const = dtype(1.0)
+        b0 = jnp.zeros((n1, n2, 8), dtype=dtype)
     else:
         const = 1j
         b0 = jnp.zeros((n1, n2, 8), dtype=jnp.complex64)
