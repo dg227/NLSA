@@ -6,6 +6,7 @@ import nlsa.function_algebra2 as fun
 from functools import partial
 from nlsa.abstract_algebra2 import FromScalarField
 from nlsa.function_algebra2 import FunctionSpace, BivariateFunctionSpace
+from nlsa.utils import swap_args
 from typing import Callable, Literal, Optional, Protocol, TypeVar, TypeVarTuple
 
 K_con = TypeVar('K_con', contravariant=True)
@@ -212,7 +213,7 @@ def from_dmsym(impl: alg.ImplementsAlgebraLModule[Vs, K, V], v0: V, vs: Vs)\
 def bs_normalize(impl: ImplementsSqrtNormalize[X, V, K],
                  k: Callable[[X, X], K], /, unit: Optional[V] = None) \
      -> Callable[[X, X], K]:
-    """Perform bistochastic kernel normalization."""
+    """Perform bistochastic kernel normalization (left part)."""
 
     if unit is None:
         u = impl.unit()
@@ -231,6 +232,34 @@ def bs_normalize(impl: ImplementsSqrtNormalize[X, V, K],
     k_q = func2.rdiv(k, func.sqrt(q))
     k_bs = func2.ldiv(d, k_q)
     return k_bs
+
+
+def bssym_normalize(impl: ImplementsSqrtNormalize[X, V, K],
+                    k: Callable[[X, X], K], /, unit: Optional[V] = None) \
+     -> Callable[[X, X], K]:
+    """Perform bistochastic kernel normalization (symmetrized)."""
+    k_bs = bs_normalize(impl, k, unit)
+
+    def k_sym(x: X, y: X, /, ) -> K:
+        u = impl.incl(partial(k_bs, x))
+        v = impl.incl(partial(k_bs, y))
+        return impl.integrate(impl.mul(u, v))
+
+    return k_sym
+
+
+def compose(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+            k1: Callable[[X, X], K], k2: Callable[[X, X], K], /, ) \
+        -> Callable[[X, X], K]:
+    """Compose two kernels."""
+    k2_transp = swap_args(k2)
+
+    def k3(x: X, y: X, /, ) -> K:
+        v1 = impl.incl(partial(k1, x))
+        v2 = impl.incl(partial(k2_transp, y))
+        return impl.integrate(impl.mul(v1, v2))
+
+    return k3
 
 
 class ImplementsMercerKernel(alg.ImplementsAlgebra[V, K],

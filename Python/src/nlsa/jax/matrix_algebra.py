@@ -61,22 +61,18 @@ class MatrixAlgebra(Generic[N, K]):
     variable K parameterizes the field of scalars.
     """
 
-    def __init__(self, dim: N, dtype: Type[K],
-                 hilb: Optional[VectorAlgebra[N, K]] = None,
+    def __init__(self, dtype: Type[K],
+                 hilb: VectorAlgebra[N, K] = None,
                  weight: Optional[A] = None):
-
-        if hilb is None:
-            self.hilb = VectorAlgebra(dim, dtype)
-        else:
-            self.hilb = hilb
-
-        self.scl = ScalarField(dtype)
+        self.hilb = hilb
+        self.dim = hilb.dim ** 2
+        self.scl = hilb.scl
         self.add: Callable[[A, A], A] = jnp.add
         self.neg: Callable[[A], A] = neg
         self.sub: Callable[[A, A], A] = jnp.subtract
         self.smul: Callable[[S, A], A] = jnp.multiply
         self.mul: Callable[[A, A], A] = jnp.matmul
-        self.unit: Callable[[], A] = make_unit(dim, dtype)
+        self.unit: Callable[[], A] = make_unit(hilb.dim, dtype)
         self.inv: Callable[[A], A] = inv
         self.div: Callable[[A, A], A] = divm
         self.star: Callable[[A], A] = star
@@ -102,22 +98,20 @@ class MatrixSpace(Generic[M, N, K]):
     type variable K parameterizes the field of scalars.
     """
 
-    def __init__(self, dim: tuple[M, N], dtype: Type[K],
-                 hilb1: Optional[VectorAlgebra[N, K]] = None,
-                 hilb2: Optional[VectorAlgebra[M, K]] = None,
+    def __init__(self, dtype: Type[K],
+                 hilb_in: VectorAlgebra[N, K],
+                 hilb_out: Optional[VectorAlgebra[M, K]] = None,
                  weight: Optional[A] = None):
 
-        if hilb1 is None:
-            self.hilb1 = VectorAlgebra(dim, dtype)
-        else:
-            self.hilb1 = hilb1
+        self.hilb_in = hilb_in
 
-        if hilb2 is None:
-            self.hilb2 = VectorAlgebra(dim, dtype)
+        if hilb_out is None:
+            self.hilb_out = hilb_in
         else:
-            self.hilb2 = hilb2
+            self.hilb_out = hilb_out
 
-        self.scl = ScalarField(dtype)
+        self.dim = hilb_in.dim * hilb_out.dim
+        self.scl = hilb_in.scl
         self.add: Callable[[A, A], A] = jnp.add
         self.neg: Callable[[A], A] = neg
         self.sub: Callable[[A, A], A] = jnp.subtract

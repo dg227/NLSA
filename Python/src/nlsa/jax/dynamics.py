@@ -141,7 +141,7 @@ def make_stepanoff_generator_fourier(alpha: float, k: I2,
         b0 = jnp.zeros((n1, n2, 8), dtype=dtype)
     else:
         const = 1j
-        b0 = jnp.zeros((n1, n2, 8), dtype=jnp.complex64)
+        b0 = jnp.zeros((n1, n2, 8), dtype=dtype)
 
     def gen(u: V) -> V:
         a = jnp.reshape(u, (n1, n2))

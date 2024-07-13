@@ -1,6 +1,7 @@
 """Provides functions and protocols for abstract algebraic structures.
 
 """
+from functools import partial
 from nlsa.utils import swap_args
 from typing import Callable, Generic, Protocol, TypeGuard, TypeVar, \
         TypeVarTuple, runtime_checkable
@@ -263,6 +264,13 @@ class ImplementsUnitalAlgebra(ImplementsAlgebra[T, K], ImplementsDiv[T],
 class ImplementsUnitalStarAlgebra(ImplementsUnitalAlgebra[T, K],
                                   ImplementsStar[T], Protocol[T, K]):
     """Implement unital star algebra operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsBanachAlgebra(ImplementsAlgebra[T, K], ImplementsNorm[T, K],
+                              Protocol[T, K]):
+    """Implement Banach algebra operations."""
     pass
 
 
@@ -559,6 +567,11 @@ def compose_by(impl: ImplementsCompose[G, F, H], g: G) -> Callable[[F], H]:
         h = impl.compose(f, g)
         return h
     return u
+
+
+def precompose_by(impl: ImplementsCompose[G, F, H], f: F) -> Callable[[G], H]:
+    """Make pre-composition map"""
+    return partial(impl.compose, f)
 
 
 def multiply_by(impl: ImplementsMul[T], a: T) -> Callable[[T], T]:

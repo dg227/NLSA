@@ -2,12 +2,12 @@
 
 """
 import nlsa.abstract_algebra2 as alg
+import nlsa.kernels as knl
 from functools import partial
 from nlsa.abstract_algebra2 import identity, FromScalarField
 from nlsa.function_algebra2 import BivariateFunctionSpace, compose
-from nlsa.kernels import make_integral_operator
 from nlsa.utils import swap_args
-from typing import Callable, Generator, Iterable, TypeVar
+from typing import Callable, Generator, Iterable, Optional, TypeVar
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -57,7 +57,6 @@ def make_resolvent_from_generator(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
                                   lsolve: Callable[[F[V, V], V], V]) \
       -> Callable[[V], F[X, K]]:
     """Make resolvent operator using Jacobian vector product."""
-
     fun: BivariateFunctionSpace[X, X, K, K] = \
         BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
 
@@ -68,12 +67,310 @@ def make_resolvent_from_generator(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
 
     zk_minus_v_grad_k = fun.sub(fun.smul(z, k), v_grad_k)
     inv_res_k_op: Callable[[V], F[X, K]] = \
-        make_integral_operator(impl, zk_minus_v_grad_k)
+        knl.make_integral_operator(impl, zk_minus_v_grad_k)
     inv_res_g_op: Callable[[V], V] = compose(impl.incl, inv_res_k_op)
-    k_op: Callable[[V], F[X, K]] = make_integral_operator(impl, k)
+    k_op: Callable[[V], F[X, K]] = knl.make_integral_operator(impl, k)
 
     def res(u: V) -> F[X, K]:
         w, _ = lsolve(inv_res_g_op, u)
         return k_op(w)
 
     return res
+
+
+def make_compactified_sqresolvent_from_generator(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+                                                 v: Callable[[X], TX], z: K,
+                                                 k: Callable[[X, X], K],
+                                                 jvp: Callable[[F[X, K], X, TX], F[X, K]],
+                                                 lsolve: Callable[[F[V, V], V], V]) \
+      -> Callable[[V], F[X, K]]:
+    """Make compactified "square" resolvent using Jacobian vector product."""
+    fun: BivariateFunctionSpace[X, X, K, K] = \
+        BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
+
+    @swap_args
+    def v_grad_k(x: X, y: X) -> K:
+        _, vgp = jvp(partial(swap_args(k), x), (y,), (v(y),))
+        return vgp
+
+    zk_minus_v_grad_k = fun.sub(fun.smul(z, k), v_grad_k)
+
+    @swap_args
+    def v_grad_k2(x: X, y: X) -> K:
+        _, vgp = jvp(partial(swap_args(zk_minus_v_grad_k), x), (y,), (v(y),))
+        return vgp
+
+    zk_minus_v_grad_k2 = fun.add(fun.smul(z, zk_minus_v_grad_k), v_grad_k2)
+
+    inv_res_k_op: Callable[[V], F[X, K]] = \
+        knl.make_integral_operator(impl, zk_minus_v_grad_k2)
+    inv_res_g_op: Callable[[V], V] = compose(impl.incl, inv_res_k_op)
+    k_op: Callable[[V], F[X, K]] = knl.make_integral_operator(impl, k)
+    g_op: Callable[[V], V] = compose(impl.incl, k_op)
+    k2_op: Callable[[V], F[X, K]] = compose(k_op, g_op)
+
+    def res(u: V) -> F[X, K]:
+        w = lsolve(inv_res_g_op, u)
+        return k2_op(w)
+
+    return res
+
+
+def make_compactified_cbresolvent_from_generator(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+                                                 v: Callable[[X], TX], z: K,
+                                                 k: Callable[[X, X], K],
+                                                 jvp: Callable[[F[X, K], X, TX], F[X, K]],
+                                                 lsolve: Callable[[F[V, V], V], V]) \
+      -> Callable[[V], F[X, K]]:
+    """Make compactified "cube" resolvent using Jacobian vector product."""
+    fun: BivariateFunctionSpace[X, X, K, K] = \
+        BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
+
+    @swap_args
+    def vk(x: X, y: X) -> K:
+        _, vkxy = jvp(partial(swap_args(k), x), (y,), (v(y),))
+        return vkxy
+
+    @swap_args
+    def vvk(x: X, y: X) -> K:
+        _, vvkxy = jvp(partial(swap_args(vk), x), (y,), (v(y),))
+        return vvkxy
+
+    vk_op = compose(impl.incl, knl.make_integral_operator(impl, vk))
+    zz = impl.scl.mul(z, z)
+    zzk_vvk = fun.sub(fun.smul(zz, k), vvk)
+    zzk_vvk_op = compose(impl.incl,
+                         knl.make_integral_operator(impl, zzk_vvk))
+    kk = knl.compose(impl, k, k)
+    kk_op = knl.make_integral_operator(impl, kk)
+
+    def res(u: V) -> F[X, K]:
+        w = lsolve(zzk_vvk_op, vk_op(u))
+        return kk_op(w)
+
+    return res
+
+
+def make_res_gev_operators(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+                           v: Callable[[X], TX], z: K,
+                           k: Callable[[X, X], K],
+                           jvp: Callable[[F[X, K], X, TX], F[X, K]]) \
+        -> tuple[Callable[[V], F[X, K]],
+                 Callable[[V], F[X, K]],
+                 Callable[[V], F[X, K]]]:
+    """Make operators for "cube" resolvent generalized eigenproblem."""
+    fun: BivariateFunctionSpace[X, X, K, K] = \
+        BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
+    kcomp = partial(knl.compose, impl)
+
+    def kv(x: X, y: X) -> K:
+        """Directional derivative of k with respect to second argument. """
+        _, vgp = jvp(partial(swap_args(k), x), (y,), (v(y),))
+        return vgp
+
+    k2 = kcomp(k, k)
+    k3 = kcomp(k, k2)
+    vk = swap_args(kv)
+    kvvk = kcomp(kv, vk)
+    zsq = impl.scl.mul(z, z)
+    k_rhs = fun.add(fun.smul(zsq, k2), kvvk)
+    rhs = knl.make_integral_operator(impl, k_rhs)
+    k_lhs = kcomp(fun.neg(kv), k3)
+    lhs = knl.make_integral_operator(impl, k_lhs)
+    c = knl.make_integral_operator(impl, k2)
+    return lhs, rhs, c
+
+
+def make_res_gev_operators2(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+                            v: Callable[[X], TX], z: K,
+                            k: Callable[[X, X], K],
+                            jvp: Callable[[F[X, K], X, TX], F[X, K]],
+                            antisym: K) \
+        -> tuple[Callable[[V], F[X, K]],
+                 Callable[[V], F[X, K]],
+                 Callable[[V], F[X, K]]]:
+    """Make operators for "cube" resolvent generalized eigenproblem.
+
+    This approach applies less smoothing than make_res_gev_operators.
+    """
+    fun: BivariateFunctionSpace[X, X, K, K] = \
+        BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
+    kcomp = partial(knl.compose, impl)
+
+    def kv(x: X, y: X) -> K:
+        """Directional derivative of k with respect to second argument. """
+        _, vgp = jvp(partial(swap_args(k), x), (y,), (v(y),))
+        return vgp
+
+    vk = swap_args(kv)
+    kv_vk = kcomp(kv, vk)
+    k_k = kcomp(k, swap_args(k))
+    zsq = impl.scl.mul(z, z)
+    k_rhs = fun.add(fun.smul(zsq, k_k), kv_vk)
+    k_vk = kcomp(k, vk)
+    q = fun.smul(antisym, fun.sub(k_vk, swap_args(k_vk)))
+    k_lhs = kcomp(q, k)
+    rhs = knl.make_integral_operator(impl, k_rhs)
+    lhs = knl.make_integral_operator(impl, k_lhs)
+    c = knl.make_integral_operator(impl, k_k)
+    return lhs, rhs, c
+
+
+def make_res_gev_kernels(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+                         v: Callable[[X], TX], z: K,
+                         k: Callable[[X, X], K],
+                         jvp: Callable[[F[X, K], X, TX], F[X, K]],
+                         antisym: K,
+                         k_smooth: Optional[Callable[[X, X], K]] = None) \
+        -> tuple[Callable[[X, X], K],
+                 Callable[[X, X], K],
+                 Callable[[X, X], K]]:
+    """Make kernels for "cube" resolvent generalized eigenproblem.
+
+    This approach produces an antisymmetric kernel for the left-hand side and a
+    symmetric kernel for the right-hand side.
+    """
+    fun: BivariateFunctionSpace[X, X, K, K] = \
+        BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
+    kcomp = partial(knl.compose, impl)
+    kt = swap_args(k)
+
+    def kv(x: X, y: X) -> K:
+        """Directional derivative of k with respect to second argument. """
+        _, v_grad_k = jvp(partial(kt, x), (y,), (v(y),))
+        return v_grad_k
+
+    vk = swap_args(kv)
+
+    if k_smooth is None:
+        s = k
+        st = kt
+        sv = kv
+        vs = vk
+    else:
+        s = k_smooth
+        st = swap_args(s)
+
+        def sv(x: X, y: X) -> K:
+            """Directional derivative of s with respect to second argument. """
+            _, v_grad_s = jvp(partial(st, x), (y,), (v(y),))
+            return v_grad_s
+
+        vs = swap_args(sv)
+
+    def svt(x: X, y: X) -> K:
+        """Directional derivative of st with respect to second argument. """
+        _, v_grad_st = jvp(partial(s, x), (y,), (v(y),))
+        return v_grad_st
+
+    vst = swap_args(svt)
+    sv_vs = kcomp(sv, vs)
+    s_s = kcomp(s, st)
+    zsq = impl.scl.mul(z, z)
+    k_rhs = fun.add(fun.smul(zsq, s_s), sv_vs)
+    k_vk = kcomp(kt, vk)
+    q = fun.smul(antisym, fun.sub(k_vk, swap_args(k_vk)))
+    k_lhs = kcomp(s, kcomp(q, st))
+    k_chs = fun.sub(fun.smul(z, st), vst)
+    return k_lhs, k_rhs, k_chs
+
+
+def make_res_gev_kernels2(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+                          v: Callable[[X], TX], z: K,
+                          k: Callable[[X, X], K],
+                          jvp: Callable[[F[X, K], X, TX], F[X, K]],
+                          antisym: K,
+                          k_smooth: Optional[Callable[[X, X], K]] = None) \
+        -> tuple[Callable[[X, X], K],
+                 Callable[[X, X], K],
+                 Callable[[X, X], K]]:
+    """Make kernels for "cube" resolvent generalized eigenproblem.
+
+    This approach produces an antisymmetric kernel for the left-hand side and a
+    symmetric kernel for the right-hand side. It also tries to improve
+    conditioning by moving the kernel normalization function to the right-hand
+    side.
+    """
+    fun: BivariateFunctionSpace[X, X, K, K] = \
+        BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
+    kcomp = partial(knl.compose, impl)
+    kt = swap_args(k)
+    k_op = knl.make_integral_operator(impl, k)
+    d = k_op(impl.unit())
+
+    def kv(x: X, y: X) -> K:
+        """Directional derivative of k with respect to second argument. """
+        _, v_grad_k = jvp(partial(kt, x), (y,), (v(y),))
+        return v_grad_k
+
+    vk = swap_args(kv)
+
+    if k_smooth is None:
+        k_smooth = k
+
+    kt_smooth = swap_args(k_smooth)
+    s = fun.lmul(d, k_smooth)
+    st = swap_args(s)
+
+    def sv(x: X, y: X) -> K:
+        """Directional derivative of s with respect to second argument. """
+        _, v_grad_s = jvp(partial(st, x), (y,), (v(y),))
+        return v_grad_s
+
+    vs = swap_args(sv)
+
+    sv_vs = kcomp(sv, vs)
+    s_s = kcomp(s, st)
+    zsq = impl.scl.mul(z, z)
+    k_rhs = fun.add(fun.smul(zsq, s_s), sv_vs)
+    k_vk = kcomp(kt, vk)
+    q = fun.smul(antisym, fun.sub(k_vk, swap_args(k_vk)))
+    k_lhs = kcomp(k_smooth, kcomp(q, kt_smooth))
+    return k_lhs, k_rhs, st
+
+
+def make_res_gev_kernels3(impl: alg.ImplementsMeasureFnAlgebra[X, V, K],
+                          v: Callable[[X], TX], z: K,
+                          kl: Callable[[X, X], K],
+                          kr: Callable[[X, X], K],
+                          jvp: Callable[[F[X, K], X, TX], F[X, K]],
+                          antisym: K) \
+        -> tuple[Callable[[X, X], K],
+                 Callable[[X, X], K],
+                 Callable[[X, X], K]]:
+    """Make kernels for "cube" resolvent generalized eigenproblem.
+
+    This approach produces an antisymmetric kernel for the left-hand side and a
+    symmetric kernel for the right-hand side of the generalized eigenproblem.
+    It also uses independent kernels in the left- and right-hand side.
+    """
+    fun: BivariateFunctionSpace[X, X, K, K] = \
+        BivariateFunctionSpace(codomain=FromScalarField(impl.scl))
+    kcomp = partial(knl.compose, impl)
+    krt = swap_args(kr)
+
+    @swap_args
+    def vklt(x: X, y: X) -> K:
+        """Directional derivative of klt with respect to first argument."""
+        _, v_grad_klt = jvp(partial(kl, x), (y,), (v(y),))
+        return v_grad_klt
+
+    def krv(x: X, y: X) -> K:
+        """Directional derivative of kr with respect to second argument. """
+        _, v_grad_kr = jvp(partial(krt, x), (y,), (v(y),))
+        return v_grad_kr
+
+    @swap_args
+    def vkrt(x: X, y: X) -> K:
+        """Directional derivative of krt respect to first argument. """
+        _, v_grad_krt = jvp(partial(kr, x), (y,), (v(y),))
+        return v_grad_krt
+
+    zsq = impl.scl.mul(z, z)
+    kl_vklt = kcomp(kl, vklt)
+    k_lhs = fun.smul(antisym, fun.sub(kl_vklt, swap_args(kl_vklt)))
+    kr_krt = kcomp(kr, krt)
+    krv_vkrt = kcomp(krv, vkrt)
+    k_rhs = fun.add(fun.smul(zsq, kr_krt), krv_vkrt)
+    k_chs = fun.sub(fun.smul(z, krt), vkrt)
+    return k_lhs, k_rhs, k_chs

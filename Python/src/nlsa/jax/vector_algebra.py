@@ -60,6 +60,11 @@ def l2_innerp(u: V, v: V, /) -> S:
     return jnp.sum(jnp.conjugate(u) * v)
 
 
+def linf_norm(u: V, /):
+    """Compute L-infinity norm of a vector."""
+    return jnp.max(jnp.abs(u))
+
+
 def make_weighted_l2_innerp(w: V, /) -> Callable[[V, V], S]:
     """Make L2 inner procuct from weight vector."""
     def innerp(u: V, v: V, /) -> S:
@@ -221,6 +226,11 @@ class VectorAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
     variable K parameterizes the field of scalars.
     """
 
+    #TODO: This class seems to obfuscate L2 Hilbert space and L\infty algebra.
+    # It might be better to split into two classes, one that implements L2
+    # without algebra operations, and one that implements L\infty without inner
+    # product. The L\infty class could then act on L2 as a module.
+
     def __init__(self, dim: N, dtype: Type[K], weight: Optional[V] = None):
         self.dim = dim
         self.scl = ScalarField(dtype)
@@ -294,8 +304,9 @@ class MeasurableFnAlgebra(VectorAlgebra[N, K],
     """
 
     def __init__(self, dim: N, dtype: Type[K],
-                 inclusion_map: Callable[[F[T, S]], V]):
-        super().__init__(dim, dtype)
+                 inclusion_map: Callable[[F[T, S]], V],
+                 weight: Optional[V] = None):
+        super().__init__(dim, dtype, weight=weight)
         self.incl: Callable[[F[T, S]], V] = inclusion_map
 
 
@@ -304,8 +315,53 @@ class MeasureFnAlgebra(MeasurableFnAlgebra[T, N, K],
     """Implement NPMeasurableFunctionAlgebra equipped with measure."""
     def __init__(self, dim: N, dtype: Type[K],
                  inclusion_map: Callable[[F[T, S]], V],
+                 measure: Callable[[V], S],
+                 weight: Optional[V] = None):
+        super().__init__(dim, dtype, inclusion_map, weight=weight)
+        self.integrate: Callable[[V], S] = measure
+
+
+class LInfVectorAlgebra(alg.ImplementsBanachAlgebra[V, K], Generic[N, K]):
+    """Implement L infinity algebra operations for JAX arrays.
+
+    The type variable N parameterizes the dimension of the algebra. The type
+    variable K parameterizes the field of scalars.
+    """
+
+    def __init__(self, dim: N, dtype: Type[K]):
+        self.dim = dim
+        self.scl = ScalarField(dtype)
+        self.add: Callable[[V, V], V] = jnp.add
+        self.neg: Callable[[V], V] = neg
+        self.sub: Callable[[V, V], V] = jnp.subtract
+        self.smul: Callable[[S, V], V] = jnp.multiply
+        self.mul: Callable[[V, V], V] = jnp.multiply
+        self.unit: Callable[[], V] = make_unit(dim, dtype)
+        self.inv: Callable[[V], V] = make_inv(dim, dtype)
+        self.div: Callable[[V, V], V] = jnp.divide
+        self.star: Callable[[V], V] = jnp.conjugate
+        self.lmul: Callable[[V, V], V] = jnp.multiply
+        self.ldiv: Callable[[V, V], V] = ldiv
+        self.rmul: Callable[[V, V], V] = jnp.multiply
+        self.rdiv: Callable[[V, V], V] = jnp.divide
+        self.sqrt: Callable[[V], V] = jnp.sqrt
+        self.exp: Callable[[V], V] = jnp.exp
+        self.power: Callable[[V, V], V] = jnp.power
+        self.norm: Callable[[V], S] = linf_norm
+
+
+class LInfFnAlgebra(LInfVectorAlgebra[N, K],
+                    alg.ImplementsMeasureFnAlgebra[T, V, S],
+                    Generic[T, N, K]):
+    """Implement operations on equivalence classes of functions using JAX arrays
+    as the representation type.
+    """
+
+    def __init__(self, dim: N, dtype: Type[K],
+                 inclusion_map: Callable[[F[T, S]], V],
                  measure: Callable[[V], S]):
-        super().__init__(dim, dtype, inclusion_map)
+        super().__init__(dim, dtype)
+        self.incl: Callable[[F[T, S]], V] = inclusion_map
         self.integrate: Callable[[V], S] = measure
 
 
