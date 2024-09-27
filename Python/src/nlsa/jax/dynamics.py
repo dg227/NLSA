@@ -2,6 +2,7 @@ import jax.numpy as jnp
 from diffrax import Dopri5, ODETerm, PIDController, diffeqsolve
 from jax import Array
 from jax.numpy.fft import ifft, fft
+from jax.typing import ArrayLike
 from typing import Callable, Optional
 
 R2 = Array
@@ -96,7 +97,8 @@ def make_rotation_vector_field(alphas: Rn) -> Callable[[Tn], Rn]:
     return vec
 
 
-def make_rotation_map(angles: Tn, mod: float = twopi) -> Callable[[Tn], Tn]:
+def make_rotation_map(angles: ArrayLike, mod: float = twopi) \
+        -> Callable[[Tn], Tn]:
     """Make linear rotation map on the n-torus."""
     def phi(theta: Tn) -> Tn:
         return (theta + angles) % mod

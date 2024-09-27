@@ -23,6 +23,13 @@ def neg(s: S, /) -> S:
     return jnp.multiply(-1, s)
 
 
+def make_zero(dtype: Type[K]) -> Callable[[], S]:
+    """Make constant function returning scalar zero."""
+    def zero() -> S:
+        return jnp.float32(0)
+    return zero
+
+
 def make_unit(dtype: Type[K]) -> Callable[[], S]:
     """Make constant function returning scalar unit."""
     def unit() -> S:
@@ -43,7 +50,7 @@ def ldiv(s: S, t: S, /) -> S:
 
 
 def exp10(s: S, /) -> S:
-    """Exponentiate with  base 10."""
+    """Exponentiate with base 10."""
     return jnp.power(10, s)
 
 
@@ -54,6 +61,7 @@ class ScalarField(Generic[K]):
     """
 
     def __init__(self, dtype: Type[K]):
+        self.zero: Callable[[], S] = make_zero(dtype)
         self.add: Callable[[S, S], S] = jnp.add
         self.neg: Callable[[S], S] = neg
         self.sub: Callable[[S, S], S] = jnp.subtract

@@ -84,6 +84,13 @@ def make_mpower(f: Callable[[A, A], A], /) -> Callable[[A, int], A]:
     return mpower
 
 
+def make_constant(a: A) -> Callable[[], A]:
+    """Make constant function."""
+    def f() -> A:
+        return a
+    return f
+
+
 class Lift(Generic[*Xs]):
     """Lift function to function on domain parameterized by Xs."""
     @staticmethod
@@ -197,6 +204,7 @@ class FunctionSpace(Generic[*Xs, Y, K]):
     """Implement function space structure."""
     def __init__(self, codomain: Codomain[Y, K]):
         self.scl: alg.ImplementsScalarField[K] = codomain.scl
+        self.zero: Callable[[], FS[*Xs, Y]] = Lift.constant(codomain.zero)
         self.add: Callable[[FS[*Xs, Y], FS[*Xs, Y]], FS[*Xs, Y]]\
             = Lift.binary(codomain.add)
         self.sub: Callable[[FS[*Xs, Y], FS[*Xs, Y]], FS[*Xs, Y]]\

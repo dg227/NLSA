@@ -1,10 +1,10 @@
 """Provides functions and protocols for abstract algebraic structures.
 
 """
-from functools import partial
+from functools import partial, reduce
 from nlsa.utils import swap_args
-from typing import Callable, Generic, Protocol, TypeGuard, TypeVar, \
-        TypeVarTuple, runtime_checkable
+from typing import Callable, Generic, Iterable, Optional, Protocol, \
+        TypeGuard, TypeVar, TypeVarTuple, runtime_checkable
 
 F = TypeVar('F')
 G = TypeVar('G')
@@ -23,9 +23,16 @@ L_con = TypeVar('L_con', contravariant=True)
 R_con = TypeVar('R_con', contravariant=True)
 S_con = TypeVar('S_con', contravariant=True)
 S_cov = TypeVar('S_cov', covariant=True)
+U = TypeVar('U')
 V = TypeVar('V')
 W = TypeVar('W')
 X = TypeVar('X')
+
+
+@runtime_checkable
+class ImplementsZero(Protocol[T]):
+    """Implement additive zero."""
+    zero: Callable[[], T]
 
 
 @runtime_checkable
@@ -169,10 +176,11 @@ class ImplementsInnerp(Protocol[T, K]):
 
 
 @runtime_checkable
-class ImplementsScalarField(ImplementsAdd[K], ImplementsSub[K],
-                            ImplementsNeg[K], ImplementsMul[K],
-                            ImplementsUnit[K], ImplementsDiv[K],
-                            ImplementsInv[K], ImplementsStar[K], Protocol[K]):
+class ImplementsScalarField(ImplementsZero[K], ImplementsAdd[K],
+                            ImplementsSub[K], ImplementsNeg[K],
+                            ImplementsMul[K], ImplementsUnit[K],
+                            ImplementsDiv[K], ImplementsInv[K],
+                            ImplementsStar[K], Protocol[K]):
     """Implement scalar field operations."""
     pass
 
@@ -212,9 +220,9 @@ class ImplementsRootLScalarField(ImplementsRootScalarField[K],
 
 
 @runtime_checkable
-class ImplementsVectorSpace(ImplementsAdd[T], ImplementsSub[T],
-                            ImplementsNeg[T], ImplementsSmul[K, T],
-                            Protocol[T, K]):
+class ImplementsVectorSpace(ImplementsZero[T], ImplementsAdd[T],
+                            ImplementsSub[T], ImplementsNeg[T],
+                            ImplementsSmul[K, T], Protocol[T, K]):
     """Implement vector space operations."""
     scl: ImplementsScalarField[K]
 
@@ -526,6 +534,7 @@ class FromScalarField(ImplementsUnitalStarAlgebraLRModule[K, K, K, K],
     """Lift scalar field to bimodule over itself."""
     def __init__(self, scl: ScalarField[K]):
 
+        self.zero = scl.zero
         self.add = scl.add
         self.sub = scl.sub
         self.neg = scl.neg
@@ -574,6 +583,16 @@ def precompose_by(impl: ImplementsCompose[G, F, H], f: F) -> Callable[[G], H]:
     return partial(impl.compose, f)
 
 
+def conjugate_by(impl1: ImplementsCompose[H, U, F], u: U,
+                 impl2: ImplementsCompose[V, G, H], v: V) -> Callable[[G], F]:
+    """Conjugation map."""
+    def c(g: G) -> F:
+        h = impl2.compose(g, v)
+        f = impl1.compose(u, h)
+        return f
+    return c
+
+
 def multiply_by(impl: ImplementsMul[T], a: T) -> Callable[[T], T]:
     """Make multiplication operator."""
     def m(b: T) -> T:
@@ -586,6 +605,14 @@ def divide_by(impl: ImplementsDiv[T], a: T) -> Callable[[T], T]:
     """Make division operator."""
     def m(b: T) -> T:
         c = impl.div(b, a)
+        return c
+    return m
+
+
+def smultiply_by(impl: ImplementsSmul[S, T], a: S) -> Callable[[T], T]:
+    """Make scalar multiplication operator."""
+    def m(b: T) -> T:
+        c = impl.smul(a, b)
         return c
     return m
 
@@ -677,3 +704,26 @@ def make_qeval(impl: ImplementsOperatorAlgebra[T, V, K],
 
         return evalx
     return eval_at
+
+
+def sum(impl: ImplementsVectorSpace[V, K], vs: Iterable[V],
+        initializer: Optional[V] = None) -> V:
+    """Sum a collection of elements of a vector space."""
+    if initializer is None:
+        initializer = impl.zero()
+    return reduce(impl.add, vs, initializer)
+
+
+def product(impl: ImplementsUnitalAlgebra[V, K], vs: Iterable[V],
+            initializer: Optional[V] = None) -> V:
+    """Multiply a collection of elements of a unital algebra."""
+    if initializer is None:
+        initializer = impl.unit()
+    return reduce(impl.mul, vs, initializer)
+
+
+def linear_combination(impl: ImplementsVectorSpace[V, K], cs: Iterable[K],
+                       vs: Iterable[V]) -> V:
+    """Form linear combination of elements of a vector space."""
+    cvs = map(impl.smul, cs, vs)
+    return sum(impl, cvs)

@@ -3,7 +3,7 @@
 import jax.numpy as jnp
 from jax import Array
 from jax.scipy.linalg import expm, sqrtm, inv
-from nlsa.jax.vector_algebra import ScalarField, VectorAlgebra
+from nlsa.jax.vector_algebra import VectorAlgebra
 from typing import Callable, Generic, Optional, Type, TypeVar
 
 M = TypeVar('M', bound=int)
@@ -18,6 +18,13 @@ W = Array
 def neg(a: A, /) -> A:
     """Negate a matrix."""
     return jnp.multiply(-1, a)
+
+
+def make_zero(dims: tuple[int, int], dtype: Type[K]) -> Callable[[], A]:
+    """Make zero matrix."""
+    def zero() -> V:
+        return jnp.zeros(dims, dtype=dtype)
+    return zero
 
 
 def make_unit(dim: int, dtype: Type[K]) -> Callable[[], A]:
@@ -54,15 +61,23 @@ def make_weighted_b2_innerp(w: A, /) -> Callable[[A, A], S]:
     return innerp
 
 
+# TODO: Consider renaming this HilbertSchmidtMatrixAlgebra and creating a
+# separate MatrixAlgebra class that implements the operator norm. We could also
+# create a TraceMatrixAlgebra class that implements the trace norm.
 class MatrixAlgebra(Generic[N, K]):
     """Implement matrix algebra operations for N by N JAX arrays.
 
     The type variable N parameterizes the dimension of the matrices. The type
     variable K parameterizes the field of scalars.
+
+    The class constructor takes in the zero and unit elements of the algebra as
+    optional arguments. This is to allow the use of sharded arrays.
     """
 
     def __init__(self, dtype: Type[K],
                  hilb: VectorAlgebra[N, K] = None,
+                 zero: Optional[Callable[[], A]] = None,
+                 unit: Optional[Callable[[], A]] = None,
                  weight: Optional[A] = None):
         self.hilb = hilb
         self.dim = hilb.dim ** 2
@@ -72,7 +87,6 @@ class MatrixAlgebra(Generic[N, K]):
         self.sub: Callable[[A, A], A] = jnp.subtract
         self.smul: Callable[[S, A], A] = jnp.multiply
         self.mul: Callable[[A, A], A] = jnp.matmul
-        self.unit: Callable[[], A] = make_unit(hilb.dim, dtype)
         self.inv: Callable[[A], A] = inv
         self.div: Callable[[A, A], A] = divm
         self.star: Callable[[A], A] = star
@@ -85,22 +99,38 @@ class MatrixAlgebra(Generic[N, K]):
         self.power: Callable[[A, S], A] = jnp.power
         self.app: Callable[[A, V], V] = jnp.matmul
 
+
+        if zero is None:
+            self.zero: Callable[[], A] = make_zero((hilb.dim, hilb.dim), dtype)
+        else:
+            self.zero = zero
+
+        if unit is None:
+            self.unit: Callable[[], A] = make_unit(hilb.dim, dtype)
+        else:
+            self.unit = unit
+
         if weight is None:
             self.innerp: Callable[[A, A], S] = b2_innerp
         else:
             self.innerp: Callable[[A, A], S] = make_weighted_b2_innerp(weight)
 
 
+# TODO: Consider renaming this class HilbertSchmidt matrix space.
 class MatrixSpace(Generic[M, N, K]):
     """Implement matrix vector space operations for M by N JAX arrays.
 
     The type variables M and N parameterize the dimension of the matrices. The
     type variable K parameterizes the field of scalars.
+
+    The class constructor takes in the zero element of the space as an optional
+    argument. This is to allow the use of sharded arrays.
     """
 
     def __init__(self, dtype: Type[K],
                  hilb_in: VectorAlgebra[N, K],
                  hilb_out: Optional[VectorAlgebra[M, K]] = None,
+                 zero: Optional[Callable[[], A]] = None,
                  weight: Optional[A] = None):
 
         self.hilb_in = hilb_in
@@ -122,6 +152,12 @@ class MatrixSpace(Generic[M, N, K]):
         self.rmul: Callable[[A, A], A] = jnp.matmul
         self.rdiv: Callable[[A, A], A] = divm
         self.app: Callable[[A, V], W] = jnp.matmul
+
+        if zero is None:
+            self.zero: Callable[[], A] = make_zero((hilb_out.dim, hilb_in.dim),
+                                                   dtype)
+        else:
+            self.zero = zero
 
         if weight is None:
             self.innerp: Callable[[A, A], S] = b2_innerp

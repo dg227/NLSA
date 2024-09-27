@@ -36,6 +36,13 @@ def neg(v: V, /) -> V:
     return jnp.multiply(-1, v)
 
 
+def make_zero(dim: int | tuple[int], dtype: Type[K]) -> Callable[[], V]:
+    """Make constant function returning vector of all 0s."""
+    def zero() -> V:
+        return jnp.zeros(dim, dtype=dtype)
+    return zero
+
+
 def make_unit(dim: int | tuple[int], dtype: Type[K]) -> Callable[[], V]:
     """Make constant function returning vector of all 1s."""
     def unit() -> V:
@@ -43,10 +50,10 @@ def make_unit(dim: int | tuple[int], dtype: Type[K]) -> Callable[[], V]:
     return unit
 
 
-def make_inv(dim: int | tuple[int], dtype: Type[K]) -> Callable[[V], V]:
-    """Make inversion function for specified dimension and dtype."""
+def make_inv(unit: V) -> Callable[[V], V]:
+    """Make inversion function."""
     def inv(v: V) -> V:
-        return jnp.divide(jnp.ones(dim, dtype=dtype), v)
+        return jnp.divide(unit, v)
     return inv
 
 
@@ -145,9 +152,12 @@ def sheval_at(xs: Xs, /, axis_name: str = 'i') -> Callable[[F[X, Y]], V]:
     return eval
 
 
-def jeval_at(xs: Xs, /, axis_name: str = 'i') -> Callable[[F[X, Y]], V]:
+def jeval_at(xs: Xs, /, axis_name: str = 'i', devices=None) \
+        -> Callable[[F[X, Y]], V]:
     """Make doubly-vectorized and jitted evaluation functional."""
-    devices = jax.local_devices()
+    if devices is None:
+        devices = jax.local_devices()
+
     mesh = Mesh(devices, axis_names=(axis_name))
     # xs_sharding = NamedSharding(mesh, P(axis_name, None, None))
     ys_sharding = NamedSharding(mesh, P(axis_name, None))
@@ -224,14 +234,20 @@ class VectorAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
 
     The type variable N parameterizes the dimension of the algebra. The type
     variable K parameterizes the field of scalars.
+
+    The class constructor takes in the zero and unit elements of the algebra as
+    optional arguments. This is to allow the use of sharded arrays.
     """
 
-    #TODO: This class seems to obfuscate L2 Hilbert space and L\infty algebra.
+    # TODO: This class seems to obfuscate L2 Hilbert space and L\infty algebra.
     # It might be better to split into two classes, one that implements L2
     # without algebra operations, and one that implements L\infty without inner
     # product. The L\infty class could then act on L2 as a module.
 
-    def __init__(self, dim: N, dtype: Type[K], weight: Optional[V] = None):
+    def __init__(self, dim: N, dtype: Type[K],
+                 zero: Optional[Callable[[], V]] = None,
+                 unit: Optional[Callable[[], V]] = None,
+                 weight: Optional[V] = None):
         self.dim = dim
         self.scl = ScalarField(dtype)
         self.add: Callable[[V, V], V] = jnp.add
@@ -239,8 +255,6 @@ class VectorAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
         self.sub: Callable[[V, V], V] = jnp.subtract
         self.smul: Callable[[S, V], V] = jnp.multiply
         self.mul: Callable[[V, V], V] = jnp.multiply
-        self.unit: Callable[[], V] = make_unit(dim, dtype)
-        self.inv: Callable[[V], V] = make_inv(dim, dtype)
         self.div: Callable[[V, V], V] = jnp.divide
         self.star: Callable[[V], V] = jnp.conjugate
         self.lmul: Callable[[V, V], V] = jnp.multiply
@@ -251,6 +265,18 @@ class VectorAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
         self.exp: Callable[[V], V] = jnp.exp
         self.power: Callable[[V, V], V] = jnp.power
 
+        if zero is None:
+            self.zero: Callable[[], V] = make_zero(dim, dtype)
+        else:
+            self.unit = zero
+
+        if unit is None:
+            self.unit: Callable[[], V] = make_unit(dim, dtype)
+        else:
+            self.unit = unit
+
+        self.inv: Callable[[V], V] = make_inv(self.unit)
+
         if weight is None:
             self.innerp: Callable[[V, V], S] = l2_innerp
         else:
@@ -260,14 +286,20 @@ class VectorAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
         self.norm: Callable[[V], S] = to_norm(self.innerp)
 
 
+# TODO: Consider renaming this L1ConvolutionAlgebra and equip with L1 norm.
 class ConvolutionAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
     """Implement convolution algebra operations for JAX arrays.
 
     The type variable N parameterizes the dimension of the algebra. The type
     variable K parameterizes the field of scalars.
+
+    The class constructor takes in the zero element of the algebra as an
+    optional argument. This is to allow the use of sharded arrays.
     """
 
-    def __init__(self, dim: N, dtype: Type[K], weight: Optional[V] = None,
+    def __init__(self, dim: N, dtype: Type[K],
+                 zero: Optional[Callable[[], V]] = None,
+                 weight: Optional[V] = None,
                  conv_mode: Optional[ConvMode] = 'same',
                  conv_weight: Optional[V] = None):
         self.dim = dim
@@ -276,6 +308,11 @@ class ConvolutionAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
         self.neg: Callable[[V], V] = neg
         self.sub: Callable[[V, V], V] = jnp.subtract
         self.smul: Callable[[S, V], V] = jnp.multiply
+
+        if zero is None:
+            self.zero: Callable[[], V] = make_zero(dim, dtype)
+        else:
+            self.unit = zero
 
         if conv_weight is None:
             self.mul = make_convolution(mode=conv_mode)
@@ -302,22 +339,28 @@ class MeasurableFnAlgebra(VectorAlgebra[N, K],
     """Implement operations on equivalence classes of functions using JAX arrays
     as the representation type.
     """
-
     def __init__(self, dim: N, dtype: Type[K],
                  inclusion_map: Callable[[F[T, S]], V],
+                 zero: Optional[Callable[[], V]] = None,
+                 unit: Optional[Callable[[], V]] = None,
                  weight: Optional[V] = None):
-        super().__init__(dim, dtype, weight=weight)
+        super().__init__(dim, dtype, zero=zero, unit=unit, weight=weight)
         self.incl: Callable[[F[T, S]], V] = inclusion_map
 
 
+# TODO: Inheritance from VectorAlgebra can lead to inconsistency between inner
+# product and integration.
 class MeasureFnAlgebra(MeasurableFnAlgebra[T, N, K],
                        alg.ImplementsMeasureFnAlgebra[T, V, S]):
     """Implement NPMeasurableFunctionAlgebra equipped with measure."""
     def __init__(self, dim: N, dtype: Type[K],
                  inclusion_map: Callable[[F[T, S]], V],
                  measure: Callable[[V], S],
+                 zero: Optional[Callable[[], V]] = None,
+                 unit: Optional[Callable[[], V]] = None,
                  weight: Optional[V] = None):
-        super().__init__(dim, dtype, inclusion_map, weight=weight)
+        super().__init__(dim, dtype, inclusion_map, zero=zero, unit=unit,
+                         weight=weight)
         self.integrate: Callable[[V], S] = measure
 
 
@@ -328,7 +371,9 @@ class LInfVectorAlgebra(alg.ImplementsBanachAlgebra[V, K], Generic[N, K]):
     variable K parameterizes the field of scalars.
     """
 
-    def __init__(self, dim: N, dtype: Type[K]):
+    def __init__(self, dim: N, dtype: Type[K],
+                 zero: Optional[Callable[[], V]] = None,
+                 unit: Optional[Callable[[], V]] = None):
         self.dim = dim
         self.scl = ScalarField(dtype)
         self.add: Callable[[V, V], V] = jnp.add
@@ -336,7 +381,6 @@ class LInfVectorAlgebra(alg.ImplementsBanachAlgebra[V, K], Generic[N, K]):
         self.sub: Callable[[V, V], V] = jnp.subtract
         self.smul: Callable[[S, V], V] = jnp.multiply
         self.mul: Callable[[V, V], V] = jnp.multiply
-        self.unit: Callable[[], V] = make_unit(dim, dtype)
         self.inv: Callable[[V], V] = make_inv(dim, dtype)
         self.div: Callable[[V, V], V] = jnp.divide
         self.star: Callable[[V], V] = jnp.conjugate
@@ -349,6 +393,16 @@ class LInfVectorAlgebra(alg.ImplementsBanachAlgebra[V, K], Generic[N, K]):
         self.power: Callable[[V, V], V] = jnp.power
         self.norm: Callable[[V], S] = linf_norm
 
+        if zero is None:
+            self.zero: Callable[[], V] = make_zero(dim, dtype)
+        else:
+            self.unit = zero
+
+        if unit is None:
+            self.unit: Callable[[], V] = make_unit(dim, dtype)
+        else:
+            self.unit = unit
+
 
 class LInfFnAlgebra(LInfVectorAlgebra[N, K],
                     alg.ImplementsMeasureFnAlgebra[T, V, S],
@@ -359,8 +413,10 @@ class LInfFnAlgebra(LInfVectorAlgebra[N, K],
 
     def __init__(self, dim: N, dtype: Type[K],
                  inclusion_map: Callable[[F[T, S]], V],
-                 measure: Callable[[V], S]):
-        super().__init__(dim, dtype)
+                 measure: Callable[[V], S],
+                 zero: Optional[Callable[[], V]] = None,
+                 unit: Optional[Callable[[], V]] = None):
+        super().__init__(dim, dtype, zero=zero, unit=unit)
         self.incl: Callable[[F[T, S]], V] = inclusion_map
         self.integrate: Callable[[V], S] = measure
 
@@ -375,9 +431,14 @@ class FnSynthesis(FunctionSpace[T, VectorAlgebra[N, K]], Generic[T, N, K]):
         self.app = fn_synthesis()
 
 
-def make_vector_analysis_operator(vec: VectorAlgebra[N, K], basis: Vs) \
+def  make_vector_analysis_operator(vec: VectorAlgebra[N, K], basis: Vs,
+                                  axis: Optional[int] = None) \
         -> Callable[[V], V]:
-    vinnerp = vmap(vec.innerp, in_axes=(-1, None))
+    """Make analysis operator from an array of vectors"""
+    if axis is None:
+        axis = -1
+
+    vinnerp = vmap(vec.innerp, in_axes=(axis, None))
 
     def an(v: V) -> Ss:
         return vinnerp(basis, v)

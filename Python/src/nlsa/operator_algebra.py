@@ -18,6 +18,7 @@ class OperatorAlgebra(Generic[V, K]):
         lft: Lift[V] = Lift()
         self.scl = hilb.scl
         self.hilb = hilb
+        self.zero: Callable[[], L[V]] = lft.constant(hilb.zero)
         self.add: Callable[[L[V], L[V]], L[V]] = lft.binary(hilb.add)
         self.sub: Callable[[L[V], L[V]], L[V]] = lft.binary(hilb.sub)
         self.neg: Callable[[L[V]], L[V]] = lft.unary(hilb.neg)
