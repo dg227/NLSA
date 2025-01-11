@@ -1,12 +1,72 @@
 [build-system]
-requires = ["setuptools>=42.0", "wheel"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "nlsa"
+version = "0.2"
+description = "Data-driven algorithms for dynamical systems"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE.txt" }
+keywords = ["kernel methods", "dynamical systems", "scientific computing"]
+authors = [
+    { name = "Dimitris Giannakis", email = "dimitrios.giannakis@dartmouth.edu" },
+]
+maintainers = [
+    { name = "Dimitris Giannakis", email = "dimitrios.giannakis@dartmouth.edu" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Data Scientists, Scientific Programmers, Developers",
+    "Topic :: Scientific Computing",
+    "License :: OSI Approved :: BSD-3-Clause",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "diffrax",
+    "ipympl",
+    "ipywidgets",
+    "jax",
+    "jaxopt",
+    "jaxtyping",
+    "jupyterlab",
+    "matplotlib",
+    "more-itertools",
+    "numpy",
+    "opt_einsum",
+    "qiskit",
+    "scipy",
+    "seaborn",
+    "sympy",
+    "tensorflow-probability",
+]
+
+[project.optional-dependencies]
+cuda = [
+    "jax[cuda12]"
+]
+
+dev = [
+    "flake8",
+    "jupyterlab-vim",
+    "mypy",
+    "nb_mypy",
+    "pyright",
+    "pytest",
+]
 
 [tool.pytest.ini_options]
 addopts = "--cov=nlsa"
 testpaths = [
     "tests",
 ]
+
+[project.urls]
+"Homepage" = "https://dg227.github.io/NLSA"
 
 [tool.mypy]
 mypy_path = "src"
@@ -28,5 +88,5 @@ include = ["src"]
 exclude = ["**/node_modules",
     "**/__pycache__"
 ]
-# typeCheckingMode = "basic"
 typeCheckingMode = "strict"
+# typeCheckingMode = "basic"
