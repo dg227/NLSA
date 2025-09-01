@@ -1,60 +1,58 @@
 # pyright: basic
 
-# TODO: Make power have a consistent signature.
+"""Implement vector algebra operations for JAX arrays."""
 
 import jax
 import jax.numpy as jnp
-import nlsa.abstract_algebra2 as alg
-from jax import Array, jit, pmap, vmap
-from jax.experimental.shard_map import shard_map as shmap
-from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+import nlsa.abstract_algebra as alg
+from collections.abc import Callable, Sequence
+from jax import Array, Device, vmap
+from jax.sharding import Mesh, NamedSharding, PartitionSpec as ParSpec
 from jax.scipy.signal import convolve
-from nlsa.jax.scalar_algebra import ScalarField
-from nlsa.function_algebra2 import FunctionSpace, compose, make_mpower
-from typing import Callable, Generic, Literal, Optional, Type, TypeAlias, \
-        TypeVar
+from jax.typing import DTypeLike
+from nlsa.jax.scalars import ScalarField
+from nlsa.function_algebra import compose
+from typing import Literal, NamedTuple, Optional, final, overload
 
-N = TypeVar('N', bound=int)
-K = TypeVar('K', jnp.float32, jnp.float64)
-R: TypeAlias = K
-S = Array
-Ss = Array
-V = Array
-Vs = Array
-X = Array
-Xs = Array
-Y = Array
-T = TypeVar('T')
-T1 = TypeVar('T1')
-T2 = TypeVar('T2')
-F = Callable[[T1], T2]
-ConvMode = TypeVar('ConvMode', bound=Literal['full', 'same', 'valid'])
+type K = Array
+type Ks = Array
+type V = Array
+type Vs = Array
+type X = Array
+type Y = Array
+type Xs = Array
+type ConvMode = Literal['full', 'same', 'valid']
+type Shape = tuple[int, ...]
+type F[*Xs, Y] = Callable[[*Xs], Y]
 
 
 def neg(v: V, /) -> V:
-    """Negate a vector."""
-    return jnp.multiply(-1, v)
+    """Perform vector negation."""
+    return -v
 
 
-def make_zero(dim: int | tuple[int], dtype: Type[K]) -> Callable[[], V]:
+def make_zero(shape: Shape, dtype: DTypeLike) -> Callable[[], V]:
     """Make constant function returning vector of all 0s."""
     def zero() -> V:
-        return jnp.zeros(dim, dtype=dtype)
+        return jnp.zeros(shape, dtype=dtype)
     return zero
 
 
-def make_unit(dim: int | tuple[int], dtype: Type[K]) -> Callable[[], V]:
+def make_unit(shape: Shape, dtype: DTypeLike) -> Callable[[], V]:
     """Make constant function returning vector of all 1s."""
     def unit() -> V:
-        return jnp.ones(dim, dtype=dtype)
+        return jnp.ones(shape, dtype=dtype)
     return unit
 
 
-def make_inv(unit: V) -> Callable[[V], V]:
-    """Make inversion function."""
-    def inv(v: V) -> V:
-        return jnp.divide(unit, v)
-    return inv
+def inv(v: V, /) -> V:
+    """Perform vector inversion."""
+    return jnp.divide(1, v)
+
+
+def sdiv(s: K, v: V, /) -> V:
+    """Perform sclar division of a vector."""
+    return jnp.divide(v, s)
 
 
 def ldiv(u: V, v: V, /) -> V:
@@ -62,8 +60,8 @@ def ldiv(u: V, v: V, /) -> V:
     return jnp.divide(v, u)
 
 
-def l2_innerp(u: V, v: V, /) -> S:
-    """Compute L2 inner product of two vectors."""
+def euclidean_innerp(u: V, v: V, /) -> K:
+    """Compute Euclidean product of two vectors."""
     return jnp.sum(jnp.conjugate(u) * v)
 
 
@@ -72,33 +70,41 @@ def linf_norm(u: V, /):
     return jnp.max(jnp.abs(u))
 
 
-def make_weighted_l2_innerp(w: V, /) -> Callable[[V, V], S]:
-    """Make L2 inner procuct from weight vector."""
-    def innerp(u: V, v: V, /) -> S:
-        return jnp.sum(jnp.conjugate(u) * w * v)
+def make_weighted_innerp(weight: V) -> Callable[[V, V], K]:
+    """Make inner procuct from weight vector."""
+    def innerp(u: V, v: V, /) -> K:
+        return jnp.sum(jnp.conjugate(u) * weight * v)
     return innerp
 
 
-def to_norm(inner: Callable[[V, V], S], /) -> Callable[[V], S]:
+def make_l2_innerp(measure: Callable[[V], K]) -> Callable[[V, V], K]:
+    """Make L2 inner product from measure."""
+    def innerp(u: V, v: V, /) -> K:
+        return measure(jnp.conjugate(u) * v)
+    return innerp
+
+
+def to_norm(innerp: Callable[[V, V], K], /) -> Callable[[V], K]:
     """Make norm from inner product."""
-    def norm(v: V, /) -> S:
-        return jnp.sqrt(inner(v, v))
+    def norm(v: V, /) -> K:
+        return jnp.sqrt(innerp(v, v))
     return norm
 
 
-def to_sqnorm(inner: Callable[[V, V], S], /) -> Callable[[V], S]:
+def to_sqnorm(innerp: Callable[[V, V], K], /) -> Callable[[V], K]:
     """Make square norm from inner product."""
-    def sqnorm(v: V, /) -> S:
-        return inner(v, v)
+    def sqnorm(v: V, /) -> K:
+        return innerp(v, v)
     return sqnorm
 
 
-make_weighted_l2_sqnorm = compose(to_sqnorm, make_weighted_l2_innerp)
+make_weighted_sqnorm: Callable[[V], F[V, K]] \
+    = compose(to_sqnorm, make_weighted_innerp)
 
 
 def make_convolution(mode: ConvMode = 'same') -> Callable[[V, V], V]:
     """Make convolution product between vectors."""
-    def cnv(u: V, v: V) -> V:
+    def cnv(u: V, v: V, /) -> V:
         return convolve(u, v, mode=mode)
     return cnv
 
@@ -106,469 +112,466 @@ def make_convolution(mode: ConvMode = 'same') -> Callable[[V, V], V]:
 def make_weighted_convolution(weight: V, mode: ConvMode = 'same') \
         -> Callable[[V, V], V]:
     """Make weighted convolution product between vectors."""
-    def cnv(u: V, v: V) -> V:
+    def cnv(u: V, v: V, /) -> V:
         return convolve(weight * u, weight * v, mode=mode) / weight
     return cnv
 
 
-def counting_measure(v: V, /) -> S:
+def counting_measure(v: V, /) -> Y:
     """Sum the elements of a vector."""
     return jnp.sum(v)
-    # return jnp.sum(v, axis=-1)
 
 
-def make_normalized_counting_measure(n: int) -> Callable[[V], S]:
+def make_normalized_counting_measure(n: int) -> Callable[[V], Y]:
     """Make normalized counting measure from dimension parameter."""
-    def mu(v: V, /) -> S:
-        return counting_measure(v) / float(n)
+    def mu(v: V, /) -> Y:
+        return counting_measure(v) / n
     return mu
 
 
 def eval_at(xs: Xs, /) -> Callable[[F[Xs, V]], V]:
     """Make evaluation functional."""
-    def eval(f: F[Xs, V]) -> V:
+    def ev(f: F[Xs, V], /) -> V:
         return f(xs)
-    return eval
+    return ev
 
 
-def veval_at(xs: Xs, /) -> Callable[[F[X, Y]], V]:
+def _veval_at(xs: Xs, /, in_axis: int = 0,
+              jit: bool = False) -> Callable[[F[X, Y]], V]:
     """Make vectorized evaluation functional."""
-    def eval(f: F[X, Y]) -> V:
-        g: Callable[[Xs], V] = vmap(f, in_axes=0)
+    def ev(f: F[Xs, Y], /) -> V:
+        g = vmap(f, in_axes=in_axis)
+        if jit:
+            g = jax.jit(g)
         return g(xs)
-    return eval
+    return ev
 
 
-def sheval_at(xs: Xs, /, axis_name: str = 'i') -> Callable[[F[X, Y]], V]:
-    """Make sharded evaluation functional."""
-    devices = jax.local_devices()
-    mesh = Mesh(devices, axis_names=(axis_name))
+def _veval_at_tuple(xss: tuple[Xs, Xs], /, in_axis: int = 0,
+                    jit: bool = False) \
+        -> Callable[[F[X, X, Y]], V]:
+    """Make vectorized evaluation functional for bivariate functions."""
+    def ev(f: F[X, X, Y], /) -> V:
+        g = vmap(f, in_axes=in_axis)
+        if jit:
+            g = jax.jit(g)
+        return g(*xss)
+    return ev
 
-    def eval(f: F[X, Y]) -> V:
-        g: Callable[[Xs], V] = shmap(vmap(f), mesh=mesh,
-                                     in_specs=P(axis_name, None),
-                                     out_specs=P(axis_name))
-        return g(xs)
-    return eval
+
+@overload
+def veval_at(xs: Xs, /, in_axis: int = 0,
+             jit: bool = False) -> Callable[[F[X, Y]], V]:
+    ...
 
 
-def jeval_at(xs: Xs, /, axis_name: str = 'i', devices=None) \
+@overload
+def veval_at(xss: tuple[Xs, Xs], /, in_axis: int = 0,
+             jit: bool = False) -> Callable[[F[X, X, Y]], V]:
+    ...
+
+
+def veval_at(xss: Xs | tuple[Xs, Xs], /, in_axis: int = 0,
+             jit: bool = False) \
+        -> Callable[[F[Xs, Y]], V] | Callable[[F[Xs, Xs, Y]], V]:
+    """Make vectorized evaluation functional for univariate or bivariate
+    functions.
+    """
+    if isinstance(xss, Array):
+        ev = _veval_at(xss, in_axis=in_axis, jit=jit)
+    else:
+        ev = _veval_at_tuple(xss, in_axis=in_axis, jit=jit)
+    return ev
+
+
+def _batch_eval_at(xs: Xs, /, batch_size: Optional[int] = None) \
         -> Callable[[F[X, Y]], V]:
-    """Make doubly-vectorized and jitted evaluation functional."""
+    """Make vectorized and batched evaluation functional."""
+    def ev(f: F[X, Y], /) -> V:
+        return jax.lax.map(f, xs, batch_size=batch_size)
+    return ev
+
+
+def _batch_eval_at_tuple(xss: tuple[Xs, Xs], /,
+                         batch_size: Optional[int] = None) \
+        -> Callable[[F[X, X, Y]], V]:
+    """Make vectorized and batched evaluation functional for bivariate
+    functions.
+    """
+    def ev(f: F[X, X, Y], /) -> V:
+        def g(args: tuple[Xs, Xs], /) -> Y:
+            return f(*args)
+        return jax.lax.map(g, xss, batch_size=batch_size)
+    return ev
+
+
+@overload
+def batch_eval_at(xs: Xs, /, batch_size: Optional[int] = None) \
+        -> Callable[[F[X, Y]], V]:
+    ...
+
+
+@overload
+def batch_eval_at(xss: tuple[Xs, Xs], /, batch_size: Optional[int] = None) \
+        -> Callable[[F[X, X, Y]], V]:
+    ...
+
+
+def batch_eval_at(xss: Xs | tuple[Xs, Xs], batch_size: Optional[int] = None) \
+        -> Callable[[F[X, Y]], V] | Callable[[F[X, X, Y]], V]:
+    """Make vectorized and batched evaluation functional."""
+    if isinstance(xss, Array):
+        ev = _batch_eval_at(xss, batch_size=batch_size)
+    else:
+        ev = _batch_eval_at_tuple(xss, batch_size=batch_size)
+    return ev
+
+
+def shardeval_at(xs: Xs, /, devices: Optional[Sequence[Device]] = None) \
+        -> Callable[[F[X, Y]], V]:
+    """Make doubly-vectorized and sharded evaluation functional."""
     if devices is None:
         devices = jax.local_devices()
+    ys_sharding = NamedSharding(Mesh(devices, axis_names='i'),
+                                ParSpec('i', None))
 
-    mesh = Mesh(devices, axis_names=(axis_name))
-    # xs_sharding = NamedSharding(mesh, P(axis_name, None, None))
-    ys_sharding = NamedSharding(mesh, P(axis_name, None))
+    def ev(f: F[X, Y], /) -> V:
+        g: Callable[[Xs], V] = vmap(vmap(f), axis_name='i')
 
-    def eval(f: F[X, Y]) -> V:
-        g: Callable[[Xs], V] = vmap(vmap(f), axis_name=axis_name)
-
-        @jit
-        def evalg(xss: Xs) -> V:
-            # xss = jax.lax.with_sharding_constraint(xss, xs_sharding)
+        # @partial(jit, out_shardings=ys_sharding)
+        @jax.jit
+        def evg(xss: Xs, /) -> V:
+            # ys = g(xss)
             ys = jax.lax.with_sharding_constraint(g(xss), ys_sharding)
             return ys
-
-        return evalg(xs)
-    return eval
-
-
-def v2eval_at(xs: Xs, /, in_axes=0, axis_name=None) -> Callable[[F[X, Y]], V]:
-    """Make doubly-vectorized evaluation functional."""
-    def eval(f: F[X, Y]) -> V:
-        g: Callable[[Xs], V] = vmap(vmap(f),
-                                    in_axes=in_axes,
-                                    axis_name=axis_name)
-        return g(xs)
-    return eval
+        return evg(xs)
+    return ev
 
 
-def peval_at(xs: Xs, /, in_axes=0, axis_name=None) -> Callable[[F[X, Y]], V]:
-    """Make parallelized evaluation functional."""
-    def eval(f: F[X, Y]) -> V:
-        g: Callable[[Xs], V] = pmap(vmap(f))
-        return g(xs)
-    return eval
+# # # TODO: Add deprecation warning in favor of shardeval_at
+# # def jeval_at(xs: Xs, /, axis_name: str = 'i', devices=None) \
+# #         -> Callable[[F[X, Y]], V]:
+# #     """Make doubly-vectorized and jitted evaluation functional."""
+# #     if devices is None:
+# #         devices = jax.local_devices()
+
+# #     mesh = Mesh(devices, axis_names=(axis_name))
+# #     # xs_sharding = NamedSharding(mesh, P(axis_name, None, None))
+# #     ys_sharding = NamedSharding(mesh, P(axis_name, None))
+
+# #     def eval(f: F[X, Y], /.) -> V:
+# #         g: Callable[[Xs], V] = vmap(vmap(f), axis_name=axis_name)
+
+# #         @jit
+# #         def evalg(xss: Xs) -> V:
+# #             ys = jax.lax.with_sharding_constraint(g(xss), ys_sharding)
+# #             return ys
+# #         return evalg(xs)
+# #     return eval
 
 
-def flip_conj(v: V) -> V:
-    """Perform involution (complex-conjugation and flip) convolution algebra."""
+def flip_conj(v: V, /) -> V:
+    """Perform involution (complex-conjugation and flip) on convolution alg."""
     return jnp.conjugate(jnp.flip(v))
 
 
-def sqeuclidean(u: V, v: V, /) -> S:
-    """Compute pairwise squared Euclidean distance."""
-    s2 = jnp.sum((u - v) ** 2)
-    return s2
+def make_synthesis_operator_full(basis: Vs) -> Callable[[Ks], V]:
+    """Make synthesis operator for vectors from basis."""
+    def synth(coeffs: Ks, /) -> V:
+        return basis @ coeffs
+    return synth
 
 
-def make_fn_synthesis_operator(basis: F[X, V]) -> Callable[[V], F[X, S]]:
+def make_synthesis_operator_sub(basis: Vs, idxs: Array) -> Callable[[Ks], V]:
+    """Make synthesis operator for vectors from subset of basis.
+
+    This attempts to emulate "lazy" slicing of basis array.
+
+    """
+    def synth(coeffs: Ks, /) -> V:
+        return jnp.take(basis, idxs, axis=-1) @ coeffs
+    return synth
+
+
+def make_synthesis_operator(basis: Vs, idxs: Optional[Array] = None) \
+        -> Callable[[Ks], V]:
+    """Make synthesis operator for vectors from basis or a subset thereof."""
+    if idxs is not None:
+        synth = make_synthesis_operator_sub(basis, idxs)
+    else:
+        synth = make_synthesis_operator_full(basis)
+    return synth
+
+
+def make_fn_synthesis_operator[X: Array](basis: F[X, Ks]) \
+        -> Callable[[Ks], F[X, K]]:
     """Make synthesis operator for functions from basis."""
-    def synth(v: V) -> F[X, S]:
-        def f(x: X) -> S:
+    def synth(coeffs: Ks, /) -> F[X, K]:
+        def f(x: X, /) -> K:
             b = basis(x)
-            return jnp.sum(v * b)
+            return jnp.sum(coeffs * b)
         return f
     return synth
 
 
-def make_vector_synthesis_operator(basis: Vs) -> Callable[[Ss], V]:
-    """Make synthesis operator for vectors from basis."""
-    def synth(c: Ss) -> V:
-        return basis @ c
-    return synth
-
-
-def fn_synthesis(basis: F[X, V], v: V) -> F[X, S]:
+def fn_synthesis[X: Array](coeffs: Ks, /, basis: F[X, Ks]) -> F[X, K]:
     """Perform function synthesis from basis."""
-    def f(x: X) -> S:
+    def f(x: X, /) -> K:
         b = basis(x)
-        return jnp.sum(v * b)
+        return jnp.sum(coeffs * b)
     return f
 
 
-class VectorAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
-    """Implement vector algebra operations for JAX arrays.
-
-    The type variable N parameterizes the dimension of the algebra. The type
-    variable K parameterizes the field of scalars.
-
-    The class constructor takes in the zero and unit elements of the algebra as
-    optional arguments. This is to allow the use of sharded arrays.
-    """
-
-    # TODO: This class seems to obfuscate L2 Hilbert space and L\infty algebra.
-    # It might be better to split into two classes, one that implements L2
-    # without algebra operations, and one that implements L\infty without inner
-    # product. The L\infty class could then act on L2 as a module.
-
-    def __init__(self, dim: N, dtype: Type[K],
+@final
+class VectorAlgebra[N: Shape,
+                    D: DTypeLike](alg.ImplementsInnerProductAlgebra[V, K]):
+    """Implement vector algebra operations for JAX arrays."""
+    def __init__(self, shape: N, dtype: D,
                  zero: Optional[Callable[[], V]] = None,
                  unit: Optional[Callable[[], V]] = None,
                  weight: Optional[V] = None):
-        self.dim = dim
-        self.scl = ScalarField(dtype)
+        self.shape = shape
+        self.dtype = dtype
+        self.scl: ScalarField[D] = ScalarField(dtype)
         self.add: Callable[[V, V], V] = jnp.add
         self.neg: Callable[[V], V] = neg
         self.sub: Callable[[V, V], V] = jnp.subtract
-        self.smul: Callable[[S, V], V] = jnp.multiply
+        self.sdiv: Callable[[K, V], V] = sdiv
+        self.smul: Callable[[K, V], V] = jnp.multiply
         self.mul: Callable[[V, V], V] = jnp.multiply
         self.div: Callable[[V, V], V] = jnp.divide
-        self.star: Callable[[V], V] = jnp.conjugate
-        self.lmul: Callable[[V, V], V] = jnp.multiply
-        self.ldiv: Callable[[V, V], V] = ldiv
-        self.rmul: Callable[[V, V], V] = jnp.multiply
-        self.rdiv: Callable[[V, V], V] = jnp.divide
+        self.inv: Callable[[V], V] = inv
+        self.adj: Callable[[V], V] = jnp.conjugate
         self.sqrt: Callable[[V], V] = jnp.sqrt
         self.exp: Callable[[V], V] = jnp.exp
-        self.power: Callable[[V, V], V] = jnp.power
+        self.mod: Callable[[V], V] = jnp.abs
+        self.power: Callable[[V, int], V] = jnp.power
 
         if zero is None:
-            self.zero: Callable[[], V] = make_zero(dim, dtype)
+            self.zero: Callable[[], V] = make_zero(shape, dtype)
         else:
-            self.unit = zero
+            self.zero = zero
 
         if unit is None:
-            self.unit: Callable[[], V] = make_unit(dim, dtype)
+            self.unit: Callable[[], V] = make_unit(shape, dtype)
         else:
             self.unit = unit
 
-        self.inv: Callable[[V], V] = make_inv(self.unit)
-
         if weight is None:
-            self.innerp: Callable[[V, V], S] = l2_innerp
+            self.innerp: Callable[[V, V], K] = euclidean_innerp
         else:
             # TODO: Add check that weight has the right shape.
-            self.innerp: Callable[[V, V], S] = make_weighted_l2_innerp(weight)
+            self.innerp: Callable[[V, V], K] = make_weighted_innerp(weight)
 
-        self.norm: Callable[[V], S] = to_norm(self.innerp)
-
-
-# TODO: Consider renaming this L1ConvolutionAlgebra and equip with L1 norm.
-class ConvolutionAlgebra(alg.ImplementsHilbertSpace[V, K], Generic[N, K]):
-    """Implement convolution algebra operations for JAX arrays.
-
-    The type variable N parameterizes the dimension of the algebra. The type
-    variable K parameterizes the field of scalars.
-
-    The class constructor takes in the zero element of the algebra as an
-    optional argument. This is to allow the use of sharded arrays.
-    """
-
-    def __init__(self, dim: N, dtype: Type[K],
-                 zero: Optional[Callable[[], V]] = None,
-                 weight: Optional[V] = None,
-                 conv_mode: Optional[ConvMode] = 'same',
-                 conv_weight: Optional[V] = None):
-        self.dim = dim
-        self.scl = ScalarField(dtype)
-        self.add: Callable[[V, V], V] = jnp.add
-        self.neg: Callable[[V], V] = neg
-        self.sub: Callable[[V, V], V] = jnp.subtract
-        self.smul: Callable[[S, V], V] = jnp.multiply
-
-        if zero is None:
-            self.zero: Callable[[], V] = make_zero(dim, dtype)
-        else:
-            self.unit = zero
-
-        if conv_weight is None:
-            self.mul = make_convolution(mode=conv_mode)
-        else:
-            self.mul = make_weighted_convolution(mode=conv_mode,
-                                                 weight=conv_weight)
-
-        self.star: Callable[[V], V] = flip_conj
-        self.sqrt: Callable[[V], V] = jnp.sqrt
-        self.exp: Callable[[V], V] = jnp.exp
-        self.power: Callable[[V, V], V] = make_mpower(self.mul)
-
-        if weight is None:
-            self.innerp: Callable[[V, V], S] = l2_innerp
-        else:
-            self.innerp: Callable[[V, V], S] = make_weighted_l2_innerp(weight)
-
-        self.norm: Callable[[V], S] = to_norm(self.innerp)
+        self.norm: Callable[[V], K] = to_norm(self.innerp)
 
 
-class MeasurableFnAlgebra(VectorAlgebra[N, K],
-                          alg.ImplementsMeasurableFnAlgebra[T, V, S],
-                          Generic[T, N, K]):
-    """Implement operations on equivalence classes of functions using JAX arrays
-    as the representation type.
-    """
-    def __init__(self, dim: N, dtype: Type[K],
-                 inclusion_map: Callable[[F[T, S]], V],
-                 zero: Optional[Callable[[], V]] = None,
-                 unit: Optional[Callable[[], V]] = None,
-                 weight: Optional[V] = None):
-        super().__init__(dim, dtype, zero=zero, unit=unit, weight=weight)
-        self.incl: Callable[[F[T, S]], V] = inclusion_map
-
-
-# TODO: Inheritance from VectorAlgebra can lead to inconsistency between inner
-# product and integration.
-class MeasureFnAlgebra(MeasurableFnAlgebra[T, N, K],
-                       alg.ImplementsMeasureFnAlgebra[T, V, S]):
-    """Implement NPMeasurableFunctionAlgebra equipped with measure."""
-    def __init__(self, dim: N, dtype: Type[K],
-                 inclusion_map: Callable[[F[T, S]], V],
-                 measure: Callable[[V], S],
-                 zero: Optional[Callable[[], V]] = None,
-                 unit: Optional[Callable[[], V]] = None,
-                 weight: Optional[V] = None):
-        super().__init__(dim, dtype, inclusion_map, zero=zero, unit=unit,
-                         weight=weight)
-        self.integrate: Callable[[V], S] = measure
-
-
-class LInfVectorAlgebra(alg.ImplementsBanachAlgebra[V, K], Generic[N, K]):
-    """Implement L infinity algebra operations for JAX arrays.
-
-    The type variable N parameterizes the dimension of the algebra. The type
-    variable K parameterizes the field of scalars.
-    """
-
-    def __init__(self, dim: N, dtype: Type[K],
+@final
+class L2VectorAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
+        alg.ImplementsL2FnAlgebra[X, Y, V, K]):
+    """Implement L2 vector algebra operations for JAX arrays. """
+    def __init__(self, shape: N, dtype: D,
+                 measure: Callable[[V], Y],
+                 inclusion_map: Callable[[F[X, Y]], V],
                  zero: Optional[Callable[[], V]] = None,
                  unit: Optional[Callable[[], V]] = None):
-        self.dim = dim
-        self.scl = ScalarField(dtype)
+        self.shape = shape
+        self.dtype = dtype
+        self.scl: ScalarField[D] = ScalarField(dtype)
         self.add: Callable[[V, V], V] = jnp.add
         self.neg: Callable[[V], V] = neg
         self.sub: Callable[[V, V], V] = jnp.subtract
-        self.smul: Callable[[S, V], V] = jnp.multiply
+        self.sdiv: Callable[[K, V], V] = sdiv
+        self.smul: Callable[[K, V], V] = jnp.multiply
         self.mul: Callable[[V, V], V] = jnp.multiply
-        self.inv: Callable[[V], V] = make_inv(dim, dtype)
         self.div: Callable[[V, V], V] = jnp.divide
-        self.star: Callable[[V], V] = jnp.conjugate
-        self.lmul: Callable[[V, V], V] = jnp.multiply
-        self.ldiv: Callable[[V, V], V] = ldiv
-        self.rmul: Callable[[V, V], V] = jnp.multiply
-        self.rdiv: Callable[[V, V], V] = jnp.divide
+        self.inv: Callable[[V], V] = inv
+        self.adj: Callable[[V], V] = jnp.conjugate
         self.sqrt: Callable[[V], V] = jnp.sqrt
         self.exp: Callable[[V], V] = jnp.exp
-        self.power: Callable[[V, V], V] = jnp.power
-        self.norm: Callable[[V], S] = linf_norm
+        self.mod: Callable[[V], V] = jnp.abs
+        self.power: Callable[[V, int], V] = jnp.power
+        self.integrate: Callable[[V], Y] = measure
+        self.incl: Callable[[F[X, Y]], V] = inclusion_map
 
         if zero is None:
-            self.zero: Callable[[], V] = make_zero(dim, dtype)
+            self.zero: Callable[[], V] = make_zero(shape, dtype)
         else:
             self.unit = zero
 
         if unit is None:
-            self.unit: Callable[[], V] = make_unit(dim, dtype)
+            self.unit: Callable[[], V] = make_unit(shape, dtype)
         else:
             self.unit = unit
 
-
-class LInfFnAlgebra(LInfVectorAlgebra[N, K],
-                    alg.ImplementsMeasureFnAlgebra[T, V, S],
-                    Generic[T, N, K]):
-    """Implement operations on equivalence classes of functions using JAX arrays
-    as the representation type.
-    """
-
-    def __init__(self, dim: N, dtype: Type[K],
-                 inclusion_map: Callable[[F[T, S]], V],
-                 measure: Callable[[V], S],
-                 zero: Optional[Callable[[], V]] = None,
-                 unit: Optional[Callable[[], V]] = None):
-        super().__init__(dim, dtype, zero=zero, unit=unit)
-        self.incl: Callable[[F[T, S]], V] = inclusion_map
-        self.integrate: Callable[[V], S] = measure
+        self.innerp: Callable[[V, V], K] = make_l2_innerp(measure)
+        self.norm: Callable[[V], K] = to_norm(self.innerp)
 
 
-class FnSynthesis(FunctionSpace[T, VectorAlgebra[N, K]], Generic[T, N, K]):
-    """Implement function synthesis from coefficients in JAX array."""
-    def __init__(self, dim: N, dtype: Type[K]):
-        self.hilb1: VectorAlgebra[N, K] = VectorAlgebra(dim=dim, dtype=dtype)
-        self.hilb2: FunctionSpace[T, K] = \
-            FunctionSpace(codomain=ScalarField(dtype))
-        super().__init__(codomain=FunctionSpace(codomain=self.hilb1))
-        self.app = fn_synthesis()
-
-
-def  make_vector_analysis_operator(vec: VectorAlgebra[N, K], basis: Vs,
-                                  axis: Optional[int] = None) \
-        -> Callable[[V], V]:
+def make_l2_analysis_operator[N: Shape, D: DTypeLike, X: Array, Y: Array](
+        impl: VectorAlgebra[N, D] | L2VectorAlgebra[N, D, X, Y], basis: Vs,
+        axis: Optional[int] = None) -> Callable[[V], Ks]:
     """Make analysis operator from an array of vectors"""
     if axis is None:
         axis = -1
+    vinnerp = vmap(impl.innerp, in_axes=(axis, None))
 
-    vinnerp = vmap(vec.innerp, in_axes=(axis, None))
-
-    def an(v: V) -> Ss:
+    def an(v: V) -> Ks:
         return vinnerp(basis, v)
     return an
 
 
-# Old methods of ScalarField class
+# # # TODO: Consider renaming this L1ConvolutionAlgebra and equip with L1 norm.
+# # class ConvolutionAlgebra(alg.ImplementsInnerProductSpace[V, K], Generic[N, K]):
+# #     """Implement convolution algebra operations for JAX arrays.
 
-# self._unit: Callable[[], S] = make_sunit(dtype)
+# #     The type variable N parameterizes the dimension of the algebra. The type
+# #     variable K parameterizes the field of scalars.
 
-# def add(self, u: S, v: S, /) -> S:
-    # """Add two scalars."""
-    # return jnp.add(u, v)
+# #     The class constructor takes in the zero element of the algebra as an
+# #     optional argument. This is to allow the use of sharded arrays.
+# #     """
 
-# def sub(self, u: S, v: S, /) -> S:
-    # """Subtract two scalars."""
-    # return jnp.subtract(u, v)
+# #     def __init__(self, dim: N, dtype: Type[K],
+# #                  zero: Optional[Callable[[], V]] = None,
+# #                  weight: Optional[V] = None,
+# #                  conv_mode: Optional[ConvMode] = 'same',
+# #                  conv_weight: Optional[V] = None):
+# #         self.dim = dim
+# #         self.scl = ScalarField(dtype)
+# #         self.add: Callable[[V, V], V] = jnp.add
+# #         self.neg: Callable[[V], V] = neg
+# #         self.sub: Callable[[V, V], V] = jnp.subtract
+# #         self.smul: Callable[[S, V], V] = jnp.multiply
 
-# def neg(self, v: S, /) -> S:
-    # """Negate a scalar."""
-    # return jnp.multiply(-1, v)
+# #         if zero is None:
+# #             self.zero: Callable[[], V] = make_zero(dim, dtype)
+# #         else:
+# #             self.unit = zero
 
-# def mul(self, u: S, v: S, /) -> S:
-    # """Multiply two scalars."""
-    # return jnp.multiply(u, v)
+# #         if conv_weight is None:
+# #             self.mul = make_convolution(mode=conv_mode)
+# #         else:
+# #             self.mul = make_weighted_convolution(mode=conv_mode,
+# #                                                  weight=conv_weight)
 
-# def inv(self, v: S, /) -> S:
-    # """Invert a scalar."""
-    # return jnp.divide(self.unit(), v)
+# #         self.adj: Callable[[V], V] = flip_conj
+# #         self.sqrt: Callable[[V], V] = jnp.sqrt
+# #         self.exp: Callable[[V], V] = jnp.exp
+# #         self.power: Callable[[V, V], V] = make_mpower(self.mul)
 
-# def div(self, u: S, v: S, /) -> S:
-    # """Divide two scalars."""
-    # return jnp.divide(u, v)
+# #         if weight is None:
+# #             self.innerp: Callable[[V, V], S] = euclidean_innerp
+# #         else:
+# #             self.innerp: Callable[[V, V], S] = make_weighted_euclidean_innerp(weight)
 
-# def sqrt(self, v: S, /) -> S:
-    # """Compute square root of scalar."""
-    # return jnp.sqrt(v)
-
-# def exp(self, v: S, /) -> S:
-    # """Compute exponential function on scalar."""
-    # return jnp.exp(v)
-
-# def power(self, v: S, k: S, /) -> S:
-    # """Compute exponentiation of scalar by scalar."""
-    # return jnp.power(v, k)
-
-# def star(self, v: S, /) -> S:
-    # """Compute complex conjugation of scalar."""
-    # return jnp.conjugate(v)
-
-# def unit(self) -> S:
-    # return self._unit()
+# #         self.norm: Callable[[V], S] = to_norm(self.innerp)
 
 
-# Old methods of VectorAlgebra class
+# # class MeasurableFnAlgebra(VectorAlgebra[N, K],
+# #                           alg.ImplementsMeasurableFnAlgebra[T, V, S],
+# #                           Generic[T, N, K]):
+# #     """Implement operations on equivalence classes of functions using JAX arrays
+# #     as the representation type.
+# #     """
+# #     def __init__(self, dim: N, dtype: Type[K],
+# #                  inclusion_map: Callable[[F[T, S]], V],
+# #                  zero: Optional[Callable[[], V]] = None,
+# #                  unit: Optional[Callable[[], V]] = None,
+# #                  weight: Optional[V] = None):
+# #         super().__init__(dim, dtype, zero=zero, unit=unit, weight=weight)
+# #         self.incl: Callable[[F[T, S]], V] = inclusion_map
 
-#    def __init__(self, dim: N, dtype: Type[K]):
-#        self._unit: Callable[[], V] = make_unit(dim, dtype)
-#        self.scl: alg.ImplementsScalarField[S] = ScalarField(dtype)
 
-#    def add(self, u: V, v: V, /) -> V:
-#        """Add two vectors."""
-#        return jnp.add(u, v)
+# # # TODO: Inheritance from VectorAlgebra can lead to inconsistency between inner
+# # # product and integration.
+# # class MeasureFnAlgebra(MeasurableFnAlgebra[T, N, K],
+# #                        alg.ImplementsMeasureFnAlgebra[T, V, S]):
+# #     """Implement MeasurableFunctionAlgebra equipped with measure."""
+# #     def __init__(self, dim: N, dtype: Type[K],
+# #                  inclusion_map: Callable[[F[T, S]], V],
+# #                  measure: Callable[[V], S],
+# #                  zero: Optional[Callable[[], V]] = None,
+# #                  unit: Optional[Callable[[], V]] = None,
+# #                  weight: Optional[V] = None):
+# #         super().__init__(dim, dtype, inclusion_map, zero=zero, unit=unit,
+# #                          weight=weight)
+# #         self.integrate: Callable[[V], S] = measure
 
-#    def sub(self, u: V, v: V, /) -> V:
-#        """Subtract two vectors."""
-#        return jnp.subtract(u, v)
 
-#    def neg(self, v: V, /) -> V:
-#        """Negate a vector."""
-#        return jnp.multiply(-1, v)
+# # class LInfVectorAlgebra(alg.ImplementsNormedAlgebra[V, K], Generic[N, K]):
+# #     """Implement L infinity algebra operations for JAX arrays.
 
-#    def smul(self, k: S, v: V, /) -> V:
-#        """Multiply a scalar and a vector."""
-#        return jnp.multiply(k, v)
+# #     The type variable N parameterizes the dimension of the algebra. The type
+# #     variable K parameterizes the field of scalars.
+# #     """
 
-#    def mul(self, u: V, v: V, /) -> V:
-#        """Multiply two vectors elementwise."""
-#        return jnp.multiply(u, v)
+# #     def __init__(self, dim: N, dtype: Type[K],
+# #                  zero: Optional[Callable[[], V]] = None,
+# #                  unit: Optional[Callable[[], V]] = None):
+# #         self.dim = dim
+# #         self.scl = ScalarField(dtype)
+# #         self.add: Callable[[V, V], V] = jnp.add
+# #         self.neg: Callable[[V], V] = neg
+# #         self.sub: Callable[[V, V], V] = jnp.subtract
+# #         self.smul: Callable[[S, V], V] = jnp.multiply
+# #         self.mul: Callable[[V, V], V] = jnp.multiply
+# #         self.inv: Callable[[V], V] = make_inv(dim, dtype)
+# #         self.div: Callable[[V, V], V] = jnp.divide
+# #         self.adj: Callable[[V], V] = jnp.conjugate
+# #         self.lmul: Callable[[V, V], V] = jnp.multiply
+# #         self.ldiv: Callable[[V, V], V] = ldiv
+# #         self.rmul: Callable[[V, V], V] = jnp.multiply
+# #         self.rdiv: Callable[[V, V], V] = jnp.divide
+# #         self.sqrt: Callable[[V], V] = jnp.sqrt
+# #         self.exp: Callable[[V], V] = jnp.exp
+# #         self.power: Callable[[V, V], V] = jnp.power
+# #         self.norm: Callable[[V], S] = linf_norm
 
-#    def inv(self, v: V, /) -> V:
-#        """Invert a vector elementwise."""
-#        return jnp.divide(self.unit(), v)
+# #         if zero is None:
+# #             self.zero: Callable[[], V] = make_zero(dim, dtype)
+# #         else:
+# #             self.unit = zero
 
-#    def unit(self) -> V:
-#        return self._unit()
+# #         if unit is None:
+# #             self.unit: Callable[[], V] = make_unit(dim, dtype)
+# #         else:
+# #             self.unit = unit
 
-#    def div(self, u: V, v: V, /) -> V:
-#        """Divide two vectors elementwise."""
-#        return jnp.divide(u, v)
 
-#    def lmul(self, u: V, v: V, /) -> V:
-#        """Perform left module multiplication as elementwise vector
-#        multiplication.
+# # class LInfFnAlgebra(LInfVectorAlgebra[N, K],
+# #                     alg.ImplementsMeasureFnAlgebra[T, V, S],
+# #                     Generic[T, N, K]):
+# #     """Implement operations on equivalence classes of functions using JAX arrays
+# #     as the representation type.
+# #     """
 
-#        """
-#        return jnp.multiply(u, v)
+# #     def __init__(self, dim: N, dtype: Type[K],
+# #                  inclusion_map: Callable[[F[T, S]], V],
+# #                  measure: Callable[[V], S],
+# #                  zero: Optional[Callable[[], V]] = None,
+# #                  unit: Optional[Callable[[], V]] = None):
+# #         super().__init__(dim, dtype, zero=zero, unit=unit)
+# #         self.incl: Callable[[F[T, S]], V] = inclusion_map
+# #         self.integrate: Callable[[V], S] = measure
 
-#    def ldiv(self, u: V, v: V, /) -> V:
-#        """Perform left module division as elementwise vector division."""
-#        return jnp.divide(v, u)
 
-#    def rmul(self, u: V, v: V, /) -> V:
-#        """Perform right module multiplication as elementwise vector
-#        multiplication.
+# # class FnSynthesis(FunctionSpace[T, VectorAlgebra[N, K]], Generic[T, N, K]):
+# #     """Implement function synthesis from coefficients in JAX array."""
+# #     def __init__(self, dim: N, dtype: Type[K]):
+# #         self.dom: VectorAlgebra[N, K] = VectorAlgebra(dim=dim, dtype=dtype)
+# #         self.codom: FunctionSpace[T, K] = \
+# #             FunctionSpace(codomain=ScalarField(dtype))
+# #         super().__init__(codomain=FunctionSpace(codomain=self.dom))
+# #         self.app = fn_synthesis()
+# # # def sheval_at(xs: Xs, /, axis_name: str = 'i') -> Callable[[F[X, Y]], V]:
+# # #     """Make sharded evaluation functional."""
+# # #     devices = jax.local_devices()
+# # #     mesh = Mesh(devices, axis_names=(axis_name))
 
-#        """
-#        return jnp.multiply(u, v)
-
-#    def rdiv(self, u: V, v: V, /) -> V:
-#        """Perform right module division as elementwise vector division."""
-#        return jnp.divide(u, v)
-
-#    def sqrt(self, v: V, /) -> V:
-#        """Compute elementwise square root of vector."""
-#        return jnp.sqrt(v)
-
-#    def exp(self, v: V, /) -> V:
-#        """Compute elementwise exponential function of vector."""
-#        return jnp.exp(v)
-
-#    def power(self, v: V, k: S, /) -> V:
-#        """Compute elementwise exponentiation of vector by scalar."""
-#        return jnp.power(v, k)
-
-#    def star(self, v: V, /) -> V:
-#        """Compute elementwise complex conjugation of vector."""
-#        return jnp.conjugate(v)
-
-#    def innerp(self, u: V, v: V, /) -> S:
-#        """Compute inner product of vectors."""
-#        w = jnp.sum(jnp.multiply(jnp.conjugate(u), v), axis=-1)
-#        return w
+# # #     def eval(f: F[X, Y]) -> V:
+# # #         g: Callable[[Xs], V] = shmap(vmap(f), mesh=mesh,
+# # #                                      in_specs=P(axis_name, None),
+# # #                                      out_specs=P(axis_name))
+# # #         return g(xs)
+# # #     return eval

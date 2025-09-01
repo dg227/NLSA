@@ -1,5 +1,5 @@
-from nlsa.abstract_algebra2 import ImplementsVectorSpace
-from nlsa.function_algebra2 import Lift, apply, compose, identity
+from nlsa.abstract_algebra import ImplementsVectorSpace
+from nlsa.function_algebra import Lift, apply, compose, identity
 from typing import Callable, Generic, TypeVar
 
 K = TypeVar('K')

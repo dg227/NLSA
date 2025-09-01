@@ -1,29 +1,28 @@
-import math
-from typing import Callable, Generator, Literal, Sequence, TypeVar
+"""Provide various utility functions."""
 
-X = TypeVar('X')
-Y = TypeVar('Y')
-Z = TypeVar('Z')
-
-
-def bind(instance, func, as_name=None):
-    """
-    Bind the function *func* to *instance*, with either provided name *as_name*
-    or the existing name of *func*. The provided *func* should accept the
-    instance as the first argument, i.e. "self".
-
-    Copied from https://stackoverflow.com/questions/1015307
-    /python-bind-an-unbound-method#comment8431145_1015405
-    """
-
-    if as_name is None:
-        as_name = func.__name__
-    bound_method = func.__get__(instance, instance.__class__)
-    setattr(instance, as_name, bound_method)
-    return bound_method
+import time
+from collections.abc import Callable, Generator, Sequence
+from functools import wraps
+from typing import Literal
 
 
-def swap_args(f: Callable[[X, Y], Z], /) -> Callable[[Y, X], Z]:
+def fst[X](x: Sequence[X]) -> X:
+    """Return the first element of a sequence."""
+    return x[0]
+
+
+def snd[X](x: Sequence[X]) -> X:
+    """Return the second element of a sequence."""
+    return x[1]
+
+
+def pair[X, Y](x: X, y: Y, /) -> tuple[X, Y]:
+    """Pack two objects into tuple."""
+    z: tuple[X, Y] = (x, y)
+    return z
+
+
+def swap_args[X, Y, Z](f: Callable[[X, Y], Z], /) -> Callable[[Y, X], Z]:
     """Swap arguments of bivariate function."""
     def g(y: Y, x: X, /) -> Z:
         z: Z = f(x, y)
@@ -31,7 +30,7 @@ def swap_args(f: Callable[[X, Y], Z], /) -> Callable[[Y, X], Z]:
     return g
 
 
-def decomp1d(n: int, n_batch: int, i_batch) -> tuple[int, int]:
+def decomp1d(n: int, n_batch: int, i_batch: int) -> tuple[int, int]:
     """Decompose a 1D domain of n samples into n_batch batches for near-uniform
     load. Modelled after MPI function MPE_DECOMP1D."""
     m = n // n_batch
@@ -40,13 +39,13 @@ def decomp1d(n: int, n_batch: int, i_batch) -> tuple[int, int]:
     if i_batch < deficit:
         m = m + 1
     k = j + m
-    if k > n or i_batch == (n_batch -1):
+    if k > n or i_batch == (n_batch - 1):
         k = n
     return j, k
 
 
-def batched(seq: Sequence[X], n: int,
-            mode: Literal['batch_size', 'batch_number'] = 'batch_size') \
+def batched[X](seq: Sequence[X], n: int,
+               mode: Literal['batch_size', 'batch_number'] = 'batch_size') \
         -> Generator[Sequence[X], None, None]:
     """Yield successive chunks from seq.
 
@@ -60,4 +59,17 @@ def batched(seq: Sequence[X], n: int,
         case 'batch_number':
             for j in range(0, n):
                 i0, i1 = decomp1d(len(seq), n, j)
-                yield seq[i0: i1]
+                yield seq[i0:i1]
+
+
+def timeit[*Args, T](func: Callable[[*Args], T]) -> Callable[[*Args], T]:
+    """Add basic timing wrapper to function."""
+    @wraps(func)
+    def timeit_wrapper(*args: *Args):
+        start_time = time.perf_counter()
+        result = func(*args)
+        end_time = time.perf_counter()
+        total_time = end_time - start_time
+        print(f"{func.__name__}: Took {total_time:.4f} seconds")
+        return result
+    return timeit_wrapper

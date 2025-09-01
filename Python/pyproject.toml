@@ -30,6 +30,7 @@ dependencies = [
     "diffrax",
     "ipympl",
     "ipywidgets",
+    "h5py",
     "jax",
     "jaxopt",
     "jaxtyping",
@@ -38,11 +39,15 @@ dependencies = [
     "more-itertools",
     "numpy",
     "opt_einsum",
+    "pandas",
     "qiskit",
+    "scikit-learn",
     "scipy",
     "seaborn",
     "sympy",
+    "tabulate",
     "tensorflow-probability",
+    "typeguard",
 ]
 
 [project.optional-dependencies]
@@ -52,17 +57,24 @@ cuda = [
 
 dev = [
     "flake8",
+    "h5py-stubs",
     "jupyterlab-vim",
     "mypy",
     "nb_mypy",
+    "pandas-stubs",
     "pyright",
     "pytest",
+    "ruff",
+    "scipy-stubs"
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov=nlsa"
 testpaths = [
     "tests",
+]
+addopts = [
+    "--cov=nlsa",
+    "--ignore=past"
 ]
 
 [project.urls]
@@ -89,4 +101,7 @@ exclude = ["**/node_modules",
     "**/__pycache__"
 ]
 typeCheckingMode = "strict"
-# typeCheckingMode = "basic"
+reportUnusedVariable = "error"
+
+[tool.ruff]
+select = ["E", "F", "D"]

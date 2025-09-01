@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import nlsa.jax.fourier_t1 as t1
 from functools import partial
 from jax import Array, vmap
-from nlsa.function_algebra2 import compose
+from nlsa.function_algebra import compose
 from nlsa.jax.scalar_algebra import ScalarField
 from nlsa.jax.vector_algebra import neg
 from typing import Callable, Generic, Literal, Optional, Type, TypeVar

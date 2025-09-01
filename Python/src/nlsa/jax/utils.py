@@ -1,3 +1,5 @@
+# pyright: basic
+
 import jax
 import jax.numpy as jnp
 from functools import partial
@@ -5,18 +7,37 @@ from jax import Array, vmap
 from jax.lax import concatenate
 from jax.typing import DTypeLike
 from nlsa.utils import batched
-from typing import Callable, Literal, Optional, TypeVar
+from typing import Callable, Literal, Optional
 
-V = Array  # vector
-Vs = Array  # collection of vectors
-K = DTypeLike  # scalar
-Ks = Array  # collection of scalars
-S = TypeVar('S')
-T = TypeVar('T')
-F = Callable[[S], T]  # alias for univariate function
+type V = Array  # vector
+type Vs = Array  # collection of vectors
+type K = Array  # scalar
+type Ks = Array  # collection of scalars
+type F[*Xs, Y] = Callable[[*Xs], Y]
 
 
-def materialize_array(matvec: Callable[[Array], Array], shape: tuple[int],
+def fst(x: V) -> V:
+    """Return the first element of an array."""
+    return x[0]
+
+
+def make_vectorvalued[X](f: F[X, K], vectorvalued: bool = True,
+                         dtype: Optional[DTypeLike] = None) \
+        -> F[X, K] | F[X, V]:
+    """Make vector-valued function."""
+    if vectorvalued:
+        def g(x: X, /) -> V:
+            y = jnp.empty(1, dtype=dtype)
+            y = y.at[0].set(f(x))
+            return y
+    else:
+        def g(x: X, /) -> K:
+            return jnp.array(f(x), dtype=dtype)
+    return g
+
+
+def materialize_array(matvec: Callable[[Array], Array],
+                      shape: int | tuple[int],
                       dtype=None, holomorphic=False, jit=False):
     """Materialize the matrix A used in matvec(x) = Ax."""
     x = jnp.zeros(shape, dtype)
@@ -24,7 +45,6 @@ def materialize_array(matvec: Callable[[Array], Array], shape: tuple[int],
         fn = jax.jit(jax.jacfwd(matvec, holomorphic=holomorphic))
     else:
         fn = jax.jacfwd(matvec, holomorphic=holomorphic)
-
     return fn(x)
 
 
@@ -41,13 +61,13 @@ def make_batched(f: F[Vs, Vs], max_batch_size: int,
     def g(vs: Vs) -> Vs:
         m = vs.shape[in_axis]
         if m > max_batch_size:
-            n_batch = -(m // -max_batch_size)  # ceiling division
+            num_batches = -(m // -max_batch_size)  # ceiling division
             match in_axis:
                 case 0:
-                    vss = batched(vs, n_batch, mode='batch_number')
+                    vss = batched(vs, num_batches, mode="batch_number")
                 case 1:
-                    vss = map(jnp.transpose, batched(vs.T, n_batch,
-                                                     mode='batch_number'))
+                    vss = map(jnp.transpose, batched(vs.T, num_batches,
+                                                     mode="batch_number"))
             return concatenate([f(v_batch) for v_batch in vss],
                                dimension=out_axis)
         else:
@@ -61,8 +81,8 @@ def make_bbatched(f: F[Vs, Vs], max_batch_sizes: tuple[int, int]) -> F[Vs, Vs]:
 
     def h(vs: Vs) -> Vs:
         m = vs.shape[0]
-        n_batch = -(m // -max_batch_sizes[0])
-        vss = batched(vs, n_batch, mode='batch_number')
+        num_batches = -(m // -max_batch_sizes[0])
+        vss = batched(vs, num_batches, mode="batch_number")
         return concatenate([g(v_batch) for v_batch in vss], dimension=0)
 
     return h
@@ -79,13 +99,13 @@ def make_batched2(f: Callable[[Vs, Vs], Vs], max_batch_sizes: tuple[int, int],
     def g(vs: Vs, ws: Vs) -> Vs:
         m = vs.shape[in_axes[0]]
         if m > max_batch_sizes[0]:
-            n_batch = -(m // -max_batch_sizes[0])  # ceiling division
+            num_batches = -(m // -max_batch_sizes[0])  # ceiling division
             match in_axes[0]:
                 case 0:
-                    vss = batched(vs, n_batch, mode='batch_number')
+                    vss = batched(vs, num_batches, mode="batch_number")
                 case 1:
-                    vss = map(jnp.transpose, batched(vs.T, n_batch,
-                                                     mode='batch_number'))
+                    vss = map(jnp.transpose, batched(vs.T, num_batches,
+                                                     mode="batch_number"))
             return concatenate([make_batched(partial(f, v_batch),
                                              max_batch_size=max_batch_sizes[1],
                                              in_axis=in_axes[1],
@@ -99,6 +119,7 @@ def make_batched2(f: Callable[[Vs, Vs], Vs], max_batch_sizes: tuple[int, int],
     return g
 
 
+# TODO: vmap operates over the last axis. Check that we want these semantics.
 def vmap2(f: Callable[[V, V], K]) -> Callable[[Vs, Vs], Ks]:
     """Vectorize bivariate function."""
     g = vmap(f, in_axes=(-1, None), out_axes=0)

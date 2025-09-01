@@ -1,398 +1,517 @@
-"""Provides functions and protocols for abstract algebraic structures."""
+"""Provide protocols and generic functions for abstract algebraic structures.
 
-from functools import partial
-from itertools import accumulate, repeat
-from typing import Callable, Iterator, Optional, Protocol, Self, TypeVar, \
-        runtime_checkable
+"""
+from collections.abc import Callable, Iterable
+from functools import partial, reduce
+from typing import Optional, Protocol, runtime_checkable
 
-B = TypeVar('B')
-B_contra = TypeVar('B_contra', contravariant=True)
-C = TypeVar('C')
-C_contra = TypeVar('C_contra', contravariant=True)
-T = TypeVar('T')
-T_co = TypeVar('T_co', covariant=True)
-T_contra = TypeVar('T_contra', contravariant=True)
-S = TypeVar('S')
-S_co = TypeVar('S_co', covariant=True)
-S_contra = TypeVar('S_contra', contravariant=True)
-
-F_co = TypeVar('F_co', covariant=True)
-H_co = TypeVar('H_co', covariant=True)
-F_contra = TypeVar('F_contra', contravariant=True)
-G_contra = TypeVar('G_contra', contravariant=True)
-H_contra = TypeVar('H_contra', contravariant=True)
-F = TypeVar('F')
-G = TypeVar('G')
-H = TypeVar('H')
-I = TypeVar('I')
-U = TypeVar('U')
-V = TypeVar('V')
-V_co = TypeVar('V_co', covariant=True)
-
-J_co = TypeVar('J_co', covariant=True)
-K_contra = TypeVar('K_contra', contravariant=True)
-K_co = TypeVar('K_co', covariant=True)
-K = TypeVar('K', float, complex)
-
-X = TypeVar('X')
-Y = TypeVar('Y')
-Z = TypeVar('Z')
-Z_co = TypeVar('Z_co', covariant=True)
-X_co = TypeVar('X_co', covariant=True)
-Y_co = TypeVar('Y_co', covariant=True)
-Y_contra = TypeVar('Y_contra', contravariant=True)
+type F[X, Y] = Callable[[X], Y]
 
 
 @runtime_checkable
-class SupportsAdd(Protocol):
-    """Represents types supporting addition."""
-    def __add__(a: Self, b: Self) -> Self:
-        ...
+class ImplementsZero[V](Protocol):
+    """Implement additive zero."""
+    zero: Callable[[], V]
 
 
 @runtime_checkable
-class ImplementsAdd(Protocol[T]):
-    """Represents types implementing addition."""
-    def add(self, a: T, b: T) -> T:
-        ...
+class ImplementsAdd[V](Protocol):
+    """Implement addition."""
+    add: Callable[[V, V], V]
 
 
 @runtime_checkable
-class Implements__Add__(Protocol[T]):
-    """Represents types implementing magic method for addition."""
-    def __add__(self, a: T, b: T) -> T:
-        ...
-
-
-class SupportsSub(Protocol):
-    """Represents types supporting addition."""
-    def __sub__(a: T, b: T) -> T:
-        ...
+class ImplementsSub[V](Protocol):
+    """Implement subtraction."""
+    sub: Callable[[V, V], V]
 
 
 @runtime_checkable
-class ImplementsSub(Protocol[T]):
-    """Represents types implementing subtraction."""
-    def sub(self, a: T, b: T) -> T:
-        ...
-
-
-class SupportsMul(Protocol[K_co, T]):
-    """Represents types supporting scalar/module multiplication."""
-    def __mul__(a: K_co, b: T) -> T:
-        ...
+class ImplementsNeg[V](Protocol):
+    """Implement additive negation."""
+    neg: Callable[[V], V]
 
 
 @runtime_checkable
-class ImplementsMul(Protocol[K_contra, T]):
-    """Represents types implementing scalar/module multiplication."""
-    def mul(self, a: K_contra, b: T) -> T:
-        ...
-
-
-class SupportsMatmul(Protocol):
-    """Represents types supporting algebraic multiplication.
-
-    The intent of the SupportsMatMul protocol is to generalize matrix
-    multiplication, which is the algebraic product for square matrices, to
-    other algebras (e.g., function algebras). We use the matmul method in the
-    protocol specification to allow types such as NumPy arrays to automatically
-    implement it. In mathematical terms, a more descriptive name for this class
-    could be SupportsAlgmul, but we use SupportsMatmul for consistency with
-    with other Supports* classes defined in this module.
-
-    """
-    def __matmul__(a: T, b: T) -> T:
-        ...
+class ImplementsSmul[K, V](Protocol):
+    """Implement scalar multiplication."""
+    smul: Callable[[K, V], V]
 
 
 @runtime_checkable
-class ImplementsAlgmul(Protocol[T]):
-    """Represents types implementing algebraic multiplication."""
-    def algmul(self, a: T, b: T) -> T:
-        ...
+class ImplementsSdiv[K, V](Protocol):
+    """Implement scalar division."""
+    sdiv: Callable[[K, V], V]
 
 
 @runtime_checkable
-class ImplementsPower(Protocol[T, S_contra]):
-    """Represents types implementing algebraic power (exponentiation)."""
-    def power(self, a: T, b: S_contra) -> T:
-        ...
+class ImplementsMul[A](Protocol):
+    """Implement algebraic multiplication."""
+    mul: Callable[[A, A], A]
 
 
 @runtime_checkable
-class ImplementsSqrt(Protocol[T]):
-    """Represents types implementing square root."""
-    def sqrt(self, a: T) -> T:
-        ...
+class ImplementsUnit[A](Protocol):
+    """Implement algebraic unit."""
+    unit: Callable[[], A]
 
 
 @runtime_checkable
-class ImplementsStar(Protocol[T]):
-    """Represents types implementing algebraic adjunction."""
-    def star(self, a: T) -> T:
-        ...
+class ImplementsDiv[A](Protocol):
+    """Implement algebraic division."""
+    div: Callable[[A, A], A]
 
 
 @runtime_checkable
-class ImplementsUnit(Protocol[T_co]):
-    """Represents types implementing algebraic unit."""
-    def unit(self) -> T_co:
-        ...
+class ImplementsInv[A](Protocol):
+    """Implement algebraic inversion."""
+    inv: Callable[[A], A]
 
 
 @runtime_checkable
-class ImplementsInv(Protocol[T]):
-    """Represents types implementing algebraic inversion."""
-    def inv(self, a: T) -> T:
-        ...
+class ImplementsMod[A](Protocol):
+    """Implement algebraic modulus."""
+    mod: Callable[[A], A]
 
 
 @runtime_checkable
-class ImplementsAlgdiv(Protocol[T]):
-    """Represents types implementing algebraic division.
-
-    algdiv(a, b) = algmul(a, inv(b)).
-
-    """
-    def algdiv(self, a: T, b: T) -> T:
-        ...
+class ImplementsLmul[L, V](Protocol):
+    """Implement left module multiplication."""
+    lmul: Callable[[L, V], V]
 
 
 @runtime_checkable
-class ImplementsAlgldiv(Protocol[T]):
-    """Represents types implementing algebraic left division.
-
-    algldiv(a, b) = algmul(inv(a), b).
-
-    """
-    def algldiv(self, a: T, b: T) -> T:
-        ...
+class ImplementsRmul[V, R](Protocol):
+    """Implement right module multiplication."""
+    rmul: Callable[[V, R], V]
 
 
 @runtime_checkable
-class ImplementsRdiv(Protocol[T, K_contra]):
-    """Represents types implementing right module division."""
-    def algdiv(self, a: T, b: K_contra) -> T:
-        ...
+class ImplementsPower[A, K](Protocol):
+    """Implement algebraic power (exponentiation)."""
+    power: Callable[[A, K], A]
 
 
 @runtime_checkable
-class ImplementsVectorSpace(ImplementsAdd[T], ImplementsSub[T],
-                            ImplementsMul[K_contra, T], Protocol[T, K_contra]):
-    """Represents types implementing vector space operations."""
-    ...
+class ImplementsSqrt[A](Protocol):
+    """Implement square root."""
+    sqrt: Callable[[A], A]
 
 
 @runtime_checkable
-class ImplementsAlgebra(ImplementsVectorSpace[T, K_contra], ImplementsAlgmul[T],
-                        ImplementsSqrt[T], ImplementsPower[T, K_contra],
-                        Protocol[T, K_contra]):
-    """Represents types implementing algebra operations."""
+class ImplementsExp[A, B](Protocol):
+    """Implement exponentiation."""
+    exp: Callable[[A], B]
 
 
 @runtime_checkable
-class ImplementsStarAlgebra(ImplementsAlgebra[T, K_contra], ImplementsStar[T],
-                            Protocol[T, K_contra]):
-    """Reperesents types implementing star algebra operations."""
-    ...
+class ImplementsAdj[A](Protocol):
+    """Implement algebraic adjunction."""
+    adj: Callable[[A], A]
 
 
 @runtime_checkable
-class ImplementsUnitalAlgebra(ImplementsAlgebra[T, K_contra],
-                              ImplementsAlgdiv[T], ImplementsAlgldiv[T],
-                              ImplementsInv[T], ImplementsUnit[T],
-                              Protocol[T, K_contra]):
-    """Reperesents types implementing unital algebra operations."""
-    ...
+class ImplementsLdiv[L, V](Protocol):
+    """Implement left module division."""
+    ldiv: Callable[[L, V], V]
 
 
 @runtime_checkable
-class ImplementsUnitalStarAlgebra(ImplementsUnitalAlgebra[T, K_contra],
-                                  ImplementsStar[T], Protocol[T, K_contra]):
-    """Reperesents types implementing unital star algebra operations."""
-    ...
+class ImplementsRdiv[V, R](Protocol):
+    """Implement right module division."""
+    rdiv: Callable[[V, R], V]
 
 
 @runtime_checkable
-class ImplementsPureState(Protocol[T_contra, S_contra]):
-    """Represents types implementing pure algebra states."""
-    def pure_state(self, a: T_contra) -> Callable[[S_contra], K]:
-        ...
+class ImplementsNorm[V, R](Protocol):
+    """Implement norm."""
+    norm: Callable[[V], R]
 
 
 @runtime_checkable
-class ImplementsInnerp(Protocol[T_contra, S_co]):
-    """Represents types implementing inner product"""
-    def innerp(self, a: T_contra, b: T_contra) -> S_co:
-        ...
-
-
-class SupportsCompose(Protocol[G_contra, F_co, H_co]):
-    """Represents types supporting composition."""
-    def cmp(f: F_co, g: G_contra) -> H_co:
-        ...
+class ImplementsInnerp[V, K](Protocol):
+    """Implement inner product."""
+    innerp: Callable[[V, V], K]
 
 
 @runtime_checkable
-class ImplementsCompose(Protocol[G_contra, F_contra, H_co]):
-    """Represents types implementing composition."""
-    def compose(t, f: F_contra, g: G_contra) -> H_co:
-        ...
+class ImplementsIncl[X, Y, V](Protocol):
+    """Implement function inclusion."""
+    incl: Callable[[F[X, Y]], V]
 
 
 @runtime_checkable
-class ImplementsSynthesis(Protocol[B_contra, C_contra, V_co]):
-    """Represents types implementing synthesis (linear combination) of vectors
-    from a dictionary.
-
-    B: Dictionary/basis type.
-    C: Expansion coefficients type.
-    V: Returned vector type.
-    """
-
-    def synthesis(self, b: B_contra, c: C_contra) -> V_co:
-        ...
+class ImplementsIntegrate[V, K](Protocol):
+    """Implement integration."""
+    integrate: Callable[[V], K]
 
 
-class Lift:
+@runtime_checkable
+class ImplementsCompose[F, G, H](Protocol):
+    """Implement composition."""
+    compose: Callable[[F, G], H]
+
+
+@runtime_checkable
+class ImplementsScalarField[K](ImplementsZero[K], ImplementsAdd[K],
+                               ImplementsSub[K], ImplementsNeg[K],
+                               ImplementsMul[K], ImplementsUnit[K],
+                               ImplementsDiv[K], ImplementsInv[K],
+                               ImplementsAdj[K], ImplementsSqrt[K],
+                               ImplementsPower[K, K], ImplementsMod[K],
+                               Protocol):
+    """Implement scalar field operations."""
     pass
 
 
-class SupportsLift(Protocol):
-    """Represents types supporting a functorial lift operation."""
-    def lift(self, base: object) -> Lift:
-        ...
+@runtime_checkable
+class ImplementsVectorSpace[T, K](ImplementsZero[T], ImplementsAdd[T],
+                                  ImplementsSub[T], ImplementsNeg[T],
+                                  ImplementsSmul[K, T], ImplementsSdiv[K, T],
+                                  Protocol):
+    """Implement vector space operations."""
+    scl: ImplementsScalarField[K]
 
 
-def compose_by(impl: ImplementsCompose[G, F, H], g: G) -> Callable[[F], H]:
-    """Composition map."""
+@runtime_checkable
+class ImplementsNormedSpace[T, K](ImplementsVectorSpace[T, K],
+                                  ImplementsNorm[T, K], Protocol):
+    """Implement normed space operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductSpace[V, K](ImplementsNormedSpace[V, K],
+                                        ImplementsInnerp[V, K], Protocol):
+    """Implement inner product space operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsAlgebra[A, K](ImplementsVectorSpace[A, K], ImplementsMul[A],
+                              ImplementsDiv[A], ImplementsInv[A],
+                              ImplementsUnit[A], ImplementsAdj[A],
+                              ImplementsPower[A, K], ImplementsSqrt[A],
+                              ImplementsMod[A], Protocol):
+    """Implement algebra operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedAlgebra[A, K](ImplementsAlgebra[A, K],
+                                    ImplementsNorm[A, K], Protocol):
+    """Implement normed algebra operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductAlgebra[V, K](ImplementsNormedAlgebra[V, K],
+                                          ImplementsInnerp[V, K], Protocol):
+    """Implement inner product space operations."""
+    pass
+
+
+# TODO: Check if we need dom and codom.
+@runtime_checkable
+class ImplementsOperatorSpace[T, V, W, K](ImplementsVectorSpace[T, K],
+                                          Protocol):
+    """
+    Implement vector space operations for linear maps on inner product spaces.
+    """
+    dom: ImplementsInnerProductSpace[V, K]
+    codom: ImplementsInnerProductSpace[W, K]
+    app: Callable[[T, V], W]
+
+
+@runtime_checkable
+class ImplementsOperatorAlgebra[A, V, K](ImplementsOperatorSpace[A, V, V, K],
+                                         ImplementsAlgebra[A, K],
+                                         Protocol):
+    """Implement algebra operations on a Hilbert space."""
+
+
+@runtime_checkable
+class ImplementsLModule[M, K, L](ImplementsVectorSpace[M, K],
+                                 ImplementsLmul[L, M], ImplementsLdiv[L, M],
+                                 Protocol):
+    """Implement left module operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsRModule[M, K, R](ImplementsVectorSpace[M, K],
+                                 ImplementsRmul[M, R], ImplementsRdiv[M, R],
+                                 Protocol):
+    """Implement right module operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsBimodule[M, K, L, R](ImplementsLModule[M, K, L],
+                                     ImplementsRModule[M, K, R],
+                                     Protocol):
+    """Implement bimodulde operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductLModule[M, K, L](ImplementsInnerProductSpace[M, K],
+                                             ImplementsLmul[L, M],
+                                             ImplementsLdiv[L, M],
+                                             Protocol):
+    """Implement inner-product left module operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductRModule[M, K, R](ImplementsInnerProductSpace[M, K],
+                                             ImplementsRmul[M, R],
+                                             ImplementsRdiv[M, R],
+                                             Protocol):
+    """Implement inner-product right module operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductBimodule[M, K, L, R](
+        ImplementsInnerProductLModule[M, K, L],
+        ImplementsInnerProductRModule[M, K, R], Protocol):
+    """Implement inner product bimodulde operations."""
+    pass
+
+
+@runtime_checkable
+class ImplementsMeasurableFnAlgebra[X, Y, V, K](ImplementsAlgebra[V, K],
+                                                ImplementsIncl[X, Y, V],
+                                                Protocol):
+    """Implement operations on equivalence classes of functions."""
+    pass
+
+
+@runtime_checkable
+class ImplementsMeasureFnAlgebra[X, Y, V, K](
+        ImplementsMeasurableFnAlgebra[X, Y, V, K], ImplementsIntegrate[V, Y],
+        Protocol):
+    """Implement operations on measure function space."""
+    pass
+
+
+@runtime_checkable
+class ImplementsL2FnAlgebra[X, Y, V, K](ImplementsMeasureFnAlgebra[X, Y, V, K],
+                                        ImplementsInnerp[V, K],
+                                        Protocol):
+    """Implement operations on L2 function space with algebra structure."""
+    pass
+
+
+@runtime_checkable
+class ImplementsAnalysisOperators[V, Ks](Protocol):
+    """Implement analysis operators associated with frame."""
+    anal: Callable[[V], Ks]
+    dual_anal: Callable[[V], Ks]
+
+
+@runtime_checkable
+class ImplementsSynthesisOperators[V, Ks](Protocol):
+    """Implement synthesis operators associated with fame."""
+    synth: Callable[[Ks], V]
+    dual_synth: Callable[[Ks], V]
+
+
+@runtime_checkable
+class ImplementsFrame[V, Ks, I](ImplementsAnalysisOperators[V, Ks],
+                                ImplementsSynthesisOperators[V, Ks],
+                                Protocol):
+    """Implement analysis and synthesis operators associated with frame."""
+    vec: Callable[[I], V]
+    dual_vec: Callable[[I], V]
+
+
+@runtime_checkable
+class ImplementsDimensionedFrame[V, Ks, I](ImplementsFrame[V, Ks, I],
+                                           Protocol):
+    """Implement operators of frame with known dimension."""
+    dim: int
+
+
+@runtime_checkable
+class ImplementsFnAnalysisOperators[X, Y, Ks](Protocol):
+    """Implement function analysis operators."""
+    fn_anal: Callable[[F[X, Y]], Ks]
+    dual_fn_anal: Callable[[F[X, Y]], Ks]
+
+
+@runtime_checkable
+class ImplementsFnSynthesisOperators[X, Y, Ks](Protocol):
+    """Implement function synthesis operators."""
+    fn_synth: Callable[[Ks], F[X, Y]]
+    dual_fn_synth: Callable[[Ks], F[X, Y]]
+
+
+@runtime_checkable
+class ImplementsL2FnFrame[X, Y, V, Ks, I](
+        ImplementsFrame[V, Ks, I], ImplementsFnSynthesisOperators[X, Y, Ks],
+        ImplementsFnAnalysisOperators[X, Y, Ks], Protocol):
+    """Implement frame of L2 function space."""
+    fn: Callable[[I], F[X, Y]]
+    dual_fn: Callable[[I], F[X, Y]]
+
+
+@runtime_checkable
+class ImplementsDimensionedL2FnFrame[X, Y, V, Ks, I](
+        ImplementsL2FnFrame[X, Y, V, Ks, I], Protocol):
+    """Implement operators of L2 function frame with known dimension."""
+    dim: int
+
+
+def compose_by[F, G, H](impl: ImplementsCompose[F, G, H], g: G, /) \
+        -> Callable[[F], H]:
+    """Make composition map."""
     def u(f: F) -> H:
         h = impl.compose(f, g)
         return h
     return u
 
 
-def precompose_by(impl: ImplementsCompose[G, F, H], f: F) -> Callable[[G], H]:
-    """Precomposition map."""
-    def u(g: G) -> H:
-        h = impl.compose(f, g)
-        return h
-    return u
+def precompose_by[F, G, H](impl: ImplementsCompose[F, G, H], f: F, /) \
+        -> Callable[[G], H]:
+    """Make pre-composition map."""
+    return partial(impl.compose, f)
 
 
-def conjugate_by(t1: ImplementsCompose[H, U, F], u: U,
-                 t2: ImplementsCompose[V, G, H], v: V) -> Callable[[G], F]:
+def conjugate_by[F, G, H, U, V](impl1: ImplementsCompose[U, H, F], u: U,
+                                impl2: ImplementsCompose[G, V, H], v: V, /) \
+        -> Callable[[G], F]:
     """Conjugation map."""
     def c(g: G) -> F:
-        h = t2.compose(g, v)
-        f = t1.compose(u, h)
+        h = impl2.compose(g, v)
+        f = impl1.compose(u, h)
         return f
     return c
 
 
-def multiply_by(impl: ImplementsAlgmul[T], a: T) -> Callable[[T], T]:
-    """Multiplication operator.
-
-    :impl: Object that implements algebraic multiplication for a type T.
-    :a: Object of type T.
-    :returns: Multiplication function by a.
-
-    """
-    def m(b: T) -> T:
-        c = impl.algmul(a, b)
+def multiply_by[A](impl: ImplementsMul[A], a: A, /) -> Callable[[A], A]:
+    """Make multiplication operator."""
+    def m(b: A) -> A:
+        c = impl.mul(a, b)
         return c
     return m
 
 
-def algdiv_by(impl: ImplementsAlgdiv[T], a: T) -> Callable[[T], T]:
-    """Algebraic division operator.
-
-    :impl: Object that implements algebraic division for a type T.
-    :a: Object of type T.
-    :returns: Division function by a.
-
-    """
-    def m(b: T) -> T:
-        c = impl.algdiv(b, a)
+def divide_by[A](impl: ImplementsDiv[A], a: A, /) -> Callable[[A], A]:
+    """Make division operator."""
+    def m(b: A) -> A:
+        c = impl.div(b, a)
         return c
     return m
 
 
-def exponentiate_by(impl: ImplementsPower[T, S], a: S)\
-        -> Callable[[T], T]:
-    """Exponentiation map by a fixed exponent.
+def smultiply_by[K, V](impl: ImplementsSmul[K, V], a: K, /) \
+        -> Callable[[V], V]:
+    """Make scalar multiplication operator."""
+    def m(b: V) -> V:
+        c = impl.smul(a, b)
+        return c
+    return m
 
-    :impl: Object that implements exponentiation (power) for types T and K.
-    :a: Exponent.
-    :returns: Exponentiation map.
 
-    """
-    def exp_a(b: T) -> T:
+def ldivide_by[L, M](impl: ImplementsLdiv[L, M], a: L, /) -> Callable[[M], M]:
+    """Make left division operator."""
+    def m(b: M) -> M:
+        c = impl.ldiv(a, b)
+        return c
+    return m
+
+
+def exponentiate_by[A, K](impl: ImplementsPower[A, K], a: K, /) \
+        -> Callable[[A], A]:
+    """Make exponentiation map."""
+    def exp_a(b: A) -> A:
         c = impl.power(b, a)
         return c
     return exp_a
 
 
-def synthesis_operator(impl: ImplementsSynthesis[B, C, V], b: B)\
-        -> Callable[[C], V]:
-    synth = partial(impl.synthesis, b)
-    return synth
-
-
-def id_map(x: T) -> T:
+def identity[X](x: X, /) -> X:
     """Identity map."""
     return x
 
 
-def l2_innerp(impl: ImplementsStarAlgebra[T, S], mu: Callable[[T], S],
-              a: T, b: T)\
-                      -> S:
-    """L2 inner product."""
-    y = mu(impl.algmul(impl.star(a), b))
-    return y
+def lapp[T, V, W, K](impl: ImplementsOperatorSpace[T, V, W, K], a: T, v: V,
+                     /) -> W:
+    """Apply linear map to vector."""
+    return impl.app(a, v)
 
 
-def make_l2_innerp(impl: ImplementsStarAlgebra[T, S], mu: Callable[[T], S])\
-        -> Callable[[T, T], S]:
-    """Make L2 inner product function."""
-    ip = partial(l2_innerp, impl, mu)
-    return ip
+def make_linear_operator[T, V, W, K](impl: ImplementsOperatorSpace[T, V, W, K],
+                                     a: T, /) -> Callable[[V], W]:
+    """Make linear map."""
+    def op(v: V) -> W:
+        return impl.app(a, v)
+    return op
 
 
-def riesz_dual(w: Callable[[U, U], S], u: U) -> Callable[[U], S]:
-    """Riesz dual vector associated with bilinear form.
-
-    :w: Bilinear form
-    :u: Input vector.
-    :returns: Riesz dual.
-
-    """
-    u_star = partial(w, u)
-    return u_star
+def make_form[T, V, W, K](impl: ImplementsOperatorSpace[T, V, W, K], a: T)\
+        -> Callable[[W, V], K]:
+    """Make bilinear or sesquilinear form."""
+    def b(w: W, v: V) -> K:
+        return impl.codom.innerp(w, impl.app(a, v))
+    return b
 
 
-# TODO: Consider replacing with implementation from more_itertools
-def iterate(impl: ImplementsCompose[F, F, F], f: F, initial: Optional[F] = None)\
-        -> Iterator[F]:
-    """Iterated function."""
-    if initial is None:
-        initial = f
-    itf = accumulate(repeat(f), impl.compose, initial=initial)
-    return itf
+def normalize[V, K](impl: ImplementsNormedSpace[V, K], v: V) -> V:
+    """Normalize vector in normed space."""
+    return impl.sdiv(impl.norm(v), v)
 
 
-# @runtime_checkable
-# class ImplementsPairwiseAlgmul(Protocol[T]):
-#     """Represents types implementing pairwise algebraic multiplication."""
-#     def pairwise_algmul(self, a: Indexable[T], b:Indexable[T])\
-#             -> Indexable[T]:
-#         ...
+def make_vector_state[A, V, K](impl: ImplementsOperatorAlgebra[A, V, K],
+                               v: V, /) -> Callable[[A], K]:
+    """Make vector state of operator algebra."""
+    def phi(a: A) -> K:
+        return impl.codom.innerp(v, impl.app(a, v))
+    return phi
 
 
-# @runtime_checkable
-# class ImplementsPairwiseStarAlgebra(ImplementsPairwiseAdd[T],
-#                                     ImplementsPairwiseAlgmul[T],
-#                                     ImplementsStar[T], Protocol[T]):
-#     """Reperesents types implementing pairwise star algebra operations."""
-#     pass
+def gelfand[A, K](impl: ImplementsAlgebra[A, K], a: A)\
+        -> Callable[[Callable[[A], K]], K]:
+    """Compute Gelfand transform of algebra element."""
+    def g(phi: Callable[[A], K]) -> K:
+        return phi(a)
+    return g
+
+
+def make_qeval[A, V, K, X](impl: ImplementsOperatorAlgebra[A, V, K],
+                           feat: Callable[[X], V])\
+        -> Callable[[X], F[A, K]]:
+    """Make quantum pointwise evaluation functional from feature map."""
+    def eval_at(x: X) -> Callable[[A], K]:
+        phi = make_vector_state(impl, feat(x))
+
+        def evalx(a: A) -> K:
+            return phi(a)
+
+        return evalx
+    return eval_at
+
+
+def sum[V, K](impl: ImplementsVectorSpace[V, K], vs: Iterable[V],
+              initializer: Optional[V] = None) -> V:
+    """Sum a collection of elements of a vector space."""
+    if initializer is None:
+        initializer = impl.zero()
+    return reduce(impl.add, vs, initializer)
+
+
+def product[A, K](impl: ImplementsAlgebra[A, K], vs: Iterable[A],
+                  initializer: Optional[A] = None) -> A:
+    """Multiply a collection of algebra elements."""
+    if initializer is None:
+        initializer = impl.unit()
+    return reduce(impl.mul, vs, initializer)
+
+
+def linear_combination[V, K](impl: ImplementsVectorSpace[V, K],
+                             cs: Iterable[K], vs: Iterable[V]) -> V:
+    """Form linear combination of elements of a vector space."""
+    cvs = map(impl.smul, cs, vs)
+    return sum(impl, cvs)

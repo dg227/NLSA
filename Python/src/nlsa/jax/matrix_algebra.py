@@ -44,7 +44,7 @@ def ldivm(a: A, b: A, /) -> A:
     return jnp.matmul(inv(a), b)
 
 
-def star(a: A, /) -> A:
+def adj(a: A, /) -> A:
     """Compute complex conjugate transpose of matrix."""
     return jnp.conjugate(a.T)
 
@@ -89,7 +89,7 @@ class MatrixAlgebra(Generic[N, K]):
         self.mul: Callable[[A, A], A] = jnp.matmul
         self.inv: Callable[[A], A] = inv
         self.div: Callable[[A, A], A] = divm
-        self.star: Callable[[A], A] = star
+        self.adj: Callable[[A], A] = adj
         self.lmul: Callable[[A, A], A] = jnp.matmul
         self.ldiv: Callable[[A, A], A] = ldivm
         self.rmul: Callable[[A, A], A] = jnp.matmul
@@ -146,7 +146,7 @@ class MatrixSpace(Generic[M, N, K]):
         self.neg: Callable[[A], A] = neg
         self.sub: Callable[[A, A], A] = jnp.subtract
         self.smul: Callable[[S, A], A] = jnp.multiply
-        self.star: Callable[[A], A] = star
+        self.adj: Callable[[A], A] = adj
         self.lmul: Callable[[A, A], A] = jnp.matmul
         self.ldiv: Callable[[A, A], A] = ldivm
         self.rmul: Callable[[A, A], A] = jnp.matmul
