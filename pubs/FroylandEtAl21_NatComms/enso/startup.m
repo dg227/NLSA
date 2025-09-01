@@ -1,2 +1,2 @@
-addpath(genpath(fullfile('../../../', 'nlsa')))
+addpath(genpath(fullfile('../../../', 'MATLAB/nlsa')))
 beep off
