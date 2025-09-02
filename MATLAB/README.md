@@ -1,6 +1,6 @@
-# MATLAB NLSA code.
+# MATLAB NLSA code
 
-This project provides a MATLAB implementation of nonlinear Laplacian spectral analysis (NLSA) and related kernel algorithms for feature extraction and prediction of observables of dynamical systems. 
+This project provides a MATLAB implementation of nonlinear Laplacian spectral analysis (NLSA) and related operator methods for feature extraction and prediction of observables of dynamical systems. 
 
 ## Usage
 
@@ -40,7 +40,7 @@ NLSA implements a MATLAB class ``nlsaModel`` which encodes the attributes of the
 - Projection and reconstruction of target data.   
 - Nystrom out-of-sample extension.
 
-Each of the elements above are implemented as MATLAB classes. See ``/nlsa/classes`` for further information and basic documentation.
+Each of the elements above are implemented as MATLAB classes. See ``NLSA/MATLAB/nlsa/classes`` for further information and basic documentation.
 
 Results from each stage of the computation are written on disk in a directory tree with (near-) unique names based on the nlsaModel parameters. 
 
