@@ -22,6 +22,7 @@ type F[*Ss, T] = Callable[[*Ss], T]  # Shorthand for Callables
 @dataclass(frozen=True)
 class IO:
     """Keep record of IO actions."""
+
     root: Path = Path.cwd()
     paths: list[Path] = field(default_factory=list[Path])
 
@@ -56,12 +57,15 @@ class IO:
             return self.root
 
 
-def pickleit[T, **P](f: Callable[P, T], io: IO,
-                     mode: Literal['calc', 'calcsave', 'read'] = "calc",
-                     fname: str = "Untitled",
-                     cls: Optional[type[T]] = None) -> Callable[P, T]:
-    ...
+def pickleit[T, **P](
+    f: Callable[P, T],
+    io: IO,
+    mode: Literal["calc", "calcsave", "read"] = "calc",
+    fname: str = "Untitled",
+    cls: Optional[type[T]] = None,
+) -> Callable[P, T]:
     """Wrap computation to perform pickling/unpickling."""
+
     @wraps(f)
     def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
         match mode:
@@ -71,29 +75,32 @@ def pickleit[T, **P](f: Callable[P, T], io: IO,
                 y = f(*args, **kwargs)
                 pth: Path = io.cwd / ".".join((fname, "pkl"))
                 pth.parent.mkdir(parents=True, exist_ok=True)
-                with open(pth, 'wb') as file:
+                with open(pth, "wb") as file:
                     pickle.dump(y, file, protocol=pickle.HIGHEST_PROTOCOL)
                 print(f"Data saved at {pth}")
             case "read":
                 assert cls is not None
                 pth: Path = io.cwd / ".".join((fname, "pkl"))
-                with open(pth, 'rb') as file:
+                with open(pth, "rb") as file:
                     y = pickle.load(file)
                 check_type(y, cls)
                 print(f"Data read from {pth}")
         return y
+
     return f_wrapped
 
 
 def h5it[T: Mapping[str, object], **P](
-            f: Callable[P, T], io: IO,
-            mode: Literal['calc', 'calcsave', 'read'] = "calc",
-            fname: str = "Untitled", dtype: Optional[DTypeLike] = None,
-            cls: Optional[type[T]] = None,
-            callback: Optional[Callable[[dict[str, ArrayLike]], T]] = None) \
-        -> Callable[P, T]:
-    ...
+    f: Callable[P, T],
+    io: IO,
+    mode: Literal["calc", "calcsave", "read"] = "calc",
+    fname: str = "Untitled",
+    dtype: Optional[DTypeLike] = None,
+    cls: Optional[type[T]] = None,
+    callback: Optional[Callable[[dict[str, ArrayLike]], T]] = None,
+) -> Callable[P, T]:
     """Wrap computation to perform saving to/reading from HDF5 file."""
+
     @wraps(f)
     def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
         match mode:
@@ -106,12 +113,13 @@ def h5it[T: Mapping[str, object], **P](
                 with h5py.File(pth, "w") as file:
                     for key, value in y.items():
                         try:
-                            file.create_dataset(key,
-                                                data=np.asarray(value,
-                                                                dtype=dtype))
+                            file.create_dataset(
+                                key, data=np.asarray(value, dtype=dtype)
+                            )
                         except TypeError as exc:
-                            raise TypeError("Dict value must be ArrayLike") \
-                                    from exc
+                            raise TypeError(
+                                "Dict value must be ArrayLike"
+                            ) from exc
                 print(f"Data saved at {pth}")
             case "read":
                 assert cls is not None
@@ -125,17 +133,20 @@ def h5it[T: Mapping[str, object], **P](
                     y = callback(y_dict)
                 print(f"Data read from {pth}")
         return y
+
     return f_wrapped
 
 
 def npyit[T: ArrayLike, **P](
-            f: Callable[P, T], io: IO,
-            mode: Literal['calc', 'calcsave', 'read'] = "calc",
-            fname: str = "Untitled",
-            cls: Optional[type[T]] = None,
-            callback: Optional[Callable[[ArrayLike], T]] = None) \
-        -> Callable[P, T]:
+    f: Callable[P, T],
+    io: IO,
+    mode: Literal["calc", "calcsave", "read"] = "calc",
+    fname: str = "Untitled",
+    cls: Optional[type[T]] = None,
+    callback: Optional[Callable[[ArrayLike], T]] = None,
+) -> Callable[P, T]:
     """Wrap computation to perform saving to/reading from npy file."""
+
     @wraps(f)
     def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
         match mode:
@@ -157,17 +168,20 @@ def npyit[T: ArrayLike, **P](
                 check_type(y, cls)
                 print(f"Data read from {pth}")
         return y
+
     return f_wrapped
 
 
 def csvit[**P](
-            f: Callable[P, DataFrame], io: IO,
-            mode: Literal['calc', 'calcsave', 'read'] = "calc",
-            fname: str = "Untitled",
-            index: Optional[bool | str] = None,
-            callback: Optional[Callable[[DataFrame], DataFrame]] = None) \
-        -> Callable[P, DataFrame]:
+    f: Callable[P, DataFrame],
+    io: IO,
+    mode: Literal["calc", "calcsave", "read"] = "calc",
+    fname: str = "Untitled",
+    index: Optional[bool | str] = None,
+    callback: Optional[Callable[[DataFrame], DataFrame]] = None,
+) -> Callable[P, DataFrame]:
     """Wrap computation to perform saving to/reading from csv file."""
+
     @wraps(f)
     def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> DataFrame:
         match mode:
@@ -195,11 +209,13 @@ def csvit[**P](
                     df = df.set_index(index)
                 print(f"Data read from {pth}")
         return df
+
     return f_wrapped
 
 
 def timeit[T, **P](f: Callable[P, T]) -> Callable[P, T]:
     """Add basic timing wrapper to function."""
+
     @wraps(f)
     def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
         start_time = time.perf_counter()
@@ -208,26 +224,32 @@ def timeit[T, **P](f: Callable[P, T]) -> Callable[P, T]:
         total_time = end_time - start_time
         print(f"{f.__name__}: Took {total_time:.4f} seconds")
         return y
+
     return f_wrapped
 
 
 def pauseit[T, **P](f: Callable[P, T]) -> Callable[P, T]:
     """Pause execution until key input."""
+
     @wraps(f)
     def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
         y = f(*args, **kwargs)
-        input("Press any key to continue...")
+        input("Press Enter to continue...")
         return y
+
     return f_wrapped
 
 
-def plotit[**P](f: Callable[P, Figure],
-                io: IO,
-                mode: Optional[Literal['save', 'show', 'saveshow']] = "show",
-                fname: str = "Untitled",
-                dpi: Literal['figure'] | float = "figure",
-                fmt: str = "png") -> Callable[P, Optional[Figure]]:
+def plotit[**P](
+    f: Callable[P, Figure],
+    io: IO,
+    mode: Optional[Literal["save", "show", "saveshow"]] = "show",
+    fname: str = "Untitled",
+    dpi: Literal["figure"] | float = "figure",
+    fmt: str = "png",
+) -> Callable[P, Optional[Figure]]:
     """Wrap plotting function to implement saving/showing to screen."""
+
     @wraps(f)
     def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> Optional[Figure]:
         if mode is not None:
@@ -239,22 +261,26 @@ def plotit[**P](f: Callable[P, Figure],
                 print(f"Figure saved at {pth}")
             if "show" in mode:
                 plt.show(block=False)
-                input("Press any key to continue...")
+                input("Press Enter to continue...")
             return fig
+
     return f_wrapped
 
 
-def plotem[**P](f: Callable[P, tuple[Figure, F[int, None]]],
-                io: IO,
-                mode: Optional[Literal['save', 'show', 'saveshow']] = "show",
-                block: bool | Literal['user'] = True, fname: str = "Untitled",
-                dpi: Literal['figure'] | float = "figure",
-                fmt: str = "png") \
-        -> Callable[P, tuple[Optional[Figure], F[int, None]]]:
+def plotem[**P](
+    f: Callable[P, tuple[Figure, F[int, None]]],
+    io: IO,
+    mode: Optional[Literal["save", "show", "saveshow"]] = "show",
+    fname: str = "Untitled",
+    dpi: Literal["figure"] | float = "figure",
+    fmt: str = "png",
+) -> Callable[P, tuple[Optional[Figure], F[int, None]]]:
     """Wrap plotting function to implement saving/showing of multiple figs."""
+
     @wraps(f)
-    def f_wrapped(*args: P.args, **kwargs: P.kwargs) \
-            -> tuple[Optional[Figure], F[int, None]]:
+    def f_wrapped(
+        *args: P.args, **kwargs: P.kwargs
+    ) -> tuple[Optional[Figure], F[int, None]]:
         if mode is not None:
             fig, g = f(*args, **kwargs)
 
@@ -268,10 +294,14 @@ def plotem[**P](f: Callable[P, tuple[Figure, F[int, None]]],
                     print(f"Figure saved at {pth}")
                 if mode is not None and "show" in mode:
                     plt.show(block=False)
-                    input("Press any key to continue...")
+                    input("Press Enter to continue...")
+
             return fig, g_wrapped
         else:
+
             def g_wrapped(_: int) -> None:
                 pass
+
             return None, g_wrapped
+
     return f_wrapped

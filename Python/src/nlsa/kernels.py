@@ -12,10 +12,22 @@ from typing import Literal, Optional, final
 type F[*Xs, Y] = Callable[[*Xs], Y]
 
 
+@dataclass(frozen=True)
+class ConePars:
+    """Dataclass containing cone kernel parameters."""
+
+    zeta: float
+    """Cone kernel anisotropy parameter."""
+
+    threshold: float = 1e-12
+    """Cone distance threshold parameter (for stable autodiff at zero)."""
+
+
 @final
 @dataclass(frozen=True)
 class KernelEigenbasis[X, K, V, Ks, I](
-        alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, I]):
+    alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, I]
+):
     """Dataclass implementing frame operators for kernel eigenbasis."""
 
     dim: int
@@ -222,8 +234,9 @@ def dmsym_normalize[X, V, K](impl: alg.ImplementsMeasureFnAlgebra[X, K, V, K],
 
 def from_dmsym[Vs, V, K](impl: alg.ImplementsLModule[Vs, K, V], v0: V,
                          vs: Vs, /) -> Vs:
-    """Normalize eigenvectors from symmetric diffusion maps normalization to
-    obtain eigenvectors with respect to Markov normalization.
+    """Normalize eigenvectors from symmetric diffusion maps.
+
+    Resulting eigenvectors are normalized with respect to Markov normalization.
     """
     return impl.ldiv(v0, vs)
 
@@ -281,7 +294,7 @@ def compose[X, V, K](impl: alg.ImplementsMeasureFnAlgebra[X, K, V, K],
 def make_mercer_kernel[X, V, K](impl: alg.ImplementsInnerProductAlgebra[V, K],
                                 psi_l: F[X, V], psi_r: F[X, V], /) \
        -> Callable[[X, X], K]:
-    """Make Mercer kernel from 'left' and 'right' feature vectors"""
+    """Make Mercer kernel from 'left' and 'right' feature vectors."""
     def k(x: X, y: X, /) -> K:
         return impl.innerp(psi_l(x), psi_r(y))
     return k

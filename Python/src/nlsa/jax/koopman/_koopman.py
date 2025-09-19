@@ -56,11 +56,10 @@ def compute_eigen_diff[X: Array](
     match pars.which_eigs_galerkin:
         case int():
             idxs = jnp.arange(1, pars.which_eigs_galerkin + 1)
-        case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                and len(ints) == 2:
+        case (_, _):
             idxs = jnp.arange(pars.which_eigs_galerkin[0],
                               pars.which_eigs_galerkin[1])
-        case _:
+        case list():
             idxs = jnp.array(pars.which_eigs_galerkin)
     assert jnp.all(idxs)  # All indices should be nonzero
     diff_mat = pars.tau * jnp.diag(kernel_basis.lapl_spec[idxs])
@@ -101,11 +100,10 @@ def compute_eigen_qz[X: Array](
     match pars.which_eigs_galerkin:
         case int():
             idxs = jnp.arange(1, pars.which_eigs_galerkin + 1)
-        case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                and len(ints) == 2:
+        case (_, _):
             idxs = jnp.arange(pars.which_eigs_galerkin[0],
                               pars.which_eigs_galerkin[1])
-        case _:
+        case list():
             idxs = jnp.array(pars.which_eigs_galerkin)
     assert jnp.all(idxs)  # All indices should be nonzero
     lambs = kernel_basis.spec[idxs] ** pars.tau
@@ -145,10 +143,9 @@ def make_eigenbasis[X: Array, L: int, D: DTypeLike](
     match which_eigs:
         case int():
             idxs = jnp.arange(which_eigs)
-        case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                and len(ints) == 2:
+        case (_, _):
             idxs = jnp.arange(which_eigs[0], which_eigs[1])
-        case _:
+        case list():
             idxs = jnp.array(which_eigs)
 
     def vc(i: int | Array) -> V:
@@ -229,10 +226,9 @@ def make_eigenbasis_antisym[X: Array, L: int, D: DTypeLike](
     match which_eigs:
         case int():
             idxs = jnp.arange(which_eigs)
-        case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                and len(ints) == 2:
+        case (_, _):
             idxs = jnp.arange(which_eigs[0], which_eigs[1])
-        case _:
+        case list():
             idxs = jnp.array(which_eigs)
 
     def vc(i: int | Array) -> V:

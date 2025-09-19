@@ -1,4 +1,5 @@
 """Provide generic functions and classes for Koopman operator computations."""
+
 import matplotlib.pyplot as plt
 import nlsa.abstract_algebra as alg
 import numpy as np
@@ -34,10 +35,10 @@ class KoopmanParsDiff:
     num_eigs: Optional[int] = None
     """Number of Koopman eigenfunctions to compute."""
 
-    laplace_method: Literal['log', 'lin', 'inv'] = "log"
+    laplace_method: Literal["log", "lin", "inv"] = "log"
     """Method for computing Laplacian eigenvalues."""
 
-    sort_by: Literal['energy', 'frequency'] = "frequency"
+    sort_by: Literal["energy", "frequency"] = "frequency"
     """Koopman eigenvalue/eigenvector sorting."""
 
     gram_batch_size: Optional[int] = None
@@ -60,27 +61,36 @@ class KoopmanParsDiff:
         antisym_str = "antisym" if self.antisym else ""
         match self.which_eigs_galerkin:
             case int():
-                eigs_galerkin_str = "-".join(map(str,
-                                                 (0,
-                                                  self.which_eigs_galerkin)))
-            case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                    and len(ints) == 2:
-                eigs_galerkin_str = "-".join(map(str,
-                                                 self.which_eigs_galerkin))
-            case _:
-                eigs_galerkin_str = "_".join(map(str,
-                                                 self.which_eigs_galerkin))
-        num_eigs_str = f"neigs{self.num_eigs}" if self.num_eigs is not None \
-            else ""
-        return '_'.join(filter(None, ("gen_diff",
-                                      f"dt{self.dt:.2g}",
-                                      f"fdord{self.fd_order}",
-                                      self.laplace_method,
-                                      f"tau{self.tau:.2g}",
-                                      antisym_str,
-                                      eigs_galerkin_str,
-                                      num_eigs_str,
-                                      self.sort_by)))
+                eigs_galerkin_str = "-".join(
+                    map(str, (0, self.which_eigs_galerkin))
+                )
+            case (_, _):
+                eigs_galerkin_str = "-".join(
+                    map(str, self.which_eigs_galerkin)
+                )
+            case list():
+                eigs_galerkin_str = "_".join(
+                    map(str, self.which_eigs_galerkin)
+                )
+        num_eigs_str = (
+            f"neigs{self.num_eigs}" if self.num_eigs is not None else ""
+        )
+        return "_".join(
+            filter(
+                None,
+                (
+                    "gen_diff",
+                    f"dt{self.dt:.2g}",
+                    f"fdord{self.fd_order}",
+                    self.laplace_method,
+                    f"tau{self.tau:.2g}",
+                    antisym_str,
+                    eigs_galerkin_str,
+                    num_eigs_str,
+                    self.sort_by,
+                ),
+            )
+        )
 
 
 @dataclass(frozen=True)
@@ -92,6 +102,9 @@ class KoopmanParsQz:
 
     dt: float
     """Finite difference interval."""
+
+    num_quad: int
+    """Number of quadrature points"""
 
     res_z: float
     """Resolvent parameter."""
@@ -105,10 +118,10 @@ class KoopmanParsQz:
     num_eigs: Optional[int] = None
     """Number of Koopman eigenfunctions to compute."""
 
-    laplace_method: Literal['log', 'lin', 'inv'] = "log"
+    laplace_method: Literal["log", "lin", "inv"] = "log"
     """Method for computing Laplacian eigenvalues."""
 
-    sort_by: Literal['energy', 'frequency'] = "frequency"
+    sort_by: Literal["energy", "frequency"] = "frequency"
     """Koopman eigenvalue/eigenvector sorting."""
 
     quad_batch_size: Optional[int] = None
@@ -123,10 +136,9 @@ class KoopmanParsQz:
         match self.which_eigs_galerkin:
             case int():
                 dim = self.which_eigs_galerkin
-            case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                    and len(ints) == 2:
+            case (_, _):
                 dim = self.which_eigs_galerkin[1] - self.which_eigs_galerkin[0]
-            case _:
+            case list():
                 dim = len(self.which_eigs_galerkin)
         return dim
 
@@ -134,33 +146,44 @@ class KoopmanParsQz:
         """Create string representation of eigendecommposition parameters."""
         match self.which_eigs_galerkin:
             case int():
-                eigs_galerkin_str = "-".join(map(str,
-                                                 (0,
-                                                  self.which_eigs_galerkin)))
-            case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                    and len(ints) == 2:
-                eigs_galerkin_str = "-".join(map(str,
-                                                 self.which_eigs_galerkin))
+                eigs_galerkin_str = "-".join(
+                    map(str, (0, self.which_eigs_galerkin))
+                )
+            case (_, _):
+                eigs_galerkin_str = "-".join(
+                    map(str, self.which_eigs_galerkin)
+                )
             case list():
-                eigs_galerkin_str = "_".join(map(str,
-                                                 self.which_eigs_galerkin))
-        num_eigs_str = f"neigs{self.num_eigs}" if self.num_eigs is not None \
-            else ""
-        return "_".join(filter(None, ("qz",
-                                      f"resz{self.res_z:.2g}",
-                                      f"dt{self.dt:.2g}",
-                                      self.laplace_method,
-                                      f"tau{self.tau:.2g}",
-                                      f"fdord{self.fd_order}",
-                                      num_eigs_str,
-                                      eigs_galerkin_str,
-                                      self.sort_by)))
+                eigs_galerkin_str = "_".join(
+                    map(str, self.which_eigs_galerkin)
+                )
+        num_eigs_str = (
+            f"neigs{self.num_eigs}" if self.num_eigs is not None else ""
+        )
+        return "_".join(
+            filter(
+                None,
+                (
+                    "qz",
+                    f"resz{self.res_z:.2g}",
+                    f"dt{self.dt:.2g}",
+                    f"nq{self.num_quad}",
+                    self.laplace_method,
+                    f"tau{self.tau:.2g}",
+                    f"fdord{self.fd_order}",
+                    num_eigs_str,
+                    eigs_galerkin_str,
+                    self.sort_by,
+                ),
+            )
+        )
 
 
 @final
 @dataclass(frozen=True)
 class KoopmanEigenbasis[X, K, V, Ks, I](
-        alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, I]):
+    alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, I]
+):
     """Dataclass implementing frame operators for Koopman eigenbasis."""
 
     dim: int
@@ -233,14 +256,16 @@ class KoopmanEigenbasis[X, K, V, Ks, I](
     """Function indexing Dirichlet energies."""
 
 
-def plot_operator_matrix(op_mat: ArrayLike, i_fig: int = 1,
-                         title: Optional[str] = None) -> Figure:
+def plot_operator_matrix(
+    op_mat: ArrayLike, i_fig: int = 1, title: Optional[str] = None
+) -> Figure:
     """Plot heatmap of matrices used in Koopman operator problems."""
     if plt.fignum_exists(i_fig):
         plt.close(i_fig)
     fig, ax = plt.subplots(num=i_fig, constrained_layout=True)
-    sns.heatmap(np.asarray(op_mat), ax=ax, cmap='seismic', center=0,
-                robust=False)
+    sns.heatmap(
+        np.asarray(op_mat), ax=ax, cmap="seismic", center=0, robust=False
+    )
     if title is not None:
         ax.set_title(title)
     return fig

@@ -1,5 +1,5 @@
 # pyright: basic
-"""Provide functions for kernel computations in JAX."""
+"""Provide classes and functions for kernel computations in JAX."""
 
 import jax
 import jax.experimental.sparse.linalg as jsla
@@ -483,10 +483,9 @@ def make_eigenbasis_dm[Ns: Shape, D: DTypeLike, X: Array](
     match which_eigs:
         case int():
             idxs = jnp.arange(which_eigs)
-        case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                and len(ints) == 2:
+        case (_, _):
             idxs = jnp.arange(which_eigs[0], which_eigs[1])
-        case _:
+        case list():
             idxs = jnp.array(which_eigs)
     lapl_spec = to_laplace_eigenvalues(kernel_eigen['evals'][idxs],
                                        kernel_eigen['bandwidth'],
@@ -560,10 +559,9 @@ def make_eigenbasis_bs[Ns: Shape, D: DTypeLike, X: Array](
     match which_eigs:
         case int():
             idxs = jnp.arange(which_eigs)
-        case tuple(ints) if all(isinstance(i, int) for i in ints) \
-                and len(ints) == 2:
+        case (_, _):
             idxs = jnp.arange(which_eigs[0], which_eigs[1])
-        case _:
+        case list():
             idxs = jnp.array(which_eigs)
     lapl_spec = to_laplace_eigenvalues(kernel_eigen['evals'][idxs],
                                        kernel_eigen['bandwidth'],

@@ -1,5 +1,5 @@
 # pyright: basic
-"""Koopman spectral analysis of L63 system by resolvent compactification."""
+"""Koopman spectral analysis of L63 system by diffusion regularization."""
 
 import diffrax as dfx
 import jax
@@ -34,7 +34,7 @@ from nlsa.jax.kernels import (
     TuneInfo,
     TunePars,
 )
-from nlsa.jax.koopman import KoopmanEigen, KoopmanEigenbasis, KoopmanParsQz
+from nlsa.jax.koopman import KoopmanEigen, KoopmanEigenbasis, KoopmanParsDiff
 from nlsa.jax.stats import anomaly_correlation, normalized_rmse
 from nlsa.jax.utils import fst, make_batched2
 from nlsa.jax.vector_algebra import L2VectorAlgebra, VectorAlgebra
@@ -52,10 +52,10 @@ NUM_TABULATE = 40
 DELAY_EMBEDDING_MODE: Optional[Literal["explicit", "on_the_fly"]] = (
     "on_the_fly"
 )
-GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "read"
-TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "read"
-KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "read"
-QZ_MATRIX_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
+GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
+TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
+KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
+GENERATOR_MATRIX_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
 KOOPMAN_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
 SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
 PLOT_MODE: Optional[Literal["save", "show", "saveshow"]] = "show"
@@ -273,7 +273,7 @@ class TrainPars[N: int]:
     kernel: KernelPars
     """Kernel eigendecomposition parameters."""
 
-    koopman: KoopmanParsQz
+    koopman: KoopmanParsDiff
     """Koopman operator approximation parameters."""
 
     pred: PredPars
@@ -379,7 +379,6 @@ common_pars: CommonPars = {
     "velocity_covariate": True if cone_pars is not None else False,
     "velocity_fd_order": fd_order if cone_pars is not None else None,
 }
-num_quad = 1024
 num_pred_steps = 50
 train_data_pars = DataPars(
     **common_pars,
@@ -388,7 +387,7 @@ train_data_pars = DataPars(
     num_spinup=10_000,
     num_samples=4096,
     num_before=fd_order // 2,
-    num_after=fd_order // 2 + num_quad,
+    num_after=fd_order // 2,
 )
 test_data_pars = DataPars(
     **common_pars,
@@ -416,23 +415,21 @@ if cone_pars is not None:
 else:
     tune_pars = bw_tune_pars
 kernel_pars = KernelPars(
-    normalization="laplace", eigensolver="eigsh", num_eigs=256
+    normalization="laplace", eigensolver="eigsh", num_eigs=512
 )
-koopman_pars = KoopmanParsQz(
+koopman_pars = KoopmanParsDiff(
     fd_order=fd_order,
     dt=train_data_pars.dt,
-    num_quad=num_quad,
-    tau=0.5,
-    res_z=2,
+    antisym=True,
+    tau=0.005,
     laplace_method="log",
-    which_eigs_galerkin=150,
-    num_eigs=141,
+    which_eigs_galerkin=500,
+    num_eigs=256,
     sort_by="energy",
-    quad_batch_size=1024,
     gram_batch_size=None,
 )
 pred_pars = PredPars(
-    dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=141
+    dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=257
 )
 train_pars = TrainPars(
     data=train_data_pars,
@@ -678,18 +675,18 @@ def make_l2_space[N: int, D: DTypeLike](
 @partial(
     npyit,
     io=io,
-    mode=QZ_MATRIX_MODE,
-    fname="qz_mat",
+    mode=GENERATOR_MATRIX_MODE,
+    fname="gen_mat",
     cls=Array,
     callback=partial(jnp.array, dtype=r_dtype),
 )
-def compute_qz_matrix[N: int, D: DTypeLike](
+def compute_generator_matrix[N: int, D: DTypeLike](
     pars: TrainPars[N],
     l2y: L2VectorAlgebra[tuple[N], D, Yd, R],
     train_data: Data,
     basis: alg.ImplementsDimensionedL2FnFrame[Yd, R, V, Rs, int | Array],
 ) -> M:
-    """Compute matrix representation of Qz operator using Laplace transform."""
+    """Compute matrix representation of the generator."""
     if pars.data.velocity_covariate:
         fd_op = jit(
             vmap(
@@ -718,33 +715,14 @@ def compute_qz_matrix[N: int, D: DTypeLike](
                 out_axes=-1,
             )
         )
-    lapl_op = dl.make_laplace_transform(
-        z=pars.koopman.res_z,
-        dt=pars.koopman.dt,
-        num_quad=pars.koopman.num_quad,
-    )
     i0 = pars.data.delay_embedding_origin
-    i1 = (
-        i0
-        + pars.data.num_samples
-        + pars.data.num_delays
-        + pars.koopman.num_quad
-    )
+    i1 = i0 + pars.data.num_samples + pars.data.num_delays
     vs = fd_op(train_data["covariates"])[i0:i1]
-    match pars.data.num_half_delays, pars.koopman.quad_batch_size:
-        case 0, None:
+    match pars.data.num_half_delays:
+        case 0:
             eval_at_ys = vec.veval_at(train_data["covariates"][i0:i1])
             eval_at_yvs = vec.veval_at((train_data["covariates"][i0:i1], vs))
-        case 0, _:
-            eval_at_ys = vec.batch_eval_at(
-                train_data["covariates"][i0:i1],
-                batch_size=pars.koopman.quad_batch_size,
-            )
-            eval_at_yvs = vec.batch_eval_at(
-                (train_data["covariates"][i0:i1], vs),
-                batch_size=pars.koopman.quad_batch_size,
-            )
-        case _, None:
+        case _:
             eval_at_ys = dl.delay_eval_at(
                 train_data["covariates"][i0:i1],
                 num_delays=pars.data.num_delays,
@@ -753,50 +731,37 @@ def compute_qz_matrix[N: int, D: DTypeLike](
                 (train_data["covariates"][i0:i1], vs),
                 num_delays=pars.data.num_delays,
             )
-        case _, _:
-            eval_at_ys = dl.batch_delay_eval_at(
-                train_data["covariates"][i0:i1],
-                batch_size=pars.koopman.quad_batch_size,
-                num_delays=pars.data.num_delays,
-            )
-            eval_at_yvs = dl.batch_delay_eval_at(
-                (train_data["covariates"][i0:i1], vs),
-                batch_size=pars.koopman.quad_batch_size,
-                num_delays=pars.data.num_delays,
-            )
-    lapl_vgrad_phi = compose(
-        lapl_op, compose(eval_at_yvs, compose(dyn.vgrad, basis.fn))
-    )
-    lapl_phi = compose(lapl_op, compose(eval_at_ys, basis.dual_fn))
+    vgrad_phi = compose(eval_at_yvs, compose(dyn.vgrad, basis.fn))
+    phi = compose(eval_at_ys, basis.dual_fn)
 
     @jit
     @partial(vmap, in_axes=(None, 0), out_axes=1)
     @partial(vmap, in_axes=(0, None), out_axes=0)
-    def compute_qz_op(i: int, j: int) -> R:
-        return l2y.innerp(lapl_phi(i), lapl_vgrad_phi(j))
+    def compute_generator(i: int, j: int) -> R:
+        return l2y.innerp(phi(i), vgrad_phi(j))
 
     idxs = jnp.arange(1, basis.dim)
     if pars.koopman.gram_batch_size is not None:
-        compute_qz_op_batched = make_batched2(
-            compute_qz_op,
+        compute_generator_batched = make_batched2(
+            compute_generator,
             max_batch_sizes=(
                 pars.koopman.gram_batch_size,
                 pars.koopman.gram_batch_size,
             ),
             in_axes=(0, 0),
         )
-        qz_mat = compute_qz_op_batched(idxs, idxs)
+        gen_mat = compute_generator_batched(idxs, idxs)
     else:
-        qz_mat = compute_qz_op(idxs, idxs)
-    return qz_mat
+        gen_mat = compute_generator(idxs, idxs)
+    return gen_mat
 
 
 compute_koopman_eigen = timeit(
     h5it(
-        koop.compute_eigen_qz,
+        koop.compute_eigen_diff,
         io=io,
         mode=KOOPMAN_EIGEN_MODE,
-        fname="koopman_eigen_qz",
+        fname="koopman_eigen_diff",
         cls=KoopmanEigen,
         callback=to_koopman_eigen,
     )
@@ -1070,8 +1035,8 @@ def make_kernel_evecs_plotter[N: int, Ntst: int, D: DTypeLike](
     return fig, plot_eig
 
 
-plot_qz_matrix = plotit(
-    koop.plot_operator_matrix, io=io, mode=PLOT_MODE, fname="qz_mat"
+plot_generator_matrix = plotit(
+    koop.plot_operator_matrix, io=io, mode=PLOT_MODE, fname="gen_mat"
 )
 plot_generator_spectrum = plotit(
     koop.plot_generator_spectrum, io=io, mode=PLOT_MODE, fname="gen_spec"
@@ -1507,12 +1472,6 @@ def plot_forecast_skill_scores[Ntst: int](
 
 def main():
     """Koopman spectral analysis of L63 using resolvent comactification."""
-    print(
-        f"-zT = {
-            -(pars.train.koopman.num_quad - 1)
-            * pars.train.koopman.dt
-            * pars.train.koopman.res_z: .3f}"
-    )
     global io
 
     # Generate training and test data
@@ -1676,17 +1635,19 @@ def main():
             for i in KERNEL_EIGS_PLT:
                 plot_kernel_eig(i)
 
-    # Compute Qz matrix
+    # Compute regularized generator matrix
     io /= str(pars.train.koopman)
-    qz_mat = compute_qz_matrix(pars.train, l2y, train_data, kernel_basis)
+    gen_mat = compute_generator_matrix(
+        pars.train, l2y, train_data, kernel_basis
+    )
 
-    # Plot Qz operator matrix
+    # Plot generator matrix
     if PLOT_MODE is not None:
-        plot_qz_matrix(qz_mat, title="$Q_z$ operator matrix")
+        plot_generator_matrix(gen_mat, title="Generator matrix")
 
     # Compute Koopan eigendecomposition
     koopman_eigen = compute_koopman_eigen(
-        pars.train.koopman, qz_mat, kernel_basis
+        pars.train.koopman, gen_mat, kernel_basis
     )
     print(
         tabulate(
@@ -1717,11 +1678,8 @@ def main():
     c_k = VectorAlgebra(
         shape=(pars.train.koopman.dim_galerkin,), dtype=c_dtype
     )
-    koopman_basis = koop.make_eigenbasis_antisym(
-        c_k,
-        kernel_basis,
-        koopman_eigen,
-        which_eigs=pars.train.pred.which_eigs,
+    koopman_basis = koop.make_eigenbasis(
+        c_k, kernel_basis, koopman_eigen, which_eigs=pars.train.pred.which_eigs
     )
 
     # Plot representative Koopman eigenfunctions
