@@ -4,6 +4,7 @@
 import diffrax as dfx
 import jax
 import jax.numpy as jnp
+import matplotlib
 import matplotlib.figure as mpf
 import matplotlib.pyplot as plt
 import nlsa.abstract_algebra as alg
@@ -47,6 +48,7 @@ IDX_CPU: Optional[int] = None
 IDX_GPU: Optional[int] = None
 XLA_MEM_FRACTION: Optional[str] = "0.95"
 FP: Literal["F32", "F64"] = "F32"
+MATPLOTLIB_BACKEND: Optional[Literal["Agg"]] = None
 OUTPUT_DATA_DIR = "examples/l63/data"
 NUM_TABULATE = 40
 DELAY_EMBEDDING_MODE: Optional[Literal["explicit", "on_the_fly"]] = (
@@ -99,6 +101,9 @@ match FP:
         jax.config.update("jax_enable_x64", True)
         r_dtype = jnp.float64
         c_dtype = jnp.complex128
+
+if MATPLOTLIB_BACKEND is not None:
+    matplotlib.use(MATPLOTLIB_BACKEND)
 
 type Xs = Array  # Collection of points in state space
 type Ys = Array  # Collection of points in covariate space
@@ -1480,7 +1485,7 @@ def main():
     l2y_tst = make_l2_space(pars.test.data, r_dtype, test_data, jit=True)
     io @= str(pars.train.data)
     train_data = generate_data(pars.train.data, r_dtype)
-    l2y = make_l2_space(pars.train.data, r_dtype, train_data)
+    l2y = make_l2_space(pars.train.data, r_dtype, train_data, jit=True)
 
     # Set kernel shape function
     shape_func = jnp.exp
@@ -1533,13 +1538,14 @@ def main():
             )
 
     # Create and tune kernel
-    io /= str(pars.train.bw_tune)
     if pars.train.cone is not None:
+        io /= str(pars.train.cone)
         sqdist = dst.make_sqcone(
             pars.train.cone.zeta, pars.train.cone.threshold
         )
     else:
         sqdist = dst.sqeuclidean
+    io /= str(pars.train.tune)
     if pars.train.bw_tune is not None:
         scaled_sqdist = knl.make_scaled_sqdist(l2y.scl, sqdist, bandwidth_func)
         kernel_family = knl.make_kernel_family(

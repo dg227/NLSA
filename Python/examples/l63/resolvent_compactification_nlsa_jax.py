@@ -4,6 +4,7 @@
 import diffrax as dfx
 import jax
 import jax.numpy as jnp
+import matplotlib
 import matplotlib.figure as mpf
 import matplotlib.pyplot as plt
 import nlsa.abstract_algebra as alg
@@ -44,9 +45,10 @@ from tabulate import tabulate
 from typing import Literal, Optional, TypedDict
 
 IDX_CPU: Optional[int] = None
-IDX_GPU: Optional[int] = None
+IDX_GPU: Optional[int] = 2
 XLA_MEM_FRACTION: Optional[str] = "0.95"
 FP: Literal["F32", "F64"] = "F32"
+MATPLOTLIB_BACKEND: Optional[Literal["Agg"]] = None  # "Agg"
 OUTPUT_DATA_DIR = "examples/l63/data"
 NUM_TABULATE = 40
 DELAY_EMBEDDING_MODE: Optional[Literal["explicit", "on_the_fly"]] = (
@@ -58,7 +60,7 @@ KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "read"
 QZ_MATRIX_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
 KOOPMAN_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
 SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
-PLOT_MODE: Optional[Literal["save", "show", "saveshow"]] = "show"
+PLOT_MODE: Optional[Literal["save", "show", "saveshow"]] = "saveshow"
 DELAY_PLOT_MODE: Literal["backward", "central"] = "backward"
 KERNEL_EIGS_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
     "interactive"
@@ -99,6 +101,9 @@ match FP:
         jax.config.update("jax_enable_x64", True)
         r_dtype = jnp.float64
         c_dtype = jnp.complex128
+
+if MATPLOTLIB_BACKEND is not None:
+    matplotlib.use(MATPLOTLIB_BACKEND)
 
 type Xs = Array  # Collection of points in state space
 type Ys = Array  # Collection of points in covariate space
@@ -379,7 +384,7 @@ common_pars: CommonPars = {
     "velocity_covariate": True if cone_pars is not None else False,
     "velocity_fd_order": fd_order if cone_pars is not None else None,
 }
-num_quad = 1024
+num_quad = 8192
 num_pred_steps = 50
 train_data_pars = DataPars(
     **common_pars,
@@ -387,8 +392,8 @@ train_data_pars = DataPars(
     dt=0.01,
     num_spinup=10_000,
     num_samples=4096,
-    num_before=fd_order // 2,
-    num_after=fd_order // 2 + num_quad,
+    num_before=0,
+    num_after=num_quad,
 )
 test_data_pars = DataPars(
     **common_pars,
@@ -416,16 +421,16 @@ if cone_pars is not None:
 else:
     tune_pars = bw_tune_pars
 kernel_pars = KernelPars(
-    normalization="laplace", eigensolver="eigsh", num_eigs=256
+    normalization="fokkerplanck", eigensolver="eigsh", num_eigs=512
 )
 koopman_pars = KoopmanParsQz(
     fd_order=fd_order,
     dt=train_data_pars.dt,
     num_quad=num_quad,
-    tau=0.5,
-    res_z=2,
-    laplace_method="log",
-    which_eigs_galerkin=150,
+    tau=1,
+    res_z=0.1,
+    laplace_method="inv",
+    which_eigs_galerkin=500,
     num_eigs=141,
     sort_by="energy",
     quad_batch_size=1024,
@@ -690,35 +695,7 @@ def compute_qz_matrix[N: int, D: DTypeLike](
     basis: alg.ImplementsDimensionedL2FnFrame[Yd, R, V, Rs, int | Array],
 ) -> M:
     """Compute matrix representation of Qz operator using Laplace transform."""
-    if pars.data.velocity_covariate:
-        fd_op = jit(
-            vmap(
-                vmap(
-                    dl.make_fd_operator(
-                        order=pars.koopman.fd_order,
-                        mode="central",
-                        dt=pars.koopman.dt,
-                    ),
-                    in_axes=-1,
-                    out_axes=-1,
-                ),
-                in_axes=-1,
-                out_axes=-1,
-            )
-        )
-    else:
-        fd_op = jit(
-            vmap(
-                dl.make_fd_operator(
-                    order=pars.koopman.fd_order,
-                    mode="central",
-                    dt=pars.koopman.dt,
-                ),
-                in_axes=-1,
-                out_axes=-1,
-            )
-        )
-    lapl_op = dl.make_laplace_transform(
+    lapl = dl.make_laplace_transform(
         z=pars.koopman.res_z,
         dt=pars.koopman.dt,
         num_quad=pars.koopman.num_quad,
@@ -730,50 +707,35 @@ def compute_qz_matrix[N: int, D: DTypeLike](
         + pars.data.num_delays
         + pars.koopman.num_quad
     )
-    vs = fd_op(train_data["covariates"])[i0:i1]
     match pars.data.num_half_delays, pars.koopman.quad_batch_size:
         case 0, None:
-            eval_at_ys = vec.veval_at(train_data["covariates"][i0:i1])
-            eval_at_yvs = vec.veval_at((train_data["covariates"][i0:i1], vs))
+            eval_quad = vec.veval_at(train_data["covariates"][i0:i1])
         case 0, _:
-            eval_at_ys = vec.batch_eval_at(
+            eval_quad = vec.batch_eval_at(
                 train_data["covariates"][i0:i1],
-                batch_size=pars.koopman.quad_batch_size,
-            )
-            eval_at_yvs = vec.batch_eval_at(
-                (train_data["covariates"][i0:i1], vs),
                 batch_size=pars.koopman.quad_batch_size,
             )
         case _, None:
-            eval_at_ys = dl.delay_eval_at(
+            eval_quad = dl.delay_eval_at(
                 train_data["covariates"][i0:i1],
-                num_delays=pars.data.num_delays,
-            )
-            eval_at_yvs = dl.delay_eval_at(
-                (train_data["covariates"][i0:i1], vs),
                 num_delays=pars.data.num_delays,
             )
         case _, _:
-            eval_at_ys = dl.batch_delay_eval_at(
+            eval_quad = dl.batch_delay_eval_at(
                 train_data["covariates"][i0:i1],
                 batch_size=pars.koopman.quad_batch_size,
                 num_delays=pars.data.num_delays,
             )
-            eval_at_yvs = dl.batch_delay_eval_at(
-                (train_data["covariates"][i0:i1], vs),
-                batch_size=pars.koopman.quad_batch_size,
-                num_delays=pars.data.num_delays,
-            )
-    lapl_vgrad_phi = compose(
-        lapl_op, compose(eval_at_yvs, compose(dyn.vgrad, basis.fn))
-    )
-    lapl_phi = compose(lapl_op, compose(eval_at_ys, basis.dual_fn))
+    lapl_phi = compose(lapl, compose(eval_quad, basis.fn))
+    lapl_phi_dual = compose(lapl, compose(eval_quad, basis.dual_fn))
 
     @jit
     @partial(vmap, in_axes=(None, 0), out_axes=1)
     @partial(vmap, in_axes=(0, None), out_axes=0)
     def compute_qz_op(i: int, j: int) -> R:
-        return l2y.innerp(lapl_phi(i), lapl_vgrad_phi(j))
+        rz_ij = l2y.innerp(basis.dual_vec(i), lapl_phi(j))
+        rz_adj_ij = l2y.innerp(lapl_phi_dual(i), basis.vec(j))
+        return (rz_ij - rz_adj_ij) / 2
 
     idxs = jnp.arange(1, basis.dim)
     if pars.koopman.gram_batch_size is not None:
@@ -1521,7 +1483,7 @@ def main():
     l2y_tst = make_l2_space(pars.test.data, r_dtype, test_data, jit=True)
     io @= str(pars.train.data)
     train_data = generate_data(pars.train.data, r_dtype)
-    l2y = make_l2_space(pars.train.data, r_dtype, train_data)
+    l2y = make_l2_space(pars.train.data, r_dtype, train_data, jit=True)
 
     # Set kernel shape function
     shape_func = jnp.exp
@@ -1574,13 +1536,14 @@ def main():
             )
 
     # Create and tune kernel
-    io /= str(pars.train.bw_tune)
     if pars.train.cone is not None:
+        io /= str(pars.train.cone)
         sqdist = dst.make_sqcone(
             pars.train.cone.zeta, pars.train.cone.threshold
         )
     else:
         sqdist = dst.sqeuclidean
+    io /= str(pars.train.tune)
     if pars.train.bw_tune is not None:
         scaled_sqdist = knl.make_scaled_sqdist(l2y.scl, sqdist, bandwidth_func)
         kernel_family = knl.make_kernel_family(

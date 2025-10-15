@@ -3,6 +3,7 @@
 
 import jax
 import jax.numpy as jnp
+import matplotlib
 import matplotlib.figure as mpf
 import matplotlib.pyplot as plt
 import math
@@ -45,6 +46,7 @@ IDX_CPU: Optional[int] = None
 IDX_GPU: Optional[int] = None
 XLA_MEM_FRACTION: Optional[str] = "0.9"
 FP: Literal["F32", "F64"] = "F32"
+MATPLOTLIB_BACKEND: Optional[Literal["Agg"]] = None
 OUTPUT_DATA_DIR = "examples/torus_rotation/data"
 NUM_TABULATE = 40
 DELAY_EMBEDDING_MODE: Optional[Literal["explicit", "on_the_fly"]] = (
@@ -88,6 +90,9 @@ match FP:
         jax.config.update("jax_enable_x64", True)
         r_dtype = jnp.float64
         c_dtype = jnp.complex128
+
+if MATPLOTLIB_BACKEND is not None:
+    matplotlib.use(MATPLOTLIB_BACKEND)
 
 type Xs = Array  # Collection of points in state space
 type Ys = Array  # Collection of points in covariate space
@@ -951,12 +956,17 @@ def plot_bandwidth_func[N: int, Ntst: int, D: DTypeLike](
     ax.set_title("Kernel bandwidth function (training)")
 
     if test_pars is not None and l2y_tst is not None and test_data is not None:
+        match delay_plot_mode:
+            case "backward":
+                i0_tst = test_pars.delay_embedding_end
+            case "central":
+                i0_tst = test_pars.delay_embedding_center
         if num_plt_tst is None:
             num_plt_tst = test_pars.num_samples
-        i1_tst = i0 + num_plt_tst
+        i1_tst = i0_tst + num_plt_tst
         sc_tst = ax_tst.scatter(
-            test_data["states"][i0:i1_tst:plt_step_tst, 0] / jnp.pi,
-            test_data["states"][i0:i1_tst:plt_step_tst, 1] / jnp.pi,
+            test_data["states"][i0_tst:i1_tst:plt_step_tst, 0] / jnp.pi,
+            test_data["states"][i0_tst:i1_tst:plt_step_tst, 1] / jnp.pi,
             c=bw_vals_tst[::plt_step_tst],
             s=1,
             vmin=vmin,
@@ -1561,13 +1571,14 @@ def main():
             )
 
     # Create and tune kernel
-    io /= str(pars.train.bw_tune)
     if pars.train.cone is not None:
+        io /= str(pars.train.cone)
         sqdist = dst.make_sqcone(
             pars.train.cone.zeta, pars.train.cone.threshold
         )
     else:
         sqdist = dst.sqeuclidean
+    io /= str(pars.train.tune)
     if pars.train.bw_tune is not None:
         scaled_sqdist = knl.make_scaled_sqdist(l2y.scl, sqdist, bandwidth_func)
         kernel_family = knl.make_kernel_family(
