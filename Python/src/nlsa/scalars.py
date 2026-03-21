@@ -1,5 +1,4 @@
-"""Provide classes and functions implementing operations on scalar fields.
-"""
+"""Provide classes and functions implementing operations on scalar fields."""
 
 import math
 import nlsa.abstract_algebra as alg
@@ -10,11 +9,14 @@ from nlsa.utils import swap_args
 from typing import Type, final
 
 
-def make_zero[K: (int, Fraction, float, complex)](ty: Type[K]) \
-        -> Callable[[], K]:
+def make_zero[K: (int, Fraction, float, complex)](
+    ty: Type[K],
+) -> Callable[[], K]:
     """Make constant function that returns scalar zero."""
+
     def zero() -> K:
         return ty(0)
+
     return zero
 
 
@@ -33,11 +35,14 @@ def sub[K: (int, Fraction, float, complex)](x: K, y: K, /) -> K:
     return x - y
 
 
-def make_unit[K: (int, Fraction, float, complex)](ty: Type[K]) \
-        -> Callable[[], K]:
+def make_unit[K: (int, Fraction, float, complex)](
+    ty: Type[K],
+) -> Callable[[], K]:
     """Make constant function that returns scalar one."""
+
     def unit() -> K:
         return ty(1)
+
     return unit
 
 
@@ -47,16 +52,20 @@ def mul[K: (int, Fraction, float, complex)](x: K, y: K, /) -> K:
 
 
 # Pyright fails when attempting to generalize make_real_power to complex types.
-def make_real_power[K: (int, Fraction, float)](ty: Type[K]) \
-        -> Callable[[K, K], K]:
+def make_real_power[K: (int, Fraction, float)](
+    ty: Type[K],
+) -> Callable[[K, K], K]:
     """Make exponentiation function of reals by integers."""
+
     def power(x: K, y: K, /) -> K:
-        return ty(x ** y)
+        return ty(x**y)
+
     return power
 
 
 def complex_power(x: complex, n: int, /) -> complex:
-    return x ** n
+    """Compute complex power."""
+    return x**n
 
 
 def floor_div(x: int, y: int, /) -> int:
@@ -76,8 +85,10 @@ def floor_inv(x: int, /) -> int:
 
 def make_inv[K: (Fraction, float, complex)](ty: Type[K]) -> Callable[[K], K]:
     """Make scalar inversion function."""
+
     def inv(x: K, /) -> K:
         return ty(1) / x
+
     return inv
 
 
@@ -88,14 +99,17 @@ def complex_conj(x: complex, /) -> complex:
 
 @final
 class FloatScalarField(alg.ImplementsScalarField[float]):
-    """Implement scalar field operations."""
+    """Implement scalar field operations on float objects."""
+
     def __init__(self):
+        """Initialize scalar field on float objects."""
         self.zero: Callable[[], float] = make_zero(float)
         self.add: Callable[[float, float], float] = add
         self.sub: Callable[[float, float], float] = sub
         self.neg: Callable[[float], float] = neg
         self.unit: Callable[[], float] = make_unit(float)
         self.mul: Callable[[float, float], float] = mul
+        self.mpower: Callable[[float, int], float] = math.pow
         self.power: Callable[[float, float], float] = make_real_power(float)
         self.div: Callable[[float, float], float] = div
         self.inv: Callable[[float], float] = make_inv(float)
@@ -108,49 +122,195 @@ class FloatScalarField(alg.ImplementsScalarField[float]):
 @final
 class AsVectorSpace[K](alg.ImplementsVectorSpace[K, K]):
     """Implement scalar field as vector space over itself."""
+
     def __init__(self, scl: alg.ImplementsScalarField[K]):
-        self.scl = scl
-        self.zero: Callable[[], K] = scl.zero
-        self.add: Callable[[K, K], K] = scl.add
-        self.sub: Callable[[K, K], K] = scl.sub
-        self.neg: Callable[[K], K] = scl.neg
-        self.smul: Callable[[K, K], K] = scl.mul
-        self.sdiv: Callable[[K, K], K] = swap_args(scl.div)
+        """Initialize AsVectorSpaceobjects."""
+        self._scl = scl
+
+    @property
+    def scl(self) -> alg.ImplementsScalarField[K]:
+        """Return scl property of AsVectorSpace object."""
+        return self._scl
+
+    @property
+    def zero(self) -> Callable[[], K]:
+        """Return zero property of AsVectorSpace object."""
+        return self._scl.zero
+
+    @property
+    def add(self) -> Callable[[K, K], K]:
+        """Return add property of AsVectorSpace object."""
+        return self._scl.add
+
+    @property
+    def sub(self) -> Callable[[K, K], K]:
+        """Return sub property of AsVectorSpace object."""
+        return self._scl.sub
+
+    @property
+    def neg(self) -> Callable[[K], K]:
+        """Return neg property of AsVectorSpace object."""
+        return self._scl.neg
+
+    @property
+    def smul(self) -> Callable[[K, K], K]:
+        """Return smul property of AsVectorSpace object."""
+        return self._scl.mul
+
+    @property
+    def sdiv(self) -> Callable[[K, K], K]:
+        """Return sdiv property of AsVectorSpace object."""
+        return swap_args(self._scl.div)
 
 
 @final
-class AsAlgebra[K](alg.ImplementsAlgebra[K, K]):
+class AsAlgebraWithCalculus[K](alg.ImplementsAlgebraWithCalculus[K, K]):
     """Implement scalar field as an algebra over itself."""
+
     def __init__(self, scl: alg.ImplementsScalarField[K]):
-        self.scl = scl
-        self.zero: Callable[[], K] = scl.zero
-        self.add: Callable[[K, K], K] = scl.add
-        self.sub: Callable[[K, K], K] = scl.sub
-        self.neg: Callable[[K], K] = scl.neg
-        self.smul: Callable[[K, K], K] = scl.mul
-        self.sdiv: Callable[[K, K], K] = swap_args(scl.div)
-        self.unit: Callable[[], K] = scl.zero
-        self.mul: Callable[[K, K], K] = scl.mul
-        self.div: Callable[[K, K], K] = scl.div
-        self.inv: Callable[[K], K] = scl.inv
-        self.power: Callable[[K, K], K] = scl.power
-        self.sqrt: Callable[[K], K] = scl.sqrt
-        self.adj: Callable[[K], K] = scl.adj
-        self.mod: Callable[[K], K] = scl.mod
+        """Initialize AsAlgebraWithCalculus objects."""
+        self._scl = scl
+
+    @property
+    def scl(self) -> alg.ImplementsScalarField[K]:
+        """Return scl property of AsAlgebra object."""
+        return self._scl
+
+    @property
+    def zero(self) -> Callable[[], K]:
+        """Return zero property of AsAlgebra object."""
+        return self._scl.zero
+
+    @property
+    def add(self) -> Callable[[K, K], K]:
+        """Return add property of AsAlgebra object."""
+        return self._scl.add
+
+    @property
+    def sub(self) -> Callable[[K, K], K]:
+        """Return sub property of AsAlgebra object."""
+        return self._scl.sub
+
+    @property
+    def neg(self) -> Callable[[K], K]:
+        """Return neg property of AsAlgebra object."""
+        return self._scl.neg
+
+    @property
+    def smul(self) -> Callable[[K, K], K]:
+        """Return smul property of AsAlgebra object."""
+        return self._scl.mul
+
+    @property
+    def sdiv(self) -> Callable[[K, K], K]:
+        """Return sdiv property of AsAlgebra object."""
+        return swap_args(self._scl.div)
+
+    @property
+    def unit(self) -> Callable[[], K]:
+        """Return unit property of AsAlgebra object."""
+        return self._scl.zero
+
+    @property
+    def mul(self) -> Callable[[K, K], K]:
+        """Return mul property of AsAlgebra object."""
+        return self._scl.mul
+
+    @property
+    def div(self) -> Callable[[K, K], K]:
+        """Return div property of AsAlgebra object."""
+        return self._scl.div
+
+    @property
+    def inv(self) -> Callable[[K], K]:
+        """Return inv property of AsAlgebra object."""
+        return self._scl.inv
+
+    @property
+    def mpower(self) -> Callable[[K, int], K]:
+        """Return mpower property of AsAlgebra object."""
+        return self._scl.mpower
+
+    @property
+    def power(self) -> Callable[[K, K], K]:
+        """Return power property of AsAlgebra object."""
+        return self._scl.power
+
+    @property
+    def sqrt(self) -> Callable[[K], K]:
+        """Return sqrt property of AsAlgebra object."""
+        return self._scl.sqrt
+
+    @property
+    def adj(self) -> Callable[[K], K]:
+        """Return adj property of AsAlgebra object."""
+        return self._scl.adj
+
+    @property
+    def mod(self) -> Callable[[K], K]:
+        """Return mod property of AsAlgebra object."""
+        return self._scl.mod
 
 
 @final
-class AsBimodule[K](alg.ImplementsBimodule[K, K, K, K]):
+class AsDivBimodule[K](alg.ImplementsDivBimodule[K, K, K, K]):
     """Implement scalar field as bimodule over itself."""
+
     def __init__(self, scl: alg.ImplementsScalarField[K]):
-        self.scl = scl
-        self.zero: Callable[[], K] = scl.zero
-        self.add: Callable[[K, K], K] = scl.add
-        self.sub: Callable[[K, K], K] = scl.sub
-        self.neg: Callable[[K], K] = scl.neg
-        self.smul: Callable[[K, K], K] = scl.mul
-        self.sdiv: Callable[[K, K], K] = swap_args(scl.div)
-        self.lmul: Callable[[K, K], K] = scl.mul
-        self.rmul: Callable[[K, K], K] = scl.mul
-        self.ldiv: Callable[[K, K], K] = swap_args(scl.div)
-        self.rdiv: Callable[[K, K], K] = scl.div
+        """Initialize bimodule implementation from scalar field."""
+        self._scl = scl
+
+    @property
+    def scl(self) -> alg.ImplementsScalarField[K]:
+        """Return scl property of AsAlgebra object."""
+        return self._scl
+
+    @property
+    def zero(self) -> Callable[[], K]:
+        """Return zero property of AsBimodule object."""
+        return self._scl.zero
+
+    @property
+    def add(self) -> Callable[[K, K], K]:
+        """Return add property of AsBimodule object."""
+        return self._scl.add
+
+    @property
+    def sub(self) -> Callable[[K, K], K]:
+        """Return sub property of AsBimodule object."""
+        return self._scl.sub
+
+    @property
+    def neg(self) -> Callable[[K], K]:
+        """Return neg property of AsBimodule object."""
+        return self._scl.neg
+
+    @property
+    def smul(self) -> Callable[[K, K], K]:
+        """Return smul property of AsBimodule object."""
+        return self._scl.mul
+
+    @property
+    def sdiv(self) -> Callable[[K, K], K]:
+        """Return sdiv property of AsAlgebra object."""
+        return swap_args(self._scl.div)
+
+    @property
+    def lmul(self) -> Callable[[K, K], K]:
+        """Return lmul property of AsBimodule object."""
+        return self._scl.mul
+
+    @property
+    def rmul(self) -> Callable[[K, K], K]:
+        """Return rmul property of AsBimodule object."""
+        return self._scl.mul
+
+    @property
+    def ldiv(self) -> Callable[[K, K], K]:
+        """Return ldiv property of AsBimodule object."""
+        return swap_args(self._scl.div)
+
+    @property
+    def rdiv(self) -> Callable[[K, K], K]:
+        """Return rdiv property of AsBimodule object."""
+        return self._scl.div

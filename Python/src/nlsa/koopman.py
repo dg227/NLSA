@@ -27,7 +27,7 @@ class KoopmanParsDiff:
     """Regularization parameter."""
 
     antisym: bool
-    """Perform antisymmetrization"""
+    """Perform antisymmetrization."""
 
     which_eigs_galerkin: int | tuple[int, int] | list[int]
     """Kernel eigenvectors used for Galerkin approximation of the generator."""
@@ -40,6 +40,9 @@ class KoopmanParsDiff:
 
     sort_by: Literal["energy", "frequency"] = "frequency"
     """Koopman eigenvalue/eigenvector sorting."""
+
+    grad_batch_size: Optional[int] = None
+    """Batch size for gradient computation."""
 
     gram_batch_size: Optional[int] = None
     """Batch size of inner product computation for generator."""
@@ -97,12 +100,6 @@ class KoopmanParsDiff:
 class KoopmanParsQz:
     """Eigendecomposition parameters for Qz operator."""
 
-    fd_order: Literal[2, 4, 6, 8]
-    """Finite-difference order."""
-
-    dt: float
-    """Finite difference interval."""
-
     num_quad: int
     """Number of quadrature points"""
 
@@ -121,8 +118,14 @@ class KoopmanParsQz:
     laplace_method: Literal["log", "lin", "inv"] = "log"
     """Method for computing Laplacian eigenvalues."""
 
+    smoothing_kernel: Literal["exponential", "fejer"] = "exponential"
+    """Smoothing kernel used for operator compactification."""
+
     sort_by: Literal["energy", "frequency"] = "frequency"
     """Koopman eigenvalue/eigenvector sorting."""
+
+    eval_batch_size: Optional[int] = None
+    """Evaluation batch size for quadrature in resolvent computation."""
 
     quad_batch_size: Optional[int] = None
     """Batch size for quadrature in resolvent computation."""
@@ -166,11 +169,10 @@ class KoopmanParsQz:
                 (
                     "qz",
                     f"resz{self.res_z:.2g}",
-                    f"dt{self.dt:.2g}",
                     f"nq{self.num_quad}",
                     self.laplace_method,
+                    self.smoothing_kernel,
                     f"tau{self.tau:.2g}",
-                    f"fdord{self.fd_order}",
                     num_eigs_str,
                     eigs_galerkin_str,
                     self.sort_by,

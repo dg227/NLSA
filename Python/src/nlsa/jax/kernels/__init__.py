@@ -1,4 +1,5 @@
 """Provide classes and functions for kernel computations in JAX."""
+
 from nlsa.kernels import (
     ConePars as ConePars,
     KernelEigenbasis as KernelEigenbasis,
@@ -18,18 +19,22 @@ from nlsa.kernels import (
     compose as compose,
     make_mercer_kernel as make_mercer_kernel,
     riemannian_vol as riemannian_vol,
+    bandwidth_normalization as bandwidth_normalization,
     make_bandwidth_function as make_bandwidth_function,
     make_scaled_sqdist as make_scaled_sqdist,
     make_tuning_objective as make_tuning_objective,
-    make_resolvent_compactification_kernels \
-        as make_resolvent_compactification_kernels,
+    make_resolvent_compactification_kernels as make_resolvent_compactification_kernels,
 )
 from nlsa.jax.kernels._kernels import (
     TunePars as TunePars,
     TuneInfo as TuneInfo,
+    DmKernelPars as DmKernelPars,
+    BsKernelPars as BsKernelPars,
     KernelPars as KernelPars,
     KernelEigen as KernelEigen,
+    KernelEigenShardings as KernelEigenShardings,
     tune_bandwidth as tune_bandwidth,
+    tune_bandwidth_from_shape_function as tune_bandwidth_from_shape_function,
     compute_eigen_dm as compute_eigen_dm,
     compute_eigen_bs as compute_eigen_bs,
     compute_eigen as compute_eigen,
@@ -41,4 +46,5 @@ from nlsa.jax.kernels._kernels import (
     plot_kernel_tuning as plot_kernel_tuning,
     plot_laplace_spectrum as plot_laplace_spectrum,
     to_laplace_eigenvalues as to_laplace_eigenvalues,
+    to_kernel_eigen as to_kernel_eigen,
 )

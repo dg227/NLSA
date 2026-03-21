@@ -37,6 +37,8 @@ dependencies = [
     "jupyterlab",
     "matplotlib",
     "more-itertools",
+    "nc_time_axis",
+    "netCDF4",
     "numpy",
     "opt_einsum",
     "pandas",
@@ -48,11 +50,18 @@ dependencies = [
     "tabulate",
     "tensorflow-probability",
     "typeguard",
+    "xarray"
 ]
 
 [project.optional-dependencies]
 cuda = [
-    "jax[cuda12]"
+    "jax[cuda]==0.8.0"
+]
+cuda13 = [
+    "jax[cuda13]==0.8.0"
+]
+xarray_complete = [
+    "xarray[complete]"
 ]
 
 dev = [
@@ -64,6 +73,7 @@ dev = [
     "pandas-stubs",
     "pyright",
     "pytest",
+    "rich",
     "ruff",
     "scipy-stubs"
 ]
@@ -104,4 +114,8 @@ typeCheckingMode = "strict"
 reportUnusedVariable = "error"
 
 [tool.ruff]
-select = ["E", "F", "D"]
+select = ["E", "F", "D", "N"]
+line-length = 79
+
+[tool.ruff.format]
+docstring-code-format = true

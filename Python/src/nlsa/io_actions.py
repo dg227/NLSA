@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import pickle
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
+from itertools import starmap
 from functools import wraps
 from dataclasses import dataclass, field
 from matplotlib.figure import Figure
@@ -51,6 +52,7 @@ class IO:
 
     @property
     def cwd(self) -> Path:
+        """Current working directory of IO object."""
         if self.paths:
             return self.root / self.paths[-1]
         else:
@@ -86,6 +88,27 @@ def pickleit[T, **P](
                 check_type(y, cls)
                 print(f"Data read from {pth}")
         return y
+
+    return f_wrapped
+
+
+def pickleem[T, **Q, **P](
+    f: Callable[P, Iterable[Callable[Q, T]]],
+    io: IO,
+    mode: Literal["calc", "calcsave", "read"] = "calc",
+    fname: str = "Untitled",
+    cls: Optional[type[T]] = None,
+) -> Callable[P, Iterable[Callable[Q, T]]]:
+    """Wrap collection of computations to perform pickling/unpickling."""
+
+    def go(i: int, g: Callable[Q, T]) -> Callable[Q, T]:
+        return pickleit(g, io, mode, f"{fname}_{i}", cls)
+
+    @wraps(f)
+    def f_wrapped(
+        *args: P.args, **kwargs: P.kwargs
+    ) -> Iterable[Callable[Q, T]]:
+        return starmap(go, enumerate(f(*args, **kwargs)))
 
     return f_wrapped
 
@@ -224,6 +247,20 @@ def timeit[T, **P](f: Callable[P, T]) -> Callable[P, T]:
         total_time = end_time - start_time
         print(f"{f.__name__}: Took {total_time:.4f} seconds")
         return y
+
+    return f_wrapped
+
+
+def timeem[T, **Q, **P](
+    f: Callable[P, Iterable[Callable[Q, T]]],
+) -> Callable[P, Iterable[Callable[Q, T]]]:
+    """Add timing to a collection of functions."""
+
+    @wraps(f)
+    def f_wrapped(
+        *args: P.args, **kwargs: P.kwargs
+    ) -> Iterable[Callable[Q, T]]:
+        return map(timeit, f(*args, **kwargs))
 
     return f_wrapped
 

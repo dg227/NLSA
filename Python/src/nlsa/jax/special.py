@@ -1,3 +1,5 @@
+"""Implement specifal functions in JAX."""
+
 import jax.numpy as jnp
 from jax import Array
 from tensorflow_probability.substrates.jax.math import bessel_ive as ive
@@ -15,5 +17,4 @@ def iv0_ratio(v: Array, z: Array) -> Array:
 
     Warning: This implementation of ive0_ratio may not be numerically stable.
     """
-
-    return jnp.divide(ive(v, z), ive(0., z))
+    return jnp.divide(ive(v, z), ive(0, z))
