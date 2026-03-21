@@ -1,6 +1,6 @@
 # Python NLSA code
 
-Requires Python version 3.10 or above.
+Requires Python version 3.12 or above.
 
 ## Virtual environment 
 
