@@ -1,14 +1,12 @@
-# pyright: basic
 """Provide scalar field operations for JAX arrays."""
 
 import jax.numpy as jnp
 import nlsa.abstract_algebra as alg
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import cached_property
 from jax import Array
 from jax.typing import DTypeLike
-from typing import Optional, final
+from typing import Optional, SupportsComplex, SupportsFloat, final
 
 type K = Array
 type F[*Xs, Y] = Callable[[*Xs], Y]
@@ -51,9 +49,11 @@ def ldiv(s: K, t: K, /) -> K:
     return jnp.divide(t, s)
 
 
+# TODO: We should distinguish more carefully between real and complex dtypes.
+# This may warrant having separate RealScalarField and ComplexScalarField.
 @final
 @dataclass(frozen=True)
-class ScalarField[D: DTypeLike](alg.ImplementsScalarField[K]):
+class ScalarField[D: DTypeLike](alg.ImplementsComplexScalarField[K]):
     """Implement scalar field operations on JAX arrays."""
 
     dtype: D
@@ -71,67 +71,92 @@ class ScalarField[D: DTypeLike](alg.ImplementsScalarField[K]):
     _sqrt: Optional[Callable[[K], K]] = None
     _mod: Optional[Callable[[K], K]] = None
 
-    @cached_property
+    @property
     def zero(self) -> Callable[[], K]:
         """Return zero property of ScalarField object."""
         return make_zero(self.dtype) if self._zero is None else self._zero
 
-    @cached_property
+    @property
     def add(self) -> Callable[[K, K], K]:
         """Return add property of ScalarField object."""
         return jnp.add if self._add is None else self._add
 
-    @cached_property
+    @property
     def sub(self) -> Callable[[K, K], K]:
         """Return sub property of ScalarField object."""
         return jnp.subtract if self._sub is None else self._sub
 
-    @cached_property
+    @property
     def neg(self) -> Callable[[K], K]:
         """Return neg property of ScalarField object."""
         return neg if self._neg is None else self._neg
 
-    @cached_property
+    @property
     def unit(self) -> Callable[[], K]:
         """Return unit property of ScalarField object."""
         return make_unit(self.dtype) if self._unit is None else self._unit
 
-    @cached_property
+    @property
     def mul(self) -> Callable[[K, K], K]:
         """Return mul property of ScalarField object."""
         return jnp.multiply if self._mul is None else self._mul
 
-    @cached_property
+    @property
     def mpower(self) -> Callable[[K, int], K]:
         """Return mpower property of ScalarField object."""
         return jnp.power if self._mpower is None else self._mpower
 
-    @cached_property
+    @property
     def power(self) -> Callable[[K, K], K]:
         """Return power property of ScalarField object."""
         return jnp.power if self._power is None else self._power
 
-    @cached_property
+    @property
     def div(self) -> Callable[[K, K], K]:
         """Return div property of ScalarField object."""
         return jnp.divide if self._div is None else self._div
 
-    @cached_property
+    @property
     def inv(self) -> Callable[[K], K]:
         """Return inv property of ScalarField object."""
         return make_inv(self.dtype) if self._inv is None else self._inv
 
-    @cached_property
+    @property
     def adj(self) -> Callable[[K], K]:
         """Return adj property of ScalarField object."""
         return jnp.conjugate if self._adj is None else self._adj
 
-    @cached_property
+    @property
     def sqrt(self) -> Callable[[K], K]:
         """Return sqrt property of ScalarField object."""
         return jnp.sqrt if self._sqrt is None else self._sqrt
 
-    @cached_property
-    def mod(self) -> Callable[[K], K]:
-        """Return mod property of ScalarField object."""
+    @property
+    def abs(self) -> Callable[[K], K]:
+        """Return abs property of ScalarField object."""
         return jnp.abs if self._mod is None else self._mod
+
+    @property
+    def exp(self) -> Callable[[K], K]:
+        """Return exp property of FloatScalarField object."""
+        return jnp.exp
+
+    @property
+    def exp10(self) -> Callable[[K], K]:
+        """Return exp10 property of FloatScalarField object."""
+        return lambda x: 10**x
+
+    @property
+    def log(self) -> Callable[[K], K]:
+        """Return log property of FloatScalarField object."""
+        return jnp.log
+
+    @property
+    def log10(self) -> Callable[[K], K]:
+        """Return log10 property of FloatScalarField object."""
+        return jnp.log10
+
+    @property
+    def from_pyscalar(self) -> Callable[[SupportsFloat | SupportsComplex], K]:
+        """Return from_pyscalar property of FloatScalarField object."""
+        return lambda x: jnp.asarray(x, dtype=self.dtype)

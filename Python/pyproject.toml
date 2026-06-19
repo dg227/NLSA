@@ -7,7 +7,7 @@ name = "nlsa"
 version = "0.2"
 description = "Data-driven algorithms for dynamical systems"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license = { file = "LICENSE.txt" }
 keywords = ["kernel methods", "dynamical systems", "scientific computing"]
 authors = [
@@ -22,8 +22,7 @@ classifiers = [
     "Topic :: Scientific Computing",
     "License :: OSI Approved :: BSD-3-Clause",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 dependencies = [

@@ -2,7 +2,14 @@
 
 from collections.abc import Callable, Iterable
 from functools import partial, reduce
-from typing import Optional, Protocol, final, runtime_checkable
+from typing import (
+    Optional,
+    Protocol,
+    SupportsComplex,
+    SupportsFloat,
+    final,
+    runtime_checkable,
+)
 
 type F[X, Y] = Callable[[X], Y]
 
@@ -108,11 +115,31 @@ class ImplementsInv[A](Protocol):
 
 
 @runtime_checkable
-class ImplementsMod[A](Protocol):
-    """Implement algebraic modulus."""
+class ImplementsLog[A](Protocol):
+    """Implement natural logarithm."""
 
     @property
-    def mod(self) -> Callable[[A], A]:
+    def log(self) -> Callable[[A], A]:
+        """Natural logarithm."""
+        ...
+
+
+@runtime_checkable
+class ImplementsLog10[A](Protocol):
+    """Implement base 10 logarithm."""
+
+    @property
+    def log10(self) -> Callable[[A], A]:
+        """Base 10 logarithm."""
+        ...
+
+
+@runtime_checkable
+class ImplementsAbs[A](Protocol):
+    """Implement algebraic modulus (absolute value)."""
+
+    @property
+    def abs(self) -> Callable[[A], A]:
         """Algebraic modulus."""
         ...
 
@@ -174,6 +201,16 @@ class ImplementsExp[A, B](Protocol):
     @property
     def exp(self) -> Callable[[A], B]:
         """Exponentiation."""
+        ...
+
+
+@runtime_checkable
+class ImplementsExp10[A](Protocol):
+    """Implement exponentiation with base 10."""
+
+    @property
+    def exp10(self) -> Callable[[A], A]:
+        """Base 10 exponentiation."""
         ...
 
 
@@ -257,7 +294,6 @@ class ImplementsCompose[F, G, H](Protocol):
         ...
 
 
-# TODO:
 @runtime_checkable
 class ImplementsScalarField[K](
     ImplementsZero[K],
@@ -268,16 +304,46 @@ class ImplementsScalarField[K](
     ImplementsUnit[K],
     ImplementsDiv[K],
     ImplementsInv[K],
-    ImplementsAdj[K],
-    ImplementsSqrt[K],
-    ImplementsPower[K, K],
     ImplementsMPower[K],
-    ImplementsMod[K],
     Protocol,
 ):
     """Implement scalar field."""
 
     pass
+
+
+@runtime_checkable
+class ImplementsRealScalarField[K](
+    ImplementsScalarField[K],
+    ImplementsSqrt[K],
+    ImplementsPower[K, K],
+    ImplementsAbs[K],
+    ImplementsExp[K, K],
+    ImplementsExp10[K],
+    ImplementsLog[K],
+    ImplementsLog10[K],
+    Protocol,
+):
+    """Implement real scalar field."""
+
+    @property
+    def from_pyscalar(self) -> Callable[[SupportsFloat], K]:
+        """Convert Python float to scalar."""
+        ...
+
+
+@runtime_checkable
+class ImplementsComplexScalarField[K](
+    ImplementsRealScalarField[K],
+    ImplementsAdj[K],
+    Protocol,
+):
+    """Implement complex scalar field."""
+
+    @property
+    def from_pyscalar(self) -> Callable[[SupportsFloat | SupportsComplex], K]:
+        """Convert Python float or complex to scalar."""
+        ...
 
 
 @runtime_checkable
@@ -299,8 +365,34 @@ class ImplementsVectorSpace[T, K](
 
 
 @runtime_checkable
+class ImplementsRealVectorSpace[T, K](
+    ImplementsVectorSpace[T, K],
+    Protocol,
+):
+    """Implement real vector space."""
+
+    @property
+    def scl(self) -> ImplementsRealScalarField[K]:
+        """Scalar field associated with real vector space."""
+        ...
+
+
+@runtime_checkable
+class ImplementsComplexVectorSpace[T, K](
+    ImplementsRealVectorSpace[T, K],
+    Protocol,
+):
+    """Implement complex vector space."""
+
+    @property
+    def scl(self) -> ImplementsComplexScalarField[K]:
+        """Scalar field associated with complex vector space."""
+        ...
+
+
+@runtime_checkable
 class ImplementsNormedSpace[T, K](
-    ImplementsVectorSpace[T, K], ImplementsNorm[T, K], Protocol
+    ImplementsRealVectorSpace[T, K], ImplementsNorm[T, K], Protocol
 ):
     """Implement normed space operations."""
 
@@ -330,10 +422,42 @@ class ImplementsAlgebra[A, K](
 
 
 @runtime_checkable
+class ImplementsRealAlgebra[A, K](
+    ImplementsRealVectorSpace[A, K],
+    ImplementsAlgebra[A, K],
+    Protocol,
+):
+    """Implement algebra over the reals."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsStarAlgebra[A, K](
+    ImplementsComplexVectorSpace[A, K],
+    ImplementsAlgebra[A, K],
+    ImplementsAdj[A],
+    Protocol,
+):
+    """Implement algebra over the reals."""
+
+    pass
+
+
+@runtime_checkable
 class ImplementsNormedAlgebra[A, K](
-    ImplementsAlgebra[A, K], ImplementsNorm[A, K], Protocol
+    ImplementsRealAlgebra[A, K], ImplementsNorm[A, K], Protocol
 ):
     """Implement normed algebra."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedStarAlgebra[A, K](
+    ImplementsStarAlgebra[A, K], ImplementsNorm[A, K], Protocol
+):
+    """Implement normed star algebra."""
 
     pass
 
@@ -348,6 +472,15 @@ class ImplementsInnerProductAlgebra[V, K](
 
 
 @runtime_checkable
+class ImplementsInnerProductStarAlgebra[V, K](
+    ImplementsNormedStarAlgebra[V, K], ImplementsInnerp[V, K], Protocol
+):
+    """Implement star algebra with inner product."""
+
+    pass
+
+
+@runtime_checkable
 class ImplementsAlgebraWithDivision[A, K](
     ImplementsAlgebra[A, K], ImplementsDiv[A], ImplementsInv[A], Protocol
 ):
@@ -357,11 +490,32 @@ class ImplementsAlgebraWithDivision[A, K](
 
 
 @runtime_checkable
+class ImplementsRealAlgebraWithDivision[A, K](
+    ImplementsRealAlgebra[A, K],
+    ImplementsAlgebraWithDivision[A, K],
+    Protocol,
+):
+    """Implement algebra over the reals with division and inverse."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsStarAlgebraWithDivision[A, K](
+    ImplementsStarAlgebra[A, K],
+    ImplementsAlgebraWithDivision[A, K],
+    Protocol,
+):
+    """Implement star algebra with division and inverse."""
+
+    pass
+
+
+@runtime_checkable
 class ImplementsCalculus[A, K](
-    ImplementsAdj[A],
     ImplementsPower[A, K],
     ImplementsSqrt[A],
-    ImplementsMod[A],
+    ImplementsAbs[A],
     Protocol,
 ):
     """Implement basic functional calculus operations."""
@@ -371,11 +525,23 @@ class ImplementsCalculus[A, K](
 
 @runtime_checkable
 class ImplementsAlgebraWithCalculus[A, K](
-    ImplementsAlgebraWithDivision[A, K],
+    ImplementsRealAlgebraWithDivision[A, K],
     ImplementsCalculus[A, K],
     Protocol,
 ):
-    """Implement algebra operations with functional calculus."""
+    """Implement real algebra operations with functional calculus."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsStarAlgebraWithCalculus[A, K](
+    ImplementsStarAlgebraWithDivision[A, K],
+    ImplementsCalculus[A, K],
+    ImplementsAdj[A],
+    Protocol,
+):
+    """Implement star algebra operations with functional calculus."""
 
     pass
 
@@ -391,9 +557,31 @@ class ImplementsNormedAlgebraWithCalculus[A, K](
 
 @runtime_checkable
 class ImplementsInnerProductAlgebraWithCalculus[V, K](
-    ImplementsNormedAlgebraWithCalculus[V, K], ImplementsInnerp[V, K], Protocol
+    ImplementsNormedAlgebraWithCalculus[V, K],
+    ImplementsInnerp[V, K],
+    Protocol,
 ):
-    """Implement algebra with inner product and functional calculus."""
+    """Implement real algebra with inner product and functional calculus."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedStarAlgebraWithCalculus[A, K](
+    ImplementsStarAlgebraWithCalculus[A, K], ImplementsNorm[A, K], Protocol
+):
+    """Implement normed star algebra with functional calculus."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductStarAlgebraWithCalculus[V, K](
+    ImplementsNormedStarAlgebraWithCalculus[V, K],
+    ImplementsInnerp[V, K],
+    Protocol,
+):
+    """Implement star algebra with inner product and functional calculus."""
 
     pass
 
@@ -401,7 +589,7 @@ class ImplementsInnerProductAlgebraWithCalculus[V, K](
 # TODO: Check if we need dom and codom.
 @runtime_checkable
 class ImplementsOperatorSpace[T, V, W, K](
-    ImplementsVectorSpace[T, K], Protocol
+    ImplementsRealVectorSpace[T, K], Protocol
 ):
     """Implement vector space of linear maps between Hilbert spaces."""
 
@@ -422,12 +610,57 @@ class ImplementsOperatorSpace[T, V, W, K](
 
 
 @runtime_checkable
+class ImplementsOperatorSystem[T, V, W, K](
+    ImplementsComplexVectorSpace[T, K],
+    ImplementsOperatorSpace[T, V, W, K],
+    ImplementsAdj[T],
+    Protocol,
+):
+    """Implement operator system between Hilbert spaces."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedOperatorSpace[T, V, W, K](
+    ImplementsOperatorSpace[T, V, W, K],
+    ImplementsNorm[T, K],
+    Protocol,
+):
+    """Implement operator space with norm."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedOperatorSystem[T, V, W, K](
+    ImplementsOperatorSystem[T, V, W, K],
+    ImplementsNorm[T, K],
+    Protocol,
+):
+    """Implement operator system with norm."""
+
+    pass
+
+
+@runtime_checkable
 class ImplementsInnerProductOperatorSpace[T, V, W, K](
     ImplementsOperatorSpace[T, V, W, K],
-    ImplementsInnerProductSpace[T, K],
+    ImplementsInnerp[T, K],
     Protocol,
 ):
     """Implement operator space with inner product."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductOperatorSystem[T, V, W, K](
+    ImplementsOperatorSystem[T, V, W, K],
+    ImplementsInnerp[T, K],
+    Protocol,
+):
+    """Implement operator system with inner product."""
 
     pass
 
@@ -444,23 +677,100 @@ class ImplementsOperatorAlgebra[A, V, K](
 
 
 @runtime_checkable
+class ImplementsOperatorStarAlgebra[A, V, K](
+    ImplementsOperatorSystem[A, V, V, K],
+    ImplementsStarAlgebra[A, K],
+    Protocol,
+):
+    """Implement operator algebra on Hilbert space."""
+
+    pass
+
+
+@runtime_checkable
 class ImplementsOperatorAlgebraWithCalculus[A, V, K](
     ImplementsOperatorAlgebra[A, V, K],
     ImplementsCalculus[A, K],
     Protocol,
 ):
-    """Implement algebra on Hilbert space with functional calculus."""
+    """Implement operator algebra with functional calculus."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsOperatorStarAlgebraWithCalculus[A, V, K](
+    ImplementsOperatorStarAlgebra[A, V, K],
+    ImplementsCalculus[A, K],
+    Protocol,
+):
+    """Implement operator star algebra with functional calculus."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedOperatorAlgebra[A, V, K](
+    ImplementsOperatorAlgebra[A, V, K],
+    ImplementsNorm[A, K],
+    Protocol,
+):
+    """Implement normed operator algebra."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedOperatorAlgebraWithCalculus[A, V, K](
+    ImplementsOperatorAlgebraWithCalculus[A, V, K],
+    ImplementsNorm[A, K],
+    Protocol,
+):
+    """Implement normed operator algebra with functional calculus."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedOperatorStarAlgebra[A, V, K](
+    ImplementsOperatorStarAlgebra[A, V, K],
+    ImplementsNorm[A, K],
+    Protocol,
+):
+    """Implement normed operator star algebra."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsNormedOperatorStarAlgebraWithCalculus[A, V, K](
+    ImplementsOperatorStarAlgebraWithCalculus[A, V, K],
+    ImplementsNorm[A, K],
+    Protocol,
+):
+    """Implement normed operator star algebra with functional calculus."""
 
     pass
 
 
 @runtime_checkable
 class ImplementsInnerProductOperatorAlgebra[A, V, K](
-    ImplementsOperatorAlgebra[A, V, K],
-    ImplementsInnerProductAlgebra[A, K],
+    ImplementsNormedOperatorAlgebra[A, V, K],
+    ImplementsInnerp[A, K],
     Protocol,
 ):
     """Implement operator algebra with inner product."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductOperatorStarAlgebra[A, V, K](
+    ImplementsNormedOperatorStarAlgebra[A, V, K],
+    ImplementsInnerp[A, K],
+    Protocol,
+):
+    """Implement operator star algebra with inner product."""
 
     pass
 
@@ -472,6 +782,17 @@ class ImplementsInnerProductOperatorAlgebraWithCalculus[A, V, K](
     Protocol,
 ):
     """Implement operator algebra with inner product, functional calculus."""
+
+    pass
+
+
+@runtime_checkable
+class ImplementsInnerProductOperatorStarAlgebraWithCalculus[A, V, K](
+    ImplementsInnerProductOperatorStarAlgebra[A, V, K],
+    ImplementsCalculus[A, K],
+    Protocol,
+):
+    """Implement operator star algebra with inner product, func. calculus."""
 
     pass
 
@@ -616,6 +937,15 @@ class ImplementsMeasurableFnAlgebra[X, Y, V, K](
 
 
 @runtime_checkable
+class ImplementsMeasurableFnStarAlgebra[X, Y, V, K](
+    ImplementsStarAlgebraWithCalculus[V, K], ImplementsIncl[X, Y, V], Protocol
+):
+    """Implement operations on equivalence classes of functions."""
+
+    pass
+
+
+@runtime_checkable
 class ImplementsMeasureFnAlgebra[X, Y, V, K](
     ImplementsMeasurableFnAlgebra[X, Y, V, K],
     ImplementsIntegrate[V, Y],
@@ -627,8 +957,21 @@ class ImplementsMeasureFnAlgebra[X, Y, V, K](
 
 
 @runtime_checkable
+class ImplementsMeasureFnStarAlgebra[X, Y, V, K](
+    ImplementsMeasurableFnStarAlgebra[X, Y, V, K],
+    ImplementsIntegrate[V, Y],
+    Protocol,
+):
+    """Implement operations on measure function space."""
+
+    pass
+
+
+@runtime_checkable
 class ImplementsL2FnAlgebra[X, Y, V, K](
-    ImplementsMeasureFnAlgebra[X, Y, V, K], ImplementsInnerp[V, K], Protocol
+    ImplementsMeasureFnStarAlgebra[X, Y, V, K],
+    ImplementsInnerp[V, K],
+    Protocol,
 ):
     """Implement operations on L2 function space with algebra structure."""
 
@@ -906,7 +1249,7 @@ def normalize[V, K](impl: ImplementsNormedSpace[V, K], v: V) -> V:
 
 
 def sum[V, K](
-    impl: ImplementsVectorSpace[V, K],
+    impl: ImplementsComplexVectorSpace[V, K],
     vs: Iterable[V],
     initializer: Optional[V] = None,
 ) -> V:
@@ -917,7 +1260,7 @@ def sum[V, K](
 
 
 def product[A, K](
-    impl: ImplementsAlgebraWithCalculus[A, K],
+    impl: ImplementsStarAlgebraWithCalculus[A, K],
     vs: Iterable[A],
     initializer: Optional[A] = None,
 ) -> A:
@@ -928,7 +1271,7 @@ def product[A, K](
 
 
 def linear_combination[V, K](
-    impl: ImplementsVectorSpace[V, K], cs: Iterable[K], vs: Iterable[V]
+    impl: ImplementsComplexVectorSpace[V, K], cs: Iterable[K], vs: Iterable[V]
 ) -> V:
     """Form linear combination of elements of a vector space."""
     cvs = map(impl.smul, cs, vs)

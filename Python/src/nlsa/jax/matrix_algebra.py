@@ -81,7 +81,7 @@ def adj(a: A, /) -> A:
     return jnp.conjugate(a.T)
 
 
-def mod(a: A, /) -> A:
+def abs(a: A, /) -> A:
     """Compute modulus of matrix."""
     return jla.sqrtm(adj(a) @ a)
 
@@ -211,7 +211,7 @@ class MatrixAlgebra[N: Shape, D: DTypeLike](
     _mpower: Optional[Callable[[A, int], A]] = None
     _power: Optional[Callable[[A, K], A]] = None
     _norm: Optional[Callable[[A], K]] = None
-    _mod: Optional[Callable[[A], A]] = None
+    _abs: Optional[Callable[[A], A]] = None
     _app: Optional[Callable[[A, V], V]] = None
 
     @property
@@ -354,9 +354,9 @@ class MatrixAlgebra[N: Shape, D: DTypeLike](
         )
 
     @property
-    def mod(self) -> Callable[[A], A]:
-        """Return mod property of MatrixAlgebra object."""
-        return mod if self._mod is None else self._mod
+    def abs(self) -> Callable[[A], A]:
+        """Return abs property of MatrixAlgebra object."""
+        return abs if self._abs is None else self._abs
 
     @property
     def app(self) -> Callable[[A, V], V]:
@@ -397,7 +397,7 @@ class HilbertSchmidtMatrixAlgebra[N: Shape, D: DTypeLike](
     power: Callable[[A, K], A] = field(default=power)
     innerp: Callable[[A, A], K] = field(init=False)
     norm: Callable[[A], K] = field(init=False)
-    mod: Callable[[A], A] = field(default=mod)
+    abs: Callable[[A], A] = field(default=abs)
     app: Callable[[A, V], V] = field(default=jnp.matmul)
     sharding: InitVar[Sharding | None] = None
     _zero: InitVar[Optional[Callable[[], A]]] = None

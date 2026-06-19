@@ -478,15 +478,23 @@ def make_right_shift_operator(step: int, pad: ArrayLike = 0) -> F[V, V]:
 
 
 def hankel(
-    xs: Xs, /, num_delays: int = 0, delay_step: int = 1, flatten: bool = False
+    xs: Xs,
+    /,
+    num_delays: int = 0,
+    delay_step: int = 1,
+    delay_axis: Literal[0, 1] = 1,
+    flatten: bool = False,
 ) -> Xd:
     """Compute delay matrix (Hankel matrix)."""
     num_delay_samples = xs.shape[0] - num_delays * delay_step
     shift_op = make_left_shift_operator(step=delay_step)
     delay_embed = dyn.make_fin_orbit(shift_op, num_steps=num_delays + 1)
-    xds = jnp.swapaxes(delay_embed(xs), 0, 1)[:num_delay_samples, :]
+    # xds = jnp.swapaxes(delay_embed(xs), 0, 1)[:num_delay_samples, :]
+    xds = delay_embed(xs)[:, :num_delay_samples]
+    if delay_axis == 1:
+        return jnp.swapaxes(xds, 0, 1)
     if flatten:
-        xds = xds.reshape((num_delay_samples, -1))
+        return xds.reshape((num_delay_samples, -1))
     return xds
 
 
@@ -496,6 +504,7 @@ def make_laplace_transform(
     z: float = 1,
     weight_sharding: Optional[Sharding] = None,
     out_sharding: Optional[Sharding] = None,
+    jit: bool = False,
 ) -> F[V, V]:
     """Make Laplace transform operator based on trapezoidal rule."""
     if z >= 0:
@@ -510,4 +519,31 @@ def make_laplace_transform(
         vw = convolve(v, w, mode="valid")
         return (vw[:-1] + vw[1:]) * dt / 2
 
+    if jit:
+        return jax.jit(lapl)
     return lapl
+
+
+def make_gauss_transform(
+    num_quad: int,
+    dt: float = 1,
+    z: float = 1,
+    weight_sharding: Optional[Sharding] = None,
+    out_sharding: Optional[Sharding] = None,
+) -> F[V, V]:
+    """Make Dawson transform operator based on trapezoidal rule.
+
+    Computes the forward integral with Gaussian weights
+    exp(-(z * k * dt)**2). The skew-symmetric Iz matrix is assembled
+    from forward and backward Gram matrices in compute_iz_matrix.
+    """
+    w = jnp.flip(jnp.array(jnp.exp(-((z * dt * jnp.arange(num_quad)) ** 2))))
+    if weight_sharding is not None:
+        w = jax.lax.with_sharding_constraint(w, shardings=weight_sharding)
+
+    @partial(shardit, sharding=out_sharding)
+    def iz_matrix(v: V) -> V:
+        vw = convolve(v, w, mode="valid")
+        return (vw[:-1] + vw[1:]) * dt / 2
+
+    return iz_matrix

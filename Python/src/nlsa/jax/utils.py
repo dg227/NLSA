@@ -10,7 +10,8 @@ from functools import partial, wraps
 from jax import Array, vmap
 from jax.lax import concatenate
 from jax.typing import DTypeLike
-from nlsa.utils import batched
+from nlsa.jax.typing import PyTree
+from nlsa.utils import batched, snd
 from typing import Callable, Literal, Optional
 
 type V = Array  # vector
@@ -149,6 +150,19 @@ def make_batched2(
     return g
 
 
+def scan_map(f: Callable[[Array], Array]) -> Callable[[Array], Array]:
+    """Transform function for sequential execution using jax.lax.scan."""
+
+    def scan_body(i: int, x: Array) -> tuple[int, Array]:
+        return i, f(x)
+
+    def g(xs: Array) -> Array:
+        _, ys = jax.lax.scan(scan_body, 1, xs)
+        return ys
+
+    return g
+
+
 def batch_map(
     f: Callable[[Array], Array],
     in_axis: int = 0,
@@ -157,7 +171,10 @@ def batch_map(
 ) -> Callable[[Array], Array]:
     """Transform function for batched execution."""
     if batch_size is not None:
-        g = partial(jax.lax.map, f, batch_size=batch_size)
+        if False:
+            g = scan_map(f)
+        else:
+            g = partial(jax.lax.map, jax.checkpoint(f), batch_size=batch_size)
         if in_axis != 0:
             move_in_axis = partial(jnp.moveaxis, source=in_axis, destination=0)
             g: Callable[[Array], Array] = fun.compose(g, move_in_axis)
@@ -168,6 +185,26 @@ def batch_map(
             g = fun.compose(move_out_axis, g)
     else:
         g = vmap(f, in_axes=in_axis, out_axes=out_axis)
+    return g
+
+
+def curried_batch_map[P: PyTree](
+    f: Callable[[P, Array], Array],
+    in_axis: int = 0,
+    out_axis: int = 0,
+    batch_size: Optional[int] = None,
+) -> Callable[[PyTree, Array], Array]:
+    """Transform function for batched execution -- curried version."""
+
+    def g(p: P, xs: Array) -> Array:
+        fp = batch_map(
+            partial(f, p),
+            in_axis=in_axis,
+            out_axis=out_axis,
+            batch_size=batch_size,
+        )
+        return fp(xs)
+
     return g
 
 

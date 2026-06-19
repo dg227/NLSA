@@ -1,10 +1,11 @@
 """Provide various utility functions."""
 
+import inspect
 import math
 import time
 from collections.abc import Callable, Generator, Sequence
 from functools import wraps
-from typing import Literal
+from typing import Literal, TypeGuard
 
 
 def fst[X](x: Sequence[X]) -> X:
@@ -117,3 +118,19 @@ def get_integer_in_range(prompt: str, min_val: int, max_val: int) -> int:
                 )
         except ValueError:
             print("Error: Invalid input. Please enter a whole number.")
+
+
+def has_one_arg[D, X, Y](
+    f: Callable[[D, X], Y] | Callable[[X], Y],
+) -> TypeGuard[Callable[[X], Y]]:
+    """Return True if the function takes exactly one argument."""
+    sig = inspect.signature(f)
+    return len(sig.parameters) == 1
+
+
+def has_two_args[D, X, Y](
+    f: Callable[[D, X, X], Y] | Callable[[X, X], Y],
+) -> TypeGuard[Callable[[X, X], Y]]:
+    """Return True if the function takes exactly 2 arguments."""
+    sig = inspect.signature(f)
+    return len(sig.parameters) == 2

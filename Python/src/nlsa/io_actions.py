@@ -59,22 +59,25 @@ class IO:
             return self.root
 
 
+# NOTE: The naming of the parameter cls in these functions may be a bit
+# unfortunate. Consider renaming it to something like ty.
 def pickleit[T, **P](
-    f: Callable[P, T],
+    func: Callable[P, T],
     io: IO,
     mode: Literal["calc", "calcsave", "read"] = "calc",
     fname: str = "Untitled",
     cls: Optional[type[T]] = None,
+    callback: Optional[Callable[[T], T]] = None,
 ) -> Callable[P, T]:
     """Wrap computation to perform pickling/unpickling."""
 
-    @wraps(f)
+    @wraps(func)
     def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
         match mode:
             case "calc":
-                y = f(*args, **kwargs)
+                y = func(*args, **kwargs)
             case "calcsave":
-                y = f(*args, **kwargs)
+                y = func(*args, **kwargs)
                 pth: Path = io.cwd / ".".join((fname, "pkl"))
                 pth.parent.mkdir(parents=True, exist_ok=True)
                 with open(pth, "wb") as file:
@@ -86,6 +89,8 @@ def pickleit[T, **P](
                 with open(pth, "rb") as file:
                     y = pickle.load(file)
                 check_type(y, cls)
+                if callback is not None:
+                    y = callback(y)
                 print(f"Data read from {pth}")
         return y
 
@@ -98,11 +103,12 @@ def pickleem[T, **Q, **P](
     mode: Literal["calc", "calcsave", "read"] = "calc",
     fname: str = "Untitled",
     cls: Optional[type[T]] = None,
+    callback: Optional[Callable[[T], T]] = None,
 ) -> Callable[P, Iterable[Callable[Q, T]]]:
     """Wrap collection of computations to perform pickling/unpickling."""
 
     def go(i: int, g: Callable[Q, T]) -> Callable[Q, T]:
-        return pickleit(g, io, mode, f"{fname}_{i}", cls)
+        return pickleit(g, io, mode, f"{fname}_{i}", cls, callback)
 
     @wraps(f)
     def f_wrapped(

@@ -7,13 +7,21 @@ import seaborn as sns
 from collections.abc import Callable
 from dataclasses import dataclass
 from matplotlib.figure import Figure
+from nlsa.typing import (
+    SliceItem,
+    is_sliceable,
+)
 from numpy.typing import ArrayLike
-from typing import Literal, Optional, final
+from typing import Literal, NamedTuple, Optional, Sized, final
 
 type F[*Xs, Y] = Callable[[*Xs], Y]
 
 
-@dataclass(frozen=True)
+# TODO: Consider moving batching parameters to a different class (see
+# kernels module).
+# NOTE: The batching parameter grad_batch_size may not play an actual role in
+# the current implementation. Consider removing it.
+@dataclass(frozen=True, slots=True)
 class KoopmanParsDiff:
     """Eigendecomposition parameters for diffusion-regularized generator."""
 
@@ -35,11 +43,14 @@ class KoopmanParsDiff:
     num_eigs: Optional[int] = None
     """Number of Koopman eigenfunctions to compute."""
 
-    laplace_method: Literal["log", "lin", "inv"] = "log"
+    laplacian_method: Literal["log", "lin", "inv"] = "log"
     """Method for computing Laplacian eigenvalues."""
 
     sort_by: Literal["energy", "frequency"] = "frequency"
     """Koopman eigenvalue/eigenvector sorting."""
+
+    eval_tx_batch_size: Optional[int] = None
+    """Batch size for tangent evaluation functional."""
 
     grad_batch_size: Optional[int] = None
     """Batch size for gradient computation."""
@@ -53,7 +64,7 @@ class KoopmanParsDiff:
         match self.which_eigs_galerkin:
             case int():
                 dim = self.which_eigs_galerkin
-            case (_, _):
+            case tuple():
                 dim = self.which_eigs_galerkin[1] - self.which_eigs_galerkin[0]
             case list():
                 dim = len(self.which_eigs_galerkin)
@@ -67,7 +78,7 @@ class KoopmanParsDiff:
                 eigs_galerkin_str = "-".join(
                     map(str, (0, self.which_eigs_galerkin))
                 )
-            case (_, _):
+            case tuple():
                 eigs_galerkin_str = "-".join(
                     map(str, self.which_eigs_galerkin)
                 )
@@ -85,7 +96,7 @@ class KoopmanParsDiff:
                     "gen_diff",
                     f"dt{self.dt:.2g}",
                     f"fdord{self.fd_order}",
-                    self.laplace_method,
+                    self.laplacian_method,
                     f"tau{self.tau:.2g}",
                     antisym_str,
                     eigs_galerkin_str,
@@ -96,15 +107,18 @@ class KoopmanParsDiff:
         )
 
 
-@dataclass(frozen=True)
-class KoopmanParsQz:
-    """Eigendecomposition parameters for Qz operator."""
+@dataclass(frozen=True, slots=True)
+class KoopmanParsLapl:
+    """Eigendecomposition parameters for Qz operator (Laplace transform)."""
 
     num_quad: int
     """Number of quadrature points"""
 
-    res_z: float
+    bandwidth: float
     """Resolvent parameter."""
+
+    dt: float
+    """Transform timestep."""
 
     tau: float
     """Regularization parameter."""
@@ -112,10 +126,13 @@ class KoopmanParsQz:
     which_eigs_galerkin: int | tuple[int, int] | list[int]
     """Kernel eigenvectors used for Galerkin approximation of Qz operator."""
 
+    antisym: bool = True
+    """Perform antisymmetrization."""
+
     num_eigs: Optional[int] = None
     """Number of Koopman eigenfunctions to compute."""
 
-    laplace_method: Literal["log", "lin", "inv"] = "log"
+    laplacian_method: Literal["log", "lin", "inv"] = "log"
     """Method for computing Laplacian eigenvalues."""
 
     smoothing_kernel: Literal["exponential", "fejer"] = "exponential"
@@ -124,7 +141,7 @@ class KoopmanParsQz:
     sort_by: Literal["energy", "frequency"] = "frequency"
     """Koopman eigenvalue/eigenvector sorting."""
 
-    eval_batch_size: Optional[int] = None
+    eval_quad_batch_size: Optional[int] = None
     """Evaluation batch size for quadrature in resolvent computation."""
 
     quad_batch_size: Optional[int] = None
@@ -139,7 +156,7 @@ class KoopmanParsQz:
         match self.which_eigs_galerkin:
             case int():
                 dim = self.which_eigs_galerkin
-            case (_, _):
+            case tuple():
                 dim = self.which_eigs_galerkin[1] - self.which_eigs_galerkin[0]
             case list():
                 dim = len(self.which_eigs_galerkin)
@@ -152,7 +169,7 @@ class KoopmanParsQz:
                 eigs_galerkin_str = "-".join(
                     map(str, (0, self.which_eigs_galerkin))
                 )
-            case (_, _):
+            case tuple():
                 eigs_galerkin_str = "-".join(
                     map(str, self.which_eigs_galerkin)
                 )
@@ -167,10 +184,11 @@ class KoopmanParsQz:
             filter(
                 None,
                 (
-                    "qz",
-                    f"resz{self.res_z:.2g}",
+                    "lapl",
+                    f"z{self.bandwidth:.2g}",
+                    f"dt{self.dt:.2g}",
                     f"nq{self.num_quad}",
-                    self.laplace_method,
+                    self.laplacian_method,
                     self.smoothing_kernel,
                     f"tau{self.tau:.2g}",
                     num_eigs_str,
@@ -181,8 +199,159 @@ class KoopmanParsQz:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class KoopmanParsGauss:
+    """Eigendecomposition parameters for Iz operator (Gauss transform)."""
+
+    num_quad: int
+    """Number of quadrature points"""
+
+    bandwidth: float
+    """Resolvent parameter."""
+
+    dt: float
+    """Transform timestep."""
+
+    tau: float
+    """Regularization parameter."""
+
+    which_eigs_galerkin: int | tuple[int, int] | list[int]
+    """Kernel eigenvectors used for Galerkin approximation of Qz operator."""
+
+    antisym: bool = True
+    """Perform antisymmetrization."""
+
+    num_eigs: Optional[int] = None
+    """Number of Koopman eigenfunctions to compute."""
+
+    laplacian_method: Literal["log", "lin", "inv"] = "log"
+    """Method for computing Laplacian eigenvalues."""
+
+    smoothing_kernel: Literal["exponential", "fejer"] = "exponential"
+    """Smoothing kernel used for operator compactification."""
+
+    sort_by: Literal["energy", "frequency"] = "frequency"
+    """Koopman eigenvalue/eigenvector sorting."""
+
+    eval_quad_batch_size: Optional[int] = None
+    """Evaluation batch size for quadrature in resolvent computation."""
+
+    quad_batch_size: Optional[int] = None
+    """Batch size for quadrature in resolvent computation."""
+
+    gram_batch_size: Optional[int] = None
+    """Batch size of inner product computation for Qz operator."""
+
+    @property
+    def dim_galerkin(self) -> int:
+        """Determine dimension of Galerkin approximation space."""
+        match self.which_eigs_galerkin:
+            case int():
+                dim = self.which_eigs_galerkin
+            case tuple():
+                dim = self.which_eigs_galerkin[1] - self.which_eigs_galerkin[0]
+            case list():
+                dim = len(self.which_eigs_galerkin)
+        return dim
+
+    def __str__(self) -> str:
+        """Create string representation of eigendecommposition parameters."""
+        match self.which_eigs_galerkin:
+            case int():
+                eigs_galerkin_str = "-".join(
+                    map(str, (0, self.which_eigs_galerkin))
+                )
+            case tuple():
+                eigs_galerkin_str = "-".join(
+                    map(str, self.which_eigs_galerkin)
+                )
+            case list():
+                eigs_galerkin_str = "_".join(
+                    map(str, self.which_eigs_galerkin)
+                )
+        num_eigs_str = (
+            f"neigs{self.num_eigs}" if self.num_eigs is not None else ""
+        )
+        return "_".join(
+            filter(
+                None,
+                (
+                    "gauss",
+                    f"z{self.bandwidth:.2g}",
+                    f"dt{self.dt:.2g}",
+                    f"nq{self.num_quad}",
+                    self.laplacian_method,
+                    self.smoothing_kernel,
+                    f"tau{self.tau:.2g}",
+                    num_eigs_str,
+                    eigs_galerkin_str,
+                    self.sort_by,
+                ),
+            )
+        )
+
+
+type KoopmanParsTransf = KoopmanParsGauss | KoopmanParsLapl
+type KoopmanPars = KoopmanParsDiff | KoopmanParsTransf
+
+
+class KoopmanEigen[Rs, Cs, Css](NamedTuple):
+    """NamedTuple containing Koopman spectral data."""
+
+    evals: Cs
+    """Operator eigenvalues."""
+
+    gen_evals: Cs
+    """Generator eigenvalues."""
+
+    engys: Rs
+    """Dirichlet energies."""
+
+    efreqs: Rs
+    """Koopman eigenfrequencies."""
+
+    eperiods: Rs
+    """Return Koopman eigenperiods."""
+
+    evec_coeffs: Css
+    """Basis expansion coefficients of Koopman eigenvectors."""
+
+    dual_evec_coeffs: Css
+    """Basis expansion coefficients of dual (left) Koopman eigenvectors."""
+
+    @property
+    def num_eigs(
+        self,
+    ) -> int:
+        """Return number of eigenvalues/eigenvectors in KoopmanEigenObject."""
+        assert isinstance(self.evals, Sized)
+        return len(self.evals)
+
+    def isel(
+        self,
+        s: SliceItem,
+    ) -> "KoopmanEigen[Rs, Cs, Css]":
+        """Slice a KoopmanEigen object."""
+        assert is_sliceable(self.evals)
+        assert is_sliceable(self.gen_evals)
+        assert is_sliceable(self.engys)
+        assert is_sliceable(self.efreqs)
+        assert is_sliceable(self.eperiods)
+        assert is_sliceable(self.evec_coeffs)
+        assert is_sliceable(self.dual_evec_coeffs)
+        return KoopmanEigen(
+            evals=self.evals[s],
+            gen_evals=self.gen_evals[s],
+            efreqs=self.efreqs[s],
+            engys=self.engys[s],
+            eperiods=self.eperiods[s],
+            evec_coeffs=self.evec_coeffs[s],
+            dual_evec_coeffs=self.dual_evec_coeffs[s],
+        )
+
+
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class KoopmanEigenbasis[X, K, V, Ks, I](
     alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, I]
 ):

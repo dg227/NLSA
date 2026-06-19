@@ -380,7 +380,145 @@ class FunctionAlgebraWithCalculus[*Xs, Y, K](
     """Implement function algebra with functional calculus."""
 
     codomain: alg.ImplementsAlgebraWithCalculus[Y, K]
-    _scl: Optional[alg.ImplementsScalarField[K]] = None
+    _scl: Optional[alg.ImplementsRealScalarField[K]] = None
+    _zero: Optional[Callable[[], F[*Xs, Y]]] = None
+    _add: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
+    _sub: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
+    _neg: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
+    _smul: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
+    _sdiv: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
+    _unit: Optional[Callable[[], F[*Xs, Y]]] = None
+    _mul: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
+    _div: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
+    _inv: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
+    _sqrt: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
+    _abs: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
+    _power: Optional[Callable[[F[*Xs, Y], K], F[*Xs, Y]]] = None
+    _mpower: Optional[Callable[[F[*Xs, Y], int], F[*Xs, Y]]] = None
+
+    @property
+    def scl(self) -> alg.ImplementsRealScalarField[K]:
+        """Return scl property of FunctionAlgebraWithCalculus object."""
+        return self.codomain.scl if self._scl is None else self._scl
+
+    @property
+    def zero(self) -> Callable[[], F[*Xs, Y]]:
+        """Return zero property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_constant(self.codomain.zero)
+            if self._zero is None
+            else self._zero
+        )
+
+    @property
+    def add(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
+        """Return add property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_binary(self.codomain.add) if self._add is None else self._add
+        )
+
+    @property
+    def sub(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
+        """Return sub property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_binary(self.codomain.sub) if self._sub is None else self._sub
+        )
+
+    @property
+    def neg(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
+        """Return neg property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_unary(self.codomain.neg) if self._neg is None else self._neg
+        )
+
+    @property
+    def smul(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
+        """Return smul property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_left(self.codomain.smul) if self._smul is None else self._smul
+        )
+
+    @property
+    def sdiv(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
+        """Return sdiv property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_left(self.codomain.sdiv) if self._sdiv is None else self._sdiv
+        )
+
+    @property
+    def unit(self) -> Callable[[], F[*Xs, Y]]:
+        """Return unit property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_constant(self.codomain.unit)
+            if self._unit is None
+            else self._unit
+        )
+
+    @property
+    def mul(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
+        """Return mul property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_binary(self.codomain.mul) if self._mul is None else self._mul
+        )
+
+    @property
+    def div(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
+        """Return div property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_binary(self.codomain.div) if self._div is None else self._div
+        )
+
+    @property
+    def inv(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
+        """Return inv property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_unary(self.codomain.inv) if self._inv is None else self._inv
+        )
+
+    @property
+    def sqrt(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
+        """Return sqrt property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_unary(self.codomain.sqrt)
+            if self._sqrt is None
+            else self._sqrt
+        )
+
+    @property
+    def abs(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
+        """Return mod property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_unary(self.codomain.abs) if self._abs is None else self._abs
+        )
+
+    @property
+    def power(self) -> Callable[[F[*Xs, Y], K], F[*Xs, Y]]:
+        """Return power property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_right(self.codomain.power)
+            if self._power is None
+            else self._power
+        )
+
+    @property
+    def mpower(self) -> Callable[[F[*Xs, Y], int], F[*Xs, Y]]:
+        """Return mpower property of FunctionAlgebraWithCalculus object."""
+        return (
+            lift_right(self.codomain.mpower)
+            if self._mpower is None
+            else self._mpower
+        )
+
+
+@final
+@dataclass(frozen=True)
+class FunctionStarAlgebraWithCalculus[*Xs, Y, K](
+    alg.ImplementsStarAlgebraWithCalculus[F[*Xs, Y], K]
+):
+    """Implement function star algebra with functional calculus."""
+
+    codomain: alg.ImplementsStarAlgebraWithCalculus[Y, K]
+    _scl: Optional[alg.ImplementsComplexScalarField[K]] = None
     _zero: Optional[Callable[[], F[*Xs, Y]]] = None
     _add: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
     _sub: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
@@ -393,12 +531,12 @@ class FunctionAlgebraWithCalculus[*Xs, Y, K](
     _inv: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
     _sqrt: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
     _adj: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _mod: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
+    _abs: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
     _power: Optional[Callable[[F[*Xs, Y], K], F[*Xs, Y]]] = None
     _mpower: Optional[Callable[[F[*Xs, Y], int], F[*Xs, Y]]] = None
 
     @property
-    def scl(self) -> alg.ImplementsScalarField[K]:
+    def scl(self) -> alg.ImplementsComplexScalarField[K]:
         """Return scl property of FunctionAlgebraWithCalculus object."""
         return self.codomain.scl if self._scl is None else self._scl
 
@@ -493,10 +631,10 @@ class FunctionAlgebraWithCalculus[*Xs, Y, K](
         )
 
     @property
-    def mod(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
+    def abs(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
         """Return mod property of FunctionAlgebraWithCalculus object."""
         return (
-            lift_unary(self.codomain.mod) if self._mod is None else self._mod
+            lift_unary(self.codomain.abs) if self._abs is None else self._abs
         )
 
     @property

@@ -1,12 +1,12 @@
 """Provide classes and functions implementing operations on scalar fields."""
 
 import math
+import cmath
 import nlsa.abstract_algebra as alg
-import nlsa.function_algebra as fun
 from collections.abc import Callable
 from fractions import Fraction
 from nlsa.utils import swap_args
-from typing import Type, final
+from typing import SupportsComplex, SupportsFloat, Type, final
 
 
 def make_zero[K: (int, Fraction, float, complex)](
@@ -51,18 +51,6 @@ def mul[K: (int, Fraction, float, complex)](x: K, y: K, /) -> K:
     return x * y
 
 
-# Pyright fails when attempting to generalize make_real_power to complex types.
-def make_real_power[K: (int, Fraction, float)](
-    ty: Type[K],
-) -> Callable[[K, K], K]:
-    """Make exponentiation function of reals by integers."""
-
-    def power(x: K, y: K, /) -> K:
-        return ty(x**y)
-
-    return power
-
-
 def complex_power(x: complex, n: int, /) -> complex:
     """Compute complex power."""
     return x**n
@@ -98,25 +86,190 @@ def complex_conj(x: complex, /) -> complex:
 
 
 @final
-class FloatScalarField(alg.ImplementsScalarField[float]):
+class FloatScalarField(alg.ImplementsRealScalarField[float]):
     """Implement scalar field operations on float objects."""
 
-    def __init__(self):
-        """Initialize scalar field on float objects."""
-        self.zero: Callable[[], float] = make_zero(float)
-        self.add: Callable[[float, float], float] = add
-        self.sub: Callable[[float, float], float] = sub
-        self.neg: Callable[[float], float] = neg
-        self.unit: Callable[[], float] = make_unit(float)
-        self.mul: Callable[[float, float], float] = mul
-        self.mpower: Callable[[float, int], float] = math.pow
-        self.power: Callable[[float, float], float] = make_real_power(float)
-        self.div: Callable[[float, float], float] = div
-        self.inv: Callable[[float], float] = make_inv(float)
-        self.adj: Callable[[float], float] = fun.identity
-        self.sqrt: Callable[[float], float] = math.sqrt
-        self.mod: Callable[[float], float] = abs
-        self.exp: Callable[[float], float] = math.exp
+    @property
+    def zero(self) -> Callable[[], float]:
+        """Return zero property of FloatScalarField object."""
+        return make_zero(float)
+
+    @property
+    def add(self) -> Callable[[float, float], float]:
+        """Return add property of FloatScalarField object."""
+        return add
+
+    @property
+    def sub(self) -> Callable[[float, float], float]:
+        """Return sub property of FloatScalarField object."""
+        return sub
+
+    @property
+    def neg(self) -> Callable[[float], float]:
+        """Return neg property of FloatScalarField object."""
+        return neg
+
+    @property
+    def unit(self) -> Callable[[], float]:
+        """Return unit property of FloatScalarField object."""
+        return make_unit(float)
+
+    @property
+    def mul(self) -> Callable[[float, float], float]:
+        """Return mul property of FloatScalarField object."""
+        return mul
+
+    @property
+    def mpower(self) -> Callable[[float, int], float]:
+        """Return mpower property of FloatScalarField object."""
+        return math.pow
+
+    @property
+    def power(self) -> Callable[[float, float], float]:
+        """Return power property of FloatScalarField object."""
+        return math.pow
+
+    @property
+    def div(self) -> Callable[[float, float], float]:
+        """Return div property of FloatScalarField object."""
+        return div
+
+    @property
+    def inv(self) -> Callable[[float], float]:
+        """Return inv property of FloatScalarField object."""
+        return make_inv(float)
+
+    @property
+    def sqrt(self) -> Callable[[float], float]:
+        """Return sqrt property of FloatScalarField object."""
+        return math.sqrt
+
+    @property
+    def abs(self) -> Callable[[float], float]:
+        """Return abs property of FloatScalarField object."""
+        return abs
+
+    @property
+    def exp(self) -> Callable[[float], float]:
+        """Return exp property of FloatScalarField object."""
+        return math.exp
+
+    @property
+    def exp10(self) -> Callable[[float], float]:
+        """Return exp10 property of FloatScalarField object."""
+        return lambda x: 10**x
+
+    @property
+    def log(self) -> Callable[[float], float]:
+        """Return log property of FloatScalarField object."""
+        return math.log
+
+    @property
+    def log10(self) -> Callable[[float], float]:
+        """Return log10 property of FloatScalarField object."""
+        return math.log10
+
+    @property
+    def from_pyscalar(self) -> Callable[[SupportsFloat], float]:
+        """Return from_pyscalar property of FloatScalarField object."""
+        return lambda x: float(x)
+
+
+@final
+class ComplexScalarField(alg.ImplementsComplexScalarField[complex]):
+    """Implement scalar field operations on complex objects."""
+
+    @property
+    def zero(self) -> Callable[[], complex]:
+        """Return zero property of ComplexScalarField object."""
+        return make_zero(complex)
+
+    @property
+    def add(self) -> Callable[[complex, complex], complex]:
+        """Return add property of ComplexScalarField object."""
+        return add
+
+    @property
+    def sub(self) -> Callable[[complex, complex], complex]:
+        """Return sub property of ComplexScalarField object."""
+        return sub
+
+    @property
+    def neg(self) -> Callable[[complex], complex]:
+        """Return neg property of ComplexScalarField object."""
+        return neg
+
+    @property
+    def unit(self) -> Callable[[], complex]:
+        """Return unit property of ComplexScalarField object."""
+        return make_unit(complex)
+
+    @property
+    def mul(self) -> Callable[[complex, complex], complex]:
+        """Return mul property of ComplexScalarField object."""
+        return mul
+
+    @property
+    def mpower(self) -> Callable[[complex, int], complex]:
+        """Return mpower property of ComplexScalarField object."""
+        return lambda z, n: z**n
+
+    @property
+    def power(self) -> Callable[[complex, complex], complex]:
+        """Return power property of ComplexScalarField object."""
+        return lambda z, w: z**w
+
+    @property
+    def div(self) -> Callable[[complex, complex], complex]:
+        """Return div property of ComplexScalarField object."""
+        return div
+
+    @property
+    def inv(self) -> Callable[[complex], complex]:
+        """Return inv property of ComplexScalarField object."""
+        return make_inv(complex)
+
+    @property
+    def sqrt(self) -> Callable[[complex], complex]:
+        """Return sqrt property of ComplexScalarField object."""
+        return cmath.sqrt
+
+    @property
+    def abs(self) -> Callable[[complex], complex]:
+        """Return abs property of ComplexScalarField object."""
+        return abs
+
+    @property
+    def exp(self) -> Callable[[complex], complex]:
+        """Return exp property of ComplexScalarField object."""
+        return cmath.exp
+
+    @property
+    def exp10(self) -> Callable[[complex], complex]:
+        """Return exp10 property of ComplexScalarField object."""
+        return lambda x: 10**x
+
+    @property
+    def log(self) -> Callable[[complex], complex]:
+        """Return log property of ComplexScalarField object."""
+        return cmath.log
+
+    @property
+    def log10(self) -> Callable[[complex], complex]:
+        """Return log10 property of ComplexScalarField object."""
+        return cmath.log10
+
+    @property
+    def adj(self) -> Callable[[complex], complex]:
+        """Return adj property of ComplexScalarField object."""
+        return lambda z: z.conjugate()
+
+    @property
+    def from_pyscalar(
+        self,
+    ) -> Callable[[SupportsFloat | SupportsComplex], complex]:
+        """Return from_pyscalar property of ComplexScalarField object."""
+        return lambda x: complex(x)
 
 
 @final
@@ -164,15 +317,145 @@ class AsVectorSpace[K](alg.ImplementsVectorSpace[K, K]):
 
 
 @final
+class AsRealVectorSpace[K](alg.ImplementsRealVectorSpace[K, K]):
+    """Implement real scalar field as real vector space over itself."""
+
+    def __init__(self, scl: alg.ImplementsRealScalarField[K]):
+        """Initialize AsRealVectorSpaceobjects."""
+        self._scl = scl
+
+    @property
+    def scl(self) -> alg.ImplementsRealScalarField[K]:
+        """Return scl property of AsRealVectorSpace object."""
+        return self._scl
+
+    @property
+    def zero(self) -> Callable[[], K]:
+        """Return zero property of AsRealVectorSpace object."""
+        return self._scl.zero
+
+    @property
+    def add(self) -> Callable[[K, K], K]:
+        """Return add property of AsRealVectorSpace object."""
+        return self._scl.add
+
+    @property
+    def sub(self) -> Callable[[K, K], K]:
+        """Return sub property of AsRealVectorSpace object."""
+        return self._scl.sub
+
+    @property
+    def neg(self) -> Callable[[K], K]:
+        """Return neg property of AsRealVectorSpace object."""
+        return self._scl.neg
+
+    @property
+    def smul(self) -> Callable[[K, K], K]:
+        """Return smul property of AsRealVectorSpace object."""
+        return self._scl.mul
+
+    @property
+    def sdiv(self) -> Callable[[K, K], K]:
+        """Return sdiv property of AsRealVectorSpace object."""
+        return swap_args(self._scl.div)
+
+
+@final
 class AsAlgebraWithCalculus[K](alg.ImplementsAlgebraWithCalculus[K, K]):
     """Implement scalar field as an algebra over itself."""
 
-    def __init__(self, scl: alg.ImplementsScalarField[K]):
+    def __init__(self, scl: alg.ImplementsRealScalarField[K]):
         """Initialize AsAlgebraWithCalculus objects."""
         self._scl = scl
 
     @property
-    def scl(self) -> alg.ImplementsScalarField[K]:
+    def scl(self) -> alg.ImplementsRealScalarField[K]:
+        """Return scl property of AsAlgebra object."""
+        return self._scl
+
+    @property
+    def zero(self) -> Callable[[], K]:
+        """Return zero property of AsAlgebra object."""
+        return self._scl.zero
+
+    @property
+    def add(self) -> Callable[[K, K], K]:
+        """Return add property of AsAlgebra object."""
+        return self._scl.add
+
+    @property
+    def sub(self) -> Callable[[K, K], K]:
+        """Return sub property of AsAlgebra object."""
+        return self._scl.sub
+
+    @property
+    def neg(self) -> Callable[[K], K]:
+        """Return neg property of AsAlgebra object."""
+        return self._scl.neg
+
+    @property
+    def smul(self) -> Callable[[K, K], K]:
+        """Return smul property of AsAlgebra object."""
+        return self._scl.mul
+
+    @property
+    def sdiv(self) -> Callable[[K, K], K]:
+        """Return sdiv property of AsAlgebra object."""
+        return swap_args(self._scl.div)
+
+    @property
+    def unit(self) -> Callable[[], K]:
+        """Return unit property of AsAlgebra object."""
+        return self._scl.zero
+
+    @property
+    def mul(self) -> Callable[[K, K], K]:
+        """Return mul property of AsAlgebra object."""
+        return self._scl.mul
+
+    @property
+    def div(self) -> Callable[[K, K], K]:
+        """Return div property of AsAlgebra object."""
+        return self._scl.div
+
+    @property
+    def inv(self) -> Callable[[K], K]:
+        """Return inv property of AsAlgebra object."""
+        return self._scl.inv
+
+    @property
+    def mpower(self) -> Callable[[K, int], K]:
+        """Return mpower property of AsAlgebra object."""
+        return self._scl.mpower
+
+    @property
+    def power(self) -> Callable[[K, K], K]:
+        """Return power property of AsAlgebra object."""
+        return self._scl.power
+
+    @property
+    def sqrt(self) -> Callable[[K], K]:
+        """Return sqrt property of AsAlgebra object."""
+        return self._scl.sqrt
+
+    @property
+    def abs(self) -> Callable[[K], K]:
+        """Return mod property of AsAlgebra object."""
+        return self._scl.abs
+
+
+@final
+class AsStarAlgebraWithCalculus[K](
+    alg.ImplementsStarAlgebraWithCalculus[K, K]
+):
+    """Implement scalar field as an algebra over itself."""
+
+    def __init__(self, scl: alg.ImplementsComplexScalarField[K]):
+        """Initialize AsAlgebraWithCalculus objects."""
+        self._scl = scl
+
+    @property
+    def scl(self) -> alg.ImplementsComplexScalarField[K]:
         """Return scl property of AsAlgebra object."""
         return self._scl
 
@@ -247,9 +530,9 @@ class AsAlgebraWithCalculus[K](alg.ImplementsAlgebraWithCalculus[K, K]):
         return self._scl.adj
 
     @property
-    def mod(self) -> Callable[[K], K]:
+    def abs(self) -> Callable[[K], K]:
         """Return mod property of AsAlgebra object."""
-        return self._scl.mod
+        return self._scl.abs
 
 
 @final

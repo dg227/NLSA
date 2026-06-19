@@ -1,4 +1,3 @@
-# pyright: basic
 """Implement vector algebra operations for JAX arrays."""
 
 import jax
@@ -9,14 +8,28 @@ import nlsa.function_algebra as fun
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import partial
-from jax import Array, Device, vmap
+from jax import Array, vmap
 from jax.sharding import Mesh, NamedSharding, PartitionSpec, Sharding
 from jax.scipy.signal import convolve
 from jax.typing import DTypeLike
 from nlsa.jax.scalars import ScalarField
 from nlsa.jax.sharding import shardit
 from nlsa.jax.utils import batch_map, batch_map_bivariate
-from typing import Literal, NamedTuple, Optional, final, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    Literal,
+    NamedTuple,
+    Optional,
+    final,
+    overload,
+)
+
+if TYPE_CHECKING:
+    type Device = Any
+else:
+    from jax import Device
 
 type K = Array
 type Ks = Array
@@ -25,6 +38,15 @@ type Vs = Array
 type X = Array
 type Y = Array
 type Xs = Array
+type PyTree = (
+    Array
+    | float
+    | int
+    | bool
+    | list[PyTree]
+    | tuple[PyTree, ...]
+    | dict[Any, PyTree]
+)
 type ConvMode = Literal["full", "same", "valid"]
 type Shape = tuple[int, ...]
 type F[*Xs, Y] = Callable[[*Xs], Y]
@@ -386,36 +408,55 @@ def flip_conj(v: V, /) -> V:
     return jnp.conjugate(jnp.flip(v))
 
 
-def make_synthesis_operator_full(basis: Vs) -> Callable[[Ks], V]:
-    """Make synthesis operator for vectors from basis."""
+def make_synthesis_operator_cols(
+    basis: Vs, idxs: Optional[Array] = None
+) -> Callable[[Ks], V]:
+    """Make synthesis operator for vectors from basis.
+
+    This function assumes that the basis elements are stored in the columns of
+    the input array basis.
+
+    """
+    if idxs is not None:
+        _basis = jnp.take(basis, idxs, axis=-1)
+    else:
+        _basis = basis
 
     def synth(coeffs: Ks, /) -> V:
-        return basis @ coeffs
+        return _basis @ coeffs
 
     return synth
 
 
-def make_synthesis_operator_sub(basis: Vs, idxs: Array) -> Callable[[Ks], V]:
-    """Make synthesis operator for vectors from subset of basis.
+def make_synthesis_operator_rows(
+    basis: Vs, idxs: Optional[Array] = None
+) -> Callable[[Ks], V]:
+    """Make synthesis operator for vectors from basis.
 
-    This attempts to emulate "lazy" slicing of basis array.
+    This function assumes that the basis elements are stored in the rows of
+    the input array basis.
 
     """
+    if idxs is not None:
+        _basis = jnp.take(basis, idxs, axis=0)
+    else:
+        _basis = basis
 
     def synth(coeffs: Ks, /) -> V:
-        return jnp.take(basis, idxs, axis=-1) @ coeffs
+        return coeffs @ _basis
 
     return synth
 
 
 def make_synthesis_operator(
-    basis: Vs, idxs: Optional[Array] = None
+    basis: Vs, idxs: Optional[Array] = None, axis: Literal[0, 1] = 0
 ) -> Callable[[Ks], V]:
     """Make synthesis operator for vectors from basis or a subset thereof."""
-    if idxs is not None:
-        synth = make_synthesis_operator_sub(basis, idxs)
-    else:
-        synth = make_synthesis_operator_full(basis)
+    match axis:
+        case 0:
+            synth = make_synthesis_operator_rows(basis, idxs)
+        case 1:
+            synth = make_synthesis_operator_cols(basis, idxs)
     return synth
 
 
@@ -466,7 +507,7 @@ def make_one_hot_basis(
 @final
 @dataclass(frozen=True)
 class L2VectorAlgebra[N: Shape, D: DTypeLike](
-    alg.ImplementsInnerProductAlgebraWithCalculus[V, K]
+    alg.ImplementsInnerProductStarAlgebraWithCalculus[V, K]
 ):
     """Implement vector algebra operations for JAX arrays."""
 
@@ -488,7 +529,7 @@ class L2VectorAlgebra[N: Shape, D: DTypeLike](
     _adj: Optional[Callable[[V], V]] = None
     _sqrt: Optional[Callable[[V], V]] = None
     _exp: Optional[Callable[[V], V]] = None
-    _mod: Optional[Callable[[V], V]] = None
+    _abs: Optional[Callable[[V], V]] = None
     _mpower: Optional[Callable[[V, int], V]] = None
     _power: Optional[Callable[[V, K], V]] = None
     _innerp: Optional[Callable[[V, V], K]] = None
@@ -578,9 +619,9 @@ class L2VectorAlgebra[N: Shape, D: DTypeLike](
         return jnp.exp if self._exp is None else self._exp
 
     @property
-    def mod(self) -> Callable[[V], V]:
-        """Return mod property of L2VectorAlgebra object."""
-        return jnp.abs if self._mod is None else self._mod
+    def abs(self) -> Callable[[V], V]:
+        """Return abs property of L2VectorAlgebra object."""
+        return jnp.abs if self._abs is None else self._abs
 
     @property
     def mpower(self) -> Callable[[V, int], V]:
@@ -622,7 +663,7 @@ class L2FnAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
     measure: Callable[[V], Y]
     inclusion_map: Callable[[F[X, Y]], V]
     sharding: Optional[Sharding] = None
-    _scl: Optional[alg.ImplementsScalarField[K]] = None
+    _scl: Optional[alg.ImplementsComplexScalarField[K]] = None
     _zero: Optional[Optional[Callable[[], V]]] = None
     _unit: Optional[Optional[Callable[[], V]]] = None
     _add: Optional[Callable[[V, V], V]] = None
@@ -636,7 +677,7 @@ class L2FnAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
     _adj: Optional[Callable[[V], V]] = None
     _sqrt: Optional[Callable[[V], V]] = None
     _exp: Optional[Callable[[V], V]] = None
-    _mod: Optional[Callable[[V], V]] = None
+    _abs: Optional[Callable[[V], V]] = None
     _mpower: Optional[Callable[[V, int], V]] = None
     _power: Optional[Callable[[V, K], V]] = None
     _innerp: Optional[Callable[[V, V], K]] = None
@@ -666,7 +707,7 @@ class L2FnAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
         )
 
     @property
-    def scl(self) -> alg.ImplementsScalarField[K]:
+    def scl(self) -> alg.ImplementsComplexScalarField[K]:
         """Return scl property of L2FnAlgebra object."""
         return ScalarField(self.dtype) if self._scl is None else self._scl
 
@@ -726,9 +767,9 @@ class L2FnAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
         return jnp.exp if self._exp is None else self._exp
 
     @property
-    def mod(self) -> Callable[[V], V]:
-        """Return mod property of L2FnAlgebra object."""
-        return jnp.abs if self._mod is None else self._mod
+    def abs(self) -> Callable[[V], V]:
+        """Return abs property of L2FnAlgebra object."""
+        return jnp.abs if self._abs is None else self._abs
 
     @property
     def mpower(self) -> Callable[[V, int], V]:
@@ -777,16 +818,14 @@ class L2FnAlgebraShardings(NamedTuple):
 
 def make_l2_analysis_operator[N: Shape, D: DTypeLike, X: Array, Y: Array](
     impl: L2VectorAlgebra[N, D] | L2FnAlgebra[N, D, X, Y],
-    basis: Vs,
+    basis: Iterable[V],
     axis: Optional[int] = None,
 ) -> Callable[[V], Ks]:
     """Make analysis operator from an array of vectors."""
-    if axis is None:
-        axis = -1
     vinnerp = vmap(impl.innerp, in_axes=(axis, None))
 
     def an(v: V) -> Ks:
-        return vinnerp(basis, v)
+        return vinnerp(jnp.asarray(basis), v)
 
     return an
 
