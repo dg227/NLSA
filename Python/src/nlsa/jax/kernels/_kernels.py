@@ -133,7 +133,7 @@ def _tune_bandwidth_from_kernel_family[X: Array](
         kernel_family,
         grad=jax.grad,
     )
-    est_dims = batch_map(kernel_dim, batch_size=pars.batch_size)(
+    est_dims = batch_map(kernel_dim, batch_size=pars.bandwidth_batch_size)(
         log10_bandwidths
     )
     if pars.manifold_dim is None:
@@ -186,7 +186,7 @@ def _tune_bandwidth_from_shape_function[X: Array](
         neg_grad_shape_func,
         sqdist,
     )
-    est_dims = batch_map(kernel_dim, batch_size=pars.batch_size)(
+    est_dims = batch_map(kernel_dim, batch_size=pars.bandwidth_batch_size)(
         log10_bandwidths
     )
     if pars.manifold_dim is None:

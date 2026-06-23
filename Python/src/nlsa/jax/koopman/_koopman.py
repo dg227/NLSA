@@ -544,12 +544,13 @@ def compute_generator_eigen_diff[
 def invert_dawson(iz_evals: Ks, /, bandwidth: float | Array) -> Ks:
     """Compute generator eigenvalues from Gaussian transform eigenvalues.
 
-    Inverts K_D(x, z) = dawsn(x / (2*sqrt(z))) / sqrt(z) = a via
-    Newton's method, taking the large root.
+    Inverts K_D(x, z) = dawsn(x / (2*z)) / z = a via Newton's method,
+    taking the large root. Matches the forward transform's Gaussian
+    weight exp(-(z*s)**2) assembled in make_gauss_transform.
     """
     a = iz_evals.imag
-    s = 2 * jnp.sqrt(bandwidth)
-    target = a * jnp.sqrt(bandwidth)
+    s = 2 * bandwidth
+    target = a * bandwidth
 
     def newton(x0: Array) -> Array:
         x = x0

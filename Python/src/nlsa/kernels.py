@@ -65,7 +65,7 @@ class TunePars:
     bandwidth_scl: float = 1
     """Scaling factor to multiply estimated optimal kernel bandwidth."""
 
-    batch_size: Optional[int] = None
+    bandwidth_batch_size: Optional[int] = None
     """Batch size in tuning loop."""
 
     def __str__(self) -> str:

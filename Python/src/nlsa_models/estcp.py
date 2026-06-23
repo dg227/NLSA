@@ -81,7 +81,13 @@ type NPMatrix[M: int, N: int, D: np.dtype[np.floating[Any]]] = np.ndarray[
     tuple[M, N], D
 ]
 type TimeSampling = Literal["monthly", "daily"]
-type SpaceSampling = Literal["pointwise", "coarsened", "area_averaged"]
+type SpaceSampling = Literal[
+    "pointwise",
+    "coarsened",
+    "area_averaged",
+    "meridionally_averaged",
+    "zonally_averaged",
+]
 type RollingMode = Literal["forward", "backward", "center"]
 
 
@@ -1277,19 +1283,16 @@ def read_gridded_dataset[T: TimeSampling](
             pth = Path(specs.input_path) / ("*." + specs.file_format)
 
     ds_in = (
-        xr.open_mfdataset(
-            os.fspath(pth),
-            parallel=True,
-            compat="no_conflicts",
-        )
+        xr.open_mfdataset(os.fspath(pth), parallel=True, chunks="auto")
+        .unify_chunks()
         .sortby("latitude")
         .sel(
             longitude=slice(specs.min_lon, specs.max_lon),
             latitude=slice(specs.min_lat, specs.max_lat),
         )
     )
-
     # Extract and process input variables from input dataset
+    # TODO: Implement long/lat
     match specs.space_sampling, specs.step_lon, specs.step_lat:
         case "pointwise", None, None:
             ds = ds_in[specs.input_varnames]
@@ -1329,6 +1332,25 @@ def read_gridded_dataset[T: TimeSampling](
             ds = ds_in[specs.input_varnames].mean(
                 dim=("longitude", "latitude")
             )
+        case "meridionally_averaged", int(), _:
+            ds = (
+                ds_in[specs.input_varnames]
+                .coarsen(longitude=specs.step_lon, boundary="trim")
+                .mean()
+                .mean(dim=("latitude"))
+            )
+        case "meridionally_averaged", _, _:
+            ds = ds_in[specs.input_varnames].mean(dim=("latitude"))
+        case "zonally_averaged", _, int():
+            ds = (
+                ds_in[specs.input_varnames]
+                .coarsen(longitude=specs.step_lat, boundary="trim")
+                .mean()
+                .mean(dim=("longitude"))
+            )
+        case "zonally_averaged", _, _:
+            ds = ds_in[specs.input_varnames].mean(dim=("longitude"))
+
     assert isinstance(ds, Dataset)
     ds = ds.rename(dict(zip(specs.input_varnames, specs.varnames)))
 
@@ -1761,6 +1783,7 @@ def extract_data[T: TimeSampling, D: np.dtype[np.floating[Any]]](
             .astype(dtype)
             .to_numpy()
         )
+        print("DONE WITH STACKED")
         return a
 
     def from_dataframe(
@@ -2574,15 +2597,24 @@ def make_koopman_evecs_plotter[
             koopman_eigen.evec_coeffs[k]
             @ knl.slice_eigen(kernel_eigen, which_kernel_eigs).evecs
         )
-        efreq = koopman_eigen.efreqs[k] / (2 * jnp.pi) * 12
-        eperiod = koopman_eigen.eperiods[k] / 12
+        match data_pars.time_sampling:
+            case "daily":
+                efreq = koopman_eigen.efreqs[k] / (2 * jnp.pi) * 365
+                eperiod = koopman_eigen.eperiods[k]
+                efreq_str = "cycles/year"
+                eperiod_str = "days"
+            case "monthly":
+                efreq = koopman_eigen.efreqs[k] / (2 * jnp.pi) * 12
+                eperiod = koopman_eigen.eperiods[k] / 12
+                efreq_str = "cycles/year"
+                eperiod_str = "years"
 
         ax = axs[0]
         ax.plot(evec.real[j0:j1:plt_step], evec.imag[j0:j1:plt_step], "-")
         ax.set_xlabel(f"$\\mathrm{{Re}}\\zeta_{{{k}}}$")
         ax.set_ylabel(f"$\\mathrm{{Im}}\\zeta_{{{k}}}$")
         ax.set_title(
-            f"Eigenfrequency $\\nu_{{{k}}} = {efreq: .3f}$ cycles/year"
+            f"Eigenfrequency $\\nu_{{{k}}} = {efreq: .3f}$ {efreq_str}"
         )
         ax.grid()
 
@@ -2599,7 +2631,7 @@ def make_koopman_evecs_plotter[
             "-",
             label=f"$\\mathrm{{Im}}\\zeta_{{{k}}}$",
         )
-        ax.set_title(f"Eigenperiod $T_{{{k}}} = {eperiod: .3f}$ years")
+        ax.set_title(f"Eigenperiod $T_{{{k}}} = {eperiod: .3f}$ {eperiod_str}")
         ax.grid()
         ax.legend()
 
@@ -2665,15 +2697,20 @@ def make_running_pred_plotter[T: TimeSampling](
     def plot_pred(i_step: int):
         i0_dl_tst = test_pars.delay_embedding_end
         if plt_date_range_tst is not None:
+            match test_pars.time_sampling:
+                case "daily":
+                    freq_str = "D"
+                case "monthly":
+                    freq_str = "M"
             plt_periods_tst = pd.period_range(
                 start=plt_date_range_tst[0],
                 end=plt_date_range_tst[1],
-                freq="M",
+                freq=freq_str,
             )
             i0_periods_tst = pd.period_range(
                 start=test_data.time[0],
                 end=plt_date_range_tst[0],
-                freq="M",
+                freq=freq_str,
             )
             num_plt_tst = len(plt_periods_tst)
             i0_tst = i0_dl_tst + len(i0_periods_tst)
@@ -2692,6 +2729,11 @@ def make_running_pred_plotter[T: TimeSampling](
             ax.cla()
 
         ax = axs[0]
+        match test_pars.time_sampling:
+            case "daily":
+                timestep_str = "days"
+            case "monthly":
+                timestep_str = "months"
         ax.plot(
             test_data.time[i0_tst:i1_tst:plt_step_tst],
             test_data.responses[i0_pred:i1_pred:plt_step_tst],
@@ -2708,7 +2750,7 @@ def make_running_pred_plotter[T: TimeSampling](
         ax.grid(True)
         ax.legend()
         ax.set_ylabel(test_pars.response.specs)
-        ax.set_title(f"Prediction; lead time = {i_step} months")
+        ax.set_title(f"Prediction; lead time = {i_step} {timestep_str}")
 
         ax = axs[1]
         ax.plot(
@@ -2732,7 +2774,11 @@ def make_pred_timeseries_plotter[T: TimeSampling](
     fig, ax = plt.subplots(num=i_fig, constrained_layout=True)
     num_pred_steps = preds.shape[1] - 1
     ts = jnp.arange(num_pred_steps + 1)
-    timestep_str = "months"
+    match pars.time_sampling:
+        case "daily":
+            timestep_str = "days"
+        case "monthly":
+            timestep_str = "months"
 
     def plot_pred(i_init: int):
         i0_tst = pars.delay_embedding_end + i_init
@@ -2761,7 +2807,11 @@ def plot_forecast_skill_scores[T: TimeSampling](
     labels = ("NRMSE", "Anomaly correlation")
     num_pred_steps = len(scores["nrmses"]) - 1
     ts = jnp.arange(num_pred_steps + 1)
-    timestep_str = "months"
+    match pars.time_sampling:
+        case "daily":
+            timestep_str = "days"
+        case "monthly":
+            timestep_str = "months"
     for ax, score, label in zip(
         axs, (scores["nrmses"], scores["accs"]), labels
     ):

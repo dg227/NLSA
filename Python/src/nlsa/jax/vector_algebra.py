@@ -815,6 +815,21 @@ class L2FnAlgebraShardings(NamedTuple):
     vectors: Optional[NamedSharding] = None
     """L2 vector sharding."""
 
+    @property
+    def shard_pytree[Data: PyTree](
+        self,
+    ) -> Callable[[Data], Data]:
+        """Shard PyTree objects."""
+
+        def shard(
+            data: Data,
+        ) -> Data:
+            return jax.tree.map(
+                partial(jax.device_put, device=self.data), data
+            )
+
+        return shard
+
 
 def make_l2_analysis_operator[N: Shape, D: DTypeLike, X: Array, Y: Array](
     impl: L2VectorAlgebra[N, D] | L2FnAlgebra[N, D, X, Y],
