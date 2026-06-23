@@ -44,12 +44,27 @@ class Experiment(StrEnum):
     A100_EIGSH = auto()
     """Runs on 40GB A100 GPU using eigsh iterative kernel eigenvalue solver."""
 
+    A100_EIGSH_4GPU = auto()
+    """Multi-GPU case using eigsh kernel eigenvalue solver on 2 40GB A100s."""
+
     TEST = auto()
     """Test case."""
 
 
+type Plots = Literal[
+    "all",
+    "bandwidth_tuning",
+    "bandwidth_func",
+    "kernel_tuning",
+    "laplacian_spec",
+    "kernel_eigen",
+    "running_pred",
+    "pred_timeseries",
+    "skill_scores",
+]
+
 EXPERIMENT: Experiment = Experiment.TEST
-IDX_GPU: Optional[int] = None  # 0
+IDX_GPU: Optional[Sequence[int]] = None  # 0
 XLA_MEM_FRACTION: Optional[str] = "0.95"
 JAX_CACHE_DIR: Optional[str] = "jax_cache"
 FP: Literal["f32", "f64"] = "f32"
@@ -61,14 +76,15 @@ MATPLOTLIB_BACKEND: Optional[Literal["Agg"]] = None
 OUTPUT_DATA_DIR = "examples/l63/data"
 NUM_TABULATE = 40
 NUM_PLT_TST: Optional[int] = None
-GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "calc"
-TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KAF_COVARIATE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KAF_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
-SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
-TRAJECTORY_STATS_MODE: Literal["calc", "calcsave", "read"] = "calc"
+GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "read"
+TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "read"
+KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "read"
+KAF_COVARIATE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "read"
+KAF_PREDS_MODE: Literal["calc", "calcsave", "read"] = "read"
+SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "read"
+TRAJECTORY_STATS_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
 PLOT_MODE: Optional[Literal["save", "show", "saveshow"]] = "show"
+WHICH_PLOTS: set[Plots] = {"skill_scores"}
 DELAY_PLOT_MODE: Literal["backward", "central"] = "backward"
 KERNEL_EIGS_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
     "interactive"
@@ -471,6 +487,94 @@ def initialize(
                 train_shardings = TrainShardings()
                 test_shardings = TestShardings()
             shardings = Shardings(train=train_shardings, test=test_shardings)
+        case Experiment.A100_EIGSH_4GPU:
+            cone_pars = ConePars(zeta=0.99) if cone_kernel else None
+            num_pred_steps = 50
+            common_pars: CommonPars = {
+                "covariate": "xyz",
+                "response": "x",
+                "dt": 0.1,
+                "num_spinup": 1000,
+                "num_half_delays": 0,
+                "velocity_covariate": True if cone_pars is not None else False,
+                "velocity_fd_order": 4 if cone_pars is not None else None,
+                "num_before": 0,
+                "num_after": num_pred_steps,
+            }
+            train_data_pars = DataPars(
+                **common_pars,
+                x0=(1, 1, 1.1),
+                num_samples=131_072,
+            )
+            test_data_pars = DataPars(
+                **common_pars,
+                x0=(1, 1, 0.9),
+                num_samples=8192,
+                eval_batch_size=None,
+            )
+            bw_tune_pars = TunePars(
+                manifold_dim=None,
+                num_bandwidths=128,
+                log10_bandwidth_lims=(-3, 3),
+                bandwidth_scl=1,
+                bandwidth_batch_size=16,
+            )
+            if cone_pars is not None:
+                tune_pars = TunePars(
+                    manifold_dim=None,
+                    num_bandwidths=128,
+                    log10_bandwidth_lims=(-3, 3),
+                    bandwidth_scl=1,
+                )
+            else:
+                tune_pars = bw_tune_pars
+            match kernel_normalization:
+                case "diffusion_maps":
+                    kernel_pars = DmKernelPars(
+                        normalization="fokkerplanck",
+                        eigensolver="eigsh",
+                        num_eigs=4096,
+                    )
+                case "bistochastic":
+                    kernel_pars = BsKernelPars(
+                        eigensolver="svds",
+                        num_eigs=4096,
+                    )
+            pred_pars = PredPars(num_steps=num_pred_steps, which_eigs=4096)
+            if len(jax_env.devices) > 1:
+                sharder_1d = NamedSharder(
+                    devices=jax_env.devices,
+                    shape=(len(jax_env.devices),),
+                    axis_names=("x"),
+                )
+                sharder_2d = NamedSharder(
+                    devices=jax_env.devices,
+                    shape=get_closest_factors(len(jax_env.devices)),
+                    axis_names=("x", "y"),
+                )
+                x_sharding = sharder_1d.sharding("x")
+                replicating = sharder_1d.sharding(None)
+                xy_sharding = sharder_2d.sharding("x", "y")
+                l2_shardings = L2FnAlgebraShardings(
+                    data=replicating, vectors=x_sharding
+                )
+                l2_tst_shardings = L2FnAlgebraShardings(
+                    data=replicating, vectors=replicating
+                )
+                kernel_eigen_shardings = KernelEigenShardings(
+                    eigenvalues=replicating,
+                    eigenvectors=x_sharding,
+                    weights=x_sharding,
+                )
+                train_shardings = TrainShardings(
+                    l2=l2_shardings,
+                    kernel_eigen=kernel_eigen_shardings,
+                )
+                test_shardings = TestShardings(l2=l2_tst_shardings)
+            else:
+                train_shardings = TrainShardings()
+                test_shardings = TestShardings()
+            shardings = Shardings(train=train_shardings, test=test_shardings)
 
     train_pars = TrainPars(
         data=train_data_pars,
@@ -484,7 +588,7 @@ def initialize(
         data=test_data_pars,
         num_pred_steps=num_pred_steps,
         num_stat_steps=test_data_pars.num_samples,
-        stat_ic=0,
+        stat_ic=128,
     )
     pars = Pars(train=train_pars, test=test_pars)
     return pars, shardings
@@ -500,6 +604,7 @@ generate_data = timeit(
         mode=GENERATE_DATA_MODE,
         fname="data",
         cls=Data,
+        callback=shardings.train.l2.shard_pytree,
     )
 )
 compute_kernel_bandwidth = timeit(
@@ -546,6 +651,15 @@ compute_iterative_kaf_preds = timeit(
         io=io,
         mode=KAF_PREDS_MODE,
         fname="iterative_kaf_preds",
+        cls=Array,
+    )
+)
+compute_iterative_kaf_stat_traj = timeit(
+    pickleit(
+        knl.compute_iterative_kaf_preds,
+        io=io,
+        mode=KAF_PREDS_MODE,
+        fname="iterative_kaf_stat_traj",
         cls=Array,
     )
 )
@@ -651,9 +765,15 @@ def main():
         )
         bw_tune_info.tabulate(name="Bandwidth function tuning")
 
-        # Plot bandwidth function
-        if PLOT_MODE is not None:
+        # Plot bandwidth function tuning and bandwidth function
+        if PLOT_MODE is not None and not {
+            "all",
+            "bandwidth_tuning",
+        }.isdisjoint(WHICH_PLOTS):
             plot_kernel_tuning(bw_tune_info, title="Bandwidth function tuning")
+        if PLOT_MODE is not None and not {"all", "bandwidth_func"}.isdisjoint(
+            WHICH_PLOTS
+        ):
             plot_bandwidth_function(
                 pars.train.data,
                 impl_l2,
@@ -688,7 +808,10 @@ def main():
     tune_info.tabulate(name="Kernel tuning")
 
     # Plot kernel tuning function
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {
+        "all",
+        "kernel_tuning",
+    }.isdisjoint(WHICH_PLOTS):
         plot_kernel_tuning(tune_info, title="Kernel tuning")
 
     # Solve kernel eigenvalue problem
@@ -714,12 +837,18 @@ def main():
         jax.debug.inspect_array_sharding(kernel_eigen.evals, callback=print)
     kernel_eigen.tabulate(num_tabulate=NUM_TABULATE)
 
-    # Plot spectrum of Laplace eigenvalues
-    if PLOT_MODE is not None:
+    # Plot spectrum of Laplacian eigenvalues
+    if PLOT_MODE is not None and not {"all", "laplacian_spec"}.isdisjoint(
+        WHICH_PLOTS
+    ):
         plot_laplace_spectrum(kernel_eigen)
 
     # Plot representative kernel eigenfunctions
-    if PLOT_MODE is not None and KERNEL_EIGS_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "kernel_eigen"}.isdisjoint(WHICH_PLOTS)
+        and KERNEL_EIGS_PLT is not None
+    ):
         _, plot_kernel_eig = make_kernel_evecs_plotter(
             (pars.train.data, pars.train.kernel),
             impl_l2,
@@ -766,7 +895,7 @@ def main():
 
     # Perform time series prediction
     io /= str(pars.test.data)
-    stat_traj = compute_iterative_kaf_preds(
+    preds = compute_iterative_kaf_preds(
         pars.train.kernel,
         impl_l2,
         train_data,
@@ -781,9 +910,13 @@ def main():
     )
 
     # Plot running forecast
-    if PLOT_MODE is not None and LEAD_TIMES_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "running_pred"}.isdisjoint(WHICH_PLOTS)
+        and LEAD_TIMES_PLT is not None
+    ):
         _, plot_pred = make_running_pred_plotter(
-            pars.test.data, test_data, stat_traj, what="covariates"
+            pars.test.data, test_data, preds, what="covariates"
         )
         if LEAD_TIMES_PLT == "interactive":
             while True:
@@ -806,9 +939,13 @@ def main():
                     input("Press any key to continue...")
 
     # Plot time series forecast
-    if PLOT_MODE is not None and INITIALIZATION_TIMES_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "pred_timeseries"}.isdisjoint(WHICH_PLOTS)
+        and INITIALIZATION_TIMES_PLT is not None
+    ):
         _, plot_pred_ts = make_pred_timeseries_plotter(
-            pars.test.data, test_data, stat_traj, what="covariates"
+            pars.test.data, test_data, preds, what="covariates"
         )
         if INITIALIZATION_TIMES_PLT == "interactive":
             while True:
@@ -832,7 +969,7 @@ def main():
 
     # Compute forecast skill scores
     skill_scores = compute_skill_scores(
-        pars.test.data, test_data, stat_traj, what="covariates", dropna=True
+        pars.test.data, test_data, preds, what="covariates", dropna=True
     )
     ts = jnp.arange(pars.test.num_pred_steps + 1) * pars.test.data.dt
     print(
@@ -850,13 +987,15 @@ def main():
     )
 
     # Plot forecast skill scores
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {"all", "skill_scores"}.isdisjoint(
+        WHICH_PLOTS
+    ):
         plot_forecast_skill_scores(
             pars.test.data, skill_scores, what="covariates"
         )
 
     # Compute long-time statistical trajectory
-    stat_traj = compute_iterative_kaf_preds(
+    stat_traj = compute_iterative_kaf_stat_traj(
         pars.train.kernel,
         impl_l2,
         train_data,
