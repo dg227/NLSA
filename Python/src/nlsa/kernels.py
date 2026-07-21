@@ -16,15 +16,17 @@ from nlsa.function_algebra import (
     FunctionAlgebraWithCalculus,
     BivariateFunctionDivBimodule,
 )
-from nlsa.typing import (
-    SliceItem,
-    is_array_like,
-    is_sliceable,
-)
-from nlsa.utils import swap_args
+from nlsa.typing import SliceItem
+from nlsa.utils import has_one_arg, has_two_args, swap_args
 from numpy.typing import ArrayLike
 from tabulate import tabulate
-from typing import Literal, NamedTuple, Optional, Sequence, final
+from typing import (
+    Literal,
+    Protocol,
+    Self,
+    runtime_checkable,
+)
+from collections.abc import Sequence
 
 type F[*Xs, Y] = Callable[[*Xs], Y]
 
@@ -59,13 +61,13 @@ class TunePars:
     log10_bandwidth_lims: tuple[int, int] = (-3, 3)
     """Log upper and lower limits of trial kernel bandwidth range."""
 
-    manifold_dim: Optional[float] = None
+    manifold_dim: float | None = None
     """Manifold dimension."""
 
     bandwidth_scl: float = 1
     """Scaling factor to multiply estimated optimal kernel bandwidth."""
 
-    bandwidth_batch_size: Optional[int] = None
+    bandwidth_batch_size: int | None = None
     """Batch size in tuning loop."""
 
     def __str__(self) -> str:
@@ -86,54 +88,80 @@ class TunePars:
         )
 
 
-class TuneInfo[K, Ks, I](NamedTuple):
-    """NamedTuple holding kernel tuning information."""
+@runtime_checkable
+class ImplementsTuneInfo[K, Ks, I](Protocol):
+    """Represents objects holding kernel tuning information.
 
-    log10_bandwidths: Ks
-    """Array of trial kernel bandwidths."""
+    The type parameters K, Ks, I represent scalars, collections of scalars, and
+    integer indices, respectively.
+    """
 
-    est_dims: Ks
-    """Array of estimated dimensions based on trial bandwidths."""
+    @property
+    def log10_bandwidths(self) -> Ks:
+        """Trial kernel bandwidths."""
+        ...
 
-    opt_bandwidth: K
-    """Optimal bandwidth from autotuning procedure."""
+    @property
+    def est_dims(self) -> Ks:
+        """Estimated dimensions based on trial bandwidths."""
+        ...
 
-    opt_dim: K
-    """Optimal (maximum) dimension from autotuning procedure."""
+    @property
+    def opt_bandwidth(self) -> K:
+        """Optimal bandwidth from autotuning procedure."""
+        ...
 
-    i_opt: I
-    """Index of optimal bandwidth in array of trial bandwidths."""
+    @property
+    def opt_dim(self) -> K:
+        """Optimal (maximum) dimension from autotuning procedure."""
+        ...
 
-    bandwidth: K
-    """Selected bandwidth after scaling by user-defined factor."""
+    @property
+    def i_opt(self) -> I:
+        """Index of optimal bandwidth in array of trial bandwidths."""
+        ...
 
-    dim: K
-    """Estimated dimension based on selected bandwidth."""
+    @property
+    def bandwidth(self) -> K:
+        """Selected bandwidth after scaling by user-defined factor."""
+        ...
 
-    vol: K
-    """Estimated manifold volume based on selected bandwidth."""
+    @property
+    def dim(self) -> K:
+        """Estimated dimension based on selected bandwidth."""
+        ...
 
-    kernel_vol: K
-    """Volume based on kernel integral."""
+    @property
+    def vol(self) -> K:
+        """Estimated manifold volume based on selected bandwidth."""
+        ...
 
-    def tabulate(
-        self, name: str = "Kernel Tuning Info", show: bool = True
-    ) -> str:
-        """Create tabulated summary of the elements of a TuneInfo object."""
-        headers = [name, "Value"]
-        data = {
-            "Optimal bandwidth index": f"{self.i_opt}",
-            "Optimal bandwidth": f"{self.opt_bandwidth:.3e}",
-            "Optimal dimension": f"{self.opt_dim:.3e}",
-            "Bandwidth used for diffusion maps": f"{self.bandwidth:.3e}",
-            "Dimension based on diffusion maps bandwidth": f"{self.dim:.3e}",
-            "Manifold volume": f"{self.vol:.3e}",
-            "Kernel volume": f"{self.kernel_vol: .3e}",
-        }
-        table = tabulate(data.items(), headers=headers)
-        if show:
-            print(table)
-        return table
+    @property
+    def kernel_vol(self) -> K:
+        """Volume based on kernel integral."""
+        ...
+
+
+def tabulate_tune_info[K, Ks, I](
+    impl: ImplementsTuneInfo[K, Ks, I],
+    name: str = "Kernel Tuning Info",
+    show: bool = True,
+) -> str:
+    """Create tabulated summary of an ImplementsTuneInfo instance."""
+    headers = [name, "Value"]
+    data = {
+        "Optimal bandwidth index": f"{impl.i_opt}",
+        "Optimal bandwidth": f"{impl.opt_bandwidth:.3e}",
+        "Optimal dimension": f"{impl.opt_dim:.3e}",
+        "Bandwidth used for diffusion maps": f"{impl.bandwidth:.3e}",
+        "Dimension based on diffusion maps bandwidth": f"{impl.dim:.3e}",
+        "Manifold volume": f"{impl.vol:.3e}",
+        "Kernel volume": f"{impl.kernel_vol: .3e}",
+    }
+    table = tabulate(data.items(), headers=headers)
+    if show:
+        print(table)
+    return table
 
 
 # TODO: The batch_size parameter in this and other related classes feels
@@ -145,7 +173,7 @@ class TuneInfo[K, Ks, I](NamedTuple):
 class DmKernelPars:
     """Dataclass containing diffusion maps eigendecomposition parameters."""
 
-    normalization: Optional[Literal["laplace", "fokkerplanck"]]
+    normalization: Literal["laplace", "fokkerplanck"] | None
     """Kernel normalization method."""
 
     eigensolver: Literal["eigh", "eigsh"]
@@ -154,7 +182,7 @@ class DmKernelPars:
     num_eigs: int
     """Number of kernel eigenvalue/eigenvector pairs to compute."""
 
-    batch_size: Optional[int] = None
+    batch_size: int | None = None
     """Maximum batch size for matrix-matrix products."""
 
     def __str__(self) -> str:
@@ -176,11 +204,11 @@ class BsKernelPars:
     num_eigs: int
     """Number of kernel eigenvalue/eigenvector pairs to compute."""
 
-    batch_size: Optional[int] = None
+    batch_size: int | None = None
     """Maximum batch size for matrix-matrix products."""
 
     def __str__(self) -> str:
-        """Create string representation of diffusion maps kernel parameters."""
+        """Create string representation of bistochastic kernel parameters."""
         return "_".join(
             ("bistochastic", self.eigensolver, f"neigs{self.num_eigs}")
         )
@@ -189,118 +217,94 @@ class BsKernelPars:
 type KernelPars = DmKernelPars | BsKernelPars
 
 
-class KernelEigen[Scalar, Scalars, Vector, Vectors](NamedTuple):
-    """NamedTuple containing kernel spectral data."""
-
-    evals: Scalars
-    """Kernel eigenvalues."""
-
-    evecs: Vectors
-    """Kernel eigenvectors."""
-
-    dual_evecs: Vectors
-    """Dual (left) kernel eigenvectors."""
-
-    weights: Vector
-    """Inner product weights that orthonormalize the eigenvectors."""
-
-    bandwidth: Scalar
-    """Bandwidth parameter."""
+@runtime_checkable
+class ImplementsKernelEigen[K, Ks, V, Vs](Protocol):
+    """Represents objects holding kernel spectral data."""
 
     @property
-    def num_eigs(
-        self,
-    ) -> int:
-        """Return number of eigenvalues/eigenvectors in KernelEigenObject."""
-        assert isinstance(self.evals, Sized)
-        return len(self.evals)
+    def evals(self) -> Ks:
+        """Kernel eigenvalues."""
+        ...
 
-    def isel(
-        self,
-        s: SliceItem,
-    ) -> "KernelEigen[Scalar, Scalars, Vector, Vectors]":
-        """Slice a KernelEigen object."""
-        assert is_sliceable(self.evals)
-        assert is_sliceable(self.evecs)
-        assert is_sliceable(self.dual_evecs)
-        return KernelEigen(
-            evals=self.evals[s],
-            evecs=self.evecs[s],
-            dual_evecs=self.dual_evecs[s],
-            weights=self.weights,
-            bandwidth=self.bandwidth,
-        )
+    @property
+    def evecs(self) -> Vs:
+        """Kernel eigenvectors."""
+        ...
 
-    def tabulate(
-        self,
-        num_tabulate: Optional[int] = None,
-        headers: Sequence[str] = ["Kernel eigenvalues"],
-        show: bool = True,
-    ) -> str:
-        """Tabulate the eigenvalues in a KernelEigen object."""
-        assert is_array_like(self.evals)
-        data = np.vstack(((self.evals),))[:, :num_tabulate].T
-        table = tabulate(data, headers=headers, floatfmt=".4f", showindex=True)
-        if show:
-            print(table)
-        return table
+    @property
+    def dual_evecs(self) -> Vs:
+        """Dual (left) kernel eigenvectors."""
+        ...
+
+    @property
+    def weights(self) -> V:
+        """Inner product weights that orthonormalize the eigenvectors."""
+        ...
+
+    @property
+    def bandwidth(self) -> K:
+        """Bandwidth parameter."""
+        ...
 
 
-# TODO: Introduce a type parameter for dim
-@final
-@dataclass(frozen=True, slots=True)
-class KernelEigenbasis[X, K, V, Ks, I](
-    alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, I]
+@runtime_checkable
+class ImplementsSliceableKernelEigen[K, Ks, V, Vs](
+    ImplementsKernelEigen[K, Ks, V, Vs], Protocol
 ):
-    """Dataclass implementing frame operators for kernel eigenbasis."""
+    """Represents objects holding sliceable kernel spectral data."""
 
-    dim: int
-    """Number of eigenfunctions."""
+    def isel(self, s: SliceItem) -> Self:
+        """Slice an ImplementsKernelEigen object."""
+        ...
 
-    anal: Callable[[V], Ks]
-    """Analysis operator."""
 
-    dual_anal: Callable[[V], Ks]
-    """Dual analysis operator."""
+def tabulate_eigen[K: ArrayLike, Ks: ArrayLike, V: ArrayLike, Vs: ArrayLike](
+    impl: ImplementsKernelEigen[K, Ks, V, Vs],
+    num_tabulate: int | None = None,
+    headers: Sequence[str] | None = None,
+    show: bool = True,
+) -> str:
+    """Tabulate the eigenvalues in an ImplementsKernelEigen object."""
+    data = np.vstack((impl.evals,))[:, :num_tabulate].T
+    if headers is None:
+        headers = ["Kernel eigenvalues"]
+    table = tabulate(data, headers=headers, floatfmt=".4f", showindex=True)
+    if show:
+        print(table)
+    return table
 
-    synth: Callable[[Ks], V]
-    """Synthesis operator."""
 
-    dual_synth: Callable[[Ks], V]
-    """Dual synthesis operator."""
+def num_eigs_in_eigen[K, Ks: Sized, V, Vs: Sized](
+    impl: ImplementsKernelEigen[K, Ks, V, Vs],
+) -> int:
+    """Return number of eigenvalues in ImplementsKernelEigenObject."""
+    return len(impl.evals)
 
-    fn_anal: Callable[[F[X, K]], Ks]
-    """Function analysis operator."""
 
-    dual_fn_anal: Callable[[F[X, K]], Ks]
-    """Dual function analysis operator."""
+def slice_eigen[K, Ks, V, Vs](
+    eigen: ImplementsSliceableKernelEigen[K, Ks, V, Vs],
+    which_eigs: int | tuple[int, int] | list[int] | None = None,
+) -> ImplementsSliceableKernelEigen[K, Ks, V, Vs]:
+    """Slice KernelEigen object using `which_eigs` convention."""
+    match which_eigs:
+        case None:
+            sliced_eigen = eigen
+        case int() as num_eigs:
+            sliced_eigen = eigen.isel(slice(0, num_eigs))
+        case tuple() as idx:
+            sliced_eigen = eigen.isel(slice(idx[0], idx[1] + 1))
+        case list() as idxs:
+            sliced_eigen = eigen.isel(idxs)
+    return sliced_eigen
 
-    fn_synth: Callable[[Ks], F[X, K]]
-    """Function synthesis operator."""
 
-    dual_fn_synth: Callable[[Ks], F[X, K]]
-    """Dual function synthesis operator."""
-
-    vec: Callable[[I], V]
-    """Basis vectors."""
-
-    dual_vec: Callable[[I], V]
-    """Dual basis vectors."""
-
-    fn: Callable[[I], F[X, K]]
-    """Function representatives of basis vectors."""
-
-    dual_fn: Callable[[I], F[X, K]]
-    """Function representatives of dual basis vectors."""
-
-    spec: Ks
-    """Kernel operator spectrum (set of eigenvalues)."""
+class ImplementsKernelEigenbasis[X, Y, V, K, Ks, I](
+    alg.ImplementsL2FnEigenbasis[X, Y, V, K, Ks, I], Protocol
+):
+    """Implement kernel eigenbasis."""
 
     lapl_spec: Ks
     """Laplace spectrum."""
-
-    evl: Callable[[I], K]
-    """Kernel eigenvalues."""
 
     lapl_evl: Callable[[I], K]
     """Laplacian eigenvalues."""
@@ -351,14 +355,46 @@ def make_rbf_kernel_family[X, K](
     """Make bandwdith-parameterized kernel family."""
     return partial(make_rbf_kernel, impl, shape_func, sqdist)
 
-    # make_shape_func: Callable[[K], F[K, K]] = partial(
-    #     make_rbf, impl, shape_func=shape_func
-    # )
 
-    # def kernel_family(epsilon: K, /) -> Callable[[X, X], K]:
-    #     return fun.compose(make_shape_func(epsilon), sqdist)
+def make_data_driven_scaled_sqdist[K, X, Data](
+    impl: alg.ImplementsRealScalarField[K],
+    sqdist: Callable[[X, X], K] | Callable[[Data, X, X], K],
+    bandwidth_func: Callable[[X], K] | Callable[[Data, X], K],
+) -> Callable[[Data, X, X], K]:
+    """Make data-driven scaled square distance from bandwidth function."""
 
-    # return kernel_family
+    def scaled_sqdist(data: Data, x: X, y: X) -> K:
+        if has_two_args(sqdist):
+            _sqdist = sqdist
+        else:
+            _sqdist = partial(sqdist, data)
+        if has_one_arg(bandwidth_func):
+            _bandwidth_func = bandwidth_func
+        else:
+            _bandwidth_func = partial(bandwidth_func, data)
+        _scaled_sqdist = make_scaled_sqdist(impl, _sqdist, _bandwidth_func)
+        return _scaled_sqdist(x, y)
+
+    return scaled_sqdist
+
+
+def make_data_driven_rbf_kernel[K, X, Data](
+    impl: alg.ImplementsRealScalarField[K],
+    shape_func: Callable[[K], K],
+    sqdist: Callable[[X, X], K] | Callable[[Data, X, X], K],
+    bandwidth: K,
+) -> Callable[[Data, X, X], K]:
+    """Make data-driven, bandwidth-parameterized RBF kernel."""
+
+    def kernel(data: Data, x: X, y: X) -> K:
+        if has_two_args(sqdist):
+            _sqdist = sqdist
+        else:
+            _sqdist = partial(sqdist, data)
+        kernel = make_rbf_kernel(impl, shape_func, _sqdist, bandwidth)
+        return kernel(x, y)
+
+    return kernel
 
 
 def make_integral_operator[X, V, K](
@@ -493,6 +529,34 @@ def dmsym_normalize[X, V, K](
     return k_dm
 
 
+def make_data_driven_dmsym_kernel_op[Data, X, K, V](
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
+    kernel: Callable[[X, X], K] | Callable[[Data, X, X], K],
+    normalization: Literal["laplace", "fokkerplanck"] | None,
+) -> Callable[[Data, V], V]:
+    """Make data-driven kernel integral op with bistochastic normalization."""
+
+    def kernel_op(data: Data, v: V) -> V:
+        l2x = impl_l2(data)
+        if has_two_args(kernel):
+            _kernel = kernel
+        else:
+            _kernel = partial(kernel, data)
+        match normalization:
+            case "laplace":
+                normalized_kernel = dmsym_normalize(l2x, _kernel, alpha="1")
+            case "fokkerplanck":
+                normalized_kernel = dmsym_normalize(l2x, _kernel, alpha="0.5")
+            case None:
+                normalized_kernel = _kernel
+        _kernel_op = fun.compose(
+            l2x.incl, make_integral_operator(l2x, normalized_kernel)
+        )
+        return _kernel_op(v)
+
+    return kernel_op
+
+
 def from_dmsym[Vs, V, K](
     impl: alg.ImplementsLDivModule[Vs, K, V], v0: V, vs: Vs, /
 ) -> Vs:
@@ -519,10 +583,34 @@ def bs_normalize[X, V, K](
     d = k_op(impl.unit())
     k_r = func2.rdiv(k, d)
     k_r_op = make_integral_operator(impl, k_r)
-    q: F[X, K] = k_r_op(impl.unit())
+    q = k_r_op(impl.unit())
     k_q = func2.rdiv(k, func.sqrt(q))
     k_bs = func2.ldiv(d, k_q)
     return k_bs
+
+
+def make_data_driven_bs_kernel_op[Data, X, K, V](
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
+    kernel: Callable[[X, X], K] | Callable[[Data, X, X], K],
+    adj: bool = False,
+) -> Callable[[Data, V], V]:
+    """Make data-driven kernel integral op with bistochastic normalization."""
+
+    def kernel_op(data: Data, v: V) -> V:
+        l2x = impl_l2(data)
+        if has_two_args(kernel):
+            _kernel = kernel
+        else:
+            _kernel = partial(kernel, data)
+        bs_kernel = bs_normalize(l2x, _kernel)
+        if adj:
+            bs_kernel = swap_args(bs_kernel)
+        kernel_op = fun.compose(
+            l2x.incl, make_integral_operator(l2x, bs_kernel)
+        )
+        return kernel_op(v)
+
+    return kernel_op
 
 
 def bssym_normalize[X, V, K](
@@ -607,7 +695,7 @@ def make_bandwidth_function[X, V, K](
     /,
     dim: K,
     vol: K,
-    normalization: Optional[K] = None,
+    normalization: K | None = None,
 ) -> Callable[[X], K]:
     """Make bandwidth function for variable-bandwidth kernel."""
     func: FunctionAlgebraWithCalculus[X, K, K] = FunctionAlgebraWithCalculus(
@@ -622,6 +710,32 @@ def make_bandwidth_function[X, V, K](
         c = vol
     b = func.power(func.smul(c, d), impl.scl.inv(dim))
     return b
+
+
+# NOTE: In a posssible Mojo implementation, impl_l2, shape_func, etc. would
+# be passed in as compile-time parameters, and the arguments of the
+# resulting Callable would be regular run-time arguments.
+def make_data_driven_bandwidth_function[Data, X, K, V, Ks, I](
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
+    shape_func: Callable[[K], K],
+    sqdist: Callable[[X, X], K],
+    tune_info: ImplementsTuneInfo[K, Ks, I],
+) -> Callable[[Data, X], K]:
+    """Make data-driven kernel bandwidth function."""
+
+    def bandwidth_func(data: Data, x: X) -> K:
+        l2x = impl_l2(data)
+        kernel_family = make_rbf_kernel_family(l2x.scl, shape_func, sqdist)
+        f = make_bandwidth_function(
+            l2x,
+            kernel_family(tune_info.bandwidth),
+            dim=tune_info.dim,
+            vol=tune_info.vol,
+            normalization=tune_info.kernel_vol,
+        )
+        return f(x)
+
+    return bandwidth_func
 
 
 def make_tuning_objective_from_kernel_family[X, V, K](
@@ -672,6 +786,60 @@ def make_tuning_objective_from_shape_function[X, V, K](
     return grad_log10_k_sum
 
 
+def make_eigenvector_extension_dm[X, K, V](
+    l2x: alg.ImplementsL2FnAlgebra[X, K, V, K],
+    kernel: Callable[[X, X], K],
+    normalization: Literal["laplace", "fokkerplanck"] | None,
+) -> tuple[Callable[[V, K], F[X, K]], Callable[[X, X], K]]:
+    """Make Nystrom extension for diffusion maps kernels."""
+    match normalization:
+        case "laplace":
+            extension_kernel = dm_normalize(l2x, kernel, alpha="1")
+        case "fokkerplanck":
+            extension_kernel = dm_normalize(l2x, kernel, alpha="0.5")
+        case None:
+            extension_kernel = kernel
+    extension_kernel_op: Callable[[V], F[X, K]] = make_integral_operator(
+        l2x, extension_kernel
+    )
+
+    def nyst(phi: V, lamb: K) -> F[X, K]:
+        return extension_kernel_op(l2x.sdiv(lamb, phi))
+
+    return nyst, extension_kernel
+
+
+def make_eigenvector_extension_bs[X, K, V](
+    l2x: alg.ImplementsL2FnAlgebra[X, K, V, K], kernel: Callable[[X, X], K]
+) -> tuple[Callable[[V, K], F[X, K]], Callable[[X, X], K]]:
+    """Make Nystrom extension for bistochastic kernels."""
+    extension_kernel = bs_normalize(l2x, kernel)
+    extension_kernel_op: Callable[[V], F[X, K]] = make_integral_operator(
+        l2x, extension_kernel
+    )
+
+    def nyst(phi: V, lamb: K) -> F[X, K]:
+        return extension_kernel_op(l2x.sdiv(l2x.scl.sqrt(lamb), phi))
+
+    return nyst, extension_kernel
+
+
+def make_eigenvector_extension[X, K, V](
+    pars: KernelPars,
+    l2x: alg.ImplementsL2FnAlgebra[X, K, V, K],
+    kernel: Callable[[X, X], K],
+) -> tuple[Callable[[V, K], F[X, K]], Callable[[X, X], K]]:
+    """Make Nystrom extension for diffusion maps and bistochastic kernels."""
+    match pars:
+        case DmKernelPars():
+            nyst, extension_kernel = make_eigenvector_extension_dm(
+                l2x, kernel, pars.normalization
+            )
+        case BsKernelPars():
+            nyst, extension_kernel = make_eigenvector_extension_bs(l2x, kernel)
+    return nyst, extension_kernel
+
+
 def make_resolvent_compactification_kernels[X, TX, V, K](
     impl: alg.ImplementsMeasureFnStarAlgebra[X, K, V, K],
     v: Callable[[X], TX],
@@ -697,9 +865,28 @@ def make_resolvent_compactification_kernels[X, TX, V, K](
     return qz_i, qz_j, gz
 
 
+def to_laplace_eigenvalues(
+    lambs: ArrayLike,
+    bandwidth: ArrayLike,
+    method: Literal["lin", "log", "inv"] = "log",
+) -> ArrayLike:
+    """Compute Laplace eigenvalues from kernel eigenvalues."""
+    lambs = np.asarray(lambs)
+    bandwidth = np.asarray(bandwidth)
+    match method:
+        case "lin":
+            etas = 4 * (1 - lambs) / bandwidth**2
+        case "log":
+            etas = -4 * np.log(lambs) / bandwidth**2
+        case "inv":
+            inv_lambs = 1 / lambs
+            etas = (inv_lambs - 1) / (inv_lambs[1] - 1)
+    return etas
+
+
 def plot_kernel_tuning[A: ArrayLike](
-    tune_info: TuneInfo[A, A, A],
-    title: Optional[str] = None,
+    tune_info: ImplementsTuneInfo[A, A, A],
+    title: str | None = None,
     i_fig: int = 1,
 ) -> Figure:
     """Plot kernel tuning function."""
@@ -722,11 +909,53 @@ def plot_kernel_tuning[A: ArrayLike](
     return fig
 
 
-def plot_kaf_response_coeffs(
+def plot_laplacian_spectrum(
+    kernel_eigen: ImplementsKernelEigen[
+        ArrayLike, ArrayLike, ArrayLike, ArrayLike
+    ],
+    num_eigs_plt: int | None = None,
+    i_fig: int = 1,
+) -> Figure:
+    """Plot spectrum of Laplacian eigenvalues."""
+    kernel_evals = np.asarray(kernel_eigen.evals)[:num_eigs_plt]
+    lapl_evals = partial(
+        to_laplace_eigenvalues, kernel_evals, kernel_eigen.bandwidth
+    )
+    idx_evals = np.arange(1, len(kernel_evals))
+    if plt.fignum_exists(i_fig):
+        plt.close(i_fig)
+    fig, ax = plt.subplots(num=i_fig, constrained_layout=True)
+    ax.plot(
+        idx_evals,
+        np.log10(np.asarray(lapl_evals("lin"))[1:]),
+        ".",
+        label=r"$4(1-\lambda_j)/\epsilon^2$",
+    )
+    ax.plot(
+        idx_evals,
+        np.log10(np.asarray(lapl_evals("log"))[1:]),
+        ".",
+        label=r"$-4\log\lambda_j/\epsilon^2$",
+    )
+    ax.plot(
+        idx_evals,
+        np.log10(np.asarray(lapl_evals("inv"))[1:]),
+        ".",
+        label=r"$(\lambda_j^{-1}-1)/(\lambda_1-1)$",
+    )
+    ax.grid()
+    ax.legend()
+    ax.set_xlabel("$j$")
+    ax.set_ylabel(r"$\log_{10}\eta_j$")
+    ax.set_title("Laplacian eigenvalues")
+    return fig
+
+
+def plot_kaf_expansion_coeffs(
     coeffs: ArrayLike,
     i_fig: int = 1,
-    dt: Optional[float] = None,
-    title: Optional[str] = None,
+    dt: float | None = None,
+    title: str | None = None,
 ) -> Figure:
     """Plot heatmap of KAF response coefficients."""
     if plt.fignum_exists(i_fig):

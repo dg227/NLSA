@@ -17,7 +17,8 @@ from jax.typing import DTypeLike
 from nlsa.jax.sharding import shardit
 from nlsa.jax.vector_algebra import ScalarField, L2VectorAlgebra
 from nlsa.jax.utils import batch_map
-from typing import Callable, Optional, final
+from typing import final
+from collections.abc import Callable
 
 type K = Array
 type A = Array
@@ -152,10 +153,10 @@ def materialize_in_std_basis(
     f: Callable[[V], V],
     in_dim: int,
     basis_vec_value: float | Array = 1,
-    dtype: Optional[DTypeLike] = None,
-    batch_size: Optional[int] = None,
-    in_sharding: Optional[NamedSharding] = None,
-    out_sharding: Optional[NamedSharding] = None,
+    dtype: DTypeLike | None = None,
+    batch_size: int | None = None,
+    in_sharding: NamedSharding | None = None,
+    out_sharding: NamedSharding | None = None,
     jit: bool = False,
 ) -> A:
     """Compute matrix representation of linear map in standard basis of C^n."""
@@ -188,31 +189,31 @@ class MatrixAlgebra[N: Shape, D: DTypeLike](
     """Implement matrix algebra operations for JAX arrays."""
 
     domain: L2VectorAlgebra[N, D]
-    sharding: Optional[Sharding | None] = None
-    _scl: Optional[ScalarField[D]] = None
-    _zero: Optional[Callable[[], V]] = None
-    _unit: Optional[Callable[[], V]] = None
-    _codom: Optional[L2VectorAlgebra[N, D]] = None
-    _add: Optional[Callable[[A, A], A]] = None
-    _neg: Optional[Callable[[A], A]] = None
-    _sub: Optional[Callable[[A, A], A]] = None
-    _sdiv: Optional[Callable[[K, A], A]] = None
-    _smul: Optional[Callable[[K, A], A]] = None
-    _mul: Optional[Callable[[A, A], A]] = None
-    _inv: Optional[Callable[[A], A]] = None
-    _div: Optional[Callable[[A, A], A]] = None
-    _adj: Optional[Callable[[A], A]] = None
-    _lmul: Optional[Callable[[A, A], A]] = None
-    _ldiv: Optional[Callable[[A, A], A]] = None
-    _rmul: Optional[Callable[[A, A], A]] = None
-    _rdiv: Optional[Callable[[A, A], A]] = None
-    _sqrt: Optional[Callable[[A], A]] = None
-    _exp: Optional[Callable[[A], A]] = None
-    _mpower: Optional[Callable[[A, int], A]] = None
-    _power: Optional[Callable[[A, K], A]] = None
-    _norm: Optional[Callable[[A], K]] = None
-    _abs: Optional[Callable[[A], A]] = None
-    _app: Optional[Callable[[A, V], V]] = None
+    sharding: Sharding | None = None
+    _scl: ScalarField[D] | None = None
+    _zero: Callable[[], V] | None = None
+    _unit: Callable[[], V] | None = None
+    _codom: L2VectorAlgebra[N, D] | None = None
+    _add: Callable[[A, A], A] | None = None
+    _neg: Callable[[A], A] | None = None
+    _sub: Callable[[A, A], A] | None = None
+    _sdiv: Callable[[K, A], A] | None = None
+    _smul: Callable[[K, A], A] | None = None
+    _mul: Callable[[A, A], A] | None = None
+    _inv: Callable[[A], A] | None = None
+    _div: Callable[[A, A], A] | None = None
+    _adj: Callable[[A], A] | None = None
+    _lmul: Callable[[A, A], A] | None = None
+    _ldiv: Callable[[A, A], A] | None = None
+    _rmul: Callable[[A, A], A] | None = None
+    _rdiv: Callable[[A, A], A] | None = None
+    _sqrt: Callable[[A], A] | None = None
+    _exp: Callable[[A], A] | None = None
+    _mpower: Callable[[A, int], A] | None = None
+    _power: Callable[[A, K], A] | None = None
+    _norm: Callable[[A], K] | None = None
+    _abs: Callable[[A], A] | None = None
+    _app: Callable[[A, V], V] | None = None
 
     @property
     def dom(self) -> L2VectorAlgebra[N, D]:
@@ -400,9 +401,9 @@ class HilbertSchmidtMatrixAlgebra[N: Shape, D: DTypeLike](
     abs: Callable[[A], A] = field(default=abs)
     app: Callable[[A, V], V] = field(default=jnp.matmul)
     sharding: InitVar[Sharding | None] = None
-    _zero: InitVar[Optional[Callable[[], A]]] = None
-    _unit: InitVar[Optional[Callable[[], A]]] = None
-    weight: InitVar[Optional[A]] = None
+    _zero: InitVar[Callable[[], A] | None] = None
+    _unit: InitVar[Callable[[], A] | None] = None
+    weight: InitVar[A | None] = None
 
     def __post_init__(self, sharding, _zero, _unit, weight) -> None:
         """Post-initialization of matrix algebra objects."""
@@ -451,7 +452,7 @@ class MatrixSpace[M: Shape, N: Shape, D: DTypeLike](
     norm: Callable[[A], K] = field(default=partial(jnp.linalg.norm, ord=2))
     app: Callable[[A, V], V] = field(default=jnp.matmul)
     sharding: InitVar[Sharding | None] = None
-    _zero: InitVar[Optional[Callable[[], A]]] = None
+    _zero: InitVar[Callable[[], A] | None] = None
 
     def __post_init__(self, sharding, _zero) -> None:
         """Post-initialization of HS matrix space objects."""
@@ -488,8 +489,8 @@ class HilbertSchmidtMatrixSpace[M: Shape, N: Shape, D: DTypeLike](
     norm: Callable[[A], K] = field(init=False)
     app: Callable[[A, V], V] = field(default=jnp.matmul)
     sharding: InitVar[Sharding | None] = None
-    _zero: InitVar[Optional[Callable[[], A]]] = None
-    weight: InitVar[Optional[A]] = None
+    _zero: InitVar[Callable[[], A] | None] = None
+    weight: InitVar[A | None] = None
 
     def __post_init__(self, sharding, _zero, weight) -> None:
         """Post-initialization of HS matrix space objects."""

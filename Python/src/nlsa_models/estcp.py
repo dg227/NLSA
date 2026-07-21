@@ -4,8 +4,10 @@ import jax
 import jax.numpy as jnp
 import matplotlib.figure as mpf
 import matplotlib.pyplot as plt
+import nlsa.abstract_algebra as alg
 import nlsa.function_algebra as fun
 import nlsa.jax.delays as dl
+import nlsa.jax.eofs as eof
 import nlsa.jax.kernels as knl
 import nlsa.jax.koopman as koop
 import nlsa.jax.stats as stats
@@ -22,6 +24,7 @@ from jax import Array, NamedSharding, vmap
 from jax.typing import DTypeLike
 from matplotlib.figure import Figure
 from nlsa.io_actions import timeit
+from nlsa.jax.eofs import EEOFEigen
 from nlsa.jax.kernels import KernelEigen, KernelPars
 from nlsa.jax.koopman import KoopmanEigen, KoopmanEigenbasis, KoopmanPars
 from nlsa.jax.stats import anomaly_correlation_coefficient, normalized_rmse
@@ -46,7 +49,6 @@ from typing import (
     Any,
     Literal,
     NamedTuple,
-    Optional,
     Protocol,
     assert_never,
     cast,
@@ -106,32 +108,32 @@ class GriddedDataSpecs[T: TimeSampling, S: SpaceSampling](Protocol):
         ...
 
     @property
-    def min_lon(self) -> Optional[float]:
+    def min_lon(self) -> float | None:
         """Return min_lon property of GriddedDataSpecs protocol."""
         ...
 
     @property
-    def max_lon(self) -> Optional[float]:
+    def max_lon(self) -> float | None:
         """Return max_lon property of GriddedDataSpecs protocol."""
         ...
 
     @property
-    def step_lon(self) -> Optional[int]:
+    def step_lon(self) -> int | None:
         """Return step_lon property of GriddedDataSpecs protocol."""
         ...
 
     @property
-    def min_lat(self) -> Optional[float]:
+    def min_lat(self) -> float | None:
         """Return min_lat property of GriddedDataSpecs protocol."""
         ...
 
     @property
-    def max_lat(self) -> Optional[float]:
+    def max_lat(self) -> float | None:
         """Return max_lat property of GriddedDataSpecs protocol."""
         ...
 
     @property
-    def step_lat(self) -> Optional[int]:
+    def step_lat(self) -> int | None:
         """Return step_lat property of GriddedDataSpecs protocol."""
         ...
 
@@ -146,7 +148,7 @@ class GriddedDataSpecs[T: TimeSampling, S: SpaceSampling](Protocol):
         ...
 
     @property
-    def rolling_window(self) -> Optional[int]:
+    def rolling_window(self) -> int | None:
         """Return rolling window length of GriddedDataSpecs protocol."""
         ...
 
@@ -176,12 +178,12 @@ class GriddedDataSpecs[T: TimeSampling, S: SpaceSampling](Protocol):
         ...
 
     @property
-    def input_path(self) -> Optional[str | Path]:
+    def input_path(self) -> str | Path | None:
         """Return input_path property of GriddedDataSpecs protocol."""
         ...
 
     @property
-    def file_format(self) -> Optional[Literal["grib", "nc"]]:
+    def file_format(self) -> Literal["grib", "nc"] | None:
         """Return file format property of GriddedDataSpecs protocol."""
         ...
 
@@ -239,12 +241,12 @@ class ERA5Var(StrEnum):
 class ERA5Domain[S: SpaceSampling]:
     """Domain data for daily ERA5 NW hemisphere metadata."""
 
-    min_lon: Optional[float] = None
-    max_lon: Optional[float] = None
-    min_lat: Optional[float] = None
-    max_lat: Optional[float] = None
-    step_lon: Optional[int] = None
-    step_lat: Optional[int] = None
+    min_lon: float | None = None
+    max_lon: float | None = None
+    min_lat: float | None = None
+    max_lat: float | None = None
+    step_lon: int | None = None
+    step_lat: int | None = None
     sampling: S = cast(S, "pointwise")
 
     def __str__(self) -> str:
@@ -270,9 +272,9 @@ class Time[T: TimeSampling]:
 
     date_range: tuple[str, str]
     sampling: T
-    rolling_window: Optional[int] = None
+    rolling_window: int | None = None
     rolling_mode: RollingMode = "center"
-    custom_climatology_date_range: Optional[tuple[str, str]] = None
+    custom_climatology_date_range: tuple[str, str] | None = None
 
     @property
     def climatology_date_range(self) -> tuple[str, str]:
@@ -320,7 +322,7 @@ class Climatology:
 class ERA5IO:
     """ERA5 IO specs."""
 
-    input_path: Optional[str | Path] = None
+    input_path: str | Path | None = None
     file_format: Literal["grib", "nc"] = "nc"
 
 
@@ -346,32 +348,32 @@ class ERA5DataSpecs[T: TimeSampling, S: SpaceSampling](GriddedDataSpecs[T, S]):
         return [var.value for var in self.vars]
 
     @property
-    def min_lon(self) -> Optional[float]:
+    def min_lon(self) -> float | None:
         """Return min_lon property of ERA5DataSpecs object."""
         return self.domain.min_lon
 
     @property
-    def max_lon(self) -> Optional[float]:
+    def max_lon(self) -> float | None:
         """Return max_lon property of ERA5DataSpecs object."""
         return self.domain.max_lon
 
     @property
-    def step_lon(self) -> Optional[int]:
+    def step_lon(self) -> int | None:
         """Return step_lon property of ERA5DataSpecs object."""
         return self.domain.step_lon
 
     @property
-    def min_lat(self) -> Optional[float]:
+    def min_lat(self) -> float | None:
         """Return min_lat property of ERA5DataSpecs object."""
         return self.domain.min_lat
 
     @property
-    def max_lat(self) -> Optional[float]:
+    def max_lat(self) -> float | None:
         """Return max_lat property of ERA5DataSpecs object."""
         return self.domain.max_lat
 
     @property
-    def step_lat(self) -> Optional[int]:
+    def step_lat(self) -> int | None:
         """Return step_lat property of ERA5DataSpecs object."""
         return self.domain.step_lat
 
@@ -386,7 +388,7 @@ class ERA5DataSpecs[T: TimeSampling, S: SpaceSampling](GriddedDataSpecs[T, S]):
         return self.time.sampling
 
     @property
-    def rolling_window(self) -> Optional[int]:
+    def rolling_window(self) -> int | None:
         """Return rolling_window property of ERA5DataSpecs object."""
         return self.time.rolling_window
 
@@ -416,7 +418,7 @@ class ERA5DataSpecs[T: TimeSampling, S: SpaceSampling](GriddedDataSpecs[T, S]):
         return self.time.climatology_date_range
 
     @property
-    def input_path(self) -> Optional[str | Path]:
+    def input_path(self) -> str | Path | None:
         """Return input_path property of ERA5DataSpecs object."""
         return self.io.input_path
 
@@ -463,7 +465,7 @@ class StationDataSpecs[T: TimeSampling](Protocol):
         ...
 
     @property
-    def rolling_window(self) -> Optional[int]:
+    def rolling_window(self) -> int | None:
         """Return rolling window length of StationDataSpecs protocol."""
         ...
 
@@ -493,12 +495,12 @@ class StationDataSpecs[T: TimeSampling](Protocol):
         ...
 
     @property
-    def input_path(self) -> Optional[str | Path]:
+    def input_path(self) -> str | Path | None:
         """Return input_path property of StationDataSpecs protocol."""
         ...
 
     @property
-    def file_format(self) -> Optional[Literal["csv"]]:
+    def file_format(self) -> Literal["csv"] | None:
         """Return file format property of StationDataSpecs protocol."""
         ...
 
@@ -764,7 +766,7 @@ class WS44Var(StrEnum):
 class WS44IO:
     """Station IO specs."""
 
-    input_path: Optional[str | Path] = None
+    input_path: str | Path | None = None
     file_format: Literal["csv"] = "csv"
 
 
@@ -800,7 +802,7 @@ class WS44DataSpecs[T: TimeSampling](StationDataSpecs[T]):
         return self.time.sampling
 
     @property
-    def rolling_window(self) -> Optional[int]:
+    def rolling_window(self) -> int | None:
         """Return rolling_window property of WS44DataSpecs object."""
         return self.time.rolling_window
 
@@ -830,7 +832,7 @@ class WS44DataSpecs[T: TimeSampling](StationDataSpecs[T]):
         return self.time.climatology_date_range
 
     @property
-    def input_path(self) -> Optional[str | Path]:
+    def input_path(self) -> str | Path | None:
         """Return input_path property of WS44DataSpecs object."""
         return self.io.input_path
 
@@ -916,7 +918,7 @@ class WS44HighLatVar(StrEnum):
 class WS44HighLatIO:
     """Station IO specs."""
 
-    input_path: Optional[str | Path] = None
+    input_path: str | Path | None = None
     file_format: Literal["csv"] = "csv"
 
 
@@ -952,7 +954,7 @@ class WS44HighLatDataSpecs[T: TimeSampling](StationDataSpecs[T]):
         return self.time.sampling
 
     @property
-    def rolling_window(self) -> Optional[int]:
+    def rolling_window(self) -> int | None:
         """Return rolling_window property of WS44HighLatDataSpecs object."""
         return self.time.rolling_window
 
@@ -982,7 +984,7 @@ class WS44HighLatDataSpecs[T: TimeSampling](StationDataSpecs[T]):
         return self.time.climatology_date_range
 
     @property
-    def input_path(self) -> Optional[str | Path]:
+    def input_path(self) -> str | Path | None:
         """Return input_path property of WS44HighLatDataSpecs object."""
         return self.io.input_path
 
@@ -1057,15 +1059,15 @@ class DataPars[T: TimeSampling]:
     """Number of extra samples before delay embedding."""
 
     num_after: int = 0
-    """Number of extra after delay embedding."""
+    """Number of extra samples after delay embedding."""
 
     velocity_covariate: bool = False
     """Include time tendencies (velocities) in covariate data."""
 
-    velocity_fd_order: Optional[Literal[2, 4, 6, 8]] = None
+    velocity_fd_order: Literal[2, 4, 6, 8] | None = None
     """Finite-difference order for velocity data."""
 
-    eval_batch_size: Optional[int] = None
+    eval_batch_size: int | None = None
     """Number of batches for batchwise evaluation."""
 
     @property
@@ -1077,6 +1079,20 @@ class DataPars[T: TimeSampling]:
     def time_sampling(self) -> TimeSampling:
         """Sampling time interval."""
         return self.covariate.specs[0].time_sampling
+
+    @property
+    def time(self) -> DatetimeIndex:
+        """DatetimeIndex associated with DataPars object."""
+        match self.covariate.specs[0].time_sampling:
+            case "daily":
+                freq = "D"
+            case "monthly":
+                freq = "MS"
+        return pd.date_range(
+            start=self.covariate.specs[0].date_range[0],
+            end=self.covariate.specs[0].date_range[1],
+            freq=freq,
+        )
 
     @property
     def num_total_samples(self) -> int:
@@ -1176,6 +1192,48 @@ class DataPars[T: TimeSampling]:
         return table
 
 
+@runtime_checkable
+class ImplementsCovariate(Protocol):
+    """Represent objects that contain covariate data."""
+
+    @property
+    def covariates(
+        self,
+    ) -> Array | NPMatrix[int, int, np.dtype[np.floating[Any]]]:
+        """Covariate variables."""
+        ...
+
+
+@runtime_checkable
+class ImplementsTimedCovariate(ImplementsCovariate, Protocol):
+    """Represent objects that contain covariate and time data."""
+
+    @property
+    def time(self) -> DatetimeIndex:
+        """Timestamps of the covariate/response data."""
+        ...
+
+
+@runtime_checkable
+class ImplementsResponse(Protocol):
+    """Represent objects that contain response data."""
+
+    @property
+    def responses(self) -> Array | NPVector[int, np.dtype[np.floating[Any]]]:
+        """Response variables."""
+        ...
+
+
+@runtime_checkable
+class ImplementsTimedResponse(ImplementsResponse, Protocol):
+    """Represent objects that contain response and time data."""
+
+    @property
+    def time(self) -> DatetimeIndex:
+        """Timestamps of the covariate/response data."""
+        ...
+
+
 class Data(NamedTuple):
     """NamedTuple containing JAX arrays fof the covariate/response vars."""
 
@@ -1183,6 +1241,16 @@ class Data(NamedTuple):
     """Covariate variables."""
 
     responses: Array
+    """Response variables."""
+
+
+class TimedResponse(NamedTuple):
+    """NamedTuple containing time and response data."""
+
+    time: DatetimeIndex
+    """Timestamps of the response data."""
+
+    responses: Array | NPVector[int, np.dtype[np.floating[Any]]]
     """Response variables."""
 
 
@@ -1203,8 +1271,8 @@ class NPData(NamedTuple):
 
     def to_device(
         self,
-        dtype: Optional[DTypeLike] = None,
-        shardings: Optional[NamedSharding | Device] = None,
+        dtype: DTypeLike | None = None,
+        shardings: NamedSharding | Device | None = None,
     ) -> Data:
         """Put NDArray data to on-device JAX arrays."""
         return Data(
@@ -1253,7 +1321,7 @@ def to_data_frame[T: TimeSampling](
 
 
 def to_skill_scores(
-    dict_in: dict[str, ArrayLike], dtype: Optional[DTypeLike] = None
+    dict_in: dict[str, ArrayLike], dtype: DTypeLike | None = None
 ) -> SkillScores:
     """Convert dict of numpy ArrayLike objects to SkillScores TypedDict."""
     try:
@@ -1291,8 +1359,8 @@ def read_gridded_dataset[T: TimeSampling](
             latitude=slice(specs.min_lat, specs.max_lat),
         )
     )
+
     # Extract and process input variables from input dataset
-    # TODO: Implement long/lat
     match specs.space_sampling, specs.step_lon, specs.step_lat:
         case "pointwise", None, None:
             ds = ds_in[specs.input_varnames]
@@ -1426,16 +1494,16 @@ def read_station_dataframe(
     station: str,
     sampling: TimeSampling,
     vars: Sequence[str],
-    date_range: Optional[tuple[str, str]] = None,
-    climatology_date_range: Optional[tuple[str, str]] = None,
+    date_range: tuple[str, str] | None = None,
+    climatology_date_range: tuple[str, str] | None = None,
     remove_climatology: bool = False,
-    rolling_window: Optional[int] = None,
+    rolling_window: int | None = None,
     rolling_mode: Literal["forward", "backward", "center"] = "center",
     standardize: bool = False,
-    input_dir: Optional[str | Path] = None,
-    input_year: Optional[str] = "YEAR",
-    input_month: Optional[str] = "MO",
-    input_day: Optional[str] = "DAY",
+    input_dir: str | Path | None = None,
+    input_year: str | None = "YEAR",
+    input_month: str | None = "MO",
+    input_day: str | None = "DAY",
 ) -> DataFrame:
     """Import station data from CSV file into DataFrame.
 
@@ -1581,13 +1649,13 @@ def read_high_lat_station_dataframe(
     station: str,
     sampling: TimeSampling,
     vars: Sequence[str],
-    date_range: Optional[tuple[str, str]] = None,
-    climatology_date_range: Optional[tuple[str, str]] = None,
+    date_range: tuple[str, str] | None = None,
+    climatology_date_range: tuple[str, str] | None = None,
     remove_climatology: bool = False,
-    rolling_window: Optional[int] = None,
+    rolling_window: int | None = None,
     rolling_mode: Literal["forward", "backward", "center"] = "center",
     standardize: bool = False,
-    input_dir: Optional[str | Path] = None,
+    input_dir: str | Path | None = None,
     input_date: str = "obs_date",
 ) -> DataFrame:
     """Import station data from CSV files into DataFrame.
@@ -1771,7 +1839,7 @@ def read_station_dataframes[T: TimeSampling](
 
 def extract_data[T: TimeSampling, D: np.dtype[np.floating[Any]]](
     pars: DataPars[T],
-    dtype: Optional[D] = None,
+    dtype: D | None = None,
 ) -> NPData:
     """Extract gridded and station data."""
 
@@ -1783,12 +1851,11 @@ def extract_data[T: TimeSampling, D: np.dtype[np.floating[Any]]](
             .astype(dtype)
             .to_numpy()
         )
-        print("DONE WITH STACKED")
         return a
 
     def from_dataframe(
         df: DataFrame,
-        dtype: Optional[D] = None,
+        dtype: D | None = None,
     ) -> NPMatrix[int, int, D]:
         """Extract numpy array from Pandas dataframe."""
         a = df.to_numpy().astype(dtype)
@@ -1857,6 +1924,85 @@ def extract_data[T: TimeSampling, D: np.dtype[np.floating[Any]]](
             responses=response,
         )
     return data
+
+
+def make_data_driven_evaluation_functional[T: TimeSampling](
+    pars: DataPars[T],
+    dtype: DTypeLike,
+    num_before: int = 0,
+    num_after: int = 0,
+    delay_embedding_mode: Literal["explicit", "on_the_fly"] = "on_the_fly",
+    delay_window_pad: float | None = None,
+    shardings: L2FnAlgebraShardings = L2FnAlgebraShardings(),
+    jit: bool = False,
+) -> Callable[[Data], Callable[[F[Yd, R]], V]]:
+    """Make evaluation functional covariate data space."""
+
+    def prepend_window(val: float, a: V) -> Array:
+        return jnp.concatenate((jnp.full((pars.num_delays,), val), a))
+
+    def impl_eval(data: Data) -> Callable[[F[Yd, R]], V]:
+        i0 = pars.delay_embedding_origin - num_before
+        i1 = i0 + pars.num_delay_samples + num_after
+        if pars.num_half_delays > 0:
+            match delay_embedding_mode:
+                case "on_the_fly":
+                    incl = dl.delay_eval_at(
+                        jnp.asarray(
+                            data.covariates[i0:i1],
+                            dtype=dtype,
+                            device=shardings.data,
+                        ),
+                        num_delays=pars.num_delays,
+                        batch_size=pars.eval_batch_size,
+                        out_sharding=shardings.vectors,
+                        jit=jit,
+                    )
+                case "explicit":
+                    if pars.velocity_covariate:
+                        hankel = vmap(
+                            partial(
+                                dl.hankel,
+                                num_delays=pars.num_delays,
+                                flatten=True,
+                            ),
+                            in_axes=1,
+                            out_axes=1,
+                        )
+                    else:
+                        hankel = partial(
+                            dl.hankel,
+                            num_delays=pars.num_delays,
+                            flatten=True,
+                        )
+                    if jit:
+                        hankel = jax.jit(hankel)
+                    incl = vec.batch_eval_at(
+                        jnp.asarray(
+                            hankel(data.covariates[i0:i1]),
+                            dtype=dtype,
+                            device=shardings.data,
+                        ),
+                        batch_size=pars.eval_batch_size,
+                        out_sharding=shardings.vectors,
+                        jit=jit,
+                    )
+        else:
+            incl = vec.batch_eval_at(
+                jnp.asarray(
+                    data.covariates[i0:i1],
+                    dtype=dtype,
+                    device=shardings.data,
+                ),
+                batch_size=pars.eval_batch_size,
+                out_sharding=shardings.vectors,
+                jit=jit,
+            )
+        if delay_window_pad is not None:
+            return fun.compose(partial(prepend_window, delay_window_pad), incl)
+        return incl
+
+    return impl_eval
 
 
 def make_data_driven_l2_space[T: TimeSampling, D: DTypeLike](
@@ -2077,7 +2223,7 @@ def make_data_driven_tangent_evaluation_functional_fd[T: TimeSampling](
 # In this particular function, the only things that we need from DataPars are
 # delay_embedding end and num_samples. These could be easily defined as a
 # protocol.
-def compute_kaf_response_coeffs[N: int, D: DTypeLike, T: TimeSampling](
+def compute_kaf_expansion_coeffs[N: int, D: DTypeLike, T: TimeSampling](
     pars: tuple[DataPars[T], KernelPars],
     impl_l2: Callable[[Data], L2FnAlgebra[tuple[N], D, Yd, R]],
     train_data: Data,
@@ -2085,22 +2231,33 @@ def compute_kaf_response_coeffs[N: int, D: DTypeLike, T: TimeSampling](
     kernel_eigen: KernelEigen[R, Rs, V, Vs],
     num_steps: int,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
+    responses: Array | None = None,
     jit: bool = True,
 ) -> Array:
     """Compute basis expansion coefficients for kernel analog forecast."""
     data_pars, kernel_pars = pars
-    i0 = data_pars.delay_embedding_end
-    i1 = i0 + num_steps + data_pars.num_samples
     impl_basis = knl.make_data_driven_eigenbasis(
         kernel_pars, impl_l2, kernel, which_eigs
     )
-    anal = knl.make_kaf_analysis_operator(
-        impl_basis,
-        num_steps,
-        which_samples=(i0, i1),
-        jit=jit,
-    )
-    return anal(train_data, train_data.responses, kernel_eigen)
+    if responses is not None:
+        anal = knl.make_kaf_analysis_operator(
+            impl_basis,
+            num_steps,
+            jit=jit,
+        )
+        coeffs = anal(train_data, responses, kernel_eigen)
+    else:
+        i0 = data_pars.delay_embedding_end
+        i1 = i0 + num_steps + data_pars.num_samples
+        anal = knl.make_kaf_analysis_operator(
+            impl_basis,
+            num_steps,
+            which_samples=(i0, i1),
+            jit=jit,
+        )
+        coeffs = anal(train_data, train_data.responses, kernel_eigen)
+
+    return coeffs
 
 
 def compute_koopman_response_coeffs[
@@ -2149,9 +2306,11 @@ def compute_koopman_response_coeffs[
     return anal(train_data, train_data.responses, kernel_eigen, koopman_eigen)
 
 
-def compute_response_skill_scores[T: TimeSampling](
+def compute_response_skill_scores[
+    T: TimeSampling,
+](
     pars: DataPars[T],
-    test_data: Data,
+    test_data: ImplementsResponse,
     fys_pred: Vtsts,
     dropna: bool = False,
 ) -> SkillScores:
@@ -2165,6 +2324,7 @@ def compute_response_skill_scores[T: TimeSampling](
         mask = ~jnp.isnan(fys_pred).any(axis=1)
         fys_pred = fys_pred[mask]
         fxs_true = fxs_true[mask]
+        assert isinstance(fxs_true, Array)
     nrmses = jax.jit(vmap(normalized_rmse, in_axes=1))(fxs_true, fys_pred)
     accs = jax.jit(vmap(anomaly_correlation_coefficient, in_axes=1))(
         fxs_true, fys_pred
@@ -2173,8 +2333,13 @@ def compute_response_skill_scores[T: TimeSampling](
     return scores
 
 
-def compute_covariate_skill_scores[T: TimeSampling](
-    pars: DataPars[T], test_data: Data, ys_pred: Vtsts, dropna: bool = False
+def compute_covariate_skill_scores[
+    T: TimeSampling,
+](
+    pars: DataPars[T],
+    test_data: ImplementsCovariate,
+    ys_pred: Vtsts,
+    dropna: bool = False,
 ) -> SkillScores:
     """Compute NRMSE and ACC skill scores over the prediction ensemble."""
     num_pred_steps = len(ys_pred) - 1
@@ -2196,20 +2361,23 @@ def compute_covariate_skill_scores[T: TimeSampling](
     anomaly_correlation_coefficients = jax.jit(
         vmap(vmap(stats.anomaly_correlation_coefficient, in_axes=1), in_axes=2)
     )
-    ys_true = hankel(test_data.covariates[i0:i1])
+    ys_true = hankel(jnp.asarray(test_data.covariates[i0:i1]))
     if dropna:
         mask = ~jnp.isnan(ys_pred).any(axis=(1, 2))
         ys_pred = ys_pred[mask]
         ys_true = ys_true[mask]
+        assert isinstance(ys_true, Array)
     nrmses = normalized_rmses(ys_true, ys_pred)
     accs = anomaly_correlation_coefficients(ys_true, ys_pred)
     scores: SkillScores = {"nrmses": nrmses, "accs": accs}
     return scores
 
 
-def compute_skill_scores[T: TimeSampling](
+def compute_skill_scores[
+    T: TimeSampling,
+](
     pars: DataPars[T],
-    test_data: Data,
+    test_data: ImplementsCovariate | ImplementsResponse,
     preds: Vtsts,
     what: Literal["covariates", "responses"] = "responses",
     dropna: bool = False,
@@ -2217,10 +2385,12 @@ def compute_skill_scores[T: TimeSampling](
     """Compute NRMSE and ACC skill scores over the prediction ensemble."""
     match what:
         case "covariates":
+            assert isinstance(test_data, ImplementsCovariate)
             scores = compute_covariate_skill_scores(
                 pars, test_data, preds, dropna=dropna
             )
         case "responses":
+            assert isinstance(test_data, ImplementsResponse)
             scores = compute_response_skill_scores(
                 pars, test_data, preds, dropna=dropna
             )
@@ -2232,16 +2402,14 @@ def plot_bandwidth_function[T: TimeSampling, D: DTypeLike](
     impl_l2y: Callable[[Data], L2FnAlgebra[tuple[int], D, Yd, R]],
     bandwidth_func: Callable[[Data, Yd], R],
     train_data: NPData,
-    train_shardings: Optional[NamedSharding | Device] = None,
-    test_pars: Optional[DataPars[T]] = None,
-    impl_l2y_tst: Optional[
-        Callable[[Data], L2FnAlgebra[tuple[int], D, Yd, R]]
-    ] = None,
-    test_data: Optional[NPData] = None,
-    test_shardings: Optional[NamedSharding | Device] = None,
+    train_shardings: NamedSharding | Device | None = None,
+    test_pars: DataPars[T] | None = None,
+    impl_l2y_tst: Callable[[Data], L2FnAlgebra[tuple[int], D, Yd, R]] | None = None,
+    test_data: NPData | None = None,
+    test_shardings: NamedSharding | Device | None = None,
     delay_plot_mode: Literal["backward", "central"] = "central",
-    plt_date_range: Optional[tuple[str, str]] = None,
-    plt_date_range_tst: Optional[tuple[str, str]] = None,
+    plt_date_range: tuple[str, str] | None = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
@@ -2315,8 +2483,8 @@ def plot_bandwidth_function[T: TimeSampling, D: DTypeLike](
             case "central":
                 i0_dl_tst = test_pars.delay_embedding_center
         if plt_date_range_tst is not None:
-            i0_tst = train_data.time.get_loc(plt_date_range_tst[0])
-            i1_tst = train_data.time.get_loc(plt_date_range_tst[1])
+            i0_tst = test_data.time.get_loc(plt_date_range_tst[0])
+            i1_tst = test_data.time.get_loc(plt_date_range_tst[1])
             assert isinstance(i0_tst, int)
             assert isinstance(i1_tst, int)
             i1_tst += 1
@@ -2345,17 +2513,15 @@ def make_kernel_evecs_plotter[T: TimeSampling, D: DTypeLike](
     impl_l2: Callable[[Data], L2FnAlgebra[tuple[int], D, Yd, R]],
     train_data: NPData,
     kernel_eigen: KernelEigen[Rs, Vs, V, R],
-    train_shardings: Optional[NamedSharding | Device] = None,
-    test_pars: Optional[DataPars[T]] = None,
-    impl_l2_tst: Optional[
-        Callable[[Data], L2FnAlgebra[tuple[int], D, Yd, R]]
-    ] = None,
-    test_data: Optional[NPData] = None,
-    test_shardings: Optional[NamedSharding | Device] = None,
-    kernel: Optional[Callable[[Data, Yd, Yd], R]] = None,
+    train_shardings: NamedSharding | Device | None = None,
+    test_pars: DataPars[T] | None = None,
+    impl_l2_tst: Callable[[Data], L2FnAlgebra[tuple[int], D, Yd, R]] | None = None,
+    test_data: NPData | None = None,
+    test_shardings: NamedSharding | Device | None = None,
+    kernel: Callable[[Data, Yd, Yd], R] | None = None,
     delay_plot_mode: Literal["backward", "central"] = "backward",
-    plt_date_range: Optional[tuple[str, str]] = None,
-    plt_date_range_tst: Optional[tuple[str, str]] = None,
+    plt_date_range: tuple[str, str] | None = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
@@ -2477,19 +2643,15 @@ def make_koopman_evecs_plotter[
     train_data: NPData,
     kernel_eigen: KernelEigen[Rs, Vs, V, R],
     koopman_eigen: KoopmanEigen[C, Cs, Css],
-    train_shardings: Optional[NamedSharding | Device] = None,
-    test_pars: Optional[DataPars[T]] = None,
-    impl_l2_tst: Optional[
-        Callable[[Data], L2FnAlgebra[tuple[Ntst], D, Yd, R]]
-    ] = None,
-    test_data: Optional[NPData] = None,
-    test_shardings: Optional[NamedSharding | Device] = None,
-    kernel: Optional[
-        Callable[[Yd, Yd], R] | Callable[[Data, Yd, Yd], R]
-    ] = None,
+    train_shardings: NamedSharding | Device | None = None,
+    test_pars: DataPars[T] | None = None,
+    impl_l2_tst: Callable[[Data], L2FnAlgebra[tuple[Ntst], D, Yd, R]] | None = None,
+    test_data: NPData | None = None,
+    test_shardings: NamedSharding | Device | None = None,
+    kernel: Callable[[Yd, Yd], R] | Callable[[Data, Yd, Yd], R] | None = None,
     delay_plot_mode: Literal["backward", "central"] = "backward",
-    plt_date_range: Optional[tuple[str, str]] = None,
-    plt_date_range_tst: Optional[tuple[str, str]] = None,
+    plt_date_range: tuple[str, str] | None = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
@@ -2577,8 +2739,8 @@ def make_koopman_evecs_plotter[
             case "central":
                 i0_dl_tst = data_pars.delay_embedding_center
         if plt_date_range_tst is not None:
-            i0_tst = train_data.time.get_loc(plt_date_range_tst[0])
-            i1_tst = train_data.time.get_loc(plt_date_range_tst[1])
+            i0_tst = test_data.time.get_loc(plt_date_range_tst[0])
+            i1_tst = test_data.time.get_loc(plt_date_range_tst[1])
             assert isinstance(i0_tst, int)
             assert isinstance(i1_tst, int)
             i1_tst += 1
@@ -2675,11 +2837,179 @@ def make_koopman_evecs_plotter[
     return fig, plot_eig
 
 
-def make_running_pred_plotter[T: TimeSampling](
+def make_eeof_evecs_plotter[
+    T: TimeSampling,
+](
+    data_pars: DataPars[T],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
+    train_data: Data,
+    eeof_eigen: EEOFEigen,
+    test_pars: DataPars[T] | None = None,
+    impl_l2_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]] | None = None,
+    test_data: Data | None = None,
+    delay_plot_mode: Literal["backward", "central"] = "backward",
+    plt_date_range: tuple[str, str] | None = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
+    plt_step: int = 1,
+    plt_step_tst: int = 1,
+    i_fig: int = 1,
+) -> tuple[Figure, F[int, None]]:
+    """Make plotting function for Koopman eigenfunctions."""
+    impl_eeof_basis = eof.make_data_driven_eigenbasis(impl_l2)
+
+    @jax.jit
+    def efunc(
+        _train_data: Data,
+        _eeof_eigen: EEOFEigen,
+        _test_data: Data,
+        j: Array,
+    ) -> Vtst:
+        assert impl_l2_tst is not None
+        eigenbasis = impl_eeof_basis(
+            _train_data,
+            _eeof_eigen,
+        )
+        l2y_tst = impl_l2_tst(_test_data)
+        return l2y_tst.incl(eigenbasis.fn(j)) + 1j * l2y_tst.incl(
+            eigenbasis.fn(j + 1)
+        )
+
+    if plt.fignum_exists(i_fig):
+        plt.close(i_fig)
+    if test_pars is not None:
+        figsize = plt.rcParams["figure.figsize"]
+        fig, (axs, axs_tst) = plt.subplots(
+            2,
+            2,
+            num=i_fig,
+            figsize=(1.75 * figsize[0], 1.75 * figsize[1]),
+            constrained_layout=True,
+        )
+    else:
+        fig, axs = plt.subplots(
+            1,
+            2,
+            num=i_fig,
+            figsize=tuple(mpf.figaspect(0.5)),
+            constrained_layout=True,
+        )
+        axs_tst = None
+    match delay_plot_mode:
+        case "backward":
+            i0_dl = data_pars.delay_embedding_end
+        case "central":
+            i0_dl = data_pars.delay_embedding_center
+    if plt_date_range is not None:
+        i0 = data_pars.time.get_loc(plt_date_range[0])
+        i1 = data_pars.time.get_loc(plt_date_range[1])
+        assert isinstance(i0, int)
+        assert isinstance(i1, int)
+        i1 += 1
+    else:
+        i0 = i0_dl
+        i1 = i0 + data_pars.num_samples
+    j0 = i0 - i0_dl
+    j1 = i1 - i0_dl
+    if test_pars is not None and test_data is not None:
+        match delay_plot_mode:
+            case "backward":
+                i0_dl_tst = test_pars.delay_embedding_end
+            case "central":
+                i0_dl_tst = data_pars.delay_embedding_center
+        if plt_date_range_tst is not None:
+            i0_tst = test_pars.time.get_loc(plt_date_range_tst[0])
+            i1_tst = test_pars.time.get_loc(plt_date_range_tst[1])
+            assert isinstance(i0_tst, int)
+            assert isinstance(i1_tst, int)
+            i1_tst += 1
+        else:
+            i0_tst = i0_dl_tst
+            i1_tst = i0_tst + test_pars.num_samples
+        j0_tst = i0_tst - i0_dl_tst
+        j1_tst = i1_tst - i0_dl_tst
+    else:
+        i0_tst, i1_tst, j0_tst, j1_tst = None, None, None, None
+
+    def plot_eig(k: int):
+        for ax in fig.axes:
+            ax.cla()
+        evec = eeof_eigen.pcs[k] + 1j * eeof_eigen.pcs[k + 1]
+        evals = (
+            eeof_eigen.sing_vals[k] ** 2,
+            eeof_eigen.sing_vals[k + 1] ** 2,
+        )
+
+        ax = axs[0]
+        ax.plot(evec.real[j0:j1:plt_step], evec.imag[j0:j1:plt_step], "-")
+        ax.set_xlabel(f"$\\mathrm{{PC}}_{{{k}}}$")
+        ax.set_ylabel(f"$\\mathrm{{PC}}_{{{k + 1}}}$")
+        ax.set_title(
+            f"Eigenvalues $(\\lambda_{{{k}}}, \\lambda_{{{k + 1}}}) = ({evals[0]: .3g}, {evals[1]: .3g})$"
+        )
+        ax.grid()
+
+        ax = axs[1]
+        ax.plot(
+            data_pars.time[i0:i1:plt_step],
+            evec.real[j0:j1:plt_step],
+            "-",
+            label=f"$\\mathrm{{PC}}_{{{k}}}$",
+        )
+        ax.plot(
+            data_pars.time[i0:i1:plt_step],
+            evec.imag[j0:j1:plt_step],
+            "-",
+            label=f"$\\mathrm{{PC}}_{{{k + 1}}}$",
+        )
+        ax.grid()
+        ax.legend()
+
+        if test_pars is not None and test_data is not None:
+            evec_tst = efunc(
+                train_data,
+                eeof_eigen,
+                test_data,
+                k,
+            )
+            assert isinstance(evec_tst, Array)
+            assert axs_tst is not None
+
+            ax = axs_tst[0]
+            ax.plot(
+                evec_tst.real[j0_tst:j1_tst:plt_step_tst],
+                evec_tst.imag[j0_tst:j1_tst:plt_step_tst],
+                "-",
+            )
+            ax.set_xlabel(f"$\\mathrm{{PC}}_{{{k}}}$")
+            ax.set_ylabel(f"$\\mathrm{{PC}}_{{{k + 1}}}$")
+            ax.grid()
+
+            ax = axs_tst[1]
+            ax.plot(
+                test_pars.time[i0_tst:i1_tst:plt_step_tst],
+                evec_tst.real[j0_tst:j1_tst:plt_step_tst],
+                "-",
+                label=f"$\\mathrm{{PC}}_{{{k}}}$",
+            )
+            ax.plot(
+                test_pars.time[i0_tst:i1_tst:plt_step_tst],
+                evec_tst.imag[j0_tst:j1_tst:plt_step_tst],
+                "-",
+                label=f"$\\mathrm{{PC}}_{{{k + 1}}}$",
+            )
+            ax.grid()
+            ax.legend()
+
+    return fig, plot_eig
+
+
+def make_running_pred_plotter[
+    T: TimeSampling,
+](
     test_pars: DataPars[T],
-    test_data: NPData,
+    test_data: ImplementsTimedResponse,
     preds: Vtsts,
-    plt_date_range_tst: Optional[tuple[str, str]] = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
     plt_step_tst: int = 1,
     i_fig: int = 1,
 ) -> tuple[Figure, F[int, None]]:
@@ -2765,8 +3095,13 @@ def make_running_pred_plotter[T: TimeSampling](
     return fig, plot_pred
 
 
-def make_pred_timeseries_plotter[T: TimeSampling](
-    pars: DataPars[T], test_data: NPData, preds: Vtsts, i_fig: int = 1
+def make_pred_timeseries_plotter[
+    T: TimeSampling,
+](
+    pars: DataPars[T],
+    test_data: ImplementsTimedResponse,
+    preds: Vtsts,
+    i_fig: int = 1,
 ) -> tuple[Figure, F[int, None]]:
     """Make plotting function over different initial conditions."""
     if plt.fignum_exists(i_fig):

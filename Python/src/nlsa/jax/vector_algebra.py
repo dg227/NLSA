@@ -18,13 +18,12 @@ from nlsa.jax.utils import batch_map, batch_map_bivariate
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterable,
     Literal,
     NamedTuple,
-    Optional,
     final,
     overload,
 )
+from collections.abc import Iterable
 
 if TYPE_CHECKING:
     type Device = Any
@@ -198,7 +197,7 @@ def _veval_at(
     xs: Xs,
     /,
     in_axis: int = 0,
-    out_sharding: Optional[Sharding] = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, Y]], V]:
     """Make vectorized evaluation functional."""
@@ -221,7 +220,7 @@ def _veval_at_tuple(
     xss: tuple[Xs, Xs],
     /,
     in_axis: int = 0,
-    out_sharding: Optional[Sharding] = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, X, Y]], V]:
     """Make vectorized evaluation functional for bivariate functions."""
@@ -245,7 +244,7 @@ def veval_at(
     xs: Xs,
     /,
     in_axis: int = 0,
-    out_sharding: Optional[Sharding] = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, Y]], V]: ...
 
@@ -255,7 +254,7 @@ def veval_at(
     xss: tuple[Xs, Xs],
     /,
     in_axis: int = 0,
-    out_sharding: Optional[Sharding] = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, X, Y]], V]: ...
 
@@ -264,7 +263,7 @@ def veval_at(
     xss: Xs | tuple[Xs, Xs],
     /,
     in_axis: int = 0,
-    out_sharding: Optional[Sharding] = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[Xs, Y]], V] | Callable[[F[Xs, Xs, Y]], V]:
     """Make vectorized evaluation functional."""
@@ -284,8 +283,8 @@ def _batch_eval_at(
     xs: Xs,
     /,
     in_axis: int = 0,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, Y]], V]:
     """Make batched evaluation functional."""
@@ -308,8 +307,8 @@ def _batch_eval_at_tuple(
     xss: tuple[Xs, Xs],
     /,
     in_axis: int = 0,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, X, Y]], V]:
     """Make batched evaluation functional for bivariate functions."""
@@ -333,8 +332,8 @@ def batch_eval_at(
     xs: Xs,
     /,
     in_axis: int = 0,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, Y]], V]: ...
 
@@ -344,8 +343,8 @@ def batch_eval_at(
     xss: tuple[Xs, Xs],
     /,
     in_axis: int = 0,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, X, Y]], V]: ...
 
@@ -354,8 +353,8 @@ def batch_eval_at(
     xss: Xs | tuple[Xs, Xs],
     /,
     in_axis: int = 0,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, Y]], V] | Callable[[F[X, X, Y]], V]:
     """Make vectorized and batched evaluation functional."""
@@ -379,7 +378,7 @@ def batch_eval_at(
 
 
 def shardeval_at(
-    xs: Xs, /, devices: Optional[Sequence[Device]] = None
+    xs: Xs, /, devices: Sequence[Device] | None = None
 ) -> Callable[[F[X, Y]], V]:
     """Make doubly-vectorized and sharded evaluation functional."""
     if devices is None:
@@ -409,7 +408,7 @@ def flip_conj(v: V, /) -> V:
 
 
 def make_synthesis_operator_cols(
-    basis: Vs, idxs: Optional[Array] = None
+    basis: Vs, idxs: Array | None = None
 ) -> Callable[[Ks], V]:
     """Make synthesis operator for vectors from basis.
 
@@ -429,7 +428,7 @@ def make_synthesis_operator_cols(
 
 
 def make_synthesis_operator_rows(
-    basis: Vs, idxs: Optional[Array] = None
+    basis: Vs, idxs: Array | None = None
 ) -> Callable[[Ks], V]:
     """Make synthesis operator for vectors from basis.
 
@@ -449,7 +448,7 @@ def make_synthesis_operator_rows(
 
 
 def make_synthesis_operator(
-    basis: Vs, idxs: Optional[Array] = None, axis: Literal[0, 1] = 0
+    basis: Vs, idxs: Array | None = None, axis: Literal[0, 1] = 0
 ) -> Callable[[Ks], V]:
     """Make synthesis operator for vectors from basis or a subset thereof."""
     match axis:
@@ -488,8 +487,8 @@ def fn_synthesis[X: Array](coeffs: Ks, /, basis: F[X, Ks]) -> F[X, K]:
 def make_one_hot_basis(
     dim: int,
     value: float | Array = 1,
-    dtype: Optional[DTypeLike] = None,
-    sharding: Optional[NamedSharding] = None,
+    dtype: DTypeLike | None = None,
+    sharding: NamedSharding | None = None,
 ) -> Callable[[int | V], V]:
     """Make standard basis of real or complex Euclidean space."""
 
@@ -513,27 +512,27 @@ class L2VectorAlgebra[N: Shape, D: DTypeLike](
 
     shape: N
     dtype: D
-    weight: Optional[V] = None
-    sharding: Optional[Sharding] = None
-    _scl: Optional[ScalarField[D]] = None
-    _zero: Optional[Optional[Callable[[], V]]] = None
-    _unit: Optional[Optional[Callable[[], V]]] = None
-    _add: Optional[Callable[[V, V], V]] = None
-    _neg: Optional[Callable[[V], V]] = None
-    _sub: Optional[Callable[[V, V], V]] = None
-    _sdiv: Optional[Callable[[K, V], V]] = None
-    _smul: Optional[Callable[[K, V], V]] = None
-    _mul: Optional[Callable[[V, V], V]] = None
-    _div: Optional[Callable[[V, V], V]] = None
-    _inv: Optional[Callable[[V], V]] = None
-    _adj: Optional[Callable[[V], V]] = None
-    _sqrt: Optional[Callable[[V], V]] = None
-    _exp: Optional[Callable[[V], V]] = None
-    _abs: Optional[Callable[[V], V]] = None
-    _mpower: Optional[Callable[[V, int], V]] = None
-    _power: Optional[Callable[[V, K], V]] = None
-    _innerp: Optional[Callable[[V, V], K]] = None
-    _norm: Optional[Callable[[V], K]] = None
+    weight: V | None = None
+    sharding: Sharding | None = None
+    _scl: ScalarField[D] | None = None
+    _zero: Callable[[], V] | None = None
+    _unit: Callable[[], V] | None = None
+    _add: Callable[[V, V], V] | None = None
+    _neg: Callable[[V], V] | None = None
+    _sub: Callable[[V, V], V] | None = None
+    _sdiv: Callable[[K, V], V] | None = None
+    _smul: Callable[[K, V], V] | None = None
+    _mul: Callable[[V, V], V] | None = None
+    _div: Callable[[V, V], V] | None = None
+    _inv: Callable[[V], V] | None = None
+    _adj: Callable[[V], V] | None = None
+    _sqrt: Callable[[V], V] | None = None
+    _exp: Callable[[V], V] | None = None
+    _abs: Callable[[V], V] | None = None
+    _mpower: Callable[[V, int], V] | None = None
+    _power: Callable[[V, K], V] | None = None
+    _innerp: Callable[[V, V], K] | None = None
+    _norm: Callable[[V], K] | None = None
 
     @property
     def dim(self) -> int:
@@ -662,26 +661,26 @@ class L2FnAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
     dtype: D
     measure: Callable[[V], Y]
     inclusion_map: Callable[[F[X, Y]], V]
-    sharding: Optional[Sharding] = None
-    _scl: Optional[alg.ImplementsComplexScalarField[K]] = None
-    _zero: Optional[Optional[Callable[[], V]]] = None
-    _unit: Optional[Optional[Callable[[], V]]] = None
-    _add: Optional[Callable[[V, V], V]] = None
-    _neg: Optional[Callable[[V], V]] = None
-    _sub: Optional[Callable[[V, V], V]] = None
-    _sdiv: Optional[Callable[[K, V], V]] = None
-    _smul: Optional[Callable[[K, V], V]] = None
-    _mul: Optional[Callable[[V, V], V]] = None
-    _div: Optional[Callable[[V, V], V]] = None
-    _inv: Optional[Callable[[V], V]] = None
-    _adj: Optional[Callable[[V], V]] = None
-    _sqrt: Optional[Callable[[V], V]] = None
-    _exp: Optional[Callable[[V], V]] = None
-    _abs: Optional[Callable[[V], V]] = None
-    _mpower: Optional[Callable[[V, int], V]] = None
-    _power: Optional[Callable[[V, K], V]] = None
-    _innerp: Optional[Callable[[V, V], K]] = None
-    _norm: Optional[Callable[[V], K]] = None
+    sharding: Sharding | None = None
+    _scl: alg.ImplementsComplexScalarField[K] | None = None
+    _zero: Callable[[], V] | None = None
+    _unit: Callable[[], V] | None = None
+    _add: Callable[[V, V], V] | None = None
+    _neg: Callable[[V], V] | None = None
+    _sub: Callable[[V, V], V] | None = None
+    _sdiv: Callable[[K, V], V] | None = None
+    _smul: Callable[[K, V], V] | None = None
+    _mul: Callable[[V, V], V] | None = None
+    _div: Callable[[V, V], V] | None = None
+    _inv: Callable[[V], V] | None = None
+    _adj: Callable[[V], V] | None = None
+    _sqrt: Callable[[V], V] | None = None
+    _exp: Callable[[V], V] | None = None
+    _abs: Callable[[V], V] | None = None
+    _mpower: Callable[[V, int], V] | None = None
+    _power: Callable[[V, K], V] | None = None
+    _innerp: Callable[[V, V], K] | None = None
+    _norm: Callable[[V], K] | None = None
 
     @property
     def dim(self) -> int:
@@ -809,10 +808,10 @@ class L2FnAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
 class L2FnAlgebraShardings(NamedTuple):
     """NamedTuple holding data and vector shardings for L2FnAlgebra objects."""
 
-    data: Optional[NamedSharding] = None
+    data: NamedSharding | None = None
     """Data sharding"""
 
-    vectors: Optional[NamedSharding] = None
+    vectors: NamedSharding | None = None
     """L2 vector sharding."""
 
     @property
@@ -834,7 +833,7 @@ class L2FnAlgebraShardings(NamedTuple):
 def make_l2_analysis_operator[N: Shape, D: DTypeLike, X: Array, Y: Array](
     impl: L2VectorAlgebra[N, D] | L2FnAlgebra[N, D, X, Y],
     basis: Iterable[V],
-    axis: Optional[int] = None,
+    axis: int | None = None,
 ) -> Callable[[V], Ks]:
     """Make analysis operator from an array of vectors."""
     vinnerp = vmap(impl.innerp, in_axes=(axis, None))

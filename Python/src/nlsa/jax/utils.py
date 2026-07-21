@@ -11,8 +11,9 @@ from jax import Array, vmap
 from jax.lax import concatenate
 from jax.typing import DTypeLike
 from nlsa.jax.typing import PyTree
-from nlsa.utils import batched, snd
-from typing import Callable, Literal, Optional
+from nlsa.utils import batched
+from typing import Literal
+from collections.abc import Callable
 
 type V = Array  # vector
 type Vs = Array  # collection of vectors
@@ -27,7 +28,7 @@ def fst(x: V) -> V:
 
 
 def make_vectorvalued[X](
-    f: F[X, K], vectorvalued: bool = True, dtype: Optional[DTypeLike] = None
+    f: F[X, K], vectorvalued: bool = True, dtype: DTypeLike | None = None
 ) -> F[X, K] | F[X, V]:
     """Make vector-valued function."""
     if vectorvalued:
@@ -63,8 +64,8 @@ def materialize_array(
 def make_batched(
     f: F[Vs, Vs],
     max_batch_size: int,
-    in_axis: Optional[Literal[0, 1]] = None,
-    out_axis: Optional[Literal[0, 1]] = None,
+    in_axis: Literal[0, 1] | None = None,
+    out_axis: Literal[0, 1] | None = None,
 ) -> F[Vs, Vs]:
     """Map to a function that operates over batches."""
     if in_axis is None:
@@ -109,7 +110,7 @@ def make_bbatched(f: F[Vs, Vs], max_batch_sizes: tuple[int, int]) -> F[Vs, Vs]:
 def make_batched2(
     f: Callable[[Vs, Vs], Vs],
     max_batch_sizes: tuple[int, int],
-    in_axes: Optional[tuple[Literal[0, 1], Literal[0, 1]]] = None,
+    in_axes: tuple[Literal[0, 1], Literal[0, 1]] | None = None,
 ) -> Callable[[Vs, Vs], Vs]:
     """Map to a bivariate function that operates over batches."""
     if in_axes is None:
@@ -167,7 +168,7 @@ def batch_map(
     f: Callable[[Array], Array],
     in_axis: int = 0,
     out_axis: int = 0,
-    batch_size: Optional[int] = None,
+    batch_size: int | None = None,
 ) -> Callable[[Array], Array]:
     """Transform function for batched execution."""
     if batch_size is not None:
@@ -192,7 +193,7 @@ def curried_batch_map[P: PyTree](
     f: Callable[[P, Array], Array],
     in_axis: int = 0,
     out_axis: int = 0,
-    batch_size: Optional[int] = None,
+    batch_size: int | None = None,
 ) -> Callable[[PyTree, Array], Array]:
     """Transform function for batched execution -- curried version."""
 
@@ -212,7 +213,7 @@ def batch_map_bivariate(
     f: Callable[[Array, Array], Array],
     in_axis: int = 0,
     out_axis: int = 0,
-    batch_size: Optional[int] = None,
+    batch_size: int | None = None,
 ) -> Callable[[Array, Array], Array]:
     """Transform bivariate function for batched execution."""
     if batch_size is not None:
@@ -276,7 +277,7 @@ def _batch_map_2d(
     f: Callable[[Array, Array], Array],
     in_axes: tuple[int, int] = (0, 0),
     out_axes: tuple[int, int] = (0, 1),
-    batch_sizes: Optional[int] | tuple[Optional[int], Optional[int]] = None,
+    batch_sizes: int | None | tuple[int | None, int | None] = None,
 ) -> Callable[[Array, Array], Array]:
     """Transform bivariate function for batched execution along two axes."""
     match batch_sizes:
@@ -315,7 +316,7 @@ def batch_map_2d(
     f: Callable[[Array, Array], Array],
     in_axes: tuple[int, int] = (0, 0),
     out_axes: tuple[int, int] = (0, 1),
-    batch_sizes: Optional[int] | tuple[Optional[int], Optional[int]] = None,
+    batch_sizes: int | None | tuple[int | None, int | None] = None,
 ) -> Callable[[Array, Array], Array]:
     """Transform bivariate function for vectorized or batched execution."""
     match batch_sizes:
@@ -329,10 +330,10 @@ def batch_map_2d(
 
 def numpyit[D: DTypeLike](
     f: Callable[[Array], Array],
-    to_jax: Optional[Callable[[np.ndarray], Array]] = None,
-    to_numpy: Optional[Callable[[Array], np.ndarray]] = None,
-    dtype: Optional[D] = None,
-    copy: Optional[bool] = None,
+    to_jax: Callable[[np.ndarray], Array] | None = None,
+    to_numpy: Callable[[Array], np.ndarray] | None = None,
+    dtype: D | None = None,
+    copy: bool | None = None,
 ) -> Callable[[np.ndarray], np.ndarray]:
     """Map JAX computation to NumPy."""
 

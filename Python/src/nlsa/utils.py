@@ -63,7 +63,7 @@ def batched[X](
     seq: Sequence[X],
     n: int,
     mode: Literal["batch_size", "batch_number"] = "batch_size",
-) -> Generator[Sequence[X], None, None]:
+) -> Generator[Sequence[X]]:
     """Yield successive chunks from seq.
 
     Adopted from https://stackoverflow.com/questions/312443

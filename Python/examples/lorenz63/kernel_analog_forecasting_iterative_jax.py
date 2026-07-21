@@ -32,7 +32,7 @@ from nlsa_models import lorenz63 as l63
 from nlsa_models.lorenz63 import Data, DataPars, SkillScores
 from pathlib import Path
 from tabulate import tabulate
-from typing import Literal, Optional, TypedDict
+from typing import Literal, TypedDict
 
 
 class Experiment(StrEnum):
@@ -44,7 +44,7 @@ class Experiment(StrEnum):
     A100_EIGSH = auto()
     """Runs on 40GB A100 GPU using eigsh iterative kernel eigenvalue solver."""
 
-    A100_EIGSH_4GPU = auto()
+    A100_EIGSH_2GPU = auto()
     """Multi-GPU case using eigsh kernel eigenvalue solver on 2 40GB A100s."""
 
     TEST = auto()
@@ -64,35 +64,35 @@ type Plots = Literal[
 ]
 
 EXPERIMENT: Experiment = Experiment.TEST
-IDX_GPU: Optional[Sequence[int]] = None  # 0
-XLA_MEM_FRACTION: Optional[str] = "0.95"
-JAX_CACHE_DIR: Optional[str] = "jax_cache"
+IDX_GPU: Sequence[int] | None = None  # 0
+XLA_MEM_FRACTION: str | None = "0.95"
+JAX_CACHE_DIR: str | None = "jax_cache"
 FP: Literal["f32", "f64"] = "f32"
 CONE_KERNEL: bool = False
 KERNEL_NORMALIZATION: Literal["diffusion_maps", "bistochastic"] = (
     "diffusion_maps"
 )
-MATPLOTLIB_BACKEND: Optional[Literal["Agg"]] = None
+MATPLOTLIB_BACKEND: Literal["Agg"] | None = None
 OUTPUT_DATA_DIR = "examples/l63/data"
 NUM_TABULATE = 40
-NUM_PLT_TST: Optional[int] = None
-GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "read"
-TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "read"
-KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "read"
-KAF_COVARIATE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "read"
-KAF_PREDS_MODE: Literal["calc", "calcsave", "read"] = "read"
-SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "read"
-TRAJECTORY_STATS_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
-PLOT_MODE: Optional[Literal["save", "show", "saveshow"]] = "show"
-WHICH_PLOTS: set[Plots] = {"skill_scores"}
+NUM_PLT_TST: int | None = None
+GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "calc"
+TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KAF_COVARIATE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KAF_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
+SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
+TRAJECTORY_STATS_MODE: Literal["calc", "calcsave", "read"] = "calc"
+PLOT_MODE: Literal["save", "show", "saveshow"] | None = "show"
+WHICH_PLOTS: set[Plots] = {"all"}
 DELAY_PLOT_MODE: Literal["backward", "central"] = "backward"
-KERNEL_EIGS_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
-LEAD_TIMES_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
-INITIALIZATION_TIMES_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+INITIALIZATION_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
 
@@ -149,10 +149,10 @@ class TrainPars[N: int]:
     pred: PredPars
     """Prediction parameters."""
 
-    cone: Optional[ConePars] = None
+    cone: ConePars | None = None
     """Cone kernel parameters."""
 
-    bw_tune: Optional[TunePars] = None
+    bw_tune: TunePars | None = None
     """Tuning parameters for kernel bandwidth function."""
 
     def __str__(self) -> str:
@@ -202,7 +202,7 @@ class TestPars[Ntst: int]:
     stat_ic: int
     """Initial condition in test dataset for statistics reconstruction."""
 
-    max_batch_size: Optional[int] = None
+    max_batch_size: int | None = None
     """Max batch size for evaluation of prediction function."""
 
     def __str__(self) -> str:
@@ -251,7 +251,7 @@ class CommonPars(TypedDict):
     num_spinup: int
     num_half_delays: int
     velocity_covariate: bool
-    velocity_fd_order: Optional[Literal[2, 4, 6, 8]]
+    velocity_fd_order: Literal[2, 4, 6, 8] | None
     num_before: int
     num_after: int
 
@@ -487,7 +487,7 @@ def initialize(
                 train_shardings = TrainShardings()
                 test_shardings = TestShardings()
             shardings = Shardings(train=train_shardings, test=test_shardings)
-        case Experiment.A100_EIGSH_4GPU:
+        case Experiment.A100_EIGSH_2GPU:
             cone_pars = ConePars(zeta=0.99) if cone_kernel else None
             num_pred_steps = 50
             common_pars: CommonPars = {
@@ -613,7 +613,7 @@ compute_kernel_bandwidth = timeit(
         io=io,
         mode=TUNE_KERNEL_MODE,
         fname="tune_info",
-        cls=TuneInfo[Array, Array, Array],
+        cls=TuneInfo,
     )
 )
 compute_kernel_eigen = timeit(
@@ -622,7 +622,7 @@ compute_kernel_eigen = timeit(
         io=io,
         mode=KERNEL_EIGEN_MODE,
         fname="kernel_eigen",
-        cls=KernelEigen[Array, Array, Array, Array],
+        cls=KernelEigen,
         callback=shardings.train.kernel_eigen.shard_kernel_eigen,
     )
 )
@@ -684,7 +684,7 @@ plot_bandwidth_function = plotit(
     fname="bandwidth_func",
 )
 plot_laplace_spectrum = plotit(
-    knl.plot_laplace_spectrum, io=io, mode=PLOT_MODE, fname="lapl_spec"
+    knl.plot_laplacian_spectrum, io=io, mode=PLOT_MODE, fname="lapl_spec"
 )
 make_kernel_evecs_plotter = plotem(
     l63.make_kernel_evecs_plotter, io=io, mode=PLOT_MODE, fname="kernel_eigen"

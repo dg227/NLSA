@@ -19,8 +19,7 @@ library that treats functions of complex arguments as holomorphic functions.
 """
 
 from typing import Any
-from typing import Callable
-from typing import Optional
+from collections.abc import Callable
 
 import jax
 import jax.numpy as jnp
@@ -54,6 +53,7 @@ def solve_lu(matvec: Callable, b: jnp.ndarray) -> jnp.ndarray:
 
   Returns:
     array with same structure as ``b``.
+
   """
   if len(b.shape) == 0:
     return b / _materialize_array(matvec, b.shape)
@@ -71,7 +71,7 @@ def solve_lu(matvec: Callable, b: jnp.ndarray) -> jnp.ndarray:
 
 def solve_cholesky(matvec: Callable,
                    b: jnp.ndarray,
-                   ridge: Optional[float] = None) -> jnp.ndarray:
+                   ridge: float | None = None) -> jnp.ndarray:
   """Solves ``A x = b``, using Cholesky decomposition.
 
   It will materialize the matrix ``A`` in memory.
@@ -83,6 +83,7 @@ def solve_cholesky(matvec: Callable,
 
   Returns:
     array with same structure as ``b``.
+
   """
   if ridge is not None:
     matvec = _make_ridge_matvec(matvec, ridge=ridge)
@@ -101,7 +102,7 @@ def solve_cholesky(matvec: Callable,
 
 def solve_inv(matvec: Callable,
               b: jnp.ndarray,
-              ridge: Optional[float] = None) -> jnp.ndarray:
+              ridge: float | None = None) -> jnp.ndarray:
   """Solves ``A x = b``, using matrix inversion.
 
   It will materialize the matrix ``A`` in memory.
@@ -113,6 +114,7 @@ def solve_inv(matvec: Callable,
 
   Returns:
     array with same structure as ``b``.
+
   """
   if ridge is not None:
     matvec = _make_ridge_matvec(matvec, ridge=ridge)
@@ -127,8 +129,8 @@ def solve_inv(matvec: Callable,
 
 def solve_cg(matvec: Callable,
              b: Any,
-             ridge: Optional[float] = None,
-             init: Optional[Any] = None,
+             ridge: float | None = None,
+             init: Any | None = None,
              **kwargs) -> Any:
   """Solves ``A x = b`` using conjugate gradient.
 
@@ -143,6 +145,7 @@ def solve_cg(matvec: Callable,
 
   Returns:
     pytree with same structure as ``b``.
+
   """
   if ridge is not None:
     matvec = _make_ridge_matvec(matvec, ridge=ridge)
@@ -163,8 +166,8 @@ def _normal_matvec(matvec, x):
 
 def solve_normal_cg(matvec: Callable,
                     b: Any,
-                    ridge: Optional[float] = None,
-                    init: Optional[Any] = None,
+                    ridge: float | None = None,
+                    init: Any | None = None,
                     **kwargs) -> Any:
   """Solves the normal equation ``A^T A x = A^T b`` using conjugate gradient.
 
@@ -180,6 +183,7 @@ def solve_normal_cg(matvec: Callable,
 
   Returns:
     pytree with same structure as ``b``.
+
   """
   if init is None:
     example_x = b  # This assumes that matvec is a square linear operator.
@@ -208,8 +212,8 @@ def solve_normal_cg(matvec: Callable,
 
 def solve_gmres(matvec: Callable,
                 b: Any,
-                ridge: Optional[float] = None,
-                init: Optional[Any] = None,
+                ridge: float | None = None,
+                init: Any | None = None,
                 tol: float = 1e-5,
                 **kwargs) -> Any:
   """Solves ``A x = b`` using gmres.
@@ -223,6 +227,7 @@ def solve_gmres(matvec: Callable,
 
   Returns:
     pytree with same structure as ``b``.
+
   """
   if ridge is not None:
     matvec = _make_ridge_matvec(matvec, ridge=ridge)
@@ -232,8 +237,8 @@ def solve_gmres(matvec: Callable,
 
 def solve_bicgstab(matvec: Callable,
                    b: Any,
-                   ridge: Optional[float] = None,
-                   init: Optional[Any] = None,
+                   ridge: float | None = None,
+                   init: Any | None = None,
                    **kwargs) -> Any:
   """Solves ``A x = b`` using bicgstab.
 
@@ -246,6 +251,7 @@ def solve_bicgstab(matvec: Callable,
 
   Returns:
     pytree with same structure as ``b``.
+
   """
   if ridge is not None:
     matvec = _make_ridge_matvec(matvec, ridge=ridge)

@@ -8,7 +8,7 @@ from functools import partial
 from jax import Array, jit, vmap
 from jax.scipy.special import i0
 from jax.typing import ArrayLike
-from typing import Literal, Optional, TypedDict
+from typing import Literal, TypedDict
 
 type R = Array
 type C = Array
@@ -79,7 +79,7 @@ def lagged_cross_correlation(
     ys: Xs,
     lag: int | Array,
     mode: Literal["full", "exact"] = "full",
-    num_samples: Optional[int] = None,
+    num_samples: int | None = None,
 ) -> C:
     """Compute lagged cross-correlation of two time series."""
     anom_xs = xs - jnp.mean(xs)
@@ -104,7 +104,7 @@ def lagged_autocorrelation(
     xs: Xs,
     lag: int | Array,
     mode: Literal["full", "exact"] = "full",
-    num_samples: Optional[int] = None,
+    num_samples: int | None = None,
 ) -> C:
     """Compute lagged autocorrelation of two time series."""
     return lagged_cross_correlation(
@@ -131,7 +131,7 @@ def timeseries_stats(
     bins: int | Literal["auto"] = "auto",
     density: bool = True,
     autocorrelation_mode: Literal["full", "exact"] = "full",
-    autocorrelation_num_samples: Optional[int] = None,
+    autocorrelation_num_samples: int | None = None,
 ) -> TimeseriesStats:
     """Compute probability density and autocorrelation functions."""
     lagged_autocorr = partial(
@@ -153,7 +153,7 @@ def multivariate_timeseries_stats(
     bins: int | Literal["auto"] = "auto",
     density: bool = True,
     autocorrelation_mode: Literal["full", "exact"] = "full",
-    autocorrelation_num_samples: Optional[int] = None,
+    autocorrelation_num_samples: int | None = None,
     dropna: bool = False,
 ) -> MultivariateTimeseriesStats:
     """Compute probability density and autocorrelation functions.

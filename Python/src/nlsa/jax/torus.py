@@ -16,7 +16,6 @@ from nlsa.jax.sharding import shardit
 from nlsa.jax.stats import make_von_mises_density
 from nlsa.jax.special import iv0_ratio
 from nlsa.jax.utils import make_vectorvalued
-from typing import Optional
 
 type X = Array  # Point in state space (2-torus)
 type Y = Array  # Point in embedding space (R^d)
@@ -32,7 +31,7 @@ type F[*Ss, T] = Callable[[*Ss], T]  # Shorthand for Callables
 
 
 def make_observable_r3(
-    r: float = 0.5, dtype: Optional[DTypeLike] = None
+    r: float = 0.5, dtype: DTypeLike | None = None
 ) -> F[X, Y]:
     """Make embedding function from the 2-torus into R3."""
 
@@ -47,7 +46,7 @@ def make_observable_r3(
     return f
 
 
-def make_observable_r4(dtype: Optional[DTypeLike] = None) -> F[X, Y]:
+def make_observable_r4(dtype: DTypeLike | None = None) -> F[X, Y]:
     """Make observable based on flat embedding of the 2-torus into R4."""
 
     def f(x: X, /) -> Y:
@@ -62,7 +61,7 @@ def make_observable_r4(dtype: Optional[DTypeLike] = None) -> F[X, Y]:
 
 
 def make_observable_cos(
-    dtype: Optional[DTypeLike] = None, asvector: bool = False
+    dtype: DTypeLike | None = None, asvector: bool = False
 ) -> F[X, Y]:
     """Make R-valued observable based on cosine of the angles on the torus."""
 
@@ -76,7 +75,7 @@ def make_observable_cos(
 def make_observable_von_mises(
     concentrations: float | tuple[float, float],
     locations: float | tuple[float, float],
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
     asvector: bool = False,
 ) -> F[X, Y]:
     """Make covariate based on von Mises density."""
@@ -103,7 +102,7 @@ def make_observable_von_mises(
 def make_observable_von_mises_grad(
     concentrations: float | tuple[float, float],
     locations: float | tuple[float, float],
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
     asvector: bool = False,
 ) -> F[X, Y]:
     """Make covariate based on gradient of von Mises density."""
@@ -136,7 +135,7 @@ def make_observable_von_mises_grad(
 def make_von_mises_density_fourier(
     concentrations: float | tuple[float, float] | Array,
     locations: tuple[float, float] | Array = (0, 0),
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
 ) -> Callable[[Z2], C]:
     """Make function returning Fourier coefficients of von Mises density."""
     match concentrations:
@@ -183,7 +182,7 @@ def zero_idx_fourier(max_wavenums: int | tuple[int, int]) -> int:
 
 
 def unit_fourier(
-    max_wavenums: int | tuple[int, int], dtype: Optional[DTypeLike] = None
+    max_wavenums: int | tuple[int, int], dtype: DTypeLike | None = None
 ) -> Vhat:
     """Compute Fourier representation of unit function on T2."""
     i0 = zero_idx_fourier(max_wavenums)
@@ -222,7 +221,7 @@ def make_fourier_analysis_operator(
 def make_fourier_fn_analysis_operator(
     max_wavenums: int | tuple[int, int],
     weight: float | Vhat = 1,
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, C]], Vhat]:
     """Make discrete Fourier analysis operator for functions on the 2-torus."""
@@ -255,7 +254,7 @@ def make_rkhs_eigenbasis(
     max_wavenums: int | tuple[int, int],
     p: float,
     tau: float,
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
 ) -> KernelEigenbasis[X, C, V, Cs, int | Array]:
     """Make kernel eigenbasis for RKHS associated with exponential weights."""
     match max_wavenums:
@@ -317,7 +316,7 @@ def make_rkhs_eigenbasis(
 
 
 def make_to_zero_mean_fourier(
-    max_wavenums: int | tuple[int, int], sharding: Optional[Sharding] = None
+    max_wavenums: int | tuple[int, int], sharding: Sharding | None = None
 ) -> Callable[[Vhat], Vhat]:
     """Make projection onto zero-mean functions in the Fourier basis."""
     i0 = zero_idx_fourier(max_wavenums)
@@ -330,7 +329,7 @@ def make_to_zero_mean_fourier(
 
 
 def make_from_zero_mean_fourier(
-    max_wavenums: int | tuple[int, int], sharding: Optional[Sharding] = None
+    max_wavenums: int | tuple[int, int], sharding: Sharding | None = None
 ) -> Callable[[Vhat], Vhat]:
     """Make inclusion map into L2 functions from zero-mean functions."""
     i0 = zero_idx_fourier(max_wavenums)

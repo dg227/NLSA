@@ -7,7 +7,7 @@ import scipy.linalg as la
 from nptyping import Complex, Double, Int, NDArray, Shape
 from qiskit import Aer, QuantumCircuit, transpile
 from qiskit.extensions import UnitaryGate
-from typing import Literal, Tuple, TypeVar
+from typing import Literal, TypeVar
 
 # We use Literal instead of Shape because for some reason mypy is giving
 # errors.
@@ -48,9 +48,8 @@ def koopman_circuit(q: int, v: M, u: M, xi: V) -> QuantumCircuit:
 
 
 def ensemble_measurement(circ: QuantumCircuit, shots: int = 512, backend=None) \
-        -> Tuple[Ints, X]:
+        -> tuple[Ints, X]:
     """Ensemble measurement of Qiskit circuit."""
-
     if backend is None:
         backend = Aer.get_backend('aer_simulator')
     job = backend.run(transpile(circ, backend), shots=shots)

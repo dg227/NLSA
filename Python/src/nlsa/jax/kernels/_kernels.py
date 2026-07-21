@@ -8,7 +8,8 @@
 # at the call site as needed (e.g., in the various compute... functions).
 import jax
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 import nlsa.abstract_algebra as alg
 import nlsa.function_algebra as fun
 import nlsa.kernels as knl
@@ -19,11 +20,11 @@ import nlsa.jax.vector_algebra as vec
 import numpy as np
 import scipy.sparse.linalg as sla
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import partial
 from jax import Array, vmap
 from jax.sharding import NamedSharding
 from jax.typing import ArrayLike, DTypeLike
-from matplotlib.figure import Figure
 from nlsa.jax.sharding import (
     EigShardings,
     NamedSharder,
@@ -32,58 +33,136 @@ from nlsa.jax.sharding import (
     make_svd_with_sharding_constraints,
     shardit,
 )
-from nlsa.jax.typing import PyTree
+from nlsa.jax.typing import PyTree, typestable_jit
 from nlsa.jax.utils import batch_map, curried_batch_map
-from nlsa.jax.vector_algebra import L2FnAlgebra
-from nlsa.kernels import (
-    DmKernelPars,
-    BsKernelPars,
-    KernelPars,
-    KernelEigen,
-    KernelEigenbasis,
-    TuneInfo,
-    TunePars,
-)
-from nlsa.utils import has_one_arg, has_two_args, swap_args
+from nlsa.kernels import DmKernelPars, BsKernelPars, KernelPars, TunePars
+from nlsa.typing import SliceItem
+from nlsa.utils import has_two_args, swap_args
 from scipy.sparse.linalg import LinearOperator
-from typing import Literal, NamedTuple, Optional, Self
+from typing import Literal, NamedTuple, Self, final
+from collections.abc import Sequence
 
 type R = Array  # Real number
 type Rl = Array  # l-dimensional real vectors
 type Rs = Array  # Collection of real numbers
 type K = Array  # Scalar
 type Ks = Array  # Collection of scalars
-type V = Array  # Vector
+type V = Array  # Vector in L2
+type Vtst = Array  # Vector in L2 with respect to the test data
 type Vs = Array  # Collection of vectors
-type Xs = Array  # Covariate data
+type X = Array  # Covariate
+type Xs = Array  # Collection of covariates
 type Xs_tst = Array  # Test covariate data
+type Idx = int | Array  # Basis index
 type Shape = tuple[int, ...]
 type F[*Ss, T] = Callable[[*Ss], T]  # Shorthand for Callables
+
+
+class TuneInfo(NamedTuple):
+    """NamedTuple holding kernel tuning information in JAX arrays."""
+
+    log10_bandwidths: Array
+    """Array of trial kernel bandwidths."""
+
+    est_dims: Array
+    """Array of estimated dimensions based on trial bandwidths."""
+
+    opt_bandwidth: Array
+    """Optimal bandwidth from autotuning procedure."""
+
+    opt_dim: Array
+    """Optimal (maximum) dimension from autotuning procedure."""
+
+    i_opt: Array
+    """Index of optimal bandwidth in array of trial bandwidths."""
+
+    bandwidth: Array
+    """Selected bandwidth after scaling by user-defined factor."""
+
+    dim: Array
+    """Estimated dimension based on selected bandwidth."""
+
+    vol: Array
+    """Estimated manifold volume based on selected bandwidth."""
+
+    kernel_vol: Array
+    """Volume based on kernel integral."""
+
+    def tabulate(
+        self, name: str = "Kernel Tuning Info", show: bool = True
+    ) -> str:
+        """Create tabulated summary of the elements of a TuneInfo object."""
+        return knl.tabulate_tune_info(self, name, show)
+
+
+class KernelEigen(NamedTuple):
+    """NamedTuple containing kernel spectral data."""
+
+    evals: Ks
+    """Kernel eigenvalues."""
+
+    evecs: Vs
+    """Kernel eigenvectors."""
+
+    dual_evecs: Vs
+    """Dual (left) kernel eigenvectors."""
+
+    weights: V
+    """Inner product weights that orthonormalize the eigenvectors."""
+
+    bandwidth: K
+    """Bandwidth parameter."""
+
+    @property
+    def num_eigs(
+        self,
+    ) -> int:
+        """Return number of eigenvalues/eigenvectors in KernelEigenObject."""
+        return knl.num_eigs_in_eigen(self)
+
+    def isel(self, s: SliceItem) -> Self:
+        """Slice a KernelEigen object."""
+        return type(self)(
+            evals=self.evals[s],
+            evecs=self.evecs[s],
+            dual_evecs=self.dual_evecs[s],
+            weights=self.weights,
+            bandwidth=self.bandwidth,
+        )
+
+    def tabulate(
+        self,
+        num_tabulate: int | None = None,
+        headers: Sequence[str] | None = None,
+        show: bool = True,
+    ) -> str:
+        """Tabulate the eigenvalues in a KernelEigen object."""
+        return knl.tabulate_eigen(self, num_tabulate, headers, show)
 
 
 class KernelEigenShardings(NamedTuple):
     """NamedTuple holding shardings for computation KernelEigen objects."""
 
-    matrix: Optional[NamedSharding] = None
+    matrix: NamedSharding | None = None
     """Sharding of kernel matrix."""
 
-    eigenvalues: Optional[NamedSharding] = None
+    eigenvalues: NamedSharding | None = None
     """Sharding of eigenvalue array."""
 
-    eigenvectors: Optional[NamedSharding] = None
+    eigenvectors: NamedSharding | None = None
     """Sharding of eigenvector array."""
 
-    weights: Optional[NamedSharding] = None
+    weights: NamedSharding | None = None
     """Sharding of inner product weights array."""
 
     @classmethod
     def from_named_sharder[
         Shape: tuple[int, int, *tuple[int, ...]],
         AxisNames: str,
-    ](cls, sharder: Optional[NamedSharder[Shape, AxisNames]]) -> Self:
+    ](cls, sharder: NamedSharder[Shape, AxisNames] | None) -> Self:
         """Create KernelEigenSharding object from NamedSharder."""
         if sharder is not None:
-            y_sharding = sharder.sharding(sharder.axis_names[1])
+            y_sharding = sharder.sharding(None, sharder.axis_names[1])
             replicating = sharder.sharding(None)
             return cls(eigenvalues=replicating, eigenvectors=y_sharding)
         else:
@@ -92,12 +171,12 @@ class KernelEigenShardings(NamedTuple):
     @property
     def shard_kernel_eigen(
         self,
-    ) -> Callable[[KernelEigen[R, Rs, Vs, Vs]], KernelEigen[R, Rs, Vs, Vs]]:
+    ) -> Callable[[KernelEigen], KernelEigen]:
         """Shard KernelEigen objects."""
 
         def shard(
-            kernel_eigen: KernelEigen[R, Rs, Vs, Vs],
-        ) -> KernelEigen[R, Rs, Vs, Vs]:
+            kernel_eigen: KernelEigen,
+        ) -> KernelEigen:
             return KernelEigen(
                 evals=jax.device_put(
                     kernel_eigen.evals, device=self.eigenvalues
@@ -117,11 +196,68 @@ class KernelEigenShardings(NamedTuple):
         return shard
 
 
-def _tune_bandwidth_from_kernel_family[X: Array](
+@final
+@dataclass(frozen=True, slots=True)
+class KernelEigenbasis(knl.ImplementsKernelEigenbasis[X, K, K, V, Ks, Idx]):
+    """Dataclass implementing frame operators for kernel eigenbasis."""
+
+    dim: int
+    """Number of eigenfunctions."""
+
+    anal: Callable[[V], Ks]
+    """Analysis operator."""
+
+    dual_anal: Callable[[V], Ks]
+    """Dual analysis operator."""
+
+    synth: Callable[[Ks], V]
+    """Synthesis operator."""
+
+    dual_synth: Callable[[Ks], V]
+    """Dual synthesis operator."""
+
+    fn_anal: Callable[[F[X, K]], Ks]
+    """Function analysis operator."""
+
+    dual_fn_anal: Callable[[F[X, K]], Ks]
+    """Dual function analysis operator."""
+
+    fn_synth: Callable[[Ks], F[X, K]]
+    """Function synthesis operator."""
+
+    dual_fn_synth: Callable[[Ks], F[X, K]]
+    """Dual function synthesis operator."""
+
+    vec: Callable[[Idx], V]
+    """Basis vectors."""
+
+    dual_vec: Callable[[Idx], V]
+    """Dual basis vectors."""
+
+    fn: Callable[[Idx], F[X, K]]
+    """Function representatives of basis vectors."""
+
+    dual_fn: Callable[[Idx], F[X, K]]
+    """Function representatives of dual basis vectors."""
+
+    spec: Ks
+    """Kernel operator spectrum (set of eigenvalues)."""
+
+    lapl_spec: Ks
+    """Laplace spectrum."""
+
+    evl: Callable[[Idx], K]
+    """Kernel eigenvalues."""
+
+    lapl_evl: Callable[[Idx], K]
+    """Laplacian eigenvalues."""
+
+
+def _tune_bandwidth_from_kernel_family(
     pars: TunePars,
-    l2x: alg.ImplementsL2FnAlgebra[X, K, V, K],
+    l2x: alg.ImplementsL2FnAlgebra[X, R, V, R],
     kernel_family: Callable[[R], F[X, X, R]],
-) -> TuneInfo[Array, Array, Array]:
+) -> TuneInfo:
     """Compute optimal bandwidth for bandwidth-parameterized kernel family."""
     log10_bandwidths = jnp.linspace(
         pars.log10_bandwidth_lims[0],
@@ -166,13 +302,13 @@ def _tune_bandwidth_from_kernel_family[X: Array](
     )
 
 
-def _tune_bandwidth_from_shape_function[X: Array](
+def _tune_bandwidth_from_shape_function(
     pars: TunePars,
     l2x: alg.ImplementsL2FnAlgebra[X, K, V, K],
     shape_func: Callable[[K], K],
     neg_grad_shape_func: Callable[[K], K],
     sqdist: Callable[[X, X], K],
-) -> TuneInfo[Array, Array, Array]:
+) -> TuneInfo:
     """Compute optimal bandwidth for RBF kernel family."""
     log10_bandwidths = jnp.linspace(
         pars.log10_bandwidth_lims[0],
@@ -219,85 +355,17 @@ def _tune_bandwidth_from_shape_function[X: Array](
     )
 
 
-# NOTE: In a posssible Mojo implementation, impl_l2, shape_func, etc. would
-# be passed in as compile-time parameters, and the arguments of the
-# resulting Callable would be regular run-time arguments.
-def make_data_driven_bandwidth_function[X: Array, Data: PyTree](
-    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
-    shape_func: Callable[[K], K],
-    sqdist: F[X, X, K],
-    tune_info: TuneInfo[Array, Array, Array],
-) -> Callable[[Data, X], K]:
-    """Make data-driven kernel bandwidth function."""
-
-    def bandwidth_func(data: Data, x: X) -> K:
-        l2x = impl_l2(data)
-        kernel_family = knl.make_rbf_kernel_family(l2x.scl, shape_func, sqdist)
-        f = knl.make_bandwidth_function(
-            l2x,
-            kernel_family(tune_info.bandwidth),
-            dim=tune_info.dim,
-            vol=tune_info.vol,
-            normalization=tune_info.kernel_vol,
-        )
-        return f(x)
-
-    return bandwidth_func
-
-
-def make_data_driven_scaled_sqdist[X: Array, Data: PyTree](
-    impl: alg.ImplementsRealScalarField[K],
-    sqdist: Callable[[X, X], K] | Callable[[Data, X, X], K],
-    bandwidth_func: Callable[[X], K] | Callable[[Data, X], K],
-) -> Callable[[Data, X, X], K]:
-    """Make data-driven scaled square distance from bandwidth function."""
-
-    def scaled_sqdist(data: Data, x: X, y: X) -> K:
-        if has_two_args(sqdist):
-            _sqdist = sqdist
-        else:
-            _sqdist = partial(sqdist, data)
-        if has_one_arg(bandwidth_func):
-            _bandwidth_func = bandwidth_func
-        else:
-            _bandwidth_func = partial(bandwidth_func, data)
-        _scaled_sqdist = knl.make_scaled_sqdist(impl, _sqdist, _bandwidth_func)
-        return _scaled_sqdist(x, y)
-
-    return scaled_sqdist
-
-
-def make_data_driven_rbf_kernel[X: Array, Data: PyTree](
-    impl: alg.ImplementsRealScalarField[K],
-    shape_func: Callable[[K], K],
-    sqdist: Callable[[X, X], K] | Callable[[Data, X, X], K],
-    bandwidth: K,
-) -> Callable[[Data, X, X], K]:
-    """Make data-driven, bandwidth-paramterized RBF kernel."""
-
-    def kernel(data: Data, x: X, y: X) -> K:
-        if has_two_args(sqdist):
-            _sqdist = sqdist
-        else:
-            _sqdist = partial(sqdist, data)
-        _kernel = knl.make_rbf_kernel(impl, shape_func, _sqdist, bandwidth)
-        return _kernel(x, y)
-
-    return kernel
-
-
 # TODO: Generalize X to PyTree
-def make_bandwidth_tuner[Data: PyTree, X: Array](
+def make_bandwidth_tuner[Data: PyTree](
     pars: TunePars,
     impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
     shape_func: Callable[[K], K],
     sqdist: Callable[[X, X], K] | Callable[[Data, X, X], K],
-    neg_grad_shape_func: Optional[Callable[[K], K]] = None,
-    jit: bool = False,
-) -> Callable[[Data], TuneInfo[Array, Array, Array]]:
+    neg_grad_shape_func: Callable[[K], K] | None = None,
+) -> Callable[[Data], TuneInfo]:
     """Make kernel tuning function from shape function and square distance."""
 
-    def tune(data: Data) -> TuneInfo[Array, Array, Array]:
+    def tune(data: Data) -> TuneInfo:
         l2x = impl_l2(data)
         if has_two_args(sqdist):
             _sqdist = sqdist
@@ -317,25 +385,24 @@ def make_bandwidth_tuner[Data: PyTree, X: Array](
 
         return tune_info
 
-    if jit:
-        tune = jax.jit(tune)
-
     return tune
 
 
-def tune_bandwidth[Data: PyTree, X: Array](
+def tune_bandwidth[Data: PyTree](
     pars: TunePars,
     impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
     shape_func: Callable[[K], K],
     sqdist: Callable[[X, X], K] | Callable[[Data, X, X], K],
     data: Data,
-    neg_grad_shape_func: Optional[Callable[[K], K]] = None,
+    neg_grad_shape_func: Callable[[K], K] | None = None,
     jit: bool = True,
-) -> TuneInfo[Array, Array, Array]:
+) -> TuneInfo:
     """Tune kernel bandwidth."""
     tune = make_bandwidth_tuner(
-        pars, impl_l2, shape_func, sqdist, neg_grad_shape_func, jit
+        pars, impl_l2, shape_func, sqdist, neg_grad_shape_func
     )
+    if jit:
+        return typestable_jit(tune)(data)
     return tune(data)
 
 
@@ -349,13 +416,13 @@ class _DmSymOperatorSpectrum(NamedTuple):
     """Kernel eigenvectors."""
 
 
-def _from_dm_sym_operator_spectrum[Ns: Shape, D: DTypeLike, X: Array](
-    l2x: L2FnAlgebra[Ns, D, X, R],
+def _from_dm_sym_operator_spectrum(
+    l2x: alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R],
     spec: _DmSymOperatorSpectrum,
     bandwidth: R,
-    num_eigs: Optional[int] = None,
+    num_eigs: int | None = None,
     out_shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> KernelEigen[R, Rs, V, Vs]:
+) -> KernelEigen:
     """Convert _DmSymOperatorSpectrum to KerneEigen."""
     num_samples = l2x.dim
     norm = vmap(l2x.norm)
@@ -394,60 +461,32 @@ def _from_dm_sym_operator_spectrum[Ns: Shape, D: DTypeLike, X: Array](
     return eigen
 
 
-def make_data_driven_dm_kernel_op[
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
-    Data: PyTree,
-](
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
-    kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
-    normalization: Optional[Literal["laplace", "fokkerplanck"]],
-) -> Callable[[Data, V], V]:
-    """Make data-driven kernel integral op with bistochastic normalization."""
-
-    def kernel_op(data: Data, v: V) -> V:
-        l2x = impl_l2(data)
-        if has_two_args(kernel):
-            _kernel = kernel
-        else:
-            _kernel = partial(kernel, data)
-        match normalization:
-            case "laplace":
-                normalized_kernel = knl.dmsym_normalize(
-                    l2x, _kernel, alpha="1"
-                )
-            case "fokkerplanck":
-                normalized_kernel = knl.dmsym_normalize(
-                    l2x, _kernel, alpha="0.5"
-                )
-            case None:
-                normalized_kernel = _kernel
-        _kernel_op = fun.compose(
-            l2x.incl, knl.make_integral_operator(l2x, normalized_kernel)
-        )
-        return _kernel_op(v)
-
-    return kernel_op
-
-
-def make_eigh_dm_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
+def make_eigh_dm_eigensolver[Data: PyTree](
+    impl_l2: Callable[
+        [Data], alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R]
+    ],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     bandwidth: R,
-    normalization: Optional[Literal["laplace", "fokkerplanck"]],
-    num_eigs: Optional[int] = None,
-    batch_size: Optional[int] = None,
+    normalization: Literal["laplace", "fokkerplanck"] | None,
+    num_eigs: int | None = None,
+    dtype: DTypeLike | None = None,
+    batch_size: int | None = None,
     jit: bool = False,
     shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> Callable[[Data], KernelEigen[R, Rs, V, Vs]]:
+) -> Callable[[Data], KernelEigen]:
     """Make eigensolver for diffusion-maps normalized operaror using eigh."""
+    # WARNING: In recent versions of the code we are sharding the eigenvectors
+    # in KernelEigen along rows. Assigning eig_shardings based on
+    # sharding likely leads to sharding inconsistencies. A possible solution
+    # would be to rename shardings to out_shardings and create a separate
+    # eig_shardings input argument to pass the correct shardings to
+    # make_eig_with_sharding_constraints.
     eig_shardings = EigShardings(
         eigenvalues=shardings.eigenvalues, eigenvectors=shardings.matrix
     )
     eig = make_eigh_with_sharding_constraints(shardings=eig_shardings)
 
-    def eigensolve(data: Data) -> KernelEigen[R, Rs, V, Vs]:
+    def eigensolve(data: Data) -> KernelEigen:
         l2x = impl_l2(data)
         if has_two_args(kernel):
             _kernel = kernel
@@ -466,7 +505,7 @@ def make_eigh_dm_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
         a = mat.materialize_in_std_basis(
             kernel_op,
             in_dim=l2x.dim,
-            dtype=l2x.dtype,
+            dtype=dtype,
             batch_size=batch_size,
             out_sharding=shardings.matrix,
         )
@@ -477,31 +516,35 @@ def make_eigh_dm_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
         return eigen
 
     if jit:
-        return jax.jit(eigensolve)
+        return typestable_jit(eigensolve)
     return eigensolve
 
 
-def make_eigsh_dm_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
+def make_eigsh_dm_eigensolver[Data: PyTree](
+    impl_l2: Callable[
+        [Data], alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R]
+    ],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     bandwidth: R,
-    normalization: Optional[Literal["laplace", "fokkerplanck"]],
+    normalization: Literal["laplace", "fokkerplanck"] | None,
     num_samples: int,
     num_eigs: int,
-    dtype: Optional[D] = None,
+    dtype: DTypeLike | None = None,
     jit: bool = True,
     shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> Callable[[Data], KernelEigen[R, Rs, V, Vs]]:
+) -> Callable[[Data], KernelEigen]:
     """Make eigensolver for diffusion maps normalized operaror using eigsh."""
-    kernel_op = make_data_driven_dm_kernel_op(impl_l2, kernel, normalization)
+    kernel_op = knl.make_data_driven_dmsym_kernel_op(
+        impl_l2, kernel, normalization
+    )
     if jit:
-        kernel_op = jax.jit(kernel_op)
+        kernel_op = typestable_jit(kernel_op)
     to_device = partial(jnp.asarray, device=shardings.weights)
     # NOTE: We are using shardings.weights as opposed to shardings.eigenvectors
     # since KernelEigen stores singular vectors in row-major format, but
     # eigs stores singular vectors in column-major format.
 
-    def eigensolve(data: Data) -> KernelEigen[R, Rs, V, Vs]:
+    def eigensolve(data: Data) -> KernelEigen:
 
         matvec: Callable[[ArrayLike], Array] = fun.compose(
             partial(kernel_op, data),
@@ -515,7 +558,7 @@ def make_eigsh_dm_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
 
         def from_dm_sym_operator_spectrum(
             data: Data, spec: _DmSymOperatorSpectrum
-        ) -> KernelEigen[R, Rs, V, Vs]:
+        ) -> KernelEigen:
             l2x = impl_l2(data)
             eigen = _from_dm_sym_operator_spectrum(
                 l2x, spec, bandwidth, num_eigs, out_shardings=shardings
@@ -528,25 +571,27 @@ def make_eigsh_dm_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
         spec = _DmSymOperatorSpectrum(evals=evals, evecs=evecs)
 
         if jit:
-            return jax.jit(from_dm_sym_operator_spectrum)(data, spec)
+            return typestable_jit(from_dm_sym_operator_spectrum)(data, spec)
         return from_dm_sym_operator_spectrum(data, spec)
 
     return eigensolve
 
 
-def make_dm_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
+def make_dm_eigensolver[Data: PyTree](
+    impl_l2: Callable[
+        [Data], alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R]
+    ],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     bandwidth: R,
-    normalization: Optional[Literal["laplace", "fokkerplanck"]],
+    normalization: Literal["laplace", "fokkerplanck"] | None,
     solver: Literal["eigh", "eigsh"],
-    num_samples: Optional[int] = None,
-    num_eigs: Optional[int] = None,
-    dtype: Optional[D] = None,
-    batch_size: Optional[int] = None,
+    num_samples: int | None = None,
+    num_eigs: int | None = None,
+    dtype: DTypeLike | None = None,
+    batch_size: int | None = None,
     jit: bool = True,
     shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> Callable[[Data], KernelEigen[R, Rs, V, Vs]]:
+) -> Callable[[Data], KernelEigen]:
     """Make eigensolver for diffusion-maps normalized kernel operator."""
     match solver:
         case "eigh":
@@ -556,6 +601,7 @@ def make_dm_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
                 bandwidth,
                 normalization,
                 num_eigs,
+                dtype,
                 batch_size,
                 jit,
                 shardings,
@@ -590,15 +636,15 @@ class _BsOperatorSpectrum(NamedTuple):
     """Right singular vectors."""
 
 
-def _from_bs_operator_spectrum[Ns: Shape, D: DTypeLike, X: Array](
-    l2x: L2FnAlgebra[Ns, D, X, R],
+def _from_bs_operator_spectrum(
+    l2x: alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R],
     spec: _BsOperatorSpectrum,
-    num_eigs: Optional[int],
+    num_eigs: int | None,
     bandwidth: R,
     out_shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> KernelEigen[R, Rs, V, Vs]:
+) -> KernelEigen:
     """Convert _BsOperatorSpectrum to KerneEigen."""
-    num_samples = l2x.shape[0]
+    num_samples = l2x.dim
     norm = vmap(l2x.norm)
     unsorted_evecs = spec.left_sing_vecs
     unsorted_evals = spec.sing_vals**2
@@ -637,45 +683,25 @@ def _from_bs_operator_spectrum[Ns: Shape, D: DTypeLike, X: Array](
     return eigen
 
 
-def make_data_driven_bs_kernel_op[
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
-    Data: PyTree,
-](
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
-    kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
-    adj: bool = False,
-) -> Callable[[Data, V], V]:
-    """Make data-driven kernel integral op with bistochastic normalization."""
-
-    def kernel_op(data: Data, v: V) -> V:
-        l2x = impl_l2(data)
-        if has_two_args(kernel):
-            _kernel = kernel
-        else:
-            _kernel = partial(kernel, data)
-        bs_kernel = knl.bs_normalize(l2x, _kernel)
-        if adj:
-            bs_kernel = swap_args(bs_kernel)
-        _kernel_op = fun.compose(
-            l2x.incl, knl.make_integral_operator(l2x, bs_kernel)
-        )
-        return _kernel_op(v)
-
-    return kernel_op
-
-
-def make_svd_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
+def make_svd_bs_eigensolver[Data: PyTree](
+    impl_l2: Callable[
+        [Data], alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R]
+    ],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     bandwidth: R,
-    num_eigs: Optional[int] = None,
-    batch_size: Optional[int] = None,
+    num_eigs: int | None = None,
+    dtype: DTypeLike | None = None,
+    batch_size: int | None = None,
     jit: bool = True,
     shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> Callable[[Data], KernelEigen[R, Rs, V, Vs]]:
+) -> Callable[[Data], KernelEigen]:
     """Make SVD solver for bistochastic kernel operator using svd."""
+    # WARNING: In recent versions of the code we are sharding the singular
+    # vectors in KernelEigen along rows. Assigning svd_shardings based on
+    # sharding likely leads to sharding inconsistencies. A possible solution
+    # would be to rename shardings to out_shardings and create a separate
+    # svd_shardings input argument to pass the correct shardings to
+    # make_svd_with_sharding_constraints.
     svd_shardings = SvdShardings(
         left_sing_vectors=shardings.matrix,
         sing_values=shardings.eigenvalues,
@@ -683,7 +709,7 @@ def make_svd_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
     )
     svd = make_svd_with_sharding_constraints(shardings=svd_shardings)
 
-    def svdsolve(data: Data) -> KernelEigen[R, Rs, V, Vs]:
+    def svdsolve(data: Data) -> KernelEigen:
         l2x = impl_l2(data)
         if has_two_args(kernel):
             _kernel = kernel
@@ -696,7 +722,7 @@ def make_svd_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
         a = mat.materialize_in_std_basis(
             kernel_op,
             in_dim=l2x.dim,
-            dtype=l2x.dtype,
+            dtype=dtype,
             batch_size=batch_size,
             out_sharding=shardings.matrix,
         )
@@ -707,44 +733,48 @@ def make_svd_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
         return eigen
 
     if jit:
-        return jax.jit(svdsolve)
+        return typestable_jit(svdsolve)
     return svdsolve
 
 
-def make_svds_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
+def make_svds_bs_eigensolver[Data: PyTree](
+    impl_l2: Callable[
+        [Data], alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R]
+    ],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     bandwidth: R,
     num_samples: int,
     num_eigs: int,
-    dtype: Optional[D] = None,
-    batch_size: Optional[int] = None,
+    dtype: DTypeLike | None = None,
+    batch_size: int | None = None,
     jit: bool = True,
     shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> Callable[[Data], KernelEigen[R, Rs, V, Vs]]:
+) -> Callable[[Data], KernelEigen]:
     """Make SVD solver for bistochastic kernel operator using svds."""
-    kernel_op = make_data_driven_bs_kernel_op(impl_l2, kernel)
-    adj_kernel_op = make_data_driven_bs_kernel_op(impl_l2, kernel, adj=True)
+    kernel_op = knl.make_data_driven_bs_kernel_op(impl_l2, kernel)
+    adj_kernel_op = knl.make_data_driven_bs_kernel_op(
+        impl_l2, kernel, adj=True
+    )
     if jit:
-        kernel_op = jax.jit(kernel_op)
-        adj_kernel_op = jax.jit(adj_kernel_op)
+        kernel_op = typestable_jit(kernel_op)
+        adj_kernel_op = typestable_jit(adj_kernel_op)
     to_device = partial(jnp.asarray, device=shardings.weights)
     # NOTE: We are using shardings.weights as opposed to shardings.eigenvectors
     # since KernelEigen stores singular vectors in row-major format, but
     # svds stores singular vectors in column-major format.
 
-    def svdsolve(data: Data) -> KernelEigen[R, Rs, V, Vs]:
+    def svdsolve(data: Data) -> KernelEigen:
         matvec: Callable[[ArrayLike], Array] = fun.compose(
-            partial(jax.jit(kernel_op), data),
+            partial(typestable_jit(kernel_op), data),
             to_device,
         )
         rmatvec: Callable[[ArrayLike], Array] = fun.compose(
-            partial(jax.jit(adj_kernel_op), data),
+            partial(typestable_jit(adj_kernel_op), data),
             to_device,
         )
         matmat: Callable[[ArrayLike], Array] = fun.compose(
             partial(
-                jax.jit(
+                typestable_jit(
                     shardit(
                         curried_batch_map(
                             kernel_op,
@@ -761,7 +791,7 @@ def make_svds_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
         )
         rmatmat: Callable[[ArrayLike], Array] = fun.compose(
             partial(
-                jax.jit(
+                typestable_jit(
                     shardit(
                         curried_batch_map(
                             adj_kernel_op,
@@ -787,7 +817,7 @@ def make_svds_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
 
         def from_bs_operator_spectrum(
             data: Data, spec: _BsOperatorSpectrum
-        ) -> KernelEigen[R, Rs, V, Vs]:
+        ) -> KernelEigen:
             l2x = impl_l2(data)
             eigen = _from_bs_operator_spectrum(
                 l2x, spec, num_eigs, bandwidth, out_shardings=shardings
@@ -809,24 +839,26 @@ def make_svds_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
         )
 
         if jit:
-            return jax.jit(from_bs_operator_spectrum)(data, spec)
+            return typestable_jit(from_bs_operator_spectrum)(data, spec)
         return from_bs_operator_spectrum(data, spec)
 
     return svdsolve
 
 
-def make_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
+def make_bs_eigensolver[Data: PyTree](
+    impl_l2: Callable[
+        [Data], alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R]
+    ],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     bandwidth: R,
     solver: Literal["svd", "svds"],
-    num_samples: Optional[int] = None,
-    num_eigs: Optional[int] = None,
-    dtype: Optional[D] = None,
-    batch_size: Optional[int] = None,
+    num_samples: int | None = None,
+    num_eigs: int | None = None,
+    dtype: DTypeLike | None = None,
+    batch_size: int | None = None,
     jit: bool = True,
     shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> Callable[[Data], KernelEigen[R, Rs, V, Vs]]:
+) -> Callable[[Data], KernelEigen]:
     """Solve kernel eigenvalue problem for bistochastic normalization."""
     match solver:
         case "svd":
@@ -835,6 +867,7 @@ def make_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
                 kernel,
                 bandwidth,
                 num_eigs,
+                dtype,
                 batch_size,
                 jit,
                 shardings,
@@ -856,16 +889,18 @@ def make_bs_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
     return eigensolve
 
 
-def make_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
+def make_eigensolver[Data: PyTree](
     pars: KernelPars,
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
+    impl_l2: Callable[
+        [Data], alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R]
+    ],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     bandwidth: R,
-    num_samples: Optional[int] = None,
-    dtype: Optional[D] = None,
+    num_samples: int | None = None,
+    dtype: DTypeLike | None = None,
     jit: bool = True,
     shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> Callable[[Data], KernelEigen[R, Rs, V, Vs]]:
+) -> Callable[[Data], KernelEigen]:
     """Make eigensolver for DM or BS kernels."""
     match pars:
         case DmKernelPars():
@@ -898,20 +933,29 @@ def make_eigensolver[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
     return eigensolve
 
 
-def compute_eigen[Ns: Shape, D: DTypeLike, X: Array, Data: PyTree](
-    pars: KernelPars,
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, R]],
+def compute_eigen[Data: PyTree](
+    kernel_pars: KernelPars,
+    impl_l2: Callable[
+        [Data], alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R]
+    ],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     data: Data,
     bandwidth: R,
-    num_samples: Optional[int] = None,
-    dtype: Optional[D] = None,
+    num_samples: int | None = None,
+    dtype: DTypeLike | None = None,
     jit: bool = True,
     shardings: KernelEigenShardings = KernelEigenShardings(),
-) -> KernelEigen[R, Rs, V, Vs]:
+) -> KernelEigen:
     """Solve eigenvalue prblem for DM or BS kernels."""
     eigensolve = make_eigensolver(
-        pars, impl_l2, kernel, bandwidth, num_samples, dtype, jit, shardings
+        kernel_pars,
+        impl_l2,
+        kernel,
+        bandwidth,
+        num_samples,
+        dtype,
+        jit,
+        shardings,
     )
     return eigensolve(data)
 
@@ -933,134 +977,13 @@ def to_laplace_eigenvalues(
     return etas
 
 
-def make_eigenvector_extension_dm[Ns: tuple[int, ...], D: DTypeLike, X: Array](
-    l2x: L2FnAlgebra[Ns, D, X, R],
+def make_eigenbasis_dm(
+    l2x: alg.ImplementsL2FnAlgebra[X, R, V, R],
     kernel: Callable[[X, X], R],
-    normalization: Optional[Literal["laplace", "fokkerplanck"]],
-) -> tuple[Callable[[V, R], F[X, R]], Callable[[X, X], R]]:
-    """Make Nystrom extension for diffusion maps kernels."""
-    match normalization:
-        case "laplace":
-            extension_kernel = knl.dm_normalize(l2x, kernel, alpha="1")
-        case "fokkerplanck":
-            extension_kernel = knl.dm_normalize(l2x, kernel, alpha="0.5")
-        case None:
-            extension_kernel = kernel
-    extension_kernel_op: Callable[[V], F[X, R]] = knl.make_integral_operator(
-        l2x, extension_kernel
-    )
-
-    def nyst(phi: V, lamb: R) -> F[X, R]:
-        return extension_kernel_op(phi / lamb)
-
-    return nyst, extension_kernel
-
-
-def make_eigenvector_extension_bs[Ns: tuple[int, ...], D: DTypeLike, X: Array](
-    l2x: L2FnAlgebra[Ns, D, X, R], kernel: Callable[[X, X], R]
-) -> tuple[Callable[[V, R], F[X, R]], Callable[[X, X], R]]:
-    """Make Nystrom extension for bistochastic kernels."""
-    extension_kernel = knl.bs_normalize(l2x, kernel)
-    extension_kernel_op: Callable[[V], F[X, R]] = knl.make_integral_operator(
-        l2x, extension_kernel
-    )
-
-    def nyst(phi: V, lamb: R) -> F[X, R]:
-        return extension_kernel_op(phi / jnp.sqrt(lamb))
-
-    return nyst, extension_kernel
-
-
-def make_eigenvector_extension[Ns: tuple[int, ...], D: DTypeLike, X: Array](
-    pars: KernelPars,
-    l2x: L2FnAlgebra[Ns, D, X, R],
-    kernel: Callable[[X, X], R],
-) -> tuple[Callable[[V, R], F[X, R]], Callable[[X, X], R]]:
-    """Make Nystrom extension for diffusion maps and bistochastic kernels."""
-    match pars:
-        case DmKernelPars():
-            nyst, extension_kernel = make_eigenvector_extension_dm(
-                l2x, kernel, pars.normalization
-            )
-        case BsKernelPars():
-            nyst, extension_kernel = make_eigenvector_extension_bs(l2x, kernel)
-    return nyst, extension_kernel
-
-
-def make_eigenbasis_operators_dm[N: int, D: DTypeLike, X: Array](
-    l2x: L2FnAlgebra[tuple[N], D, X, R],
-    extend: Callable[[V, R], F[X, R]],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
-) -> tuple[F[V, Rl], F[Rl, V], Callable[[V], F[X, R]]]:
-    """Make analysis and synthesis operators for diffusion maps eigenbasis."""
-    anal = vec.make_l2_analysis_operator(l2x, kernel_eigen.dual_evecs)
-    synth = vec.make_synthesis_operator(kernel_eigen.evecs)
-
-    @partial(vmap, in_axes=(0, 0, None))
-    def extend_eval(v: V, lamb: R, x: X) -> R:
-        return extend(v, lamb)(x)
-
-    basis = partial(
-        extend_eval,
-        kernel_eigen.evecs,
-        kernel_eigen.evals,
-    )
-    fn_synth = vec.make_fn_synthesis_operator(basis)
-    return anal, synth, fn_synth
-
-
-def make_eigenbasis_operators_bs[N: int, D: DTypeLike, X: Array](
-    l2x: L2FnAlgebra[tuple[N], D, X, R],
-    extend: Callable[[V, R], F[X, R]],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
-) -> tuple[F[V, Rl], F[Rl, V], Callable[[V], F[X, R]]]:
-    """Make analysis and synthesis operators for bistochastic eigenbasis."""
-    anal = vec.make_l2_analysis_operator(l2x, kernel_eigen.evecs)
-    synth = vec.make_synthesis_operator(kernel_eigen.evecs)
-
-    @partial(vmap, in_axes=(0, 0, None))
-    def extend_eval(v: V, lamb: R, x: X) -> R:
-        return extend(v, lamb)(x)
-
-    basis = partial(
-        extend_eval,
-        kernel_eigen.dual_evecs,
-        kernel_eigen.evals,
-    )
-    fn_synth = vec.make_fn_synthesis_operator(basis)
-    return anal, synth, fn_synth
-
-
-def make_eigenbasis_operators[N: int, D: DTypeLike, X: Array](
-    pars: KernelPars,
-    l2x: L2FnAlgebra[tuple[N], D, X, R],
-    kernel: Callable[[X, X], R],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
-) -> tuple[F[V, Rl], F[Rl, V], Callable[[V], F[X, R]]]:
-    """Make analysis and synthesis operators."""
-    match pars:
-        case DmKernelPars():
-            extend, _ = make_eigenvector_extension_dm(
-                l2x, kernel, pars.normalization
-            )
-            anal, synth, fn_synth = make_eigenbasis_operators_dm(
-                l2x, extend, kernel_eigen
-            )
-        case BsKernelPars():
-            extend, _ = make_eigenvector_extension_bs(l2x, kernel)
-            anal, synth, fn_synth = make_eigenbasis_operators_bs(
-                l2x, extend, kernel_eigen
-            )
-    return anal, synth, fn_synth
-
-
-def make_eigenbasis_dm[Ns: Shape, D: DTypeLike, X: Array](
-    l2x: L2FnAlgebra[Ns, D, X, R],
-    kernel: Callable[[X, X], R],
-    normalization: Optional[Literal["laplace", "fokkerplanck"]],
+    normalization: Literal["laplace", "fokkerplanck"] | None,
     laplacian_method: Literal["lin", "log", "inv"],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
-) -> KernelEigenbasis[X, R, V, Rs, int | Array]:
+    kernel_eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+) -> KernelEigenbasis:
     """Make kernel eigenbasis for diffusion maps kernels."""
     match normalization:
         case "laplace":
@@ -1079,43 +1002,44 @@ def make_eigenbasis_dm[Ns: Shape, D: DTypeLike, X: Array](
         l2x, swap_args(extension_kernel)
     )
 
-    def vc(i: int | Array) -> V:
+    def vc(i: Idx) -> V:
         return kernel_eigen.evecs[i]
 
-    def dual_vc(i: int | Array) -> V:
+    def dual_vc(i: Idx) -> V:
         return kernel_eigen.dual_evecs[i]
 
-    def evl(i: int | Array) -> K:
+    def evl(i: Idx) -> R:
         return kernel_eigen.evals[i]
 
-    def lapl_evl(i: int | Array) -> K:
+    def lapl_evl(i: Idx) -> R:
         return lapl_spec[i]
 
-    def fn(i: int | Array) -> Callable[[X], K]:
+    def fn(i: Idx) -> Callable[[X], R]:
         return extension_op(kernel_eigen.evecs[i] / kernel_eigen.evals[i])
 
-    def dual_fn(i: int | Array) -> Callable[[X], K]:
+    def dual_fn(i: Idx) -> Callable[[X], R]:
         return dual_extension_op(
             kernel_eigen.dual_evecs[i] / kernel_eigen.evals[i]
         )
 
     @partial(vmap, in_axes=(0, None))
-    def anal_eval(i: int | Array, v: V) -> K:
+    def anal_eval(i: Idx, v: V) -> R:
         return l2x.innerp(kernel_eigen.dual_evecs[i], v)
 
     @partial(vmap, in_axes=(0, None))
-    def dual_anal_eval(i: int | Array, v: V) -> K:
+    def dual_anal_eval(i: Idx, v: V) -> R:
         return l2x.innerp(kernel_eigen.evecs[i], v)
 
     @partial(vmap, in_axes=(0, None))
-    def fn_eval(i: int | Array, x: X) -> R:
+    def fn_eval(i: Idx, x: X) -> R:
         return fn(i)(x)
 
     @partial(vmap, in_axes=(0, None))
-    def dual_fn_eval(i: int | Array, x: X) -> R:
+    def dual_fn_eval(i: Idx, x: X) -> R:
         return dual_fn(i)(x)
 
-    idxs = jnp.arange(kernel_eigen.num_eigs)
+    num_eigs = knl.num_eigs_in_eigen(kernel_eigen)
+    idxs = jnp.arange(num_eigs)
     anal = partial(anal_eval, idxs)
     dual_anal = partial(dual_anal_eval, idxs)
     fn_anal = fun.compose(anal, l2x.incl)
@@ -1147,12 +1071,12 @@ def make_eigenbasis_dm[Ns: Shape, D: DTypeLike, X: Array](
     return basis
 
 
-def make_eigenbasis_bs[Ns: Shape, D: DTypeLike, X: Array](
-    l2x: L2FnAlgebra[Ns, D, X, K],
-    kernel: Callable[[X, X], K],
+def make_eigenbasis_bs(
+    l2x: alg.ImplementsL2FnAlgebra[X, R, V, R],
+    kernel: Callable[[X, X], R],
     laplacian_method: Literal["lin", "log", "inv"],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
-) -> KernelEigenbasis[X, R, V, Rs, int | Array]:
+    kernel_eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+) -> KernelEigenbasis:
     """Make kernel eigenbasis for bistochastic kernels."""
     lapl_spec = to_laplace_eigenvalues(
         kernel_eigen.evals,
@@ -1162,29 +1086,30 @@ def make_eigenbasis_bs[Ns: Shape, D: DTypeLike, X: Array](
     extension_kernel = knl.bs_normalize(l2x, kernel)
     extension_op = knl.make_integral_operator(l2x, extension_kernel)
 
-    def vc(i: int | Array) -> V:
+    def vc(i: Idx) -> V:
         return kernel_eigen.evecs[i]
 
-    def evl(i: int | Array) -> K:
+    def evl(i: Idx) -> R:
         return kernel_eigen.evals[i]
 
-    def lapl_evl(i: int | Array) -> K:
+    def lapl_evl(i: Idx) -> R:
         return lapl_spec[i]
 
-    def fn(i: int | Array) -> F[X, K]:
+    def fn(i: Idx) -> F[X, R]:
         return extension_op(
             kernel_eigen.dual_evecs[i] / jnp.sqrt(kernel_eigen.evals[i])
         )
 
     @partial(vmap, in_axes=(0, None))
-    def anal_eval(i: int | Array, v: V) -> K:
+    def anal_eval(i: Idx, v: V) -> R:
         return l2x.innerp(kernel_eigen.evecs[i], v)
 
     @partial(vmap, in_axes=(0, None))
-    def fn_eval(i: int | Array, x: X) -> R:
+    def fn_eval(i: Idx, x: X) -> R:
         return fn(i)(x)
 
-    idxs = jnp.arange(kernel_eigen.num_eigs)
+    num_eigs = knl.num_eigs_in_eigen(kernel_eigen)
+    idxs = jnp.arange(num_eigs)
     anal = partial(anal_eval, idxs)
     fn_anal = fun.compose(anal, l2x.incl)
     synth = vec.make_synthesis_operator(kernel_eigen.evecs, idxs)
@@ -1212,20 +1137,20 @@ def make_eigenbasis_bs[Ns: Shape, D: DTypeLike, X: Array](
     return basis
 
 
-def make_eigenbasis[D: DTypeLike, X: Array, N: Shape](
-    pars: KernelPars,
-    l2x: L2FnAlgebra[N, D, X, K],
-    kernel: Callable[[X, X], K],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+def make_eigenbasis(
+    kernel_pars: KernelPars,
+    l2x: alg.ImplementsL2FnAlgebra[X, R, V, R],
+    kernel: Callable[[X, X], R],
+    kernel_eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
     laplacian_method: Literal["lin", "log", "inv"] = "log",
-) -> KernelEigenbasis[X, R, V, Rs, int | Array]:
+) -> KernelEigenbasis:
     """Make kernel eigenbasis."""
-    match pars:
+    match kernel_pars:
         case DmKernelPars():
             basis = make_eigenbasis_dm(
                 l2x,
                 kernel,
-                pars.normalization,
+                kernel_pars.normalization,
                 laplacian_method,
                 kernel_eigen,
             )
@@ -1236,75 +1161,48 @@ def make_eigenbasis[D: DTypeLike, X: Array, N: Shape](
     return basis
 
 
-def slice_eigen(
-    eigen: KernelEigen[K, Ks, V, Vs],
-    which_eigs: int | tuple[int, int] | list[int] | None = None,
-) -> KernelEigen[K, Ks, V, Vs]:
-    """Slice KernelEigen object using `which_eigs` convention."""
-    match which_eigs:
-        case None:
-            sliced_eigen = eigen
-        case int() as num_eigs:
-            sliced_eigen = eigen.isel(slice(0, num_eigs))
-        case tuple() as idx:
-            sliced_eigen = eigen.isel(slice(idx[0], idx[1] + 1))
-        case list() as idxs:
-            sliced_eigen = eigen.isel(idxs)
-    return sliced_eigen
-
-
-# TODO: Consider automating the process of building these data-driven wrappers
-# using a decorator.
-def make_data_driven_eigenbasis[
-    Data: PyTree,
-    D: DTypeLike,
-    X: Array,
-    N: Shape,
-](
-    pars: KernelPars,
-    impl_l2: Callable[[Data], L2FnAlgebra[N, D, X, K]],
+def make_data_driven_eigenbasis[Data: PyTree](
+    kernel_pars: KernelPars,
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     which_eigs: int | tuple[int, int] | list[int] | None = None,
 ) -> Callable[
-    [Data, KernelEigen[K, Ks, V, Vs]],
-    KernelEigenbasis[X, K, V, Ks, int | Array],
+    [Data, knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs]], KernelEigenbasis
 ]:
     """Make data-driven kernel eigenbasis builder."""
 
     def _make_eigenbasis(
         data: Data,
-        kernel_eigen: KernelEigen[K, Ks, V, Vs],
-    ) -> KernelEigenbasis[X, K, V, Ks, int | Array]:
+        kernel_eigen: knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs],
+    ) -> KernelEigenbasis:
         l2x = impl_l2(data)
         if has_two_args(kernel):
             _kernel = kernel
         else:
             _kernel = partial(kernel, data)
-        _kernel_eigen = slice_eigen(kernel_eigen, which_eigs)
-        return make_eigenbasis(pars, l2x, _kernel, _kernel_eigen)
+        _kernel_eigen = knl.slice_eigen(kernel_eigen, which_eigs)
+        return make_eigenbasis(kernel_pars, l2x, _kernel, _kernel_eigen)
 
     return _make_eigenbasis
 
 
-# TODO: Generalize X to PyTree
 def make_kaf_analysis_operator[
     Data: PyTree,
-    X: Array,
+    Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
 ](
     impl_basis: Callable[
-        [Data, KernelEigen[K, Ks, V, Vs]],
-        KernelEigenbasis[X, K, V, Ks, int | Array],
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     ],
     num_steps: int,
-    which_samples: Optional[tuple[int, int]] = None,
-    jit: bool = False,
-) -> Callable[[Data, Rs, KernelEigen[K, Ks, V, Vs]], Rs]:
+    which_samples: tuple[int, int] | None = None,
+) -> Callable[[Data, V, Eigen], Rs]:
     """Make analysis operator for kernel analog forecast."""
 
     def anal(
         data: Data,
-        response: Rs,
-        kernel_eigen: KernelEigen[K, Ks, V, Vs],
+        response: V,
+        kernel_eigen: Eigen,
     ) -> Rs:
         if which_samples is not None:
             i0 = which_samples[0]
@@ -1319,32 +1217,27 @@ def make_kaf_analysis_operator[
         )
         return anal(time_shifted_response)
 
-    if jit:
-        return jax.jit(anal)
     return anal
 
 
 def make_kaf_prediction_function[
     Data: PyTree,
-    D: DTypeLike,
-    X: Array,
-    Ntst: Shape,
+    Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    TestData: PyTree,
 ](
     impl_basis: Callable[
-        [Data, KernelEigen[K, Ks, V, Vs]],
-        KernelEigenbasis[X, K, V, Ks, int | Array],
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     ],
-    impl_l2_tst: Callable[[Data], L2FnAlgebra[Ntst, D, X, K]],
-    jit: bool = False,
-) -> Callable[[Data, KernelEigen[K, Ks, V, Vs], Rs, Data], R]:
+    impl_l2_tst: Callable[
+        [TestData], alg.ImplementsL2FnAlgebra[X, R, Vtst, R]
+    ],
+) -> Callable[[Data, Eigen, Rs, TestData], Vtst]:
     """Make prediction function for kernel analog forecast."""
 
     def predict(
-        data: Data,
-        kernel_eigen: KernelEigen[K, Ks, V, Vs],
-        coeffs: Rs,
-        test_data: Data,
-    ) -> Rs:
+        data: Data, kernel_eigen: Eigen, coeffs: Rs, test_data: TestData
+    ) -> Vtst:
         basis = impl_basis(data, kernel_eigen)
         l2x_tst = impl_l2_tst(test_data)
 
@@ -1354,57 +1247,48 @@ def make_kaf_prediction_function[
 
         return l2x_tst.incl(partial(_predict, coeffs))
 
-    if jit:
-        return jax.jit(predict)
     return predict
 
 
-# TODO: Try moving this to nlsa.kernels by abstracting over L2FnAlgebra (using
-# the already defined protocol from alg, and making KernelEigen a protocol.
-def compute_kaf_preds[
-    Data: PyTree,
-    D: DTypeLike,
-    X: Array,
-    N: Shape,
-    Ntst: Shape,
-](
+def compute_kaf_preds[Data: PyTree, TestData: PyTree](
     kernel_pars: KernelPars,
-    impl_l2: Callable[[Data], L2FnAlgebra[N, D, X, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
     train_data: Data,
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+    kernel_eigen: KernelEigen,
     coeffs: Rs,
-    impl_l2_tst: Callable[[Data], L2FnAlgebra[Ntst, D, X, R]],
-    test_data: Data,
+    impl_l2_tst: Callable[
+        [TestData], alg.ImplementsL2FnAlgebra[X, R, Vtst, R]
+    ],
+    test_data: TestData,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
     jit: bool = True,
-) -> Array:
+) -> Rs:
     """Compute KAF predictions."""
     impl_basis = make_data_driven_eigenbasis(
         kernel_pars, impl_l2, kernel, which_eigs
     )
-    predict = make_kaf_prediction_function(impl_basis, impl_l2_tst, jit)
+    predict: Callable[[Data, KernelEigen, Rs, TestData], Vtst] = (
+        make_kaf_prediction_function(impl_basis, impl_l2_tst)
+    )
+    if jit:
+        predict = typestable_jit(predict)
     return predict(train_data, kernel_eigen, coeffs, test_data)
 
 
 def make_iterative_kaf_analysis_operator[
     Data: PyTree,
-    X: Array,
+    Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
 ](
     impl_basis: Callable[
-        [Data, KernelEigen[K, Ks, V, Vs]],
-        KernelEigenbasis[X, K, V, Ks, int | Array],
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     ],
-    which_samples: Optional[tuple[int, int]] = None,
-    jit: bool = False,
-) -> Callable[[Data, Rs, KernelEigen[K, Ks, V, Vs]], Rs]:
+    which_samples: tuple[int, int] | None = None,
+) -> Callable[[Data, Rs, Eigen], Rs]:
     """Make analysis operator for kernel analog forecast."""
 
-    def anal(
-        data: Data,
-        covariates: Xs,
-        kernel_eigen: KernelEigen[K, Ks, V, Vs],
-    ) -> Rs:
+    def anal(data: Data, covariates: Xs, kernel_eigen: Eigen) -> Rs:
         if which_samples is not None:
             i0 = which_samples[0]
             i1 = which_samples[1]
@@ -1415,37 +1299,33 @@ def make_iterative_kaf_analysis_operator[
         anal = vmap(basis.anal, in_axes=1)
         return anal(covariates[i0:i1])
 
-    if jit:
-        return jax.jit(anal)
     return anal
 
 
 def make_iterative_kaf_prediction_function[
     Data: PyTree,
-    D: DTypeLike,
-    Ntst: Shape,
+    Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    TestData: PyTree,
 ](
     impl_basis: Callable[
-        [Data, KernelEigen[K, Ks, V, Vs]],
-        KernelEigenbasis[Array, K, V, Ks, int | Array],
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     ],
-    impl_l2_tst: Callable[[Data], L2FnAlgebra[Ntst, D, Array, K]],
+    impl_l2_tst: Callable[
+        [TestData], alg.ImplementsL2FnAlgebra[X, X, Vtst, R]
+    ],
     num_steps: int,
-    jit: bool = False,
-) -> Callable[[Data, KernelEigen[K, Ks, V, Vs], Rs, Data], Array]:
+) -> Callable[[Data, Eigen, Rs, TestData], Vtst]:
     """Make prediction function for iterative KAF."""
 
     def predict(
-        data: Data,
-        kernel_eigen: KernelEigen[K, Ks, V, Vs],
-        coeffs: Xs,
-        test_data: Data,
-    ) -> Rs:
+        data: Data, kernel_eigen: Eigen, coeffs: Rs, test_data: TestData
+    ) -> Xs:
         basis = impl_basis(data, kernel_eigen)
         l2x_tst = impl_l2_tst(test_data)
 
         @partial(vmap, in_axes=(0, None))
-        def predict_snapshot(cs: Rs, x: Array) -> Array:
+        def predict_snapshot(cs: Rs, x: X) -> X:
             """Predict next snapshot."""
             return basis.fn_synth(cs)(x)
 
@@ -1454,43 +1334,42 @@ def make_iterative_kaf_prediction_function[
         )
         return l2x_tst.incl(_predict)
 
-    if jit:
-        return jax.jit(predict)
     return predict
 
 
 def make_iterative_kaf_prediction_function_with_delays[
     Data: PyTree,
-    D: DTypeLike,
-    Ntst: Shape,
+    Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    TestData: PyTree,
 ](
     impl_basis: Callable[
-        [Data, KernelEigen[K, Ks, V, Vs]],
-        KernelEigenbasis[Array, K, V, Ks, int | Array],
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     ],
-    impl_l2_tst: Callable[[Data], L2FnAlgebra[Ntst, D, Array, K]],
+    impl_l2_tst: Callable[
+        [TestData], alg.ImplementsL2FnAlgebra[X, X, Vtst, R]
+    ],
     num_delays: int,
     num_steps: int,
     project: bool = True,
-    jit: bool = False,
-) -> Callable[[Data, KernelEigen[K, Ks, V, Vs], Rs, Data], R]:
+) -> Callable[[Data, Eigen, Rs, TestData], Vtst]:
     """Make single-step prediction function for iterative KAF."""
 
     def predict(
         data: Data,
-        kernel_eigen: KernelEigen[K, Ks, V, Vs],
+        kernel_eigen: Eigen,
         coeffs: Rs,
-        test_data: Data,
-    ) -> Rs:
+        test_data: TestData,
+    ) -> Vtst:
         basis = impl_basis(data, kernel_eigen)
         l2x_tst = impl_l2_tst(test_data)
 
         @partial(vmap, in_axes=(0, None))
-        def predict_snapshot(cs: Rs, xs: Xs) -> Array:
+        def predict_snapshot(cs: Rs, xs: Xs) -> X:
             """Predict next snapshot from delay-embedded data."""
             return basis.fn_synth(cs)(xs)
 
-        def predict_window(cs: Rs, xs: Array) -> Array:
+        def predict_window(cs: Rs, xs: Xs) -> Xs:
             """Predict next delay embedding window."""
             x_next = predict_snapshot(cs, xs)
             x_prev_unrolled = xs.reshape((num_delays + 1, -1))[1:]
@@ -1516,82 +1395,41 @@ def make_iterative_kaf_prediction_function_with_delays[
 
         return preds
 
-    if jit:
-        return jax.jit(predict)
     return predict
 
 
-def compute_iterative_kaf_preds[
-    Data: PyTree,
-    D: DTypeLike,
-    N: Shape,
-    Ntst: Shape,
-](
+def compute_iterative_kaf_preds[Data: PyTree, TestData: PyTree](
     kernel_pars: KernelPars,
-    impl_l2: Callable[[Data], L2FnAlgebra[N, D, Array, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
     train_data: Data,
-    kernel: Callable[[Array, Array], R] | Callable[[Data, Array, Array], R],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+    kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
+    kernel_eigen: KernelEigen,
     coeffs: Rs,
-    impl_l2_tst: Callable[[Data], L2FnAlgebra[Ntst, D, Array, R]],
-    test_data: Data,
+    impl_l2_tst: Callable[
+        [TestData], alg.ImplementsL2FnAlgebra[X, R, Vtst, R]
+    ],
+    test_data: TestData,
     num_steps: int,
-    num_delays: Optional[int],
+    num_delays: int | None,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
     project: bool = True,
     jit: bool = True,
-) -> Array:
+) -> Vtst:
     """Compute iterative KAF predictions of the covariate variables."""
     impl_basis = make_data_driven_eigenbasis(
         kernel_pars, impl_l2, kernel, which_eigs
     )
+    predict: Callable[[Data, KernelEigen, Rs, TestData], Vtst]
     if num_delays is None or num_delays == 0:
         predict = make_iterative_kaf_prediction_function(
-            impl_basis, impl_l2_tst, num_steps, jit
+            impl_basis,
+            impl_l2_tst,
+            num_steps,
         )
     else:
         predict = make_iterative_kaf_prediction_function_with_delays(
-            impl_basis, impl_l2_tst, num_delays, num_steps, project, jit
+            impl_basis, impl_l2_tst, num_delays, num_steps, project
         )
+    if jit:
+        predict = typestable_jit(predict)
     return predict(train_data, kernel_eigen, coeffs, test_data)
-
-
-def plot_laplace_spectrum(
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
-    num_eigs_plt: Optional[int] = None,
-    i_fig: int = 1,
-) -> Figure:
-    """Plot spectrum of Laplacian eigenvalues."""
-    if num_eigs_plt is None:
-        num_eigs_plt = len(kernel_eigen.evals)
-    kernel_evals = kernel_eigen.evals[:num_eigs_plt]
-    lapl_evals = partial(
-        to_laplace_eigenvalues, kernel_evals, kernel_eigen.bandwidth
-    )
-    if plt.fignum_exists(i_fig):
-        plt.close(i_fig)
-    fig, ax = plt.subplots(num=i_fig, constrained_layout=True)
-    ax.plot(
-        jnp.arange(1, num_eigs_plt),
-        jnp.log10(lapl_evals("lin")[1:]),
-        ".",
-        label=r"$4(1-\lambda_j)/\epsilon^2$",
-    )
-    ax.plot(
-        jnp.arange(1, num_eigs_plt),
-        jnp.log10(lapl_evals("log")[1:]),
-        ".",
-        label=r"$-4\log\lambda_j/\epsilon^2$",
-    )
-    ax.plot(
-        jnp.arange(1, num_eigs_plt),
-        jnp.log10(lapl_evals("inv")[1:]),
-        ".",
-        label=r"$(\lambda_j^{-1}-1)/(\lambda_1-1)$",
-    )
-    ax.grid()
-    ax.legend()
-    ax.set_xlabel("$j$")
-    ax.set_ylabel(r"$\log_{10}\eta_j$")
-    ax.set_title("Laplacian eigenvalues")
-    return fig

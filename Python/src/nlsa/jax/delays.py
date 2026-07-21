@@ -1,5 +1,3 @@
-# pyright: basic
-
 """Implement delay-coordinate maps in JAX."""
 
 import jax
@@ -9,12 +7,17 @@ import nlsa.jax.dynamics as dyn
 from collections.abc import Callable
 from functools import partial
 from jax import Array
-from jax.scipy.signal import convolve
+from jax.scipy.signal import correlate, convolve
 from jax.sharding import Sharding
 from jax.typing import ArrayLike
 from nlsa.jax.sharding import shardit
 from nlsa.jax.utils import batch_map
-from typing import Literal, Optional, TypeGuard, overload
+from typing import (
+    Literal,
+    TypeGuard,
+    assert_never,
+    overload,
+)
 
 type A = Array
 type V = Array
@@ -24,6 +27,9 @@ type X = Array
 type Xd = Array
 type Xs = Array
 type Y = Array
+type R = Array
+type Rs = Array
+type Shape = tuple[int, ...]
 type F[*Xs, Y] = Callable[[*Xs], Y]
 
 
@@ -32,8 +38,8 @@ def _delay_eval_at(
     /,
     num_delays: int = 0,
     delay_step: int = 1,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, Y]], A]:
     """Make vectorized evaluation functional with delays."""
@@ -58,8 +64,8 @@ def _delay_eval_at_tuple(
     /,
     num_delays: int = 0,
     delay_step: int = 1,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, X, Y]], A]:
     """Make evaluation functional with delays for Array tuples."""
@@ -93,8 +99,8 @@ def delay_eval_at(
     /,
     num_delays: int = 0,
     delay_step: int = 1,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, Y]], A]: ...
 
@@ -105,8 +111,8 @@ def delay_eval_at(
     /,
     num_delays: int = 0,
     delay_step: int = 1,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, X, Y]], A]: ...
 
@@ -116,8 +122,8 @@ def delay_eval_at(
     /,
     num_delays: int = 0,
     delay_step: int = 1,
-    batch_size: Optional[int] = None,
-    out_sharding: Optional[Sharding] = None,
+    batch_size: int | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, Y]], A] | Callable[[F[X, X, Y]], A]:
     """Make evaluation functional with delays for Arrays or Array tuples.
@@ -271,51 +277,6 @@ def batch_delay_eval_at(
     return ev
 
 
-# def delay_eval2_at(xs: Xs, vs: Vs, /, num_delays: int = 0,
-#                    delay_step: int = 1) -> Callable[[F[Xd, Vd, Y]], A]:
-#     """Make vectorized bivariate evaluation functional with delays."""
-#     num_delay_samples = xs.shape[0] - num_delays*delay_step
-#     inds = jnp.arange(0, num_delays*delay_step + 1, delay_step)
-
-#     def ev(f: F[Xd, Vd, Y]) -> A:
-#         @jax.vmap
-#         def evf(i: ArrayLike) -> Y:
-#             xd = jnp.take(xs, inds + i, axis=0)
-#             vd = jnp.take(vs, inds + i, axis=0)
-#             # xs_shift = jnp.roll(xs, -i, axis=0)
-#             # xd = xs_shift[:(num_delays*delay_step + 1):delay_step]
-#             # vs_shift = jnp.roll(vs, -i, axis=0)
-#             # vd = vs_shift[:(num_delays*delay_step + 1):delay_step]
-#             # return f(xd.ravel(), vd.ravel())
-#             return f(jnp.hstack(xd), jnp.hstack(vd))
-#         return evf(jnp.arange(num_delay_samples))
-#     return ev
-
-
-# def batch_delay_eval2_at(xs: Xs, vs: Vs, /, batch_size: int,
-#                          num_delays: int = 0, delay_step: int = 1) \
-#         -> Callable[[F[Xd, Vd, Y]], A]:
-#     """Make batched bivariate evaluation functional with delays."""
-#     num_delay_samples = xs.shape[0] - num_delays*delay_step
-#     assert num_delay_samples % batch_size == 0, \
-#         "Number of delay samples must be divisible by the batch size."
-#     delay_batch_size = batch_size + num_delays*delay_step
-#     num_batches = num_delay_samples // batch_size
-#     eval_at = partial(delay_eval2_at, num_delays=num_delays,
-#                       delay_step=delay_step)
-#     inds = jnp.arange(delay_batch_size)
-
-#     def ev(f: F[Xd, Vd, Y]) -> A:
-#         def evf(i: int) -> Y:
-#             xs_i = jnp.take(xs, inds + i*batch_size, axis=0)
-#             vs_i = jnp.take(vs, inds + i*batch_size, axis=0)
-#             return eval_at(xs_i, vs_i)(f)
-
-#         ys = jax.lax.map(evf, jnp.arange(num_batches))
-#         return ys.reshape((num_delay_samples, -1))
-#     return ev
-
-
 def make_central_fd_operator(
     order: Literal[2, 4, 6, 8] = 2, dt: float = 1.0, extrap: bool = True
 ) -> F[V, V]:
@@ -433,20 +394,18 @@ def make_fd_operator(
     """Make finite-difference operator on vectors."""
     match mode:
         case "central":
-            if is_valid_central_fd_order(order):
-                fd_op = make_central_fd_operator(
-                    order=order, dt=dt, extrap=extrap
-                )
+            assert is_valid_central_fd_order(order)
+            fd_op = make_central_fd_operator(order=order, dt=dt, extrap=extrap)
         case "forward":
-            if is_valid_forward_fd_order(order):
-                fd_op = make_forward_fd_operator(
-                    order=order, dt=dt, extrap=extrap
-                )
+            assert is_valid_forward_fd_order(order)
+            fd_op = make_forward_fd_operator(order=order, dt=dt, extrap=extrap)
         case "backward":
-            if is_valid_backward_fd_order(order):
-                fd_op = make_backward_fd_operator(
-                    order=order, dt=dt, extrap=extrap
-                )
+            assert is_valid_backward_fd_order(order)
+            fd_op = make_backward_fd_operator(
+                order=order, dt=dt, extrap=extrap
+            )
+        case _ as unreachable:
+            assert_never(unreachable)
     return fd_op
 
 
@@ -491,59 +450,132 @@ def hankel(
     delay_embed = dyn.make_fin_orbit(shift_op, num_steps=num_delays + 1)
     # xds = jnp.swapaxes(delay_embed(xs), 0, 1)[:num_delay_samples, :]
     xds = delay_embed(xs)[:, :num_delay_samples]
-    if delay_axis == 1:
-        return jnp.swapaxes(xds, 0, 1)
-    if flatten:
-        return xds.reshape((num_delay_samples, -1))
-    return xds
+    match delay_axis, flatten:
+        case 1, False:
+            return jnp.swapaxes(xds, 0, 1)
+        case 1, True:
+            return jnp.swapaxes(xds, 0, 1).reshape((num_delay_samples, -1))
+        case _:
+            return xds
 
 
-def make_laplace_transform(
+def trapezoidal_quadrature_weights(dt: float, num_quad: int) -> Array:
+    """Compute weights for trapezoidal quadrature.
+
+    num_quad is the number of quadrature intervals.
+    """
+    ws = jnp.concatenate(
+        (
+            jnp.atleast_1d(dt / 2),
+            jnp.full(num_quad - 1, dt),
+            jnp.atleast_1d(dt / 2),
+        )
+    )
+    return ws
+
+
+def simpson_quadrature_weights(dt: float, num_quad: int) -> Array:
+    """Compute weights for Simpson quadrature.
+
+    num_quad is the number of quadrature intervals; it must be even.
+    """
+    core = jnp.tile(jnp.array([4 * dt / 3, 2 * dt / 3]), num_quad // 2)[:-1]
+    ws = jnp.concatenate(
+        (
+            jnp.atleast_1d(dt / 3),
+            core,
+            jnp.atleast_1d(dt / 3),
+        )
+    )
+    return ws
+
+
+def laplace_transform_weights(z: float, dt: float, num_quad: int) -> Array:
+    """Compute weights for Laplace transform.
+
+    num_quad is the number of quadrature intervals.
+    """
+    w = jnp.exp(-z * dt * jnp.arange(num_quad + 1))
+    return w
+
+
+def gauss_transform_weights(z: float, dt: float, num_quad: int) -> Array:
+    """Compute weights for Gauss transform.
+
+    num_quad is the number of quadrature intervals.
+    """
+    w = jnp.exp(-(((z * dt) * jnp.arange(num_quad + 1)) ** 2))
+    return w
+
+
+def make_integral_transform(
+    dt: float,
     num_quad: int,
-    dt: float = 1,
-    z: float = 1,
-    weight_sharding: Optional[Sharding] = None,
-    out_sharding: Optional[Sharding] = None,
+    transform_weights: Callable[[float, int], Array],
+    quadrature_weights: Callable[[float, int], Array],
+    weight_sharding: Sharding | None = None,
+    out_sharding: Sharding | None = None,
     jit: bool = False,
-) -> F[V, V]:
-    """Make Laplace transform operator based on trapezoidal rule."""
-    if z >= 0:
-        w = jnp.flip(jnp.array(jnp.exp(-z * dt * jnp.arange(num_quad))))
-    else:
-        w = jnp.array(jnp.exp(z * dt * jnp.arange(num_quad)))
+) -> Callable[[V], V]:
+    """Make integral transform operator."""
+    w = transform_weights(dt, num_quad) * quadrature_weights(dt, num_quad)
     if weight_sharding is not None:
         w = jax.lax.with_sharding_constraint(w, shardings=weight_sharding)
 
     @partial(shardit, sharding=out_sharding)
-    def lapl(v: V) -> V:
-        vw = convolve(v, w, mode="valid")
-        return (vw[:-1] + vw[1:]) * dt / 2
+    def transf(v: V) -> V:
+        return correlate(v, w, mode="valid", method="fft")
 
     if jit:
-        return jax.jit(lapl)
-    return lapl
+        return jax.jit(transf)
+    return transf
 
 
-def make_gauss_transform(
-    num_quad: int,
-    dt: float = 1,
-    z: float = 1,
-    weight_sharding: Optional[Sharding] = None,
-    out_sharding: Optional[Sharding] = None,
-) -> F[V, V]:
-    """Make Dawson transform operator based on trapezoidal rule.
+# def make_laplace_transform(
+#     num_quad: int,
+#     dt: float = 1,
+#     z: float = 1,
+#     weight_sharding: Optional[Sharding] = None,
+#     out_sharding: Optional[Sharding] = None,
+#     jit: bool = False,
+# ) -> F[V, V]:
+#     """Make Laplace transform operator based on trapezoidal rule."""
+#     if z >= 0:
+#         w = jnp.flip(jnp.array(jnp.exp(-z * dt * jnp.arange(num_quad))))
+#     else:
+#         w = jnp.array(jnp.exp(z * dt * jnp.arange(num_quad)))
+#     if weight_sharding is not None:
+#         w = jax.lax.with_sharding_constraint(w, shardings=weight_sharding)
 
-    Computes the forward integral with Gaussian weights
-    exp(-(z * k * dt)**2). The skew-symmetric Iz matrix is assembled
-    from forward and backward Gram matrices in compute_iz_matrix.
-    """
-    w = jnp.flip(jnp.array(jnp.exp(-((z * dt * jnp.arange(num_quad)) ** 2))))
-    if weight_sharding is not None:
-        w = jax.lax.with_sharding_constraint(w, shardings=weight_sharding)
+#     @partial(shardit, sharding=out_sharding)
+#     def lapl(v: V) -> V:
+#         vw = convolve(v, w, mode="valid")
+#         return (vw[:-1] + vw[1:]) * dt / 2
 
-    @partial(shardit, sharding=out_sharding)
-    def iz_matrix(v: V) -> V:
-        vw = convolve(v, w, mode="valid")
-        return (vw[:-1] + vw[1:]) * dt / 2
+#     if jit:
+#         return jax.jit(lapl)
+#     return lapl
 
-    return iz_matrix
+
+# def make_gauss_transform(
+#     num_quad: int,
+#     dt: float = 1,
+#     z: float = 1,
+#     weight_sharding: Optional[Sharding] = None,
+#     out_sharding: Optional[Sharding] = None,
+# ) -> F[V, V]:
+#     """Make Dawson transform operator based on trapezoidal rule.
+
+#     Computes the forward integral with Gaussian weights
+#     exp(-(z * k * dt)**2).
+#     """
+#     w = jnp.flip(jnp.array(jnp.exp(-((z * dt * jnp.arange(num_quad)) ** 2))))
+#     if weight_sharding is not None:
+#         w = jax.lax.with_sharding_constraint(w, shardings=weight_sharding)
+
+#     @partial(shardit, sharding=out_sharding)
+#     def iz_matrix(v: V) -> V:
+#         vw = convolve(v, w, mode="valid")
+#         return (vw[:-1] + vw[1:]) * dt / 2
+
+#     return iz_matrix

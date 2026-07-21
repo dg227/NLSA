@@ -1,10 +1,11 @@
-"""Computation and plotting functions for analysis of the Lorenz 63 system."""
+"""Computation and plotting functions for the Lorenz 63 system."""
 
 import diffrax as dfx
 import jax
 import jax.numpy as jnp
 import matplotlib.figure as mpf
 import matplotlib.pyplot as plt
+import nlsa.abstract_algebra as alg
 import nlsa.function_algebra as fun
 import nlsa.jax.delays as dl
 import nlsa.jax.dynamics as dyn
@@ -17,7 +18,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from diffrax import Dopri5, ODETerm, PIDController, SaveAt
 from functools import partial
-from jax import Array, jit, vmap
+from jax import Array, vmap
 from jax.typing import DTypeLike
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
@@ -31,6 +32,7 @@ from nlsa.jax.stats import (
     anomaly_correlation_coefficient,
     normalized_rmse,
 )
+from nlsa.jax.typing import typestable_jit
 from nlsa.jax.vector_algebra import (
     L2FnAlgebra,
     L2FnAlgebraShardings,
@@ -42,10 +44,10 @@ from nlsa_models.core import (
     initialize_jax as initialize_jax,
     initialize_matplotlib as initialize_matplotlib,
 )
-from nlsa.typing import SliceItem
+from nlsa.typing import SliceItem, cast_like
 from numpy.typing import ArrayLike
 from tabulate import tabulate
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 if TYPE_CHECKING:
     type Device = Any
@@ -108,10 +110,10 @@ class DataPars[N: int]:
     velocity_covariate: bool = False
     """Include time tendencies (velocities) in covariate data."""
 
-    velocity_fd_order: Optional[Literal[2, 4, 6, 8]] = None
+    velocity_fd_order: Literal[2, 4, 6, 8] | None = None
     """Finite-difference order for velocity data."""
 
-    eval_batch_size: Optional[int] = None
+    eval_batch_size: int | None = None
     """Number of batches for batchwise evaluation."""
 
     @property
@@ -232,7 +234,7 @@ class Data(NamedTuple):
 
 
 def to_skill_scores(
-    dict_in: dict[str, ArrayLike], dtype: Optional[DTypeLike] = None
+    dict_in: dict[str, ArrayLike], dtype: DTypeLike | None = None
 ) -> SkillScores:
     """Convert dict of numpy ArrayLike objects to SkillScores TypedDict."""
     try:
@@ -249,7 +251,7 @@ def generate_data[N: int](
     pars: DataPars[N],
     dtype: DTypeLike,
     fp: Literal["F32", "F64"] = "F32",
-    device: Optional[Device] = None,
+    device: Device | None = None,
 ) -> Data:
     """Generate L63 data."""
     if device is None:
@@ -275,12 +277,11 @@ def generate_data[N: int](
             rsp = r3.make_observable_y(dtype)
         case "z":
             rsp = r3.make_observable_z(dtype)
-    covariate = jit(vmap(cov))
-    response = jit(vmap(rsp))
+    covariate = typestable_jit(vmap(cov))
+    response = typestable_jit(vmap(rsp))
     v = dyn.make_l63_vector_field()
     num_ode_samples = pars.num_total_samples + pars.num_spinup
 
-    @jax.jit
     def diffeqsolve(y0: Array) -> dfx.Solution:
         solution = dfx.diffeqsolve(
             terms=ODETerm(dyn.from_autonomous(v)),
@@ -295,6 +296,8 @@ def generate_data[N: int](
         )
         return solution
 
+    diffeqsolve = cast_like(diffeqsolve, jax.jit(diffeqsolve))
+
     with jax.default_device(_device):
         if fp == "F32":
             jax.config.update("jax_enable_x64", True)
@@ -307,7 +310,7 @@ def generate_data[N: int](
     zs = response(xs)
     if pars.velocity_covariate:
         assert pars.velocity_fd_order is not None
-        fd_op = jit(
+        fd_op = typestable_jit(
             vmap(
                 dl.make_fd_operator(
                     order=pars.velocity_fd_order, mode="central", dt=pars.dt
@@ -316,6 +319,7 @@ def generate_data[N: int](
                 out_axes=-1,
             )
         )
+
         covariates = jnp.stack((ys, fd_op(ys)), axis=1)
     else:
         covariates = ys
@@ -368,7 +372,7 @@ def make_data_driven_l2_space[N: int, D: DTypeLike](
                             flatten=True,
                         )
                     if jit:
-                        hankel = jax.jit(hankel)
+                        hankel = typestable_jit(hankel)
                     incl = vec.batch_eval_at(
                         jnp.asarray(
                             hankel(data.covariates[i0:i1]),
@@ -404,7 +408,7 @@ def make_data_driven_tangent_evaluation_functional_fd[N: int](
     pars: DataPars[N],
     dtype: DTypeLike,
     fd_order: Literal[2, 4, 6, 8],
-    batch_size: Optional[int] = None,
+    batch_size: int | None = None,
     shardings: L2FnAlgebraShardings = L2FnAlgebraShardings(),
     jit: bool = False,
 ) -> Callable[[Data], Callable[[F[Yd, TYd, R]], V]]:
@@ -438,7 +442,7 @@ def make_data_driven_tangent_evaluation_functional_fd[N: int](
                 out_axes=-1,
             )
         if jit:
-            fd_op = jax.jit(fd_op)
+            fd_op = typestable_jit(fd_op)
 
         num_half_fd = fd_order // 2
         i0 = pars.delay_embedding_origin
@@ -486,7 +490,7 @@ def make_data_driven_tangent_evaluation_functional_fd[N: int](
                             flatten=True,
                         )
                     if jit:
-                        hankel = jax.jit(hankel)
+                        hankel = typestable_jit(hankel)
                     eval_tx = vec.batch_eval_at(
                         (
                             jnp.asarray(
@@ -527,11 +531,19 @@ def make_data_driven_tangent_evaluation_functional_fd[N: int](
     return impl_eval_tx
 
 
+# TODO: Consider renaming this function to something like
+# make_data_driven_evaluation_functional. As it stands, this function doesn't
+# do anything related specifically to quadrature and it is also useful in other
+# contexts; e.g., KAF of Koopman eigenfunctions. The input argument num_quad
+# could be renamed to something like num_after and we could add another input
+# argument num_before to allow evaluation on either side of the main analysis
+# time interval. In fact it looks like this modified function could replace
+# a large chunk of make_data_driven_l2_space.
 def make_data_driven_quadrature_evaluation_functional[N: int](
     pars: DataPars[N],
     dtype: DTypeLike,
     num_quad: int,
-    batch_size: Optional[int] = None,
+    batch_size: int | None = None,
     shardings: L2FnAlgebraShardings = L2FnAlgebraShardings(),
     jit: bool = False,
 ) -> Callable[[Data], Callable[[F[Yd, R]], V]]:
@@ -573,7 +585,7 @@ def make_data_driven_quadrature_evaluation_functional[N: int](
                             flatten=True,
                         )
                     if jit:
-                        hankel = jax.jit(hankel)
+                        hankel = typestable_jit(hankel)
 
                     eval_quad = vec.batch_eval_at(
                         jnp.asarray(
@@ -601,12 +613,12 @@ def make_data_driven_quadrature_evaluation_functional[N: int](
     return impl_eval_quad
 
 
-def compute_kaf_response_coeffs[N: int, D: DTypeLike](
+def compute_kaf_response_coeffs[N: int](
     pars: tuple[DataPars[N], KernelPars],
-    impl_l2: Callable[[Data], L2FnAlgebra[tuple[N], D, Yd, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
     train_data: Data,
     kernel: Callable[[Yd, Yd], R] | Callable[[Data, Yd, Yd], R],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+    kernel_eigen: KernelEigen,
     num_steps: int,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
     jit: bool = True,
@@ -618,24 +630,27 @@ def compute_kaf_response_coeffs[N: int, D: DTypeLike](
     impl_basis = knl.make_data_driven_eigenbasis(
         kernel_pars, impl_l2, kernel, which_eigs
     )
-    anal = knl.make_kaf_analysis_operator(
-        impl_basis,
-        num_steps,
-        which_samples=(i0, i1),
-        jit=jit,
+    anal: Callable[[Data, Vs, KernelEigen], Rs] = (
+        knl.make_kaf_analysis_operator(
+            impl_basis,
+            num_steps,
+            which_samples=(i0, i1),
+        )
     )
+    if jit:
+        anal = typestable_jit(anal)
     return anal(train_data, train_data.responses, kernel_eigen)
 
 
-def compute_iterative_kaf_covariate_coeffs[N: int, D: DTypeLike](
+def compute_iterative_kaf_covariate_coeffs[N: int](
     pars: tuple[DataPars[N], KernelPars],
-    impl_l2: Callable[[Data], L2FnAlgebra[tuple[N], D, Yd, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
     train_data: Data,
     kernel: Callable[[Yd, Yd], R] | Callable[[Data, Yd, Yd], R],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+    kernel_eigen: KernelEigen,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
     jit: bool = True,
-) -> Array:
+) -> Rs:
     """Compute basis expansion coefficients for iterative KAF."""
     data_pars, kernel_pars = pars
     i0 = data_pars.delay_embedding_end + 1
@@ -643,25 +658,28 @@ def compute_iterative_kaf_covariate_coeffs[N: int, D: DTypeLike](
     impl_basis = knl.make_data_driven_eigenbasis(
         kernel_pars, impl_l2, kernel, which_eigs
     )
-    anal = knl.make_iterative_kaf_analysis_operator(
-        impl_basis,
-        which_samples=(i0, i1),
-        jit=jit,
+    anal: Callable[[Data, Vs, KernelEigen], Rs] = (
+        knl.make_iterative_kaf_analysis_operator(
+            impl_basis,
+            which_samples=(i0, i1),
+        )
     )
+    if jit:
+        anal = typestable_jit(anal)
     return anal(train_data, train_data.covariates, kernel_eigen)
 
 
 def compute_koopman_response_coeffs[N: int, D: DTypeLike, L: int](
     pars: tuple[DataPars[N], KernelPars, KoopmanPars],
     c_l: L2VectorAlgebra[tuple[L], D],
-    impl_l2: Callable[[Data], L2FnAlgebra[tuple[N], D, Yd, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
     train_data: Data,
     kernel: Callable[[Yd, Yd], R] | Callable[[Data, Yd, Yd], R],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
-    koopman_eigen: KoopmanEigen[C, Cs, Css],
+    kernel_eigen: KernelEigen,
+    koopman_eigen: KoopmanEigen,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
     jit: bool = True,
-) -> Array:
+) -> Rs:
     """Compute basis expansion coefficients for Koopman forecast."""
     data_pars, kernel_pars, koopman_pars = pars
     match koopman_pars.which_eigs_galerkin:
@@ -684,11 +702,14 @@ def compute_koopman_response_coeffs[N: int, D: DTypeLike, L: int](
     )
     i0 = data_pars.delay_embedding_end
     i1 = i0 + data_pars.num_samples
-    anal = koop.make_koopman_analysis_operator(
-        impl_koopman_basis,
-        which_samples=(i0, i1),
-        jit=jit,
+    anal: Callable[[Data, Vs, KernelEigen, KoopmanEigen], Rs] = (
+        koop.make_koopman_analysis_operator(
+            impl_koopman_basis,
+            which_samples=(i0, i1),
+        )
     )
+    if jit:
+        anal = typestable_jit(anal)
     return anal(train_data, train_data.responses, kernel_eigen, koopman_eigen)
 
 
@@ -702,16 +723,18 @@ def compute_response_skill_scores[Ntst: int](
     num_pred_steps = fys_pred.shape[1] - 1
     i0 = pars.delay_embedding_end
     i1 = i0 + num_pred_steps + pars.num_samples
-    hankel = jax.jit(partial(dl.hankel, num_delays=num_pred_steps))
+    hankel = typestable_jit(partial(dl.hankel, num_delays=num_pred_steps))
     fxs_true = hankel(test_data.responses[i0:i1])
     if dropna:
         mask = ~jnp.isnan(fys_pred).any(axis=1)
         fys_pred = fys_pred[mask]
         fxs_true = fxs_true[mask]
-    nrmses = jax.jit(vmap(normalized_rmse, in_axes=1))(fxs_true, fys_pred)
-    accs = jax.jit(vmap(anomaly_correlation_coefficient, in_axes=1))(
-        fxs_true, fys_pred
+    normalized_rmses = typestable_jit(vmap(normalized_rmse, in_axes=1))
+    nrmses = normalized_rmses(fxs_true, fys_pred)
+    anomaly_correlation_coefficients = typestable_jit(
+        vmap(anomaly_correlation_coefficient, in_axes=1)
     )
+    accs = anomaly_correlation_coefficients(fxs_true, fys_pred)
     scores: SkillScores = {"nrmses": nrmses, "accs": accs}
     return scores
 
@@ -723,20 +746,20 @@ def compute_covariate_skill_scores[Ntst: int](
     num_pred_steps = len(ys_pred) - 1
     i0 = pars.delay_embedding_end
     i1 = i0 + num_pred_steps + pars.num_samples
-    hankel = jax.jit(
-        fun.compose(
-            partial(jnp.swapaxes, axis1=0, axis2=1),
-            vmap(
-                partial(dl.hankel, num_delays=num_pred_steps),
-                in_axes=-1,
-                out_axes=-1,
-            ),
-        )
+    hankel = fun.compose(
+        partial(jnp.swapaxes, axis1=0, axis2=1),
+        vmap(
+            partial(dl.hankel, num_delays=num_pred_steps),
+            in_axes=-1,
+            out_axes=-1,
+        ),
     )
-    normalized_rmses = jax.jit(
+    hankel = cast_like(hankel, jax.jit(hankel))
+
+    normalized_rmses = typestable_jit(
         vmap(vmap(stats.normalized_rmse, in_axes=1), in_axes=2)
     )
-    anomaly_correlation_coefficients = jax.jit(
+    anomaly_correlation_coefficients = typestable_jit(
         vmap(vmap(stats.anomaly_correlation_coefficient, in_axes=1), in_axes=2)
     )
     ys_true = hankel(test_data.covariates[i0:i1])
@@ -800,31 +823,29 @@ def compute_trajectory_stats[N: int](
     return train_stats, traj_stats
 
 
-def plot_bandwidth_function[N: int, Ntst: int, D: DTypeLike](
+def plot_bandwidth_function[N: int, Ntst: int](
     pars: DataPars[N],
-    impl_l2y: Callable[[Data], L2FnAlgebra[tuple[N], D, Yd, R]],
+    impl_l2y: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
     bandwidth_func: Callable[[Data, Yd], R],
     train_data: Data,
-    test_pars: Optional[DataPars[Ntst]] = None,
-    impl_l2y_tst: Optional[
-        Callable[[Data], L2FnAlgebra[tuple[Ntst], D, Yd, R]]
-    ] = None,
-    test_data: Optional[Data] = None,
+    test_pars: DataPars[Ntst] | None = None,
+    impl_l2y_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]] | None = None,
+    test_data: Data | None = None,
     delay_plot_mode: Literal["backward", "central"] = "central",
-    num_plt: Optional[int] = None,
-    num_plt_tst: Optional[int] = None,
+    num_plt: int | None = None,
+    num_plt_tst: int | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
 ) -> Figure:
     """Plot bandwidth function on training and, optionally, test data."""
 
-    @jax.jit
+    @typestable_jit
     def bandwidths(xs_train: Data) -> V:
         l2y = impl_l2y(xs_train)
         return l2y.incl(partial(bandwidth_func, xs_train))
 
-    @jax.jit
+    @typestable_jit
     def bandwidths_tst(xs_train: Data, xs_tst: Data) -> Vtst:
         if impl_l2y_tst is not None:
             l2y_tst = impl_l2y(xs_tst)
@@ -858,12 +879,10 @@ def plot_bandwidth_function[N: int, Ntst: int, D: DTypeLike](
         num_plt = pars.num_samples
     i1 = i0 + num_plt
     bw_vals = bandwidths(train_data)
-    assert isinstance(bw_vals, Array)
     vmin = float(jnp.min(bw_vals))
     vmax = float(jnp.max(bw_vals))
     if impl_l2y_tst is not None and test_data is not None:
         bw_vals_tst = bandwidths_tst(train_data, test_data)
-        assert isinstance(bw_vals_tst, Array)
         vmin = min(vmin, float(jnp.max(bw_vals_tst)))
         vmax = max(vmax, float(jnp.max(bw_vals_tst)))
     else:
@@ -926,20 +945,18 @@ def plot_bandwidth_function[N: int, Ntst: int, D: DTypeLike](
     return fig
 
 
-def make_kernel_evecs_plotter[N: int, Ntst: int, D: DTypeLike](
+def make_kernel_evecs_plotter[N: int, Ntst: int](
     pars: tuple[DataPars[N], KernelPars],
-    impl_l2: Callable[[Data], L2FnAlgebra[tuple[N], D, Yd, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
     train_data: Data,
-    kernel_eigen: KernelEigen[Rs, Vs, V, R],
-    test_pars: Optional[DataPars[Ntst]] = None,
-    impl_l2_tst: Optional[
-        Callable[[Data], L2FnAlgebra[tuple[Ntst], D, Yd, R]]
-    ] = None,
-    test_data: Optional[Data] = None,
-    kernel: Optional[Callable[[Data, Yd, Yd], R]] = None,
+    kernel_eigen: KernelEigen,
+    test_pars: DataPars[Ntst] | None = None,
+    impl_l2_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]] | None = None,
+    test_data: Data | None = None,
+    kernel: Callable[[Data, Yd, Yd], R] | None = None,
     delay_plot_mode: Literal["backward", "central"] = "backward",
-    num_plt: Optional[int] = None,
-    num_plt_tst: Optional[int] = None,
+    num_plt: int | None = None,
+    num_plt_tst: int | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
@@ -956,10 +973,10 @@ def make_kernel_evecs_plotter[N: int, Ntst: int, D: DTypeLike](
     else:
         impl_kernel_basis = None
 
-    @jax.jit
+    @typestable_jit
     def efunc(
         _train_data: Data,
-        _kernel_eigen: KernelEigen[Rs, Vs, V, R],
+        _kernel_eigen: KernelEigen,
         _test_data: Data,
         j: int | Array,
     ) -> Vtst:
@@ -1011,7 +1028,6 @@ def make_kernel_evecs_plotter[N: int, Ntst: int, D: DTypeLike](
         amax = float(jnp.max(jnp.abs(evec)))
         if test_data is not None:
             evec_tst = efunc(train_data, kernel_eigen, test_data, j)
-            assert isinstance(evec_tst, Array)
             amax = max(amax, float(jnp.max(jnp.abs(evec_tst))))
         else:
             evec_tst = None
@@ -1067,21 +1083,17 @@ def make_kernel_evecs_plotter[N: int, Ntst: int, D: DTypeLike](
 def make_koopman_evecs_plotter[N: int, Ntst: int, D: DTypeLike, L: int](
     pars: tuple[DataPars[N], KernelPars, KoopmanPars],
     c_l: L2VectorAlgebra[tuple[L], D],
-    impl_l2: Callable[[Data], L2FnAlgebra[tuple[N], D, Yd, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
     train_data: Data,
-    kernel_eigen: KernelEigen[Rs, Vs, V, R],
+    kernel_eigen: KernelEigen,
     koopman_eigen: KoopmanEigen[C, Cs, Css],
-    test_pars: Optional[DataPars[Ntst]] = None,
-    impl_l2_tst: Optional[
-        Callable[[Data], L2FnAlgebra[tuple[Ntst], D, Yd, R]]
-    ] = None,
-    test_data: Optional[Data] = None,
-    kernel: Optional[
-        Callable[[Yd, Yd], R] | Callable[[Data, Yd, Yd], R]
-    ] = None,
+    test_pars: DataPars[Ntst] | None = None,
+    impl_l2_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]] | None = None,
+    test_data: Data | None = None,
+    kernel: Callable[[Yd, Yd], R] | Callable[[Data, Yd, Yd], R] | None = None,
     delay_plot_mode: Literal["backward", "central"] = "backward",
-    num_plt: Optional[int] = None,
-    num_plt_tst: Optional[int] = None,
+    num_plt: int | None = None,
+    num_plt_tst: int | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
@@ -1113,7 +1125,7 @@ def make_koopman_evecs_plotter[N: int, Ntst: int, D: DTypeLike, L: int](
     @jax.jit
     def efunc(
         _train_data: Data,
-        _kernel_eigen: KernelEigen[Rs, Vs, V, R],
+        _kernel_eigen: KernelEigen,
         _koopman_eigen: KoopmanEigen[C, Cs, Css],
         _test_data: Data,
         j: Array,
@@ -1373,7 +1385,7 @@ def make_running_pred_plotter[Ntst: int](
     test_data: Data,
     preds: Vtsts,
     what: Literal["covariates", "responses"] = "responses",
-    num_plt_tst: Optional[int] = None,
+    num_plt_tst: int | None = None,
     plt_step_tst: int = 1,
     i_fig: int = 1,
 ) -> tuple[Figure, F[int, None]]:
@@ -1661,8 +1673,8 @@ def plot_reconstructed_trajectory[N: int](
     pars: DataPars[N],
     train_data: Data,
     recon_data: Ys,
-    num_plt: Optional[int] = None,
-    num_plt_tst: Optional[int] = None,
+    num_plt: int | None = None,
+    num_plt_tst: int | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,

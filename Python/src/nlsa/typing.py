@@ -6,15 +6,16 @@ from collections.abc import Iterable, Sized
 from numpy.typing import ArrayLike
 from types import EllipsisType
 from typing import (
-    Optional,
+    Any,
     Protocol,
     Self,
-    Sequence,
     SupportsIndex,
     TypeIs,
+    cast,
     overload,
     runtime_checkable,
 )
+from collections.abc import Sequence
 
 
 @runtime_checkable
@@ -36,9 +37,12 @@ class SupportsRealComplex[R](Protocol):
         ...
 
 
+_ARRAY_LIKE_TYPES = (jax.Array, np.ndarray, int, float, bool, complex)
+
+
 def is_array_like(obj: object) -> TypeIs[ArrayLike]:
     """Check if object is ArrayLike."""
-    return isinstance(obj, (np.ndarray, jax.Array))
+    return isinstance(obj, _ARRAY_LIKE_TYPES)
 
 
 def is_real_complex_array_like(
@@ -59,9 +63,9 @@ class Subscriptable[KT, VT](Protocol):
 
 type SliceItem = (
     slice[
-        Optional[SupportsIndex],
-        Optional[SupportsIndex],
-        Optional[SupportsIndex],
+        SupportsIndex | None,
+        SupportsIndex | None,
+        SupportsIndex | None,
     ]
     | list[SupportsIndex]
     | Sequence[SupportsIndex]
@@ -137,3 +141,8 @@ class SizedIterableAndSliceable[VT](
     """Protocol for sized iterable and slicable objects."""
 
     pass
+
+
+def cast_like[T](_: T, target_obj: Any) -> T:
+    """Declare that target_obj has the same type as reference_obj."""
+    return cast(T, target_obj)

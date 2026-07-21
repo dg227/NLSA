@@ -9,7 +9,8 @@ from jax import Array
 from jax.typing import DTypeLike
 from pathlib import Path
 from tabulate import tabulate
-from typing import TYPE_CHECKING, Any, Literal, Optional, Sequence, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from collections.abc import Sequence
 
 if TYPE_CHECKING:
     type Device = Any
@@ -27,7 +28,7 @@ class JaxEnv:
     devices: list[Device] = field(default_factory=list)
     """GPU/TPU devices."""
 
-    xla_mem_fraction: Optional[str] = None
+    xla_mem_fraction: str | None = None
     """Preallocated memory fraction on accelerators."""
 
     real_dtype: DTypeLike = jnp.float32
@@ -36,7 +37,7 @@ class JaxEnv:
     complex_dtype: DTypeLike = jnp.complex64
     """DType for complex numbers."""
 
-    cache_dir: Optional[Path] = None
+    cache_dir: Path | None = None
     """Cache directory for JAX compilation."""
 
     def __post_init__(self) -> None:
@@ -72,11 +73,11 @@ class JaxEnv:
 
 
 def initialize_jax(
-    idx_cpu: Optional[int] = None,
-    idx_gpu: Optional[int] | Sequence[int] = None,
-    xla_mem_fraction: Optional[str] = None,
+    idx_cpu: int | None = None,
+    idx_gpu: int | None | Sequence[int] = None,
+    xla_mem_fraction: str | None = None,
     fp: Literal["f32", "f64"] = "f32",
-    cache_dir: Optional[str | Path] = None,
+    cache_dir: str | Path | None = None,
 ) -> JaxEnv:
     """Initialize JAX environment."""
     if xla_mem_fraction is not None:
@@ -128,7 +129,7 @@ class SkillScores(TypedDict):
     """Anomaly correlation scores."""
 
 
-def initialize_matplotlib(backend: Optional[Literal["Agg"]] = None) -> None:
+def initialize_matplotlib(backend: Literal["Agg"] | None = None) -> None:
     """Initialize matplolib library."""
     if backend is not None:
         matplotlib.use(backend)

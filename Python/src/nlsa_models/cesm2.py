@@ -45,7 +45,6 @@ from typing import (
     Any,
     Literal,
     NamedTuple,
-    Optional,
     Protocol,
     TypedDict,
     assert_never,
@@ -57,7 +56,7 @@ from xarray import CFTimeIndex, Dataset
 if TYPE_CHECKING:
     type Device = Any
 else:
-    from jax import Device
+    pass
 
 
 type Y = Array  # Point in covariate space
@@ -90,22 +89,22 @@ class ImplementsGriddedVar(Protocol):
         ...
 
     @property
-    def min_lon(self) -> Optional[float]:
+    def min_lon(self) -> float | None:
         """Return min_lon property of ImplementsGriddedVar Protocol."""
         ...
 
     @property
-    def max_lon(self) -> Optional[float]:
+    def max_lon(self) -> float | None:
         """Return max_lon property of ImplementsGriddedVar Protocol."""
         ...
 
     @property
-    def min_lat(self) -> Optional[float]:
+    def min_lat(self) -> float | None:
         """Return min_lat property of ImplementsGriddedVar Protocol."""
         ...
 
     @property
-    def max_lat(self) -> Optional[float]:
+    def max_lat(self) -> float | None:
         """Return max_lat property of ImplementsGriddedVar Protocol."""
         ...
 
@@ -140,22 +139,22 @@ class IndoPacificVar(StrEnum):
                 assert_never(unreachable)
 
     @property
-    def min_lon(self) -> Optional[float]:
+    def min_lon(self) -> float | None:
         """Minimum longitude of IndoPacificVar object."""
         return self._min_lon
 
     @property
-    def max_lon(self) -> Optional[float]:
+    def max_lon(self) -> float | None:
         """Minimum longitude of IndoPacificVar object."""
         return self._max_lon
 
     @property
-    def min_lat(self) -> Optional[float]:
+    def min_lat(self) -> float | None:
         """Minimum longitude of IndoPacificVar object."""
         return self._min_lat
 
     @property
-    def max_lat(self) -> Optional[float]:
+    def max_lat(self) -> float | None:
         """Minimum longitude of IndoPacificVar object."""
         return self._max_lat
 
@@ -190,22 +189,22 @@ class PacificVar(StrEnum):
                 assert_never(unreachable)
 
     @property
-    def min_lon(self) -> Optional[float]:
+    def min_lon(self) -> float | None:
         """Minimum longitude of PacificVar object."""
         return self._min_lon
 
     @property
-    def max_lon(self) -> Optional[float]:
+    def max_lon(self) -> float | None:
         """Minimum longitude of PacificVar object."""
         return self._max_lon
 
     @property
-    def min_lat(self) -> Optional[float]:
+    def min_lat(self) -> float | None:
         """Minimum longitude of PacificVar object."""
         return self._min_lat
 
     @property
-    def max_lat(self) -> Optional[float]:
+    def max_lat(self) -> float | None:
         """Minimum longitude of PacificVar object."""
         return self._max_lat
 
@@ -240,22 +239,22 @@ class Nino34MeanVar(StrEnum):
                 assert_never(unreachable)
 
     @property
-    def min_lon(self) -> Optional[float]:
+    def min_lon(self) -> float | None:
         """Minimum longitude of Nino34MeanVar object."""
         return self._min_lon
 
     @property
-    def max_lon(self) -> Optional[float]:
+    def max_lon(self) -> float | None:
         """Minimum longitude of Nino34MeanVar object."""
         return self._max_lon
 
     @property
-    def min_lat(self) -> Optional[float]:
+    def min_lat(self) -> float | None:
         """Minimum longitude of Nino34MeanVar object."""
         return self._min_lat
 
     @property
-    def max_lat(self) -> Optional[float]:
+    def max_lat(self) -> float | None:
         """Minimum longitude of Nino34MeanVar object."""
         return self._max_lat
 
@@ -271,7 +270,7 @@ class Covariate(NamedTuple):
     vars: list[CESMVar]
     remove_climatology: bool = False
     standardize: bool = False
-    climatology_date_range: Optional[tuple[str, str]] = None
+    climatology_date_range: tuple[str, str] | None = None
 
     def __str__(self) -> str:
         """Create string representation of covariate variable."""
@@ -291,7 +290,7 @@ class Response(NamedTuple):
     var: Nino34MeanVar
     remove_climatology: bool = False
     standardize: bool = False
-    climatology_date_range: Optional[tuple[str, str]] = None
+    climatology_date_range: tuple[str, str] | None = None
 
     def __str__(self) -> str:
         """Create string representation of response variable."""
@@ -332,10 +331,10 @@ class DataPars:
     velocity_covariate: bool = False
     """Include time tendencies (velocities) in covariate data."""
 
-    velocity_fd_order: Optional[Literal[2, 4, 6, 8]] = None
+    velocity_fd_order: Literal[2, 4, 6, 8] | None = None
     """Finite-difference order for velocity data."""
 
-    eval_batch_size: Optional[int] = None
+    eval_batch_size: int | None = None
     """Number of batches for batchwise evaluation."""
 
     @property
@@ -447,7 +446,7 @@ class Data(TypedDict):
     )
     """Response variables."""
 
-    raw: Optional[Dataset]
+    raw: Dataset | None
     """Raw Nino 3.4 averaged data."""
 
 
@@ -487,7 +486,7 @@ def to_data_frame(
 
 
 def to_skill_scores(
-    dict_in: dict[str, ArrayLike], dtype: Optional[DTypeLike] = None
+    dict_in: dict[str, ArrayLike], dtype: DTypeLike | None = None
 ) -> SkillScores:
     """Convert dict of numpy ArrayLike objects to SkillScores TypedDict."""
     try:
@@ -504,13 +503,11 @@ def to_skill_scores(
 def make_dataset(
     vars: ImplementsGriddedVar
     | Sequence[ImplementsGriddedVar] = IndoPacificVar.SST,
-    date_range: Optional[tuple[str, str]] = None,
+    date_range: tuple[str, str] | None = None,
     standardize: bool = False,
-    climatology_date_range: Optional[
-        tuple[str, str] | tuple[Timestamp, Timestamp]
-    ] = None,
+    climatology_date_range: tuple[str, str] | tuple[Timestamp, Timestamp] | None = None,
     remove_climatology: bool = True,
-    root_dir: Optional[str | Path] = None,
+    root_dir: str | Path | None = None,
 ) -> Dataset:
     """Import data from NetCDF files into Xarray dataset."""
     # Open the NetCDF files
@@ -591,7 +588,7 @@ def make_dataset(
 def extract_data_array[D: np.floating](
     var: ImplementsGriddedVar,
     ds: Dataset,
-    dtype: Optional[type[D]] = None,
+    dtype: type[D] | None = None,
     atleast_2d: bool = False,
 ) -> NPVector[int, D] | NPMatrix[int, int, D]:
     """Extract data array from xarray dataset associated with a variable."""
@@ -613,9 +610,9 @@ def extract_data_array[D: np.floating](
 
 def generate_data(
     pars: DataPars,
-    dtype: Optional[type[np.floating[Any]]] = None,
+    dtype: type[np.floating[Any]] | None = None,
     output_raw: bool | Literal["anomalies"] = False,
-    root_dir: Optional[str | Path] = None,
+    root_dir: str | Path | None = None,
 ) -> Data:
     """Extract CESM2 data."""
     print("Reading covariates:")
@@ -918,8 +915,8 @@ def compute_generator_matrix[D: DTypeLike](
     l2_space: L2FnAlgebra[tuple[int], D, Yd, R],
     train_data: Data,
     basis: alg.ImplementsDimensionedL2FnFrame[Yd, R, V, Rs, int | Array],
-    grad_batch_size: Optional[int] = None,
-    gram_batch_size: Optional[int] = None,
+    grad_batch_size: int | None = None,
+    gram_batch_size: int | None = None,
     shardings: GeneratorShardings = GeneratorShardings(),
     jit: bool = True,
 ) -> Mat:
@@ -949,7 +946,7 @@ def make_koopman_prediction_function(
     pars: DataPars,
     train_data: Data,
     koopman_basis: KoopmanEigenbasis[Yd, C, V, Cs, int | Array],
-    shardings: Optional[Sharding] = None,
+    shardings: Sharding | None = None,
 ) -> F[R, Yd, Cs]:
     """Make prediction function for time series prediction."""
     i0 = pars.delay_embedding_end
@@ -1048,12 +1045,12 @@ def plot_bandwidth_function[D: DTypeLike](
     l2y: L2FnAlgebra[tuple[int], D, Yd, R],
     bandwidth_func: F[Yd, R],
     train_data: Data,
-    test_pars: Optional[DataPars] = None,
-    l2y_tst: Optional[L2FnAlgebra[tuple[int], D, Yd, R]] = None,
-    test_data: Optional[Data] = None,
+    test_pars: DataPars | None = None,
+    l2y_tst: L2FnAlgebra[tuple[int], D, Yd, R] | None = None,
+    test_data: Data | None = None,
     delay_plot_mode: Literal["backward", "central"] = "central",
-    plt_date_range: Optional[tuple[str, str]] = None,
-    plt_date_range_tst: Optional[tuple[str, str]] = None,
+    plt_date_range: tuple[str, str] | None = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
@@ -1133,12 +1130,12 @@ def make_kernel_evecs_plotter[D: DTypeLike](
     pars: DataPars,
     train_data: Data,
     kernel_basis: KernelEigenbasis[Yd, R, V, Rs, int | Array],
-    test_pars: Optional[DataPars] = None,
-    l2y_tst: Optional[L2FnAlgebra[tuple[int], D, Yd, R]] = None,
-    test_data: Optional[Data] = None,
+    test_pars: DataPars | None = None,
+    l2y_tst: L2FnAlgebra[tuple[int], D, Yd, R] | None = None,
+    test_data: Data | None = None,
     delay_plot_mode: Literal["backward", "central"] = "backward",
-    plt_date_range: Optional[tuple[str, str]] = None,
-    plt_date_range_tst: Optional[tuple[str, str]] = None,
+    plt_date_range: tuple[str, str] | None = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
@@ -1221,12 +1218,12 @@ def make_koopman_evecs_plotter[D: DTypeLike](
     pars: DataPars,
     train_data: Data,
     koopman_basis: KoopmanEigenbasis[Yd, C, V, Cs, int | Array],
-    test_pars: Optional[DataPars] = None,
-    l2y_tst: Optional[L2FnAlgebra[tuple[int], D, Yd, R]] = None,
-    test_data: Optional[Data] = None,
+    test_pars: DataPars | None = None,
+    l2y_tst: L2FnAlgebra[tuple[int], D, Yd, R] | None = None,
+    test_data: Data | None = None,
     delay_plot_mode: Literal["backward", "central"] = "backward",
-    plt_date_range: Optional[tuple[str, str]] = None,
-    plt_date_range_tst: Optional[tuple[str, str]] = None,
+    plt_date_range: tuple[str, str] | None = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
@@ -1361,7 +1358,7 @@ def make_koopman_lifecycle_plotter[D: DTypeLike](
     train_data: Data,
     koopman_basis: KoopmanEigenbasis[Yd, C, V, Cs, int | Array],
     delay_plot_mode: Literal["backward", "central"] = "backward",
-    plt_date_range: Optional[tuple[str, str]] = None,
+    plt_date_range: tuple[str, str] | None = None,
     plt_step: int = 1,
     center_colormap: bool = False,
     i_fig: int = 1,
@@ -1606,7 +1603,7 @@ def make_running_pred_plotter(
     test_pars: DataPars,
     test_data: Data,
     preds: Vtsts,
-    plt_date_range_tst: Optional[tuple[str, str]] = None,
+    plt_date_range_tst: tuple[str, str] | None = None,
     plt_step_tst: int = 1,
     i_fig: int = 1,
 ) -> tuple[Figure, F[int, None]]:

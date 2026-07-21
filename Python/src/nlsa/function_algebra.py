@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import repeat
 from functools import reduce
-from typing import Optional, final
+from typing import final
 
 type F[*Xs, Y] = Callable[[*Xs], Y]
 
@@ -222,13 +222,13 @@ class FunctionSpace[*Xs, Y, K](alg.ImplementsVectorSpace[F[*Xs, Y], K]):
     """Implement function space."""
 
     codomain: alg.ImplementsVectorSpace[Y, K]
-    _scl: Optional[alg.ImplementsScalarField[K]] = None
-    _zero: Optional[Callable[[], F[*Xs, Y]]] = None
-    _add: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sub: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _neg: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _smul: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sdiv: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
+    _scl: alg.ImplementsScalarField[K] | None = None
+    _zero: Callable[[], F[*Xs, Y]] | None = None
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
@@ -286,16 +286,16 @@ class FunctionAlgebra[*Xs, Y, K](alg.ImplementsAlgebra[F[*Xs, Y], K]):
     """Implement algebra of algebra-valued functions."""
 
     codomain: alg.ImplementsAlgebra[Y, K]
-    _scl: Optional[alg.ImplementsScalarField[K]] = None
-    _zero: Optional[Callable[[], F[*Xs, Y]]] = None
-    _add: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sub: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _neg: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _smul: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sdiv: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _unit: Optional[Callable[[], F[*Xs, Y]]] = None
-    _mul: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _mpower: Optional[Callable[[F[*Xs, Y], int], F[*Xs, Y]]] = None
+    _scl: alg.ImplementsScalarField[K] | None = None
+    _zero: Callable[[], F[*Xs, Y]] | None = None
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _unit: Callable[[], F[*Xs, Y]] | None = None
+    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | None = None
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
@@ -380,21 +380,21 @@ class FunctionAlgebraWithCalculus[*Xs, Y, K](
     """Implement function algebra with functional calculus."""
 
     codomain: alg.ImplementsAlgebraWithCalculus[Y, K]
-    _scl: Optional[alg.ImplementsRealScalarField[K]] = None
-    _zero: Optional[Callable[[], F[*Xs, Y]]] = None
-    _add: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sub: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _neg: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _smul: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sdiv: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _unit: Optional[Callable[[], F[*Xs, Y]]] = None
-    _mul: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _div: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _inv: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sqrt: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _abs: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _power: Optional[Callable[[F[*Xs, Y], K], F[*Xs, Y]]] = None
-    _mpower: Optional[Callable[[F[*Xs, Y], int], F[*Xs, Y]]] = None
+    _scl: alg.ImplementsRealScalarField[K] | None = None
+    _zero: Callable[[], F[*Xs, Y]] | None = None
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _unit: Callable[[], F[*Xs, Y]] | None = None
+    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _div: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _inv: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sqrt: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _abs: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _power: Callable[[F[*Xs, Y], K], F[*Xs, Y]] | None = None
+    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | None = None
 
     @property
     def scl(self) -> alg.ImplementsRealScalarField[K]:
@@ -518,22 +518,22 @@ class FunctionStarAlgebraWithCalculus[*Xs, Y, K](
     """Implement function star algebra with functional calculus."""
 
     codomain: alg.ImplementsStarAlgebraWithCalculus[Y, K]
-    _scl: Optional[alg.ImplementsComplexScalarField[K]] = None
-    _zero: Optional[Callable[[], F[*Xs, Y]]] = None
-    _add: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sub: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _neg: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _smul: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sdiv: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _unit: Optional[Callable[[], F[*Xs, Y]]] = None
-    _mul: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _div: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _inv: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sqrt: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _adj: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _abs: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _power: Optional[Callable[[F[*Xs, Y], K], F[*Xs, Y]]] = None
-    _mpower: Optional[Callable[[F[*Xs, Y], int], F[*Xs, Y]]] = None
+    _scl: alg.ImplementsComplexScalarField[K] | None = None
+    _zero: Callable[[], F[*Xs, Y]] | None = None
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _unit: Callable[[], F[*Xs, Y]] | None = None
+    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _div: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _inv: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sqrt: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _adj: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _abs: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _power: Callable[[F[*Xs, Y], K], F[*Xs, Y]] | None = None
+    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | None = None
 
     @property
     def scl(self) -> alg.ImplementsComplexScalarField[K]:
@@ -664,15 +664,15 @@ class FunctionBimodule[*Xs, Y, K, L, R](
     """Implement bimodule of bimodule-valued functions."""
 
     codomain: alg.ImplementsBimodule[Y, K, L, R]
-    _scl: Optional[alg.ImplementsScalarField[K]] = None
-    _zero: Optional[Callable[[], F[*Xs, Y]]] = None
-    _add: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sub: Optional[Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]] = None
-    _neg: Optional[Callable[[F[*Xs, Y]], F[*Xs, Y]]] = None
-    _smul: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _sdiv: Optional[Callable[[K, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _lmul: Optional[Callable[[L, F[*Xs, Y]], F[*Xs, Y]]] = None
-    _rmul: Optional[Callable[[F[*Xs, Y], R], F[*Xs, Y]]] = None
+    _scl: alg.ImplementsScalarField[K] | None = None
+    _zero: Callable[[], F[*Xs, Y]] | None = None
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _lmul: Callable[[L, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _rmul: Callable[[F[*Xs, Y], R], F[*Xs, Y]] | None = None
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
@@ -748,15 +748,15 @@ class BivariateFunctionBimodule[X1, X2, Y, K](
     """Implement bivariate function space as a bivariate function bimodule."""
 
     codomain: alg.ImplementsBimodule[Y, K, Y, Y]
-    _scl: Optional[alg.ImplementsScalarField[K]] = None
-    _zero: Optional[Callable[[], F[X1, X2, Y]]] = None
-    _add: Optional[Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _sub: Optional[Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _neg: Optional[Callable[[F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _smul: Optional[Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _sdiv: Optional[Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _lmul: Optional[Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _rmul: Optional[Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]] = None
+    _scl: alg.ImplementsScalarField[K] | None = None
+    _zero: Callable[[], F[X1, X2, Y]] | None = None
+    _add: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _sub: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _neg: Callable[[F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _smul: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _sdiv: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _lmul: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _rmul: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | None = None
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
@@ -838,17 +838,17 @@ class BivariateFunctionDivBimodule[X1, X2, Y, K](
     """Implement bivariate function space as a bivariate function bimodule."""
 
     codomain: alg.ImplementsDivBimodule[Y, K, Y, Y]
-    _scl: Optional[alg.ImplementsScalarField[K]] = None
-    _zero: Optional[Callable[[], F[X1, X2, Y]]] = None
-    _add: Optional[Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _sub: Optional[Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _neg: Optional[Callable[[F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _smul: Optional[Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _sdiv: Optional[Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _lmul: Optional[Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _ldiv: Optional[Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]] = None
-    _rmul: Optional[Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]] = None
-    _rdiv: Optional[Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]] = None
+    _scl: alg.ImplementsScalarField[K] | None = None
+    _zero: Callable[[], F[X1, X2, Y]] | None = None
+    _add: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _sub: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _neg: Callable[[F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _smul: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _sdiv: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _lmul: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _ldiv: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
+    _rmul: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | None = None
+    _rdiv: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | None = None
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:

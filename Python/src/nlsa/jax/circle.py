@@ -12,7 +12,6 @@ from nlsa.jax.kernels import KernelEigenbasis
 from nlsa.jax.special import iv0_ratio
 from nlsa.jax.stats import make_von_mises_density
 from nlsa.jax.utils import make_vectorvalued
-from typing import Optional
 
 type X = Array  # Point in state space (circle S1)
 type Y = Array  # Point in embedding space (Rd)
@@ -27,7 +26,7 @@ type F[*Ss, T] = Callable[[*Ss], T]  # Shorthand for Callables
 
 
 def make_observable_r2(
-    r: float | tuple[float, float], dtype: Optional[DTypeLike] = None
+    r: float | tuple[float, float], dtype: DTypeLike | None = None
 ) -> F[X, Y]:
     """Make embedding function from the circle into R2."""
     match r:
@@ -48,7 +47,7 @@ def make_observable_r2(
 def make_observable_von_mises(
     concentration: float,
     location: float,
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
     asvector: bool = False,
 ) -> F[X, Y]:
     """Make covariate based on von Mises density."""
@@ -64,7 +63,7 @@ def make_observable_von_mises(
 def make_von_mises_density_fourier(
     concentration: float | Array,
     location: float | Array = 0,
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
 ) -> Callable[[Z], C]:
     """Make function returning Fourier coefficients of von Mises density."""
     conc = jnp.array(concentration, dtype=dtype)
@@ -89,7 +88,7 @@ def make_fourier_basis(
     return phi
 
 
-def unit_fourier(max_wavenum: int, dtype: Optional[DTypeLike] = None) -> Vhat:
+def unit_fourier(max_wavenum: int, dtype: DTypeLike | None = None) -> Vhat:
     """Compute Fourier representation of unit function on S1."""
     n = 2 * max_wavenum + 1
     u = jnp.zeros(n, dtype=dtype)
@@ -111,7 +110,7 @@ def make_fourier_analysis_operator(
 def make_fourier_fn_analysis_operator(
     max_wavenum: int,
     weight: float | Vhat = 1,
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
     jit: bool = False,
 ) -> Callable[[F[X, C]], Vhat]:
     """Make discrete Fourier analysis operator for functions on the circle."""
@@ -134,7 +133,7 @@ def make_fourier_fn_analysis_operator(
 
 
 def make_rkhs_inverse_weights(
-    p: float, tau: float, dtype: Optional[DTypeLike] = None
+    p: float, tau: float, dtype: DTypeLike | None = None
 ) -> Callable[[Z], R]:
     """Make inverse (sub)exponential weight function on Z."""
 
@@ -145,7 +144,7 @@ def make_rkhs_inverse_weights(
 
 
 def make_rkhs_eigenbasis(
-    max_wavenum: int, p: float, tau: float, dtype: Optional[DTypeLike] = None
+    max_wavenum: int, p: float, tau: float, dtype: DTypeLike | None = None
 ) -> KernelEigenbasis[X, C, V, Cs, int | Array]:
     """Make kernel eigenbasis for RKHS associated with exponential weights."""
     dim = 2 * max_wavenum + 1

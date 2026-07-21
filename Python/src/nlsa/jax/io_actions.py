@@ -6,7 +6,7 @@ from functools import wraps
 from jax import Array
 from nlsa.io_actions import IO
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 
 def npyit[**P](
@@ -14,7 +14,7 @@ def npyit[**P](
     io: IO,
     mode: Literal["calc", "calcsave", "read"] = "calc",
     fname: str = "Untitled",
-    callback: Optional[Callable[[Array], Array]] = None,
+    callback: Callable[[Array], Array] | None = None,
 ) -> Callable[P, Array]:
     """Wrap computation to perform saving to/reading from npy file."""
 

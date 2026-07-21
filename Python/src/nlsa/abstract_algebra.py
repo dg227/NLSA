@@ -1,15 +1,19 @@
 """Provide protocols and functions for abstract algebraic structures."""
 
+# TODO: Consider refactoring the code to use ReadOnly attributes as opposed to
+# @property-decorrated methods. This could lead to significant reduction of
+# boilerplate and potential performance improvements.
+
 from collections.abc import Callable, Iterable
 from functools import partial, reduce
 from typing import (
-    Optional,
     Protocol,
     SupportsComplex,
     SupportsFloat,
     final,
     runtime_checkable,
 )
+from typing import ReadOnly
 
 type F[X, Y] = Callable[[X], Y]
 
@@ -361,6 +365,16 @@ class ImplementsVectorSpace[T, K](
     @property
     def scl(self) -> ImplementsScalarField[K]:
         """Scalar field associated with vector space."""
+        ...
+
+
+@runtime_checkable
+class ImplementsDimension[T](Protocol):
+    """Implement dimension."""
+
+    @property
+    def dim(self) -> int:
+        """Vector space dimension."""
         ...
 
 
@@ -970,6 +984,7 @@ class ImplementsMeasureFnStarAlgebra[X, Y, V, K](
 @runtime_checkable
 class ImplementsL2FnAlgebra[X, Y, V, K](
     ImplementsMeasureFnStarAlgebra[X, Y, V, K],
+    ImplementsNorm[V, K],
     ImplementsInnerp[V, K],
     Protocol,
 ):
@@ -979,19 +994,36 @@ class ImplementsL2FnAlgebra[X, Y, V, K](
 
 
 @runtime_checkable
+class ImplementsDimensionedL2FnAlgebra[X, Y, V, K](
+    ImplementsL2FnAlgebra[X, Y, V, K],
+    ImplementsDimension[V],
+    Protocol,
+):
+    """Implement operations on dimensioned L2 function algebra."""
+
+    pass
+
+
+@runtime_checkable
 class ImplementsAnalysisOperators[V, Ks](Protocol):
     """Implement analysis operators associated with frame."""
 
-    anal: Callable[[V], Ks]
-    dual_anal: Callable[[V], Ks]
+    anal: ReadOnly[Callable[[V], Ks]]
+    """Analysis operator."""
+
+    dual_anal: ReadOnly[Callable[[V], Ks]]
+    """Analysis operator."""
 
 
 @runtime_checkable
 class ImplementsSynthesisOperators[V, Ks](Protocol):
     """Implement synthesis operators associated with fame."""
 
-    synth: Callable[[Ks], V]
-    dual_synth: Callable[[Ks], V]
+    synth: ReadOnly[Callable[[Ks], V]]
+    """Analysis operator."""
+
+    dual_synth: ReadOnly[Callable[[Ks], V]]
+    """Analysis operator."""
 
 
 @runtime_checkable
@@ -1002,8 +1034,11 @@ class ImplementsFrame[V, Ks, I](
 ):
     """Implement analysis and synthesis operators associated with frame."""
 
-    vec: Callable[[I], V]
-    dual_vec: Callable[[I], V]
+    vec: ReadOnly[Callable[[I], V]]
+    """Analysis operator."""
+
+    dual_vec: ReadOnly[Callable[[I], V]]
+    """Analysis operator."""
 
 
 @runtime_checkable
@@ -1013,22 +1048,29 @@ class ImplementsDimensionedFrame[V, Ks, I](
     """Implement operators of frame with known dimension."""
 
     dim: int
+    """Number of frame elements."""
 
 
 @runtime_checkable
 class ImplementsFnAnalysisOperators[X, Y, Ks](Protocol):
     """Implement function analysis operators."""
 
-    fn_anal: Callable[[F[X, Y]], Ks]
-    dual_fn_anal: Callable[[F[X, Y]], Ks]
+    fn_anal: ReadOnly[Callable[[F[X, Y]], Ks]]
+    """Analysis operator."""
+
+    dual_fn_anal: ReadOnly[Callable[[F[X, Y]], Ks]]
+    """Analysis operator."""
 
 
 @runtime_checkable
 class ImplementsFnSynthesisOperators[X, Y, Ks](Protocol):
     """Implement function synthesis operators."""
 
-    fn_synth: Callable[[Ks], F[X, Y]]
-    dual_fn_synth: Callable[[Ks], F[X, Y]]
+    fn_synth: ReadOnly[Callable[[Ks], F[X, Y]]]
+    """Analysis operator."""
+
+    dual_fn_synth: ReadOnly[Callable[[Ks], F[X, Y]]]
+    """Analysis operator."""
 
 
 @runtime_checkable
@@ -1040,8 +1082,11 @@ class ImplementsL2FnFrame[X, Y, V, Ks, I](
 ):
     """Implement frame of L2 function space."""
 
-    fn: Callable[[I], F[X, Y]]
-    dual_fn: Callable[[I], F[X, Y]]
+    fn: ReadOnly[Callable[[I], F[X, Y]]]
+    """Analysis operator."""
+
+    dual_fn: ReadOnly[Callable[[I], F[X, Y]]]
+    """Analysis operator."""
 
 
 @runtime_checkable
@@ -1051,6 +1096,20 @@ class ImplementsDimensionedL2FnFrame[X, Y, V, Ks, I](
     """Implement operators of L2 function frame with known dimension."""
 
     dim: int
+    """Analysis operator."""
+
+
+@runtime_checkable
+class ImplementsL2FnEigenbasis[X, Y, V, K, Ks, I](
+    ImplementsDimensionedL2FnFrame[X, Y, V, Ks, I], Protocol
+):
+    """Implement eigenbasis of L2 function space."""
+
+    spec: Ks
+    """Analysis operator."""
+
+    evl: Callable[[I], K]
+    """Analysis operator."""
 
 
 @final
@@ -1251,7 +1310,7 @@ def normalize[V, K](impl: ImplementsNormedSpace[V, K], v: V) -> V:
 def sum[V, K](
     impl: ImplementsComplexVectorSpace[V, K],
     vs: Iterable[V],
-    initializer: Optional[V] = None,
+    initializer: V | None = None,
 ) -> V:
     """Sum a collection of elements of a vector space."""
     if initializer is None:
@@ -1262,7 +1321,7 @@ def sum[V, K](
 def product[A, K](
     impl: ImplementsStarAlgebraWithCalculus[A, K],
     vs: Iterable[A],
-    initializer: Optional[A] = None,
+    initializer: A | None = None,
 ) -> A:
     """Multiply a collection of algebra elements."""
     if initializer is None:

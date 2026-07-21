@@ -6,11 +6,11 @@ import nlsa.abstract_algebra as alg
 from collections.abc import Callable
 from fractions import Fraction
 from nlsa.utils import swap_args
-from typing import SupportsComplex, SupportsFloat, Type, final
+from typing import SupportsComplex, SupportsFloat, final
 
 
 def make_zero[K: (int, Fraction, float, complex)](
-    ty: Type[K],
+    ty: type[K],
 ) -> Callable[[], K]:
     """Make constant function that returns scalar zero."""
 
@@ -36,7 +36,7 @@ def sub[K: (int, Fraction, float, complex)](x: K, y: K, /) -> K:
 
 
 def make_unit[K: (int, Fraction, float, complex)](
-    ty: Type[K],
+    ty: type[K],
 ) -> Callable[[], K]:
     """Make constant function that returns scalar one."""
 
@@ -71,7 +71,7 @@ def floor_inv(x: int, /) -> int:
     return 1 // x
 
 
-def make_inv[K: (Fraction, float, complex)](ty: Type[K]) -> Callable[[K], K]:
+def make_inv[K: (Fraction, float, complex)](ty: type[K]) -> Callable[[K], K]:
     """Make scalar inversion function."""
 
     def inv(x: K, /) -> K:

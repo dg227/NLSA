@@ -37,7 +37,7 @@ from nlsa_models import lorenz63 as l63
 from nlsa_models.lorenz63 import Data, DataPars, SkillScores
 from pathlib import Path
 from tabulate import tabulate
-from typing import Literal, Optional, TypedDict
+from typing import Literal, TypedDict
 
 
 class Experiment(StrEnum):
@@ -56,20 +56,35 @@ class Experiment(StrEnum):
     """Test case."""
 
 
+type Plots = Literal[
+    "all",
+    "bandwidth_tuning",
+    "bandwidth_func",
+    "kernel_tuning",
+    "laplacian_spec",
+    "kernel_eigen",
+    "generator_mat",
+    "generator_spec",
+    "koopman_eigen",
+    "running_pred",
+    "pred_timeseries",
+    "skill_scores",
+]
+
 EXPERIMENT: Experiment = Experiment.TEST
-IDX_GPU: Optional[int | Sequence[int]] = None  # 0
-XLA_MEM_FRACTION: Optional[str] = "0.95"
-JAX_CACHE_DIR: Optional[str] = "jax_cache"
+IDX_GPU: int | Sequence[int] | None = None  # 0
+XLA_MEM_FRACTION: str | None = "0.95"
+JAX_CACHE_DIR: str | None = "jax_cache"
 FP: Literal["f32", "f64"] = "f32"
 CONE_KERNEL: bool = False
 KERNEL_TUNING_GRAD_METHOD: Literal["explicit", "automatic"] = "automatic"
 KERNEL_NORMALIZATION: Literal["diffusion_maps", "bistochastic"] = (
     "diffusion_maps"
 )
-MATPLOTLIB_BACKEND: Optional[Literal["Agg"]] = None
+MATPLOTLIB_BACKEND: Literal["Agg"] | None = None
 OUTPUT_DATA_DIR = "examples/lorenz63/data"
 NUM_TABULATE = 40
-NUM_PLT_TST: Optional[int] = None
+NUM_PLT_TST: int | None = None
 GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "calc"
 TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
@@ -78,18 +93,19 @@ KOOPMAN_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KOOPMAN_RESPONSE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KOOPMAN_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
-PLOT_MODE: Optional[Literal["save", "show", "saveshow"]] = "show"
+PLOT_MODE: Literal["save", "show", "saveshow"] | None = "show"
+WHICH_PLOTS: set[Plots] = {"all"}
 DELAY_PLOT_MODE: Literal["backward", "central"] = "backward"
-KERNEL_EIGS_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
-KOOPMAN_EIGS_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+KOOPMAN_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
-LEAD_TIMES_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
-INITIALIZATION_TIMES_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+INITIALIZATION_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
 
@@ -153,10 +169,10 @@ class TrainPars[N: int]:
     pred: PredPars
     """Prediction parameters."""
 
-    cone: Optional[ConePars] = None
+    cone: ConePars | None = None
     """Cone kernel parameters."""
 
-    bw_tune: Optional[TunePars] = None
+    bw_tune: TunePars | None = None
     """Tuning parameters for kernel bandwidth function."""
 
     def __str__(self) -> str:
@@ -201,7 +217,7 @@ class TestPars[Ntst: int]:
     data: DataPars[Ntst]
     """Test data parameters."""
 
-    max_batch_size: Optional[int] = None
+    max_batch_size: int | None = None
     """Max batch size for evaluation of prediction function."""
 
     # TODO: Complete this
@@ -237,7 +253,7 @@ class CommonPars(TypedDict):
     response: Literal["x", "y", "z"]
     num_half_delays: int
     velocity_covariate: bool
-    velocity_fd_order: Optional[Literal[2, 4, 6, 8]]
+    velocity_fd_order: Literal[2, 4, 6, 8] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -539,7 +555,7 @@ def initialize(
                 num_bandwidths=128,
                 log10_bandwidth_lims=(-3, 3),
                 bandwidth_scl=1,
-                batch_size=16,
+                bandwidth_batch_size=16,
             )
             if cone_pars is not None:
                 tune_pars = TunePars(
@@ -652,7 +668,7 @@ compute_kernel_bandwidth = timeit(
         io=io,
         mode=TUNE_KERNEL_MODE,
         fname="tune_info",
-        cls=TuneInfo[Array, Array, Array],
+        cls=TuneInfo,
     )
 )
 compute_kernel_eigen = timeit(
@@ -661,7 +677,7 @@ compute_kernel_eigen = timeit(
         io=io,
         mode=KERNEL_EIGEN_MODE,
         fname="kernel_eigen",
-        cls=KernelEigen[Array, Array, Array, Array],
+        cls=KernelEigen,
         callback=shardings.train.kernel_eigen.shard_kernel_eigen,
     )
 )
@@ -681,11 +697,11 @@ compute_generator_matrix = timeit(
 )
 compute_generator_eigen_diff = timeit(
     pickleit(
-        koop.compute_generator_eigen_diff,
+        koop.compute_diffusion_regularized_generator_eigen,
         io=io,
         mode=KOOPMAN_EIGEN_MODE,
         fname="generator_eigen_diff",
-        cls=KoopmanEigen[Array, Array, Array],
+        cls=KoopmanEigen,
     )
 )
 compute_koopman_response_coeffs = timeit(
@@ -728,8 +744,8 @@ plot_bandwidth_function = plotit(
     mode=PLOT_MODE,
     fname="bandwidth_func",
 )
-plot_laplace_spectrum = plotit(
-    knl.plot_laplace_spectrum, io=io, mode=PLOT_MODE, fname="lapl_spec"
+plot_laplacian_spectrum = plotit(
+    knl.plot_laplacian_spectrum, io=io, mode=PLOT_MODE, fname="lapl_spec"
 )
 make_kernel_evecs_plotter = plotem(
     l63.make_kernel_evecs_plotter, io=io, mode=PLOT_MODE, fname="kernel_eigen"
@@ -761,7 +777,7 @@ plot_forecast_skill_scores = plotit(
 
 
 def main():
-    """Perform Koopman analysis L63 using diffusion regularization."""
+    """Perform Koopman spectral analysis of the Lorenz 63 system."""
     global io
 
     # Display information about the computation to be performed
@@ -819,9 +835,17 @@ def main():
         )
         bw_tune_info.tabulate(name="Bandwidth function tuning")
 
-        # Plot bandwidth function
-        if PLOT_MODE is not None:
+        # Plot bandwidth tuning function
+        if PLOT_MODE is not None and not {
+            "all",
+            "bandwidth_tuning",
+        }.isdisjoint(WHICH_PLOTS):
             plot_kernel_tuning(bw_tune_info, title="Bandwidth function tuning")
+
+        # Plot kernel bandwidth function
+        if PLOT_MODE is not None and not {"all", "bandwidth_func"}.isdisjoint(
+            WHICH_PLOTS
+        ):
             plot_bandwidth_function(
                 pars.train.data,
                 impl_l2,
@@ -861,7 +885,10 @@ def main():
     tune_info.tabulate(name="Kernel tuning")
 
     # Plot kernel tuning function
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {
+        "all",
+        "kernel_tuning",
+    }.isdisjoint(WHICH_PLOTS):
         plot_kernel_tuning(tune_info, title="Kernel tuning")
 
     # Solve kernel eigenvalue problem
@@ -887,12 +914,18 @@ def main():
         jax.debug.inspect_array_sharding(kernel_eigen.evals, callback=print)
     kernel_eigen.tabulate(num_tabulate=NUM_TABULATE)
 
-    # Plot spectrum of Laplace eigenvalues
-    if PLOT_MODE is not None:
-        plot_laplace_spectrum(kernel_eigen)
+    # Plot spectrum of Laplacian eigenvalues
+    if PLOT_MODE is not None and not {"all", "laplacian_spec"}.isdisjoint(
+        WHICH_PLOTS
+    ):
+        plot_laplacian_spectrum(kernel_eigen)
 
     # Plot representative kernel eigenfunctions
-    if PLOT_MODE is not None and KERNEL_EIGS_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "kernel_eigen"}.isdisjoint(WHICH_PLOTS)
+        and KERNEL_EIGS_PLT is not None
+    ):
         _, plot_kernel_eig = make_kernel_evecs_plotter(
             (pars.train.data, pars.train.kernel),
             impl_l2,
@@ -948,7 +981,9 @@ def main():
         jax.debug.inspect_array_sharding(gen_mat, callback=print)
 
     # Plot generator matrix
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {"all", "generator_mat"}.isdisjoint(
+        WHICH_PLOTS
+    ):
         plot_generator_matrix(gen_mat, title="Generator matrix")
 
     # Compute Koopman eigendecomposition
@@ -965,33 +1000,20 @@ def main():
         gen_mat,
         out_shardings=shardings.train.koopman_eigen,
     )
-    print(
-        tabulate(
-            jnp.vstack(
-                (
-                    koopman_eigen.evals[:NUM_TABULATE].real,
-                    koopman_eigen.engys[:NUM_TABULATE],
-                    koopman_eigen.efreqs[:NUM_TABULATE],
-                    koopman_eigen.eperiods[:NUM_TABULATE],
-                )
-            ).T,
-            headers=[
-                "Growth rate",
-                "Dirichlet energies",
-                "Eigenfreqs.",
-                "Eigenperiods",
-            ],
-            floatfmt=".4f",
-            showindex=True,
-        )
-    )
+    koopman_eigen.tabulate(num_tabulate=NUM_TABULATE)
 
     # Plot generator spectrum
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {"all", "generator_spec"}.isdisjoint(
+        WHICH_PLOTS
+    ):
         plot_generator_spectrum(koopman_eigen)
 
     # Plot representative Koopman eigenfunctions
-    if PLOT_MODE is not None and KOOPMAN_EIGS_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "koopman_eigen"}.isdisjoint(WHICH_PLOTS)
+        and KOOPMAN_EIGS_PLT is not None
+    ):
         _, plot_koopman_eig = make_koopman_evecs_plotter(
             (pars.train.data, pars.train.kernel, pars.train.koopman),
             c_k,
@@ -1057,7 +1079,11 @@ def main():
     ).real
 
     # Plot running forecast
-    if PLOT_MODE is not None and LEAD_TIMES_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "running_pred"}.isdisjoint(WHICH_PLOTS)
+        and LEAD_TIMES_PLT is not None
+    ):
         _, plot_pred = make_running_pred_plotter(
             pars.test.data, test_data, preds
         )
@@ -1080,7 +1106,11 @@ def main():
                 plot_pred(i)
 
     # Plot time series forecast
-    if PLOT_MODE is not None and INITIALIZATION_TIMES_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "pred_timeseries"}.isdisjoint(WHICH_PLOTS)
+        and INITIALIZATION_TIMES_PLT is not None
+    ):
         _, plot_pred_ts = make_pred_timeseries_plotter(
             pars.test.data, test_data, preds
         )
@@ -1114,7 +1144,9 @@ def main():
     )
 
     # Plot forecast skill scores
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {"all", "skill_scores"}.isdisjoint(
+        WHICH_PLOTS
+    ):
         plot_forecast_skill_scores(pars.test.data, skill_scores)
 
 

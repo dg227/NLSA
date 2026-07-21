@@ -1,44 +1,39 @@
-"""Provide functions for Koopmman operator computations in JAX."""
-# TODO: Consider making the functions implemented in this module generic over
-# the L2FnAlgebra implementation.
+"""Provide classes and functions for Koopmman operator computations in JAX."""
 
 import jax
 import jax.numpy as jnp
 import jax.numpy.linalg as jla
 import jax.scipy as jsp
-import matplotlib.pyplot as plt
 import nlsa.abstract_algebra as alg
 import nlsa.function_algebra as fun
 import nlsa.jax.delays as dl
 import nlsa.jax.dynamics as dyn
 import nlsa.jax.kernels as knl
 import nlsa.jax.vector_algebra as vec
+import nlsa.koopman as koop
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import partial
 from jax import Array, vmap
 from jax.sharding import NamedSharding
 from jax.typing import DTypeLike
-from matplotlib.figure import Figure
-from nlsa.kernels import KernelEigen, KernelEigenbasis, KernelPars
-from nlsa.koopman import (
-    KoopmanEigen,
-    KoopmanEigenbasis,
-    KoopmanPars,
-    KoopmanParsDiff,
-    KoopmanParsLapl,
-    KoopmanParsGauss,
-    KoopmanParsTransf,
-)
+from nlsa.jax.kernels import KernelEigen, KernelPars
 from nlsa.jax.sharding import NamedSharder, shardit
-from nlsa.jax.typing import PyTree
+from nlsa.jax.typing import PyTree, typestable_jit
 from nlsa.jax.vector_algebra import (
-    L2FnAlgebra,
     L2FnAlgebraShardings,
     L2VectorAlgebra,
 )
 from nlsa.jax.special import dawsn
 from nlsa.jax.utils import batch_map, batch_map_2d
-from typing import Literal, NamedTuple, Optional, Self
+from nlsa.koopman import (
+    KoopmanPars,
+    KoopmanParsDiff,
+    KoopmanParsTransf,
+)
+from nlsa.typing import SliceItem
+from typing import Literal, NamedTuple, Self, final
+from collections.abc import Sequence
 
 type Css = Array  # Collection of basis expansion coefficient vectors
 type C = Array  # Complex scalar
@@ -48,11 +43,143 @@ type Rs = Array  # Collection of real scalars
 type K = Array  # Scalar
 type Ks = Array  # Collection of scalars
 type V = Array  # L2 observable vector
+type Vtst = Array  # Vector in L2 with respect to the test data
 type Vs = Array  # Collection of L2 vectors
+type X = Array  # Covariate
+type TX = Array  # Tangent covariate
+type Idx = int | Array  # basis vector index
 type Idxs = Array  # basis vector indices
 type Mat = Array  # Matrix acting as linear operator on L2 vectors
 type Shape = tuple[int, ...]
 type F[*Ss, T] = Callable[[*Ss], T]  # Shorthand for Callables
+
+
+class KoopmanEigen(NamedTuple):
+    """NamedTuple containing Koopman spectral data."""
+
+    evals: Cs
+    """Operator eigenvalues."""
+
+    gen_evals: Cs
+    """Generator eigenvalues."""
+
+    engys: Rs
+    """Dirichlet energies."""
+
+    efreqs: Rs
+    """Koopman eigenfrequencies."""
+
+    eperiods: Rs
+    """Return Koopman eigenperiods."""
+
+    evec_coeffs: Css
+    """Basis expansion coefficients of Koopman eigenvectors."""
+
+    dual_evec_coeffs: Css
+    """Basis expansion coefficients of dual (left) Koopman eigenvectors."""
+
+    @property
+    def num_eigs(
+        self,
+    ) -> int:
+        """Return number of eigenvalues/eigenvectors in KoopmanEigenObject."""
+        return len(self.evals)
+
+    def isel(self, s: SliceItem) -> Self:
+        """Slice a KoopmanEigen object."""
+        return type(self)(
+            evals=self.evals[s],
+            gen_evals=self.gen_evals[s],
+            efreqs=self.efreqs[s],
+            engys=self.engys[s],
+            eperiods=self.eperiods[s],
+            evec_coeffs=self.evec_coeffs[s],
+            dual_evec_coeffs=self.dual_evec_coeffs[s],
+        )
+
+    def tabulate(
+        self,
+        num_tabulate: int | None = None,
+        headers: Sequence[str] | None = None,
+        show: bool = True,
+    ) -> str:
+        """Tabulate the eigenvalues in a KoopmanEigen object."""
+        return koop.tabulate_eigen(self, num_tabulate, headers, show)
+
+
+@final
+@dataclass(frozen=True, slots=True)
+class KoopmanEigenbasis(koop.ImplementsKoopmanEigenbasis[X, K, K, V, Ks, Idx]):
+    """Dataclass implementing frame operators for Koopman eigenbasis."""
+
+    dim: int
+    """Number of eigenfunctions."""
+
+    anal: Callable[[V], Ks]
+    """Analysis operator."""
+
+    dual_anal: Callable[[V], Ks]
+    """Dual analysis operator."""
+
+    synth: Callable[[Ks], V]
+    """Synthesis operator."""
+
+    dual_synth: Callable[[Ks], V]
+    """Dual synthesis operator."""
+
+    fn_anal: Callable[[F[X, K]], Ks]
+    """Function analysis operator."""
+
+    dual_fn_anal: Callable[[F[X, K]], Ks]
+    """Dual function analysis operator."""
+
+    fn_synth: Callable[[Ks], F[X, K]]
+    """Function synthesis operator."""
+
+    dual_fn_synth: Callable[[Ks], F[X, K]]
+    """Dual function synthesis operator."""
+
+    vec: Callable[[Idx], V]
+    """Basis vectors."""
+
+    dual_vec: Callable[[Idx], V]
+    """Dual basis vectors."""
+
+    fn: Callable[[Idx], F[X, K]]
+    """Function representatives of basis vectors."""
+
+    dual_fn: Callable[[Idx], F[X, K]]
+    """Function representatives of dual basis vectors."""
+
+    spec: Ks
+    """Operator spectrum."""
+
+    gen_spec: Ks
+    """Generator spectrum."""
+
+    efreqs: Ks
+    """Eigenfrequencies."""
+
+    eperiods: Ks
+    """Eigenperiods."""
+
+    engys: Ks
+    """Dirichlet energies."""
+
+    evl: Callable[[Idx], K]
+    """Operator eigenvalues."""
+
+    gen_evl: Callable[[Idx], K]
+    """Generator eigenvalues."""
+
+    efreq: Callable[[Idx], K]
+    """Function indexing eigenfrequencies."""
+
+    eperiod: Callable[[Idx], K]
+    """Function indexing eigenperiods."""
+
+    engy: Callable[[Idx], K]
+    """Function indexing Dirichlet energies."""
 
 
 class GeneratorShardings(NamedTuple):
@@ -61,24 +188,24 @@ class GeneratorShardings(NamedTuple):
     tangents: L2FnAlgebraShardings = L2FnAlgebraShardings()
     """Shardings for the L2 space used in tangent vector evaluation."""
 
-    basis_grads: Optional[NamedSharding] = None
+    basis_grads: NamedSharding | None = None
     """Sharding of basis vector gradients."""
 
-    matrix: Optional[NamedSharding] = None
+    matrix: NamedSharding | None = None
     """Sharding of generator matrix."""
 
 
-def make_vgrad_basis[X: Array, TX: Array](
+def make_vgrad_basis(
     eval_tangents: Callable[[F[X, TX, K]], V],
-    basis: alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, int | Idxs],
-    batch_size: Optional[int] = None,
-    out_shardings: Optional[NamedSharding] = None,
-) -> Callable[[Idxs], Vs]:
+    basis: alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, Idx],
+    batch_size: int | None = None,
+    out_shardings: NamedSharding | None = None,
+) -> Callable[[Idxs], V]:
     """Make function that computes directional derivatives of basis vectors."""
 
     @partial(shardit, sharding=out_shardings)
     @partial(batch_map, batch_size=batch_size)
-    def vgrad_basis(idx: int | Array) -> V:
+    def vgrad_basis(idx: Idx) -> V:
         return eval_tangents(dyn.vgrad(basis.fn(idx)))
 
     return vgrad_basis
@@ -86,42 +213,29 @@ def make_vgrad_basis[X: Array, TX: Array](
 
 def make_generator_builder[
     Data: PyTree,
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
-    TX: Array,
+    Eigen: knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs],
 ](
-    pars: KernelPars,
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, K]],
-    impl_eval_tangents: Callable[[Data], Callable[[F[X, TX, K]], V]],
-    kernel: Callable[[X, X], K] | Callable[[Data, X, X], K],
-    which_eigs_galerkin: int | tuple[int, int] | list[int],
-    grad_batch_size: Optional[int] = None,
-    gram_batch_size: Optional[int] = None,
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
+    impl_basis: Callable[
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
+    ],
+    impl_eval_tangents: Callable[[Data], Callable[[F[X, TX, R]], V]],
+    grad_batch_size: int | None = None,
+    gram_batch_size: int | None = None,
     shardings: GeneratorShardings = GeneratorShardings(),
-    jit: bool = True,
-) -> Callable[[Data, KernelEigen[K, Ks, V, Vs]], Mat]:
+) -> Callable[[Data, Eigen], Mat]:
     """Make function that computes Koopman generator in a kernel eigenbasis."""
-    match which_eigs_galerkin:
-        case int():
-            which_eigs = (1, which_eigs_galerkin)
-        case _:
-            which_eigs = which_eigs_galerkin
-    impl_basis = knl.make_data_driven_eigenbasis(
-        pars, impl_l2, kernel, which_eigs
-    )
 
     def build_generator(
-        data: Data, kernel_eigen: KernelEigen[R, Rs, V, Vs]
+        data: Data,
+        kernel_eigen: Eigen,
     ) -> Mat:
         """Compute matrix representation of Koopman generator."""
         l2x = impl_l2(data)
         eval_tangents = impl_eval_tangents(data)
         basis = impl_basis(data, kernel_eigen)
         basis_idxs = jnp.arange(basis.dim)
-        sharding = l2x.sharding
-        if sharding is not None:
-            assert isinstance(sharding, NamedSharding)
         vgrad_basis = make_vgrad_basis(
             eval_tangents,
             basis,
@@ -138,64 +252,40 @@ def make_generator_builder[
             )
         return gen_mat
 
-    # def build_generator(
-    #     data: Data, kernel_eigen: KernelEigen[R, Rs, V, Vs]
-    # ) -> Mat:
-    #     """Compute matrix representation of Koopman generator."""
-    #     l2x = impl_l2(data)
-    #     basis = impl_basis(data, kernel_eigen)
-    #     eval_tangents = impl_eval_tangents(data)
-
-    #     def vgrad_basis(idx: int | Array) -> V:
-    #         return eval_tangents(dyn.vgrad(basis.fn(idx)))
-
-    #     @partial(batch_map_2d, batch_sizes=gram_batch_size)
-    #     def generator_elements(i: int | Array, j: int | Array) -> R:
-    #         return l2x.innerp(basis.dual_vec(i), vgrad_basis(j))
-
-    #     basis_idxs = jnp.arange(basis.dim)
-    #     gen_mat = generator_elements(basis_idxs, basis_idxs)
-
-    #     if shardings.matrix is not None:
-    #         return jax.lax.with_sharding_constraint(
-    #             gen_mat, shardings=shardings.matrix
-    #         )
-    #     return gen_mat
-
-    if jit:
-        return jax.jit(build_generator)
     return build_generator
 
 
-def compute_generator_matrix[
-    Data: PyTree,
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
-    TX: Array,
-](
+def compute_generator_matrix[Data: PyTree](
     pars: tuple[KernelPars, KoopmanParsDiff],
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, K]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
     impl_eval_tangents: Callable[[Data], Callable[[F[X, TX, K]], V]],
     kernel: Callable[[X, X], K] | Callable[[Data, X, X], K],
     train_data: Data,
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+    kernel_eigen: KernelEigen,
     shardings: GeneratorShardings = GeneratorShardings(),
     jit: bool = True,
 ) -> Mat:
     """Compute generator matrix representation in kernel eigenbasis."""
     kernel_pars, koopman_pars = pars
-    op_build = make_generator_builder(
-        kernel_pars,
+    match koopman_pars.which_eigs_galerkin:
+        case int():
+            which_eigs = (1, koopman_pars.which_eigs_galerkin)
+        case _:
+            which_eigs = koopman_pars.which_eigs_galerkin
+    impl_basis = knl.make_data_driven_eigenbasis(
+        kernel_pars, impl_l2, kernel, which_eigs=which_eigs
+    )
+    op_build: Callable[[Data, KernelEigen], Mat] = make_generator_builder(
         impl_l2,
+        impl_basis,
         impl_eval_tangents,
-        kernel,
-        which_eigs_galerkin=koopman_pars.which_eigs_galerkin,
         grad_batch_size=koopman_pars.grad_batch_size,
         gram_batch_size=koopman_pars.gram_batch_size,
         shardings=shardings,
-        jit=jit,
     )
+
+    if jit:
+        op_build = typestable_jit(op_build)
     return op_build(train_data, kernel_eigen)
 
 
@@ -205,41 +295,43 @@ class IntegralTransformShardings(NamedTuple):
     quadrature: L2FnAlgebraShardings = L2FnAlgebraShardings()
     """Shardings for the L2 space used in resolvent quadrature."""
 
-    weights: Optional[NamedSharding] = None
+    weights: NamedSharding | None = None
     """Sharding of integral transform weight vector."""
 
-    matrix: Optional[NamedSharding] = None
+    matrix: NamedSharding | None = None
     """Sharding of Qz matrix."""
 
 
-def make_integral_transform_basis[X: Array](
+def make_integral_transform_basis(
     bandwidth: float,
     dt: float,
     transform: Literal["gauss", "laplace"],
+    quadrature: Literal["trapezoidal", "simpson"],
     eval_quad: Callable[[F[X, K]], V],
     num_quad: int,
-    basis: alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, int | Idxs],
-    batch_size: Optional[int] = None,
+    basis: alg.ImplementsDimensionedL2FnFrame[X, K, V, Ks, Idx],
+    batch_size: int | None = None,
     shardings: IntegralTransformShardings = IntegralTransformShardings(),
 ) -> Callable[[Idxs], Vs]:
     """Make function that computes integral transforms of basis vectors."""
     match transform:
         case "gauss":
-            transf = dl.make_gauss_transform(
-                z=bandwidth,
-                dt=dt,
-                num_quad=num_quad,
-                weight_sharding=shardings.weights,
-                out_sharding=shardings.quadrature.vectors,
-            )
+            transf_weights = partial(dl.gauss_transform_weights, bandwidth)
         case "laplace":
-            transf = dl.make_laplace_transform(
-                z=bandwidth,
-                dt=dt,
-                num_quad=num_quad,
-                weight_sharding=shardings.weights,
-                out_sharding=shardings.quadrature.vectors,
-            )
+            transf_weights = partial(dl.laplace_transform_weights, bandwidth)
+    match quadrature:
+        case "trapezoidal":
+            quad_weights = dl.trapezoidal_quadrature_weights
+        case "simpson":
+            quad_weights = dl.simpson_quadrature_weights
+    transf = dl.make_integral_transform(
+        dt=dt,
+        num_quad=num_quad,
+        transform_weights=transf_weights,
+        quadrature_weights=quad_weights,
+        weight_sharding=shardings.weights,
+        out_sharding=shardings.quadrature.vectors,
+    )
 
     @partial(shardit, sharding=shardings.quadrature.vectors)
     @partial(batch_map, batch_size=batch_size)
@@ -251,49 +343,36 @@ def make_integral_transform_basis[X: Array](
 
 def make_integral_transform_builder[
     Data: PyTree,
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
+    Eigen: knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs],
 ](
     bandwidth: float,
     dt: float,
     transform: Literal["gauss", "laplace"],
+    quadrature: Literal["trapezoidal", "simpson"],
     num_quad: int,
-    pars: KernelPars,
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, K]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
+    impl_basis: Callable[
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
+    ],
     impl_eval_quad: Callable[[Data], Callable[[F[X, K]], V]],
-    kernel: Callable[[X, X], K] | Callable[[Data, X, X], K],
-    which_eigs_galerkin: int | tuple[int, int] | list[int],
-    quad_batch_size: Optional[int] = None,
-    gram_batch_size: Optional[int] = None,
+    quad_batch_size: int | None = None,
+    gram_batch_size: int | None = None,
     shardings: IntegralTransformShardings = IntegralTransformShardings(),
-    jit: bool = False,
-) -> Callable[[Data, KernelEigen[K, Ks, V, Vs]], Mat]:
+) -> Callable[[Data, Eigen], Mat]:
     """Make function that computes integral transform in a kernel basis."""
-    match which_eigs_galerkin:
-        case int():
-            which_eigs = (1, which_eigs_galerkin)
-        case _:
-            which_eigs = which_eigs_galerkin
-    impl_basis = knl.make_data_driven_eigenbasis(
-        pars, impl_l2, kernel, which_eigs
-    )
 
-    def build_integral_transform(
-        data: Data, kernel_eigen: KernelEigen[R, Rs, V, Vs]
-    ) -> Mat:
+    def build_integral_transform(data: Data, kernel_eigen: Eigen) -> Mat:
         """Compute matrix representation of Koopman integral transform."""
         l2x = impl_l2(data)
         eval_quad = impl_eval_quad(data)
         basis = impl_basis(data, kernel_eigen)
         basis_idxs = jnp.arange(basis.dim)
-        sharding = l2x.sharding
-        if sharding is not None:
-            assert isinstance(sharding, NamedSharding)
         transf_basis = make_integral_transform_basis(
             bandwidth=bandwidth,
             dt=dt,
             transform=transform,
+            quadrature=quadrature,
             num_quad=num_quad,
             eval_quad=eval_quad,
             basis=basis,
@@ -311,63 +390,61 @@ def make_integral_transform_builder[
             )
         return transf_mat
 
-    if jit:
-        return jax.jit(build_integral_transform)
     return build_integral_transform
 
 
-def compute_integral_transform_matrix[
-    Data: PyTree,
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
-](
+def compute_integral_transform_matrix[Data: PyTree](
     pars: tuple[KernelPars, KoopmanParsTransf],
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, K]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
     impl_eval_quad: Callable[[Data], Callable[[F[X, K]], V]],
     kernel: Callable[[X, X], K] | Callable[[Data, X, X], K],
     train_data: Data,
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+    kernel_eigen: KernelEigen,
     shardings: IntegralTransformShardings = IntegralTransformShardings(),
     jit: bool = True,
 ) -> Mat:
     """Compute generator matrix representation in kernel eigenbasis."""
     kernel_pars, koopman_pars = pars
-    match koopman_pars:
-        case KoopmanParsGauss():
-            transform = "gauss"
-        case KoopmanParsLapl():
-            transform = "laplace"
-    op_build = make_integral_transform_builder(
-        koopman_pars.bandwidth,
-        koopman_pars.dt,
-        transform,
-        koopman_pars.num_quad,
-        kernel_pars,
-        impl_l2,
-        impl_eval_quad,
-        kernel,
-        which_eigs_galerkin=koopman_pars.which_eigs_galerkin,
-        quad_batch_size=koopman_pars.quad_batch_size,
-        gram_batch_size=koopman_pars.gram_batch_size,
-        shardings=shardings,
-        jit=jit,
+    match koopman_pars.which_eigs_galerkin:
+        case int():
+            which_eigs = (1, koopman_pars.which_eigs_galerkin)
+        case _:
+            which_eigs = koopman_pars.which_eigs_galerkin
+    impl_basis = knl.make_data_driven_eigenbasis(
+        kernel_pars, impl_l2, kernel, which_eigs
     )
+    op_build: Callable[[Data, KernelEigen], Mat] = (
+        make_integral_transform_builder(
+            koopman_pars.bandwidth,
+            koopman_pars.dt,
+            koopman_pars.transform,
+            koopman_pars.quadrature,
+            koopman_pars.num_quad,
+            impl_l2,
+            impl_basis,
+            impl_eval_quad,
+            quad_batch_size=koopman_pars.quad_batch_size,
+            gram_batch_size=koopman_pars.gram_batch_size,
+            shardings=shardings,
+        )
+    )
+    if jit:
+        op_build = typestable_jit(op_build)
     return op_build(train_data, kernel_eigen)
 
 
 class KoopmanEigenShardings(NamedTuple):
     """NamedTuple holding shardings of KoopmanEigen objects."""
 
-    eigenvalues: Optional[NamedSharding] = None
+    eigenvalues: NamedSharding | None = None
     """Sharding of eigenvalue array."""
 
-    eigenvectors: Optional[NamedSharding] = None
+    eigenvectors: NamedSharding | None = None
     """Sharding of eigenvector array."""
 
     @classmethod
     def from_named_sharder[Shape: tuple[int, ...], AxisNames: str](
-        cls, sharder: Optional[NamedSharder[Shape, AxisNames]]
+        cls, sharder: NamedSharder[Shape, AxisNames] | None
     ) -> Self:
         """Create KernelEigenSharding object from NamedSharder."""
         if sharder is not None:
@@ -380,23 +457,23 @@ class KoopmanEigenShardings(NamedTuple):
 class _GeneratorSpectrum(NamedTuple):
     """NamedTuple holding generator eigendecomposition results."""
 
-    evals: Array
+    evals: Cs
     """Generator eigenvalues."""
 
-    evec_coeffs: Array
+    evec_coeffs: Css
     """Basis expansion coefficients of the eigenvectors."""
 
-    dual_evec_coeffs: Array
+    dual_evec_coeffs: Css
     """Basis expansion coefficients of the dual (left) eigenvectors."""
 
 
-def _from_generator_spectrum[X: Array](
-    kernel_basis: KernelEigenbasis[X, K, V, Ks, int | Array],
+def _from_generator_spectrum(
+    kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     spec: _GeneratorSpectrum,
     sort_by: Literal["frequency", "energy"],
-    num_eigs: Optional[int] = None,
+    num_eigs: int | None = None,
     out_shardings: KoopmanEigenShardings = KoopmanEigenShardings(),
-) -> KoopmanEigen[Ks, Ks, Css]:
+) -> KoopmanEigen:
     """Convert _GeneratorSpectrum to KoopmanEigen."""
     if num_eigs is None:
         _num_eigs = kernel_basis.dim - 1
@@ -461,34 +538,22 @@ def _from_generator_spectrum[X: Array](
     return eigen
 
 
-def make_generator_eigensolver_diff[
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
+def make_diffusion_regularized_generator_eigensolver[
     Data: PyTree,
+    Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
 ](
-    pars: tuple[KernelPars, KoopmanParsDiff],
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, K]],
-    kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
+    koopman_pars: KoopmanParsDiff,
+    impl_basis: Callable[
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
+    ],
     out_shardings: KoopmanEigenShardings = KoopmanEigenShardings(),
-    jit: bool = True,
-) -> Callable[
-    [Data, KernelEigen[R, Rs, V, Vs], Mat], KoopmanEigen[C, Cs, Css]
-]:
+) -> Callable[[Data, Eigen, Mat], KoopmanEigen]:
     """Make eigensolver for diffusion-regularized generator."""
-    kernel_pars, koopman_pars = pars
-    match koopman_pars.which_eigs_galerkin:
-        case int():
-            which_eigs = (1, koopman_pars.which_eigs_galerkin)
-        case _:
-            which_eigs = koopman_pars.which_eigs_galerkin
-    impl_basis = knl.make_data_driven_eigenbasis(
-        kernel_pars, impl_l2, kernel, which_eigs=which_eigs
-    )
 
     def eigensolve(
-        data: Data, kernel_eigen: KernelEigen[R, Rs, V, Vs], gen_mat: Array
-    ) -> KoopmanEigen[C, Cs, Css]:
+        data: Data, kernel_eigen: Eigen, gen_mat: Mat
+    ) -> KoopmanEigen:
         basis = impl_basis(data, kernel_eigen)
         diff_mat = koopman_pars.tau * jnp.diag(basis.lapl_spec)
         if koopman_pars.antisym:
@@ -514,30 +579,38 @@ def make_generator_eigensolver_diff[
         )
         return eigen
 
-    if jit:
-        return jax.jit(eigensolve)
     return eigensolve
 
 
-def compute_generator_eigen_diff[
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
-    Data: PyTree,
-](
+def compute_diffusion_regularized_generator_eigen[Data: PyTree](
     pars: tuple[KernelPars, KoopmanParsDiff],
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, K]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, X, V, R]],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     data: Data,
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+    kernel_eigen: KernelEigen,
     gen_mat: Mat,
     out_shardings: KoopmanEigenShardings = KoopmanEigenShardings(),
     jit: bool = True,
-) -> KoopmanEigen[C, Cs, Css]:
+) -> KoopmanEigen:
     """Compute eigendecomposition of diffusion-regularized generator."""
-    eigensolve = make_generator_eigensolver_diff(
-        pars, impl_l2, kernel, out_shardings, jit
+    kernel_pars, koopman_pars = pars
+    match koopman_pars.which_eigs_galerkin:
+        case int():
+            which_eigs = (1, koopman_pars.which_eigs_galerkin)
+        case _:
+            which_eigs = koopman_pars.which_eigs_galerkin
+    impl_basis = knl.make_data_driven_eigenbasis(
+        kernel_pars, impl_l2, kernel, which_eigs=which_eigs
     )
+    eigensolve: Callable[[Data, KernelEigen, Mat], KoopmanEigen] = (
+        make_diffusion_regularized_generator_eigensolver(
+            koopman_pars,
+            impl_basis,
+            out_shardings,
+        )
+    )
+    if jit:
+        eigensolve = typestable_jit(eigensolve)
     return eigensolve(data, kernel_eigen, gen_mat)
 
 
@@ -589,15 +662,15 @@ class _IntegralTransformSpectrum(NamedTuple):
     """Basis expansion coefficients of the dual (left) eigenvectors."""
 
 
-def _from_integral_transform_spectrum[X: Array](
+def _from_integral_transform_spectrum(
     bandwidth: float,
     transform: Literal["gauss", "laplace"],
-    kernel_basis: KernelEigenbasis[X, K, V, Ks, int | Array],
+    kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     spec: _IntegralTransformSpectrum,
     sort_by: Literal["frequency", "energy"],
-    num_eigs: Optional[int] = None,
+    num_eigs: int | None = None,
     out_shardings: KoopmanEigenShardings = KoopmanEigenShardings(),
-) -> KoopmanEigen[Ks, Ks, Css]:
+) -> KoopmanEigen:
     """Convert _IntegralTransformSpectrum to KoopmanEigen."""
     if num_eigs is None:
         _num_eigs = kernel_basis.dim - 1
@@ -671,39 +744,22 @@ def _from_integral_transform_spectrum[X: Array](
     return eigen
 
 
-def make_integral_transform_eigensolver_comp[
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
+def make_compactified_integral_transform_eigensolver[
     Data: PyTree,
+    Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
 ](
-    pars: tuple[KernelPars, KoopmanParsTransf],
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, K]],
-    kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
+    koopman_pars: KoopmanParsTransf,
+    impl_basis: Callable[
+        [Data, Eigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
+    ],
     out_shardings: KoopmanEigenShardings = KoopmanEigenShardings(),
-    jit: bool = True,
-) -> Callable[
-    [Data, KernelEigen[R, Rs, V, Vs], Mat], KoopmanEigen[C, Cs, Css]
-]:
+) -> Callable[[Data, Eigen, Mat], KoopmanEigen]:
     """Make eigensolver for compactified integral transform operator."""
-    kernel_pars, koopman_pars = pars
-    match koopman_pars:
-        case KoopmanParsGauss():
-            transform = "gauss"
-        case KoopmanParsLapl():
-            transform = "laplace"
-    match koopman_pars.which_eigs_galerkin:
-        case int():
-            which_eigs = (1, koopman_pars.which_eigs_galerkin)
-        case _:
-            which_eigs = koopman_pars.which_eigs_galerkin
-    impl_basis = knl.make_data_driven_eigenbasis(
-        kernel_pars, impl_l2, kernel, which_eigs=which_eigs
-    )
 
     def eigensolve(
-        data: Data, kernel_eigen: KernelEigen[R, Rs, V, Vs], transf_mat: Array
-    ) -> KoopmanEigen[C, Cs, Css]:
+        data: Data, kernel_eigen: Eigen, transf_mat: Mat
+    ) -> KoopmanEigen:
         basis = impl_basis(data, kernel_eigen)
         match koopman_pars.smoothing_kernel:
             case "exponential":
@@ -732,7 +788,7 @@ def make_integral_transform_eigensolver_comp[
         )
         eigen = _from_integral_transform_spectrum(
             koopman_pars.bandwidth,
-            transform,
+            koopman_pars.transform,
             basis,
             spec,
             num_eigs=koopman_pars.num_eigs,
@@ -741,38 +797,44 @@ def make_integral_transform_eigensolver_comp[
         )
         return eigen
 
-    if jit:
-        return jax.jit(eigensolve)
     return eigensolve
 
 
-def compute_integral_transform_eigen_comp[
-    Ns: Shape,
-    D: DTypeLike,
-    X: Array,
-    Data: PyTree,
-](
+def compute_integral_transform_eigen_comp[Data: PyTree](
     pars: tuple[KernelPars, KoopmanParsTransf],
-    impl_l2: Callable[[Data], L2FnAlgebra[Ns, D, X, K]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, X, V, R]],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     data: Data,
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
+    kernel_eigen: KernelEigen,
     transf_mat: Mat,
     out_shardings: KoopmanEigenShardings = KoopmanEigenShardings(),
     jit: bool = True,
-) -> KoopmanEigen[C, Cs, Css]:
+) -> KoopmanEigen:
     """Compute eigendecomposition of compactified integral transform."""
-    eigensolve = make_integral_transform_eigensolver_comp(
-        pars, impl_l2, kernel, out_shardings, jit
+    kernel_pars, koopman_pars = pars
+    match koopman_pars.which_eigs_galerkin:
+        case int():
+            which_eigs = (1, koopman_pars.which_eigs_galerkin)
+        case _:
+            which_eigs = koopman_pars.which_eigs_galerkin
+    impl_basis = knl.make_data_driven_eigenbasis(
+        kernel_pars, impl_l2, kernel, which_eigs=which_eigs
     )
+    eigensolve: Callable[[Data, KernelEigen, Mat], KoopmanEigen] = (
+        make_compactified_integral_transform_eigensolver(
+            koopman_pars, impl_basis, out_shardings
+        )
+    )
+    if jit:
+        eigensolve = typestable_jit(eigensolve)
     return eigensolve(data, kernel_eigen, transf_mat)
 
 
-def make_eigenbasis_asym[X: Array, L: int, D: DTypeLike](
+def make_eigenbasis_asym[L: int, D: DTypeLike](
     c_l: L2VectorAlgebra[tuple[L], D],
-    kernel_basis: KernelEigenbasis[X, K, V, Ks, int | Array],
-    koopman_eigen: KoopmanEigen[C, Cs, Css],
-) -> KoopmanEigenbasis[X, K, V, Ks, int | Array]:
+    kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
+    koopman_eigen: koop.ImplementsSliceableKoopmanEigen[C, Cs, Css],
+) -> KoopmanEigenbasis:
     """Make Koopman eigenbasis from eigendecomposition of asymmetric op."""
 
     def vc(i: int | Array) -> V:
@@ -810,7 +872,8 @@ def make_eigenbasis_asym[X: Array, L: int, D: DTypeLike](
     def dual_anal_eval_c(i: int | Array, v: V) -> K:
         return c_l.innerp(koopman_eigen.evec_coeffs[i], v)
 
-    idxs = jnp.arange(koopman_eigen.num_eigs)
+    num_eigs = koop.num_eigs_in_eigen(koopman_eigen)
+    idxs = jnp.arange(num_eigs)
     anal_c = partial(anal_eval_c, idxs)
     anal = fun.compose(anal_c, kernel_basis.anal)
     dual_anal_c = partial(dual_anal_eval_c, idxs)
@@ -858,11 +921,11 @@ def make_eigenbasis_asym[X: Array, L: int, D: DTypeLike](
     return basis
 
 
-def make_eigenbasis_antisym[X: Array, L: int, D: DTypeLike](
+def make_eigenbasis_antisym[L: int, D: DTypeLike](
     c_l: L2VectorAlgebra[tuple[L], D],
-    kernel_basis: KernelEigenbasis[X, K, V, Ks, int | Array],
-    koopman_eigen: KoopmanEigen[C, Cs, Css],
-) -> KoopmanEigenbasis[X, K, V, Ks, int | Array]:
+    kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
+    koopman_eigen: koop.ImplementsSliceableKoopmanEigen[C, Cs, Css],
+) -> KoopmanEigenbasis:
     """Make Koopman eigenbasis from eigendecomposition of antisymmetric op."""
 
     def vc(i: int | Array) -> V:
@@ -890,7 +953,8 @@ def make_eigenbasis_antisym[X: Array, L: int, D: DTypeLike](
     def anal_eval_c(i: int | Array, v: V) -> K:
         return c_l.innerp(koopman_eigen.evec_coeffs[i], v)
 
-    idxs = jnp.arange(koopman_eigen.num_eigs)
+    num_eigs = koop.num_eigs_in_eigen(koopman_eigen)
+    idxs = jnp.arange(num_eigs)
     anal_c = partial(anal_eval_c, idxs)
     anal = fun.compose(anal_c, kernel_basis.anal)
     fn_anal = fun.compose(anal_c, kernel_basis.fn_anal)
@@ -930,91 +994,89 @@ def make_eigenbasis_antisym[X: Array, L: int, D: DTypeLike](
     return basis
 
 
-def make_eigenbasis[X: Array, L: int, D: DTypeLike](
+def make_eigenbasis[L: int, D: DTypeLike](
     pars: KoopmanPars,
     c_l: L2VectorAlgebra[tuple[L], D],
-    kernel_basis: KernelEigenbasis[X, K, V, Ks, int | Array],
-    koopman_eigen: KoopmanEigen[C, Cs, Css],
-) -> KoopmanEigenbasis[X, K, V, Ks, int | Array]:
-    """Make Koopman eigenbasis from eigendecomposition of antisymmetric op."""
+    kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
+    koopman_eigen: koop.ImplementsSliceableKoopmanEigen[C, Cs, Css],
+) -> KoopmanEigenbasis:
+    """Make Koopman eigenbasis."""
     match pars, pars.antisym:
-        case KoopmanParsGauss() | KoopmanParsLapl(), True:
+        case KoopmanParsTransf(), True:
             basis = make_eigenbasis_antisym(c_l, kernel_basis, koopman_eigen)
         case _, _:
             basis = make_eigenbasis_asym(c_l, kernel_basis, koopman_eigen)
     return basis
 
 
-def slice_eigen(
-    eigen: KoopmanEigen[C, Cs, Css],
-    which_eigs: int | tuple[int, int] | list[int] | None = None,
-) -> KoopmanEigen[C, Cs, Css]:
-    """Slice KoopmanEigen object using `which_eigs` convention."""
-    match which_eigs:
-        case None:
-            sliced_eigen = eigen
-        case int() as num_eigs:
-            sliced_eigen = eigen.isel(slice(0, num_eigs))
-        case tuple() as idx:
-            sliced_eigen = eigen.isel(slice(idx[0], idx[1] + 1))
-        case list() as idxs:
-            sliced_eigen = eigen.isel(idxs)
-    return sliced_eigen
+# def slice_eigen(
+#     eigen: KoopmanEigen[C, Cs, Css],
+#     which_eigs: int | tuple[int, int] | list[int] | None = None,
+# ) -> KoopmanEigen[C, Cs, Css]:
+#     """Slice KoopmanEigen object using `which_eigs` convention."""
+#     match which_eigs:
+#         case None:
+#             sliced_eigen = eigen
+#         case int() as num_eigs:
+#             sliced_eigen = eigen.isel(slice(0, num_eigs))
+#         case tuple() as idx:
+#             sliced_eigen = eigen.isel(slice(idx[0], idx[1] + 1))
+#         case list() as idxs:
+#             sliced_eigen = eigen.isel(idxs)
+#     return sliced_eigen
 
 
 # TODO: Consider automating the process of building these data-driven wrappers
 # using a decorator.
 def make_data_driven_eigenbasis[
     Data: PyTree,
+    KnlEigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
     D: DTypeLike,
-    X: Array,
     L: int,
 ](
-    pars: KoopmanPars,
+    koopman_pars: KoopmanPars,
     c_l: L2VectorAlgebra[tuple[L], D],
     impl_kernel_basis: Callable[
-        [Data, KernelEigen[K, Ks, V, Vs]],
-        KernelEigenbasis[X, K, V, Ks, int | Array],
+        [Data, KnlEigen],
+        knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     ],
     which_eigs: int | tuple[int, int] | list[int] | None = None,
 ) -> Callable[
-    [Data, KernelEigen[R, Rs, V, Vs], KoopmanEigen[C, Cs, Css]],
-    KoopmanEigenbasis[X, K, V, Ks, int | Array],
+    [Data, KnlEigen, koop.ImplementsSliceableKoopmanEigen[C, Cs, Css]],
+    KoopmanEigenbasis,
 ]:
     """Make data-driven Koopman eigenbasis builder."""
 
     def _make_eigenbasis(
         data: Data,
-        kernel_eigen: KernelEigen[R, Rs, V, Vs],
-        koopman_eigen: KoopmanEigen[C, Cs, Css],
-    ) -> KoopmanEigenbasis[X, K, V, Ks, int | Array]:
+        kernel_eigen: KnlEigen,
+        koopman_eigen: koop.ImplementsSliceableKoopmanEigen[C, Cs, Css],
+    ) -> KoopmanEigenbasis:
         kernel_basis = impl_kernel_basis(data, kernel_eigen)
-        _koopman_eigen = slice_eigen(koopman_eigen, which_eigs)
-        return make_eigenbasis(pars, c_l, kernel_basis, _koopman_eigen)
+        _koopman_eigen = koop.slice_eigen(koopman_eigen, which_eigs)
+        return make_eigenbasis(koopman_pars, c_l, kernel_basis, _koopman_eigen)
 
     return _make_eigenbasis
 
 
 def make_koopman_analysis_operator[
     Data: PyTree,
-    X: Array,
+    KnlEigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    KoopEigen: koop.ImplementsKoopmanEigen[C, Cs, Css],
 ](
     impl_basis: Callable[
-        [Data, KernelEigen[R, Rs, V, Vs], KoopmanEigen[C, Cs, Css]],
-        KoopmanEigenbasis[X, K, V, Ks, int | Array],
+        [Data, KnlEigen, KoopEigen],
+        KoopmanEigenbasis,
     ],
-    which_samples: Optional[tuple[int, int]] = None,
-    jit: bool = True,
-) -> Callable[
-    [Data, Rs, KernelEigen[R, Rs, V, Vs], KoopmanEigen[C, Cs, Css]], Cs
-]:
+    which_samples: tuple[int, int] | None = None,
+) -> Callable[[Data, V, KnlEigen, KoopEigen], Cs]:
     """Make analysis operator for Koopman forecast."""
 
     def anal(
         data: Data,
-        response: Rs,
-        kernel_eigen: KernelEigen[K, Ks, V, Vs],
-        koopman_eigen: KoopmanEigen[C, Cs, Css],
+        response: V,
+        kernel_eigen: KnlEigen,
+        koopman_eigen: KoopEigen,
     ) -> Cs:
         if which_samples is not None:
             i0 = which_samples[0]
@@ -1025,36 +1087,35 @@ def make_koopman_analysis_operator[
         basis = impl_basis(data, kernel_eigen, koopman_eigen)
         return basis.anal(response[i0:i1])
 
-    if jit:
-        return jax.jit(anal)
     return anal
 
 
 def make_koopman_prediction_function[
     Data: PyTree,
-    D: DTypeLike,
-    X: Array,
-    Ntst: Shape,
+    KnlEigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    KoopEigen: koop.ImplementsKoopmanEigen[C, Cs, Css],
+    TestData: PyTree,
 ](
     impl_basis: Callable[
-        [Data, KernelEigen[R, Rs, V, Vs], KoopmanEigen[C, Cs, Css]],
-        KoopmanEigenbasis[X, K, V, Ks, int | Array],
+        [Data, KnlEigen, KoopEigen],
+        KoopmanEigenbasis,
     ],
-    impl_l2_tst: Callable[[Data], L2FnAlgebra[Ntst, D, X, K]],
-    jit: bool = True,
+    impl_l2_tst: Callable[
+        [TestData], alg.ImplementsL2FnAlgebra[X, R, Vtst, R]
+    ],
 ) -> Callable[
-    [Data, KernelEigen[K, Ks, V, Vs], KoopmanEigen[C, Cs, Css], Cs, Rs, Data],
-    R,
+    [Data, KnlEigen, KoopEigen, Cs, Rs, TestData],
+    Vtst,
 ]:
     """Make prediction function for Koopman forecast."""
 
     def predict(
         data: Data,
-        kernel_eigen: KernelEigen[K, Ks, V, Vs],
-        koopman_eigen: KoopmanEigen[C, Cs, Css],
+        kernel_eigen: KnlEigen,
+        koopman_eigen: KoopEigen,
         coeffs: Cs,
         ts: Rs,
-        test_data: Data,
+        test_data: TestData,
     ) -> Rs:
         basis = impl_basis(data, kernel_eigen, koopman_eigen)
         l2x_tst = impl_l2_tst(test_data)
@@ -1066,38 +1127,33 @@ def make_koopman_prediction_function[
 
         return l2x_tst.incl(partial(_predict, coeffs, ts))
 
-    if jit:
-        return jax.jit(predict)
     return predict
 
 
-# TODO: Try moving this to nlsa.koopman by abstracting over L2FnAlgebra (using
-# the already defined protocol from alg, and making KernelEigen, KoopmanEigen
-# protocols.
 def compute_koopman_preds[
     Data: PyTree,
     D: DTypeLike,
-    X: Array,
-    N: Shape,
     L: int,
-    Ntst: Shape,
+    TestData: PyTree,
 ](
     pars: tuple[KernelPars, KoopmanPars],
     c_l: L2VectorAlgebra[tuple[L], D],
-    impl_l2: Callable[[Data], L2FnAlgebra[N, D, X, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
     train_data: Data,
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
-    kernel_eigen: KernelEigen[R, Rs, V, Vs],
-    koopman_eigen: KoopmanEigen[C, Cs, Css],
-    coeffs: Rs,
-    impl_l2_tst: Callable[[Data], L2FnAlgebra[Ntst, D, X, R]],
-    test_data: Data,
+    kernel_eigen: KernelEigen,
+    koopman_eigen: KoopmanEigen,
+    coeffs: Cs,
+    impl_l2_tst: Callable[
+        [TestData], alg.ImplementsL2FnAlgebra[X, R, Vtst, R]
+    ],
+    test_data: TestData,
     num_steps: int,
     dt: float,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
     jit: bool = True,
 ) -> Array:
-    """Compute KAF predictions."""
+    """Compute Koopman predictions."""
     kernel_pars, koopman_pars = pars
     match koopman_pars.which_eigs_galerkin:
         case int():
@@ -1117,42 +1173,78 @@ def compute_koopman_preds[
     impl_koopman_basis = make_data_driven_eigenbasis(
         koopman_pars, c_l, impl_kernel_basis, which_eigs
     )
-    predict = make_koopman_prediction_function(
-        impl_koopman_basis, impl_l2_tst, jit
-    )
+    predict: Callable[
+        [Data, KernelEigen, KoopmanEigen, Cs, Rs, TestData], Vtst
+    ] = make_koopman_prediction_function(impl_koopman_basis, impl_l2_tst)
     ts = jnp.arange(num_steps + 1) * dt
+    if jit:
+        predict = typestable_jit(predict)
     return predict(
         train_data, kernel_eigen, koopman_eigen, coeffs, ts, test_data
     )
 
 
-def plot_generator_spectrum(
-    koopman_eigen: KoopmanEigen[C, Cs, Css],
-    num_eigs_plt: Optional[int] = None,
-    frequency_symbol: str = "$\\omega_j$",
-    frequency_scaling: float = 1,
-    frequency_units: Optional[str] = None,
-    i_fig: int = 1,
-) -> Figure:
-    """Plot spectrum of Koopman generator."""
-    if plt.fignum_exists(i_fig):
-        plt.close(i_fig)
-    fig, ax = plt.subplots(num=i_fig, constrained_layout=True)
-    if num_eigs_plt is None:
-        num_eigs_plt = len(koopman_eigen.gen_evals)
-    im = ax.scatter(
-        koopman_eigen.engys[:num_eigs_plt],
-        koopman_eigen.gen_evals[:num_eigs_plt].imag * frequency_scaling,
-        s=10,
-        c=jnp.arange(num_eigs_plt),
+def make_eigenfunction_evaluation_functional[
+    Data: PyTree,
+    TestData: PyTree,
+    KnlEigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    KoopEigen: koop.ImplementsKoopmanEigen[C, Cs, Css],
+](
+    impl_eval: Callable[[TestData], Callable[[F[X, R]], Vtst]],
+    impl_koopman_basis: Callable[
+        [Data, KnlEigen, KoopEigen],
+        koop.ImplementsKoopmanEigenbasis[X, R, V, R, Rs, Idx],
+    ],
+    idx_eig: int,
+) -> Callable[[Data, KnlEigen, KoopEigen, TestData], Vtst]:
+    """Make evaluation functional for a Koopman eigenfunction on dataset."""
+
+    def eval_koop(
+        train_data: Data,
+        kernel_eigen: KnlEigen,
+        koopman_eigen: KoopEigen,
+        test_data: TestData,
+    ) -> Vtst:
+        koopman_basis = impl_koopman_basis(
+            train_data, kernel_eigen, koopman_eigen
+        )
+        eval_response = impl_eval(test_data)
+        return eval_response(koopman_basis.fn(idx_eig))
+
+    return eval_koop
+
+
+def evaluate_eigenfunction[
+    Data: PyTree,
+    TestData: PyTree,
+    D: DTypeLike,
+    L: int,
+](
+    pars: tuple[KernelPars, KoopmanPars],
+    c_l: L2VectorAlgebra[tuple[L], D],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
+    impl_eval: Callable[[TestData], Callable[[F[X, R]], Vtst]],
+    kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
+    idx_eig: int,
+    train_data: Data,
+    kernel_eigen: KernelEigen,
+    koopman_eigen: KoopmanEigen,
+    test_data: TestData,
+    jit: bool = True,
+) -> Array:
+    """Compute values of Koopman eigenfunction on a test dataset."""
+    kernel_pars, koopman_pars = pars
+    impl_kernel_basis = knl.make_data_driven_eigenbasis(
+        kernel_pars, impl_l2, kernel, koopman_pars.which_kernel_eigs
     )
-    cb = fig.colorbar(im, ax=ax)
-    ax.set_xlabel("Dirichlet energy $E_j$")
-    if frequency_units is not None:
-        units_str = f" ({frequency_units})"
-    else:
-        units_str = ""
-    ax.set_ylabel(f"Eigenfrequency {frequency_symbol}{units_str}")
-    cb.set_label("$j$")
-    ax.grid(True)
-    return fig
+    impl_koopman_basis = make_data_driven_eigenbasis(
+        koopman_pars, c_l, impl_kernel_basis
+    )
+    eval_koop: Callable[[Data, KernelEigen, KoopmanEigen, TestData], Vtst] = (
+        make_eigenfunction_evaluation_functional(
+            impl_eval, impl_koopman_basis, idx_eig
+        )
+    )
+    if jit:
+        eval_koop = typestable_jit(eval_koop)
+    return eval_koop(train_data, kernel_eigen, koopman_eigen, test_data)

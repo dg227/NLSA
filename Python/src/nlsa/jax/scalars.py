@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from jax import Array
 from jax.typing import DTypeLike
-from typing import Optional, SupportsComplex, SupportsFloat, final
+from typing import SupportsComplex, SupportsFloat, final
 
 type K = Array
 type F[*Xs, Y] = Callable[[*Xs], Y]
@@ -57,19 +57,19 @@ class ScalarField[D: DTypeLike](alg.ImplementsComplexScalarField[K]):
     """Implement scalar field operations on JAX arrays."""
 
     dtype: D
-    _zero: Optional[Callable[[], K]] = None
-    _add: Optional[Callable[[K, K], K]] = None
-    _sub: Optional[Callable[[K, K], K]] = None
-    _neg: Optional[Callable[[K], K]] = None
-    _unit: Optional[Callable[[], K]] = None
-    _mul: Optional[Callable[[K, K], K]] = None
-    _mpower: Optional[Callable[[K, int], K]] = None
-    _power: Optional[Callable[[K, K], K]] = None
-    _div: Optional[Callable[[K, K], K]] = None
-    _inv: Optional[Callable[[K], K]] = None
-    _adj: Optional[Callable[[K], K]] = None
-    _sqrt: Optional[Callable[[K], K]] = None
-    _mod: Optional[Callable[[K], K]] = None
+    _zero: Callable[[], K] | None = None
+    _add: Callable[[K, K], K] | None = None
+    _sub: Callable[[K, K], K] | None = None
+    _neg: Callable[[K], K] | None = None
+    _unit: Callable[[], K] | None = None
+    _mul: Callable[[K, K], K] | None = None
+    _mpower: Callable[[K, int], K] | None = None
+    _power: Callable[[K, K], K] | None = None
+    _div: Callable[[K, K], K] | None = None
+    _inv: Callable[[K], K] | None = None
+    _adj: Callable[[K], K] | None = None
+    _sqrt: Callable[[K], K] | None = None
+    _mod: Callable[[K], K] | None = None
 
     @property
     def zero(self) -> Callable[[], K]:

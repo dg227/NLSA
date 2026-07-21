@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass
 from nlsa.abstract_algebra import ImplementsCompose
-from typing import Callable, Protocol, TypeVar, runtime_checkable
+from typing import Protocol, TypeVar, runtime_checkable
+from collections.abc import Callable
 
 A = TypeVar("A")
 A_contra = TypeVar("A_contra", contravariant=True)

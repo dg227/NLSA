@@ -26,8 +26,6 @@ from nlsa.jax.kernels import (
 from nlsa.jax.koopman import (
     KoopmanEigen,
     KoopmanEigenShardings,
-    KoopmanParsGauss,
-    KoopmanParsLapl,
     KoopmanParsTransf,
     IntegralTransformShardings,
 )
@@ -42,7 +40,7 @@ from nlsa_models import lorenz63 as l63
 from nlsa_models.lorenz63 import Data, DataPars, SkillScores
 from pathlib import Path
 from tabulate import tabulate
-from typing import Literal, Optional, TypedDict
+from typing import Literal, TypedDict
 
 
 class Experiment(StrEnum):
@@ -61,42 +59,56 @@ class Experiment(StrEnum):
     """Test case."""
 
 
+type Plots = Literal[
+    "all",
+    "bandwidth_tuning",
+    "bandwidth_func",
+    "kernel_tuning",
+    "laplacian_spec",
+    "kernel_eigen",
+    "integral_transf_mat",
+    "generator_spec",
+    "koopman_eigen",
+    "running_pred",
+    "pred_timeseries",
+    "skill_scores",
+]
+
 EXPERIMENT: Experiment = Experiment.TEST
-IDX_GPU: Optional[int | Sequence[int]] = None  # 0
-XLA_MEM_FRACTION: Optional[str] = "0.95"
-JAX_CACHE_DIR: Optional[str] = "jax_cache"
+IDX_GPU: int | Sequence[int] | None = None  # 0
+XLA_MEM_FRACTION: str | None = "0.97"
+JAX_CACHE_DIR: str | None = "jax_cache"
 FP: Literal["f32", "f64"] = "f32"
 CONE_KERNEL: bool = False
 KERNEL_NORMALIZATION: Literal["diffusion_maps", "bistochastic"] = (
     "diffusion_maps"
 )
 INTEGRAL_TRANSFORM: Literal["gauss", "laplace"] = "gauss"
-MATPLOTLIB_BACKEND: Optional[Literal["Agg"]] = None
+MATPLOTLIB_BACKEND: Literal["Agg"] | None = None
 OUTPUT_DATA_DIR = "examples/lorenz63/data"
 NUM_TABULATE = 40
-NUM_PLT_TST: Optional[int] = None
+NUM_PLT_TST: int | None = None
 GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "calc"
 TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
-INTEGRAL_TRANSFORM_MATRIX_MODE: Literal["calc", "calcsave", "read"] = (
-    "calcsave"
-)
+INTEGRAL_TRANSFORM_MATRIX_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KOOPMAN_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KOOPMAN_RESPONSE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KOOPMAN_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
-PLOT_MODE: Optional[Literal["save", "show", "saveshow"]] = "show"
+PLOT_MODE: Literal["save", "show", "saveshow"] | None = "show"
+WHICH_PLOTS: set[Plots] = {"all"}
 DELAY_PLOT_MODE: Literal["backward", "central"] = "backward"
-KERNEL_EIGS_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
-KOOPMAN_EIGS_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+KOOPMAN_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
-LEAD_TIMES_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
-INITIALIZATION_TIMES_PLT: Optional[Sequence[int] | Literal["interactive"]] = (
+INITIALIZATION_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
 
@@ -160,10 +172,10 @@ class TrainPars[N: int]:
     pred: PredPars
     """Prediction parameters."""
 
-    cone: Optional[ConePars] = None
+    cone: ConePars | None = None
     """Cone kernel parameters."""
 
-    bw_tune: Optional[TunePars] = None
+    bw_tune: TunePars | None = None
     """Tuning parameters for kernel bandwidth function."""
 
     def __str__(self) -> str:
@@ -208,7 +220,7 @@ class TestPars[Ntst: int]:
     data: DataPars[Ntst]
     """Test data parameters."""
 
-    max_batch_size: Optional[int] = None
+    max_batch_size: int | None = None
     """Max batch size for evalation of prediction function."""
 
     # TODO: Complete this
@@ -244,7 +256,7 @@ class CommonPars(TypedDict):
     response: Literal["x", "y", "z"]
     num_half_delays: int
     velocity_covariate: bool
-    velocity_fd_order: Optional[Literal[2, 4, 6, 8]]
+    velocity_fd_order: Literal[2, 4, 6, 8] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -310,7 +322,7 @@ def initialize(
             train_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 1.1),
-                dt=0.01,
+                dt=0.03,
                 num_spinup=10_000,
                 num_samples=4096,
                 num_before=0,
@@ -319,7 +331,7 @@ def initialize(
             test_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 0.9),
-                dt=0.1,
+                dt=0.01,
                 num_spinup=10_00,
                 num_samples=2048,
                 num_before=0,
@@ -354,27 +366,31 @@ def initialize(
                     )
             match integral_transform:
                 case "gauss":
-                    koopman_pars = KoopmanParsGauss(
+                    koopman_pars = KoopmanParsTransf(
                         num_quad=num_quad,
-                        tau=0.25,
+                        transform="gauss",
+                        quadrature="simpson",
+                        tau=0.05,
                         bandwidth=4,
                         dt=train_data_pars.dt,
                         laplacian_method="log",
-                        smoothing_kernel="fejer",
-                        which_eigs_galerkin=500,
+                        smoothing_kernel="exponential",
+                        which_eigs_galerkin=256,
                         num_eigs=257,
                         sort_by="energy",
                         quad_batch_size=32,
                         gram_batch_size=32,
                     )
                 case "laplace":
-                    koopman_pars = KoopmanParsLapl(
+                    koopman_pars = KoopmanParsTransf(
                         num_quad=num_quad,
+                        transform="laplace",
+                        quadrature="simpson",
                         tau=0.5,
-                        bandwidth=5,
+                        bandwidth=1,
                         dt=train_data_pars.dt,
                         laplacian_method="log",
-                        smoothing_kernel="fejer",
+                        smoothing_kernel="exponential",
                         which_eigs_galerkin=500,
                         num_eigs=257,
                         sort_by="energy",
@@ -448,13 +464,15 @@ def initialize(
                     )
             match integral_transform:
                 case "gauss":
-                    koopman_pars = KoopmanParsGauss(
+                    koopman_pars = KoopmanParsTransf(
+                        transform="gauss",
+                        quadrature="trapezoidal",
                         num_quad=num_quad,
                         tau=0.5,
                         bandwidth=4.7,
                         dt=train_data_pars.dt,
                         laplacian_method="log",
-                        smoothing_kernel="fejer",
+                        smoothing_kernel="exponential",
                         which_eigs_galerkin=1024,
                         num_eigs=129,
                         sort_by="energy",
@@ -462,7 +480,9 @@ def initialize(
                         gram_batch_size=None,
                     )
                 case "laplace":
-                    koopman_pars = KoopmanParsLapl(
+                    koopman_pars = KoopmanParsTransf(
+                        transform="laplace",
+                        quadrature="trapezoidal",
                         num_quad=num_quad,
                         tau=0.5,
                         bandwidth=5,
@@ -542,7 +562,9 @@ def initialize(
                     )
             match integral_transform:
                 case "gauss":
-                    koopman_pars = KoopmanParsGauss(
+                    koopman_pars = KoopmanParsTransf(
+                        transform="gauss",
+                        quadrature="trapezoidal",
                         num_quad=num_quad,
                         tau=0.5,
                         bandwidth=5,
@@ -556,7 +578,9 @@ def initialize(
                         gram_batch_size=512,
                     )
                 case "laplace":
-                    koopman_pars = KoopmanParsLapl(
+                    koopman_pars = KoopmanParsTransf(
+                        transform="laplace",
+                        quadrature="trapezoidal",
                         num_quad=num_quad,
                         tau=0.5,
                         bandwidth=5,
@@ -631,16 +655,17 @@ def initialize(
             train_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 1.1),
-                dt=0.01,
+                dt=0.03,
                 num_spinup=10_000,
-                num_samples=131_072,
+                num_samples=180_000,
+                # num_samples=131_072,
                 num_before=0,
                 num_after=num_quad,
             )
             test_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 0.9),
-                dt=0.1,
+                dt=0.01,
                 num_spinup=1000,
                 num_samples=2048,
                 eval_batch_size=None,
@@ -652,7 +677,7 @@ def initialize(
                 num_bandwidths=128,
                 log10_bandwidth_lims=(-3, 3),
                 bandwidth_scl=1,
-                batch_size=16,
+                bandwidth_batch_size=16,
             )
             if cone_pars is not None:
                 tune_pars = TunePars(
@@ -677,14 +702,16 @@ def initialize(
                     )
             match integral_transform:
                 case "gauss":
-                    koopman_pars = KoopmanParsGauss(
+                    koopman_pars = KoopmanParsTransf(
+                        transform="gauss",
+                        quadrature="simpson",
                         num_quad=num_quad,
-                        tau=0.5,
-                        bandwidth=3,
+                        tau=0.05,  # 0.6
+                        bandwidth=4,  # 0.75,
                         dt=train_data_pars.dt,
                         laplacian_method="log",
-                        smoothing_kernel="fejer",
-                        which_eigs_galerkin=2000,
+                        smoothing_kernel="exponential",
+                        which_eigs_galerkin=1024,
                         num_eigs=513,
                         sort_by="energy",
                         eval_quad_batch_size=65_536,
@@ -692,14 +719,16 @@ def initialize(
                         gram_batch_size=500,
                     )
                 case "laplace":
-                    koopman_pars = KoopmanParsLapl(
+                    koopman_pars = KoopmanParsTransf(
+                        transform="laplace",
+                        quadrature="simpson",
                         num_quad=num_quad,
-                        tau=0.5,
-                        bandwidth=5,
+                        tau=0.3,
+                        bandwidth=1,
                         dt=train_data_pars.dt,
                         laplacian_method="log",
-                        smoothing_kernel="fejer",
-                        which_eigs_galerkin=2000,
+                        smoothing_kernel="exponential",
+                        which_eigs_galerkin=1024,
                         num_eigs=513,
                         sort_by="energy",
                         eval_quad_batch_size=8192,
@@ -785,7 +814,7 @@ compute_kernel_bandwidth = timeit(
         io=io,
         mode=TUNE_KERNEL_MODE,
         fname="tune_info",
-        cls=TuneInfo[Array, Array, Array],
+        cls=TuneInfo,
     )
 )
 compute_kernel_eigen = timeit(
@@ -794,7 +823,7 @@ compute_kernel_eigen = timeit(
         io=io,
         mode=KERNEL_EIGEN_MODE,
         fname="kernel_eigen",
-        cls=KernelEigen[Array, Array, Array, Array],
+        cls=KernelEigen,
         callback=shardings.train.kernel_eigen.shard_kernel_eigen,
     )
 )
@@ -818,7 +847,7 @@ compute_integral_transform_eigen_comp = timeit(
         io=io,
         mode=KOOPMAN_EIGEN_MODE,
         fname="int_transf_eigen_diff",
-        cls=KoopmanEigen[Array, Array, Array],
+        cls=KoopmanEigen,
     )
 )
 compute_koopman_response_coeffs = timeit(
@@ -861,8 +890,8 @@ plot_bandwidth_function = plotit(
     mode=PLOT_MODE,
     fname="bandwidth_func",
 )
-plot_laplace_spectrum = plotit(
-    knl.plot_laplace_spectrum, io=io, mode=PLOT_MODE, fname="lapl_spec"
+plot_laplacian_spectrum = plotit(
+    knl.plot_laplacian_spectrum, io=io, mode=PLOT_MODE, fname="lapl_spec"
 )
 make_kernel_evecs_plotter = plotem(
     l63.make_kernel_evecs_plotter, io=io, mode=PLOT_MODE, fname="kernel_eigen"
@@ -953,9 +982,15 @@ def main():
         )
         bw_tune_info.tabulate(name="Bandwidth function tuning")
 
-        # Plot bandwidth function
-        if PLOT_MODE is not None:
+        # Plot bandwidth function tuning and bandwidth function
+        if PLOT_MODE is not None and not {
+            "all",
+            "bandwidth_tuning",
+        }.isdisjoint(WHICH_PLOTS):
             plot_kernel_tuning(bw_tune_info, title="Bandwidth function tuning")
+        if PLOT_MODE is not None and not {"all", "bandwidth_func"}.isdisjoint(
+            WHICH_PLOTS
+        ):
             plot_bandwidth_function(
                 pars.train.data,
                 impl_l2,
@@ -964,6 +999,7 @@ def main():
                 pars.test.data,
                 impl_l2_tst,
                 test_data,
+                delay_plot_mode=DELAY_PLOT_MODE,
                 num_plt_tst=NUM_PLT_TST,
             )
     else:
@@ -990,7 +1026,10 @@ def main():
     tune_info.tabulate(name="Kernel tuning")
 
     # Plot kernel tuning function
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {
+        "all",
+        "kernel_tuning",
+    }.isdisjoint(WHICH_PLOTS):
         plot_kernel_tuning(tune_info, title="Kernel tuning")
 
     # Solve kernel eigenvalue problem
@@ -1016,12 +1055,18 @@ def main():
         jax.debug.inspect_array_sharding(kernel_eigen.evals, callback=print)
     kernel_eigen.tabulate(num_tabulate=NUM_TABULATE)
 
-    # Plot spectrum of Laplace eigenvalues
-    if PLOT_MODE is not None:
-        plot_laplace_spectrum(kernel_eigen)
+    # Plot spectrum of Laplacian eigenvalues
+    if PLOT_MODE is not None and not {"all", "laplacian_spec"}.isdisjoint(
+        WHICH_PLOTS
+    ):
+        plot_laplacian_spectrum(kernel_eigen)
 
     # Plot representative kernel eigenfunctions
-    if PLOT_MODE is not None and KERNEL_EIGS_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "kernel_eigen"}.isdisjoint(WHICH_PLOTS)
+        and KERNEL_EIGS_PLT is not None
+    ):
         _, plot_kernel_eig = make_kernel_evecs_plotter(
             (pars.train.data, pars.train.kernel),
             impl_l2,
@@ -1076,11 +1121,13 @@ def main():
         jax.debug.inspect_array_sharding(int_transf_mat, callback=print)
 
     # Plot integral transform matrix
-    if PLOT_MODE is not None:
-        match pars.train.koopman:
-            case KoopmanParsGauss():
+    if PLOT_MODE is not None and not {"all", "integral_transf_mat"}.isdisjoint(
+        WHICH_PLOTS
+    ):
+        match pars.train.koopman.transform:
+            case "gauss":
                 _title = "Gauss transform operator matrix"
-            case KoopmanParsLapl():
+            case "laplace":
                 _title = "Laplace transform operator matrix"
         plot_integral_transform_matrix(int_transf_mat, title=_title)
 
@@ -1098,33 +1145,20 @@ def main():
         int_transf_mat,
         out_shardings=shardings.train.koopman_eigen,
     )
-    print(
-        tabulate(
-            jnp.vstack(
-                (
-                    koopman_eigen.evals[:NUM_TABULATE].imag,
-                    koopman_eigen.engys[:NUM_TABULATE],
-                    koopman_eigen.efreqs[:NUM_TABULATE],
-                    koopman_eigen.eperiods[:NUM_TABULATE],
-                )
-            ).T,
-            headers=[
-                "Int. transf. eigenvals.",
-                "Dirichlet energies",
-                "Eigenfreqs.",
-                "Eigenperiods",
-            ],
-            floatfmt=".4f",
-            showindex=True,
-        )
-    )
+    koopman_eigen.tabulate(num_tabulate=NUM_TABULATE)
 
     # Plot generator spectrum
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {"all", "generator_spec"}.isdisjoint(
+        WHICH_PLOTS
+    ):
         plot_generator_spectrum(koopman_eigen)
 
     # Plot representative Koopman eigenfunctions
-    if PLOT_MODE is not None and KOOPMAN_EIGS_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "koopman_eigen"}.isdisjoint(WHICH_PLOTS)
+        and KOOPMAN_EIGS_PLT is not None
+    ):
         _, plot_koopman_eig = make_koopman_evecs_plotter(
             (pars.train.data, pars.train.kernel, pars.train.koopman),
             c_k,
@@ -1190,7 +1224,11 @@ def main():
     ).real
 
     # Plot running forecast
-    if PLOT_MODE is not None and LEAD_TIMES_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "running_pred"}.isdisjoint(WHICH_PLOTS)
+        and LEAD_TIMES_PLT is not None
+    ):
         _, plot_pred = make_running_pred_plotter(
             pars.test.data, test_data, preds
         )
@@ -1213,7 +1251,11 @@ def main():
                 plot_pred(i)
 
     # Plot time series forecast
-    if PLOT_MODE is not None and INITIALIZATION_TIMES_PLT is not None:
+    if (
+        PLOT_MODE is not None
+        and not {"all", "pred_timeseries"}.isdisjoint(WHICH_PLOTS)
+        and INITIALIZATION_TIMES_PLT is not None
+    ):
         _, plot_pred_ts = make_pred_timeseries_plotter(
             pars.test.data, test_data, preds
         )
@@ -1247,7 +1289,9 @@ def main():
     )
 
     # Plot forecast skill scores
-    if PLOT_MODE is not None:
+    if PLOT_MODE is not None and not {"all", "skill_scores"}.isdisjoint(
+        WHICH_PLOTS
+    ):
         plot_forecast_skill_scores(pars.test.data, skill_scores)
 
 

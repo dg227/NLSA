@@ -4,7 +4,7 @@ import nlsa.abstract_algebra as alg
 import nlsa.function_algebra as fun
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional, final
+from typing import final
 
 
 type L[V] = Callable[[V], V]
@@ -16,18 +16,18 @@ class OperatorAlgebra[V, K](alg.ImplementsOperatorAlgebra[L[V], V, K]):
     """Implement operator algebra structure on a vector space."""
 
     domain: alg.ImplementsInnerProductSpace[V, K]
-    _scl: Optional[alg.ImplementsScalarField[K]] = None
-    _codom: Optional[alg.ImplementsInnerProductSpace[V, K]] = None
-    _zero: Optional[Callable[[], L[V]]] = None
-    _add: Optional[Callable[[L[V], L[V]], L[V]]] = None
-    _sub: Optional[Callable[[L[V], L[V]], L[V]]] = None
-    _neg: Optional[Callable[[L[V]], L[V]]] = None
-    _smul: Optional[Callable[[K, L[V]], L[V]]] = None
-    _sdiv: Optional[Callable[[K, L[V]], L[V]]] = None
-    _mul: Optional[Callable[[L[V], L[V]], L[V]]] = None
-    _mpower: Optional[Callable[[L[V], int], L[V]]] = None
-    _unit: Optional[Callable[[], L[V]]] = None
-    _app: Optional[Callable[[L[V], V], V]] = None
+    _scl: alg.ImplementsScalarField[K] | None = None
+    _codom: alg.ImplementsInnerProductSpace[V, K] | None = None
+    _zero: Callable[[], L[V]] | None = None
+    _add: Callable[[L[V], L[V]], L[V]] | None = None
+    _sub: Callable[[L[V], L[V]], L[V]] | None = None
+    _neg: Callable[[L[V]], L[V]] | None = None
+    _smul: Callable[[K, L[V]], L[V]] | None = None
+    _sdiv: Callable[[K, L[V]], L[V]] | None = None
+    _mul: Callable[[L[V], L[V]], L[V]] | None = None
+    _mpower: Callable[[L[V], int], L[V]] | None = None
+    _unit: Callable[[], L[V]] | None = None
+    _app: Callable[[L[V], V], V] | None = None
 
     @property
     def dom(self) -> alg.ImplementsInnerProductSpace[V, K]:

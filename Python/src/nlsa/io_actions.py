@@ -15,7 +15,7 @@ from numpy.typing import ArrayLike, DTypeLike
 from pandas import DataFrame
 from pathlib import Path
 from typeguard import check_type
-from typing import Literal, Optional, Self
+from typing import Literal, Self
 
 type F[*Ss, T] = Callable[[*Ss], T]  # Shorthand for Callables
 
@@ -66,8 +66,8 @@ def pickleit[T, **P](
     io: IO,
     mode: Literal["calc", "calcsave", "read"] = "calc",
     fname: str = "Untitled",
-    cls: Optional[type[T]] = None,
-    callback: Optional[Callable[[T], T]] = None,
+    cls: type[T] | None = None,
+    callback: Callable[[T], T] | None = None,
 ) -> Callable[P, T]:
     """Wrap computation to perform pickling/unpickling."""
 
@@ -102,8 +102,8 @@ def pickleem[T, **Q, **P](
     io: IO,
     mode: Literal["calc", "calcsave", "read"] = "calc",
     fname: str = "Untitled",
-    cls: Optional[type[T]] = None,
-    callback: Optional[Callable[[T], T]] = None,
+    cls: type[T] | None = None,
+    callback: Callable[[T], T] | None = None,
 ) -> Callable[P, Iterable[Callable[Q, T]]]:
     """Wrap collection of computations to perform pickling/unpickling."""
 
@@ -124,9 +124,9 @@ def h5it[T: Mapping[str, object], **P](
     io: IO,
     mode: Literal["calc", "calcsave", "read"] = "calc",
     fname: str = "Untitled",
-    dtype: Optional[DTypeLike] = None,
-    cls: Optional[type[T]] = None,
-    callback: Optional[Callable[[dict[str, ArrayLike]], T]] = None,
+    dtype: DTypeLike | None = None,
+    cls: type[T] | None = None,
+    callback: Callable[[dict[str, ArrayLike]], T] | None = None,
 ) -> Callable[P, T]:
     """Wrap computation to perform saving to/reading from HDF5 file."""
 
@@ -171,8 +171,8 @@ def npyit[T: ArrayLike, **P](
     io: IO,
     mode: Literal["calc", "calcsave", "read"] = "calc",
     fname: str = "Untitled",
-    cls: Optional[type[T]] = None,
-    callback: Optional[Callable[[ArrayLike], T]] = None,
+    cls: type[T] | None = None,
+    callback: Callable[[ArrayLike], T] | None = None,
 ) -> Callable[P, T]:
     """Wrap computation to perform saving to/reading from npy file."""
 
@@ -206,8 +206,8 @@ def csvit[**P](
     io: IO,
     mode: Literal["calc", "calcsave", "read"] = "calc",
     fname: str = "Untitled",
-    index: Optional[bool | str] = None,
-    callback: Optional[Callable[[DataFrame], DataFrame]] = None,
+    index: bool | str | None = None,
+    callback: Callable[[DataFrame], DataFrame] | None = None,
 ) -> Callable[P, DataFrame]:
     """Wrap computation to perform saving to/reading from csv file."""
 
@@ -286,15 +286,15 @@ def pauseit[T, **P](f: Callable[P, T]) -> Callable[P, T]:
 def plotit[**P](
     f: Callable[P, Figure],
     io: IO,
-    mode: Optional[Literal["save", "show", "saveshow"]] = "show",
+    mode: Literal["save", "show", "saveshow"] | None = "show",
     fname: str = "Untitled",
     dpi: Literal["figure"] | float = "figure",
     fmt: str = "png",
-) -> Callable[P, Optional[Figure]]:
+) -> Callable[P, Figure | None]:
     """Wrap plotting function to implement saving/showing to screen."""
 
     @wraps(f)
-    def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> Optional[Figure]:
+    def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> Figure | None:
         if mode is not None:
             fig = f(*args, **kwargs)
             if "save" in mode:
@@ -313,17 +313,17 @@ def plotit[**P](
 def plotem[**P](
     f: Callable[P, tuple[Figure, F[int, None]]],
     io: IO,
-    mode: Optional[Literal["save", "show", "saveshow"]] = "show",
+    mode: Literal["save", "show", "saveshow"] | None = "show",
     fname: str = "Untitled",
     dpi: Literal["figure"] | float = "figure",
     fmt: str = "png",
-) -> Callable[P, tuple[Optional[Figure], F[int, None]]]:
+) -> Callable[P, tuple[Figure | None, F[int, None]]]:
     """Wrap plotting function to implement saving/showing of multiple figs."""
 
     @wraps(f)
     def f_wrapped(
         *args: P.args, **kwargs: P.kwargs
-    ) -> tuple[Optional[Figure], F[int, None]]:
+    ) -> tuple[Figure | None, F[int, None]]:
         if mode is not None:
             fig, g = f(*args, **kwargs)
 

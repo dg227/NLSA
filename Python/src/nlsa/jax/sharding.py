@@ -10,7 +10,7 @@ from dataclasses import InitVar, dataclass, field
 from jax import Array, Device
 from jax.sharding import AxisType, Mesh, NamedSharding, PartitionSpec, Sharding
 from jax.tree_util import tree_map
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional, final
+from typing import TYPE_CHECKING, Any, NamedTuple, final
 
 if TYPE_CHECKING:
     type Device = Any
@@ -51,7 +51,7 @@ class NamedSharder[N: tuple[int, ...], AxisNames: str]:
         """Number of sharding axes created by NamedSharder object."""
         return math.prod(self.shape)
 
-    def sharding(self, *axis_names: Optional[AxisNames]) -> NamedSharding:
+    def sharding(self, *axis_names: AxisNames | None) -> NamedSharding:
         """Create sharding from axes names."""
         return NamedSharding(self.mesh, PartitionSpec(*axis_names))
 
@@ -64,7 +64,7 @@ def with_sharding_constraints[A: Sequence[Array]](
 
 
 def shardit[*Xs](
-    f: F[*Xs, Array], sharding: Optional[Sharding] = None
+    f: F[*Xs, Array], sharding: Sharding | None = None
 ) -> F[*Xs, Array]:
     """Map to a function returning an array or a sequence of sharded arrays."""
     if sharding is not None:
@@ -79,7 +79,7 @@ def shardit[*Xs](
 
 def shardem[*Xs, A: Sequence[Array]](
     f: F[*Xs, A],
-    shardings: Optional[Sequence[Sharding]] = None,
+    shardings: Sequence[Sharding] | None = None,
 ) -> F[*Xs, A]:
     """Map to a function returning a sequence of sharded arrays."""
     if shardings is not None:
@@ -94,10 +94,10 @@ def shardem[*Xs, A: Sequence[Array]](
 class EigShardings(NamedTuple):
     """NamedTuple holding shardings of jax.linalg.eig output."""
 
-    eigenvalues: Optional[NamedSharding] = None
+    eigenvalues: NamedSharding | None = None
     """Sharding of eigenvalue array."""
 
-    eigenvectors: Optional[NamedSharding] = None
+    eigenvectors: NamedSharding | None = None
     """Sharding of eigenvector array."""
 
 
@@ -144,13 +144,13 @@ def make_eigh_with_sharding_constraints(
 class SvdShardings(NamedTuple):
     """NamedTuple holding shardings of jax.numpy.linalg.svd output."""
 
-    sing_values: Optional[NamedSharding] = None
+    sing_values: NamedSharding | None = None
     """Singular values array."""
 
-    left_sing_vectors: Optional[NamedSharding] = None
+    left_sing_vectors: NamedSharding | None = None
     """Left singular vectors array."""
 
-    right_sing_vectors: Optional[NamedSharding] = None
+    right_sing_vectors: NamedSharding | None = None
     """Right singular vectors array."""
 
 
