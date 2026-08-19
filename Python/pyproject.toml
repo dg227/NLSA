@@ -24,6 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 
 dependencies = [
@@ -106,6 +107,7 @@ no_implicit_reexport = true
 plugins = "numpy.typing.mypy_plugin"
 
 [tool.pyright]
+pythonVersion = "3.15"
 include = ["src"]
 exclude = ["**/node_modules",
     "**/__pycache__"
@@ -114,8 +116,12 @@ typeCheckingMode = "strict"
 reportUnusedVariable = "error"
 
 [tool.ruff]
-select = ["E", "F", "D", "N"]
+target-version = "py313"
 line-length = 79
+
+[tool.ruff.lint]
+select = ["E", "F", "D", "N", "UP"]
+extend-safe-fixes = ["UP045"]
 
 [tool.ruff.format]
 docstring-code-format = true

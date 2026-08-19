@@ -1,6 +1,5 @@
 """Kernel analog forecasting of the Lorenz 63 system."""
 
-import jax
 import jax.numpy as jnp
 import nlsa.jax.distance as dst
 import nlsa.jax.kernels as knl
@@ -83,12 +82,8 @@ SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
 PLOT_MODE: Literal["save", "show", "saveshow"] | None = "show"
 WHICH_PLOTS: set[Plots] = {"all"}
 DELAY_PLOT_MODE: Literal["backward", "central"] = "backward"
-KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
-    "interactive"
-)
-LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
-    "interactive"
-)
+KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
+LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
 INITIALIZATION_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
@@ -748,11 +743,7 @@ def main():
         shardings=shardings.train.kernel_eigen,
     )
     if len(jax_env.devices) > 1:
-        jax.debug.inspect_array_sharding(kernel_eigen.evecs, callback=print)
-        jax.debug.inspect_array_sharding(
-            kernel_eigen.dual_evecs, callback=print
-        )
-        jax.debug.inspect_array_sharding(kernel_eigen.evals, callback=print)
+        kernel_eigen.inspect_array_shardings()
     kernel_eigen.tabulate(num_tabulate=NUM_TABULATE)
 
     # Plot spectrum of Laplacian eigenvalues

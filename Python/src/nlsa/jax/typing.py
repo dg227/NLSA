@@ -9,6 +9,8 @@ from typing import Any, TypeIs, cast, overload
 
 type PyTree = (
     None
+    | int
+    | float
     | jax.Array
     | npt.NDArray[Any]
     | list[PyTree]

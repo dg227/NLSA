@@ -622,7 +622,7 @@ def compute_kaf_response_coeffs[N: int](
     num_steps: int,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
     jit: bool = True,
-) -> Array:
+) -> Rs:
     """Compute basis expansion coefficients for kernel analog forecast."""
     data_pars, kernel_pars = pars
     i0 = data_pars.delay_embedding_end
@@ -679,7 +679,7 @@ def compute_koopman_response_coeffs[N: int, D: DTypeLike, L: int](
     koopman_eigen: KoopmanEigen,
     which_eigs: int | tuple[int, int] | list[int] | None = None,
     jit: bool = True,
-) -> Rs:
+) -> Cs:
     """Compute basis expansion coefficients for Koopman forecast."""
     data_pars, kernel_pars, koopman_pars = pars
     match koopman_pars.which_eigs_galerkin:
@@ -702,7 +702,7 @@ def compute_koopman_response_coeffs[N: int, D: DTypeLike, L: int](
     )
     i0 = data_pars.delay_embedding_end
     i1 = i0 + data_pars.num_samples
-    anal: Callable[[Data, Vs, KernelEigen, KoopmanEigen], Rs] = (
+    anal: Callable[[Data, Vs, KernelEigen, KoopmanEigen], Cs] = (
         koop.make_koopman_analysis_operator(
             impl_koopman_basis,
             which_samples=(i0, i1),
@@ -755,7 +755,6 @@ def compute_covariate_skill_scores[Ntst: int](
         ),
     )
     hankel = cast_like(hankel, jax.jit(hankel))
-
     normalized_rmses = typestable_jit(
         vmap(vmap(stats.normalized_rmse, in_axes=1), in_axes=2)
     )
@@ -829,7 +828,8 @@ def plot_bandwidth_function[N: int, Ntst: int](
     bandwidth_func: Callable[[Data, Yd], R],
     train_data: Data,
     test_pars: DataPars[Ntst] | None = None,
-    impl_l2y_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]] | None = None,
+    impl_l2y_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]]
+    | None = None,
     test_data: Data | None = None,
     delay_plot_mode: Literal["backward", "central"] = "central",
     num_plt: int | None = None,
@@ -951,7 +951,8 @@ def make_kernel_evecs_plotter[N: int, Ntst: int](
     train_data: Data,
     kernel_eigen: KernelEigen,
     test_pars: DataPars[Ntst] | None = None,
-    impl_l2_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]] | None = None,
+    impl_l2_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]]
+    | None = None,
     test_data: Data | None = None,
     kernel: Callable[[Data, Yd, Yd], R] | None = None,
     delay_plot_mode: Literal["backward", "central"] = "backward",
@@ -1086,9 +1087,10 @@ def make_koopman_evecs_plotter[N: int, Ntst: int, D: DTypeLike, L: int](
     impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
     train_data: Data,
     kernel_eigen: KernelEigen,
-    koopman_eigen: KoopmanEigen[C, Cs, Css],
+    koopman_eigen: KoopmanEigen,
     test_pars: DataPars[Ntst] | None = None,
-    impl_l2_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]] | None = None,
+    impl_l2_tst: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, Vtst, R]]
+    | None = None,
     test_data: Data | None = None,
     kernel: Callable[[Yd, Yd], R] | Callable[[Data, Yd, Yd], R] | None = None,
     delay_plot_mode: Literal["backward", "central"] = "backward",
@@ -1097,7 +1099,7 @@ def make_koopman_evecs_plotter[N: int, Ntst: int, D: DTypeLike, L: int](
     plt_step: int = 1,
     plt_step_tst: int = 1,
     i_fig: int = 1,
-) -> tuple[Figure, F[int, None]]:
+) -> tuple[Figure, Callable[[int], None]]:
     """Make plotting function for Koopman eigenfunctions."""
     data_pars, kernel_pars, koopman_pars = pars
     match koopman_pars.which_eigs_galerkin:

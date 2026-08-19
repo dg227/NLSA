@@ -1,12 +1,15 @@
-"""Provide core functionality for modules of the nlsa_models subpackage."""
+"""Provide core functionality for modules in the nlsa_models subpackage."""
 
 import jax
 import jax.numpy as jnp
 import matplotlib
+import numpy as np
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from jax import Array
 from jax.typing import DTypeLike
+from numpy.typing import ArrayLike
 from pathlib import Path
 from tabulate import tabulate
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
@@ -18,9 +21,19 @@ else:
     from jax import Device
 
 
+type NPVector[N: int, D: np.dtype[np.floating[Any]]] = np.ndarray[tuple[N], D]
+type Vector[N: int, D: np.dtype[np.floating[Any]]] = jax.Array | NPVector[N, D]
+type NPMatrix[M: int, N: int, D: np.dtype[np.floating[Any]]] = np.ndarray[
+    tuple[M, N], D
+]
+type Matrix[M: int, N: int, D: np.dtype[np.floating[Any]]] = (
+    jax.Array | NPMatrix[M, N, D]
+)
+
+
 @dataclass(frozen=True, slots=True)
 class JaxEnv:
-    """NamedTuple holding attributes of JAX environment."""
+    """Dataclass holding attributes of JAX environment."""
 
     device_cpu: Device
     """CPU device."""
@@ -119,6 +132,7 @@ def initialize_jax(
     )
 
 
+# TODO: Change this to NamedTuple and make generic over the array type.
 class SkillScores(TypedDict):
     """TypedDict containing prediction skill scores."""
 
@@ -127,6 +141,21 @@ class SkillScores(TypedDict):
 
     accs: Array
     """Anomaly correlation scores."""
+
+
+def to_skill_scores(
+    dict_in: Mapping[str, ArrayLike],
+    dtype: DTypeLike | None = None,
+) -> SkillScores:
+    """Convert dict of numpy ArrayLike objects to SkillScores TypedDict."""
+    try:
+        skill_scores: SkillScores = {
+            "nrmses": jnp.asarray(dict_in["nrmses"], dtype),
+            "accs": jnp.asarray(dict_in["accs"], dtype),
+        }
+        return skill_scores
+    except ValueError as exc:
+        raise ValueError("Incompatible keys/values") from exc
 
 
 def initialize_matplotlib(backend: Literal["Agg"] | None = None) -> None:

@@ -1,18 +1,15 @@
-"""Koopman spectral analysis of L63 system: Resolvent compactification."""
+"""Kernel analog forecasting of the Lorenz 63 system -- iterative approach."""
 
-import jax
 import jax.numpy as jnp
 import nlsa.jax.distance as dst
 import nlsa.jax.kernels as knl
-import nlsa.jax.koopman as koop
 import sys
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum, auto
-from functools import partial
 from jax import Array
 from nlsa.function_algebra import compose2
-from nlsa.io_actions import IO, h5it, npyit, pickleit, plotit, plotem, timeit
 from nlsa.jax.kernels import (
     BsKernelPars,
     ConePars,
@@ -23,19 +20,13 @@ from nlsa.jax.kernels import (
     TuneInfo,
     TunePars,
 )
-from nlsa.jax.koopman import (
-    KoopmanEigen,
-    KoopmanEigenShardings,
-    KoopmanParsTransf,
-    IntegralTransformShardings,
-)
 from nlsa.jax.scalars import ScalarField
 from nlsa.jax.sharding import NamedSharder
+from nlsa.jax.stats import MultivariateTimeseriesStats
 from nlsa.jax.utils import fst
-from nlsa.jax.vector_algebra import (
-    L2FnAlgebraShardings,
-    L2VectorAlgebra,
-)
+from nlsa.jax.vector_algebra import L2FnAlgebraShardings
+from nlsa.utils import get_closest_factors
+from nlsa.io_actions import IO, h5it, pickleit, plotit, plotem, timeit
 from nlsa_models import lorenz63 as l63
 from nlsa_models.lorenz63 import Data, DataPars, SkillScores
 from pathlib import Path
@@ -52,8 +43,8 @@ class Experiment(StrEnum):
     A100_EIGSH = auto()
     """Runs on 40GB A100 GPU using eigsh iterative kernel eigenvalue solver."""
 
-    A100_EIGSH_4GPU = auto()
-    """Multi-GPU case using eigsh iterative solver on 4 40GB A100s."""
+    A100_EIGSH_2GPU = auto()
+    """Multi-GPU case using eigsh kernel eigenvalue solver on 2 40GB A100s."""
 
     TEST = auto()
     """Test case."""
@@ -66,48 +57,36 @@ type Plots = Literal[
     "kernel_tuning",
     "laplacian_spec",
     "kernel_eigen",
-    "integral_transf_mat",
-    "generator_spec",
-    "koopman_eigen",
     "running_pred",
     "pred_timeseries",
     "skill_scores",
 ]
 
 EXPERIMENT: Experiment = Experiment.TEST
-IDX_GPU: int | Sequence[int] | None = None  # 0
-XLA_MEM_FRACTION: str | None = "0.97"
+IDX_GPU: Sequence[int] | None = None  # 0
+XLA_MEM_FRACTION: str | None = "0.95"
 JAX_CACHE_DIR: str | None = "jax_cache"
 FP: Literal["f32", "f64"] = "f32"
 CONE_KERNEL: bool = False
 KERNEL_NORMALIZATION: Literal["diffusion_maps", "bistochastic"] = (
     "diffusion_maps"
 )
-INTEGRAL_TRANSFORM: Literal["gauss", "laplace"] = "gauss"
 MATPLOTLIB_BACKEND: Literal["Agg"] | None = None
-OUTPUT_DATA_DIR = "examples/lorenz63/data"
+OUTPUT_DATA_DIR = "examples/l63/data"
 NUM_TABULATE = 40
 NUM_PLT_TST: int | None = None
 GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "calc"
 TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
-INTEGRAL_TRANSFORM_MATRIX_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KOOPMAN_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KOOPMAN_RESPONSE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KOOPMAN_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KAF_COVARIATE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KAF_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
+TRAJECTORY_STATS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 PLOT_MODE: Literal["save", "show", "saveshow"] | None = "show"
 WHICH_PLOTS: set[Plots] = {"all"}
 DELAY_PLOT_MODE: Literal["backward", "central"] = "backward"
-KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
-    "interactive"
-)
-KOOPMAN_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
-    "interactive"
-)
-LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
-    "interactive"
-)
+KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
+LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
 INITIALIZATION_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
@@ -125,9 +104,6 @@ l63.initialize_matplotlib(backend=MATPLOTLIB_BACKEND)
 class PredPars:
     """Dataclass containing prediction parameters."""
 
-    dt: float
-    """Prediction timestep."""
-
     num_steps: int
     """Number of timesteps for prediction."""
 
@@ -139,14 +115,13 @@ class PredPars:
         match self.which_eigs:
             case int():
                 eigs_str = "-".join(map(str, (0, self.which_eigs)))
-            case (_, _):
+            case tuple():
                 eigs_str = "-".join(map(str, self.which_eigs))
             case list():
                 eigs_str = "_".join(map(str, self.which_eigs))
         return "_".join(
             (
-                "pred",
-                f"dt{self.dt:.2g}",
+                "iterative_kaf_pred",
                 f"nsteps{self.num_steps}",
                 "neigs" + eigs_str,
             )
@@ -165,9 +140,6 @@ class TrainPars[N: int]:
 
     kernel: KernelPars
     """Kernel eigendecomposition parameters."""
-
-    koopman: KoopmanParsTransf
-    """Koopman operator approximation parameters."""
 
     pred: PredPars
     """Prediction parameters."""
@@ -197,7 +169,6 @@ class TrainPars[N: int]:
                     bw_tune_str,
                     cone_str,
                     str(self.kernel),
-                    str(self.koopman),
                     str(self.pred),
                 ),
             )
@@ -214,14 +185,31 @@ class TrainPars[N: int]:
 class TestPars[Ntst: int]:
     """Dataclass containing test parameter values."""
 
-    num_pred_steps: int
-    """Number of prediction steps."""
-
     data: DataPars[Ntst]
     """Test data parameters."""
 
+    num_pred_steps: int
+    """Number of prediction steps."""
+
+    num_stat_steps: int
+    """Number of samples for long-term trajectory reconstruction."""
+
+    stat_ic: int
+    """Initial condition in test dataset for statistics reconstruction."""
+
     max_batch_size: int | None = None
-    """Max batch size for evalation of prediction function."""
+    """Max batch size for evaluation of prediction function."""
+
+    def __str__(self) -> str:
+        """Create string representation of test parameters."""
+        return "_".join(
+            (
+                str(self.data),
+                f"nsteps{self.num_pred_steps}",
+                f"nstatsteps{self.num_stat_steps}",
+                f"ic{self.stat_ic}",
+            )
+        )
 
     # TODO: Complete this
     def tabulate(self, show: bool = True) -> str:
@@ -232,7 +220,7 @@ class TestPars[Ntst: int]:
 
 @dataclass(frozen=True, slots=True)
 class Pars[N: int, Ntst: int]:
-    """Dataclass containing the parameter values used in this script."""
+    """Dataclass containing the parameter values used in this example."""
 
     train: TrainPars[N]
     """Training parameters."""
@@ -254,9 +242,13 @@ class CommonPars(TypedDict):
 
     covariate: Literal["x", "y", "z", "xy", "xyz"]
     response: Literal["x", "y", "z"]
+    dt: float
+    num_spinup: int
     num_half_delays: int
     velocity_covariate: bool
     velocity_fd_order: Literal[2, 4, 6, 8] | None
+    num_before: int
+    num_after: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,14 +260,6 @@ class TrainShardings:
 
     kernel_eigen: KernelEigenShardings = KernelEigenShardings()
     """Shardings for the kernel eigenvalue problem."""
-
-    integral_transform: IntegralTransformShardings = (
-        IntegralTransformShardings()
-    )
-    """Sharding of the Koopman integral transform matrix."""
-
-    koopman_eigen: KoopmanEigenShardings = KoopmanEigenShardings()
-    """Shardings for the Koopman eigenvalue problem."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -301,41 +285,86 @@ def initialize(
     experiment: Experiment,
     cone_kernel: bool,
     kernel_normalization: Literal["diffusion_maps", "bistochastic"],
-    integral_transform: Literal["laplace", "gauss"],
 ) -> tuple[Pars[int, int], Shardings]:
     """Prepare parameters and shardings for the numerical experiment."""
     match experiment:
         case Experiment.TEST:
-            fd_order = 4
             cone_pars = ConePars(zeta=0.99) if cone_kernel else None
+            num_pred_steps = 50
             common_pars: CommonPars = {
                 "covariate": "xyz",
                 "response": "x",
+                "dt": 0.1,
+                "num_spinup": 1000,
                 "num_half_delays": 0,
                 "velocity_covariate": True if cone_pars is not None else False,
-                "velocity_fd_order": fd_order
-                if cone_pars is not None
-                else None,
+                "velocity_fd_order": 4 if cone_pars is not None else None,
+                "num_before": 0,
+                "num_after": num_pred_steps,
             }
-            num_quad = 8192
-            num_pred_steps = 50
             train_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 1.1),
-                dt=0.03,
-                num_spinup=10_000,
-                num_samples=4096,
-                num_before=0,
-                num_after=num_quad,
+                **common_pars, x0=(1, 1, 1.1), num_samples=4096
             )
             test_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 0.9),
-                dt=0.01,
-                num_spinup=10_00,
                 num_samples=2048,
-                num_before=0,
-                num_after=num_pred_steps,
+            )
+            bw_tune_pars = TunePars(
+                manifold_dim=None,
+                num_bandwidths=128,
+                log10_bandwidth_lims=(-3, 3),
+                bandwidth_scl=1,
+            )
+            if cone_pars is not None:
+                tune_pars = TunePars(
+                    manifold_dim=None,
+                    num_bandwidths=128,
+                    log10_bandwidth_lims=(-3, 3),
+                    bandwidth_scl=1,
+                )
+            else:
+                tune_pars = bw_tune_pars
+            match kernel_normalization:
+                case "diffusion_maps":
+                    kernel_pars = DmKernelPars(
+                        normalization="fokkerplanck",
+                        eigensolver="eigh",
+                        num_eigs=512,
+                        batch_size=32,
+                    )
+                case "bistochastic":
+                    kernel_pars = BsKernelPars(
+                        eigensolver="svd",
+                        num_eigs=512,
+                        batch_size=32,
+                    )
+            pred_pars = PredPars(num_steps=num_pred_steps, which_eigs=256)
+            shardings = Shardings()
+        case Experiment.A100_EIGH:
+            cone_pars = ConePars(zeta=0.99) if cone_kernel else None
+            num_pred_steps = 50
+            common_pars: CommonPars = {
+                "covariate": "xyz",
+                "response": "x",
+                "dt": 0.1,
+                "num_spinup": 1000,
+                "num_half_delays": 0,
+                "velocity_covariate": True if cone_pars is not None else False,
+                "velocity_fd_order": 4 if cone_pars is not None else None,
+                "num_before": 0,
+                "num_after": num_pred_steps,
+            }
+            train_data_pars = DataPars(
+                **common_pars,
+                x0=(1, 1, 1.1),
+                num_samples=16_384,
+            )
+            test_data_pars = DataPars(
+                **common_pars,
+                x0=(1, 1, 0.9),
+                num_samples=8192,
+                eval_batch_size=None,
             )
             bw_tune_pars = TunePars(
                 manifold_dim=None,
@@ -358,180 +387,38 @@ def initialize(
                         normalization="fokkerplanck",
                         eigensolver="eigh",
                         num_eigs=1024,
-                        batch_size=32,
-                    )
-                case "bistochastic":
-                    kernel_pars = BsKernelPars(
-                        eigensolver="svd", num_eigs=512, batch_size=32
-                    )
-            match integral_transform:
-                case "gauss":
-                    koopman_pars = KoopmanParsTransf(
-                        num_quad=num_quad,
-                        transform="gauss",
-                        quadrature="simpson",
-                        tau=0.05,
-                        bandwidth=4,
-                        dt=train_data_pars.dt,
-                        laplacian_method="log",
-                        smoothing_kernel="exponential",
-                        which_eigs_galerkin=256,
-                        num_eigs=257,
-                        sort_by="energy",
-                        quad_batch_size=32,
-                        gram_batch_size=32,
-                    )
-                case "laplace":
-                    koopman_pars = KoopmanParsTransf(
-                        num_quad=num_quad,
-                        transform="laplace",
-                        quadrature="simpson",
-                        tau=0.5,
-                        bandwidth=1,
-                        dt=train_data_pars.dt,
-                        laplacian_method="log",
-                        smoothing_kernel="exponential",
-                        which_eigs_galerkin=500,
-                        num_eigs=257,
-                        sort_by="energy",
-                        quad_batch_size=32,
-                        gram_batch_size=32,
-                    )
-            pred_pars = PredPars(
-                dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=129
-            )
-            shardings = Shardings()
-
-        case Experiment.A100_EIGH:
-            fd_order = 4
-            cone_pars = ConePars(zeta=0.99) if cone_kernel else None
-            common_pars: CommonPars = {
-                "covariate": "xyz",
-                "response": "x",
-                "num_half_delays": 0,
-                "velocity_covariate": True if cone_pars is not None else False,
-                "velocity_fd_order": fd_order
-                if cone_pars is not None
-                else None,
-            }
-            num_quad = 8192
-            num_pred_steps = 50
-            train_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 1.1),
-                dt=0.01,
-                num_spinup=10_000,
-                num_samples=16_384,
-                num_before=0,
-                num_after=num_quad,
-            )
-            test_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 0.9),
-                dt=0.1,
-                num_spinup=1000,
-                num_samples=2048,
-                eval_batch_size=None,
-                num_before=0,
-                num_after=num_pred_steps,
-            )
-            bw_tune_pars = TunePars(
-                manifold_dim=None,
-                num_bandwidths=128,
-                log10_bandwidth_lims=(-3, 3),
-                bandwidth_scl=1,
-            )
-            if cone_pars is not None:
-                tune_pars = TunePars(
-                    manifold_dim=None,
-                    num_bandwidths=128,
-                    log10_bandwidth_lims=(-3, 3),
-                    bandwidth_scl=1,
-                )
-            else:
-                tune_pars = bw_tune_pars
-            match kernel_normalization:
-                case "diffusion_maps":
-                    kernel_pars = DmKernelPars(
-                        normalization="fokkerplanck",
-                        eigensolver="eigh",
-                        num_eigs=1600,
                     )
                 case "bistochastic":
                     kernel_pars = BsKernelPars(
                         eigensolver="svd",
-                        num_eigs=1600,
+                        num_eigs=1024,
                     )
-            match integral_transform:
-                case "gauss":
-                    koopman_pars = KoopmanParsTransf(
-                        transform="gauss",
-                        quadrature="trapezoidal",
-                        num_quad=num_quad,
-                        tau=0.5,
-                        bandwidth=4.7,
-                        dt=train_data_pars.dt,
-                        laplacian_method="log",
-                        smoothing_kernel="exponential",
-                        which_eigs_galerkin=1024,
-                        num_eigs=129,
-                        sort_by="energy",
-                        quad_batch_size=None,
-                        gram_batch_size=None,
-                    )
-                case "laplace":
-                    koopman_pars = KoopmanParsTransf(
-                        transform="laplace",
-                        quadrature="trapezoidal",
-                        num_quad=num_quad,
-                        tau=0.5,
-                        bandwidth=5,
-                        dt=train_data_pars.dt,
-                        laplacian_method="log",
-                        smoothing_kernel="fejer",
-                        which_eigs_galerkin=1024,
-                        num_eigs=129,
-                        sort_by="energy",
-                        quad_batch_size=None,
-                        gram_batch_size=None,
-                    )
-            pred_pars = PredPars(
-                dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=129
-            )
+            pred_pars = PredPars(num_steps=num_pred_steps, which_eigs=512)
             shardings = Shardings()
-
         case Experiment.A100_EIGSH:
-            fd_order = 4
             cone_pars = ConePars(zeta=0.99) if cone_kernel else None
+            num_pred_steps = 50
             common_pars: CommonPars = {
                 "covariate": "xyz",
                 "response": "x",
+                "dt": 0.1,
+                "num_spinup": 1000,
                 "num_half_delays": 0,
                 "velocity_covariate": True if cone_pars is not None else False,
-                "velocity_fd_order": fd_order
-                if cone_pars is not None
-                else None,
+                "velocity_fd_order": 4 if cone_pars is not None else None,
+                "num_before": 0,
+                "num_after": num_pred_steps,
             }
-            num_quad = 8192
-            num_pred_steps = 50
             train_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 1.1),
-                dt=0.01,
-                num_spinup=10_000,
                 num_samples=65_536,
-                num_before=0,
-                num_after=num_quad,
             )
             test_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 0.9),
-                dt=0.1,
-                num_spinup=1000,
                 num_samples=2048,
                 eval_batch_size=None,
-                num_before=0,
-                num_after=num_pred_steps,
             )
             bw_tune_pars = TunePars(
                 manifold_dim=None,
@@ -560,117 +447,65 @@ def initialize(
                         eigensolver="svds",
                         num_eigs=2048,
                     )
-            match integral_transform:
-                case "gauss":
-                    koopman_pars = KoopmanParsTransf(
-                        transform="gauss",
-                        quadrature="trapezoidal",
-                        num_quad=num_quad,
-                        tau=0.5,
-                        bandwidth=5,
-                        dt=train_data_pars.dt,
-                        laplacian_method="log",
-                        smoothing_kernel="fejer",
-                        which_eigs_galerkin=1024,
-                        num_eigs=513,
-                        sort_by="energy",
-                        quad_batch_size=128,
-                        gram_batch_size=512,
-                    )
-                case "laplace":
-                    koopman_pars = KoopmanParsTransf(
-                        transform="laplace",
-                        quadrature="trapezoidal",
-                        num_quad=num_quad,
-                        tau=0.5,
-                        bandwidth=5,
-                        dt=train_data_pars.dt,
-                        laplacian_method="log",
-                        smoothing_kernel="fejer",
-                        which_eigs_galerkin=1024,
-                        num_eigs=513,
-                        sort_by="energy",
-                        quad_batch_size=128,
-                        gram_batch_size=512,
-                    )
-            pred_pars = PredPars(
-                dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=513
-            )
+            pred_pars = PredPars(num_steps=num_pred_steps, which_eigs=1024)
             if len(jax_env.devices) > 1:
-                sharder = NamedSharder(
+                sharder_1d = NamedSharder(
                     devices=jax_env.devices,
                     shape=(len(jax_env.devices),),
                     axis_names=("x"),
                 )
-                i_sharding = sharder.sharding("x")
-                j_sharding = sharder.sharding(None, "x")
-                replicating = sharder.sharding(None)
+                sharder_2d = NamedSharder(
+                    devices=jax_env.devices,
+                    shape=get_closest_factors(len(jax_env.devices)),
+                    axis_names=("x", "y"),
+                )
+                x_sharding = sharder_1d.sharding("x")
+                replicating = sharder_1d.sharding(None)
+                xy_sharding = sharder_2d.sharding("x", "y")
                 l2_shardings = L2FnAlgebraShardings(
-                    data=replicating, vectors=i_sharding
+                    data=replicating, vectors=x_sharding
                 )
                 l2_tst_shardings = L2FnAlgebraShardings(
                     data=replicating, vectors=replicating
                 )
-                l2_quad_shardings = L2FnAlgebraShardings(
-                    data=replicating, vectors=i_sharding
-                )
                 kernel_eigen_shardings = KernelEigenShardings(
                     eigenvalues=replicating,
-                    eigenvectors=j_sharding,
-                    weights=i_sharding,
-                )
-                integral_transform_shardings = IntegralTransformShardings(
-                    quadrature=l2_quad_shardings,
-                    weights=i_sharding,
-                    matrix=i_sharding,
-                )
-                koopman_eigen_shardings = KoopmanEigenShardings(
-                    eigenvalues=replicating, eigenvectors=replicating
+                    eigenvectors=x_sharding,
+                    matrix=xy_sharding,
                 )
                 train_shardings = TrainShardings(
                     l2=l2_shardings,
                     kernel_eigen=kernel_eigen_shardings,
-                    integral_transform=integral_transform_shardings,
-                    koopman_eigen=koopman_eigen_shardings,
                 )
                 test_shardings = TestShardings(l2=l2_tst_shardings)
             else:
                 train_shardings = TrainShardings()
                 test_shardings = TestShardings()
             shardings = Shardings(train=train_shardings, test=test_shardings)
-        case Experiment.A100_EIGSH_4GPU:
-            fd_order = 4
+        case Experiment.A100_EIGSH_2GPU:
             cone_pars = ConePars(zeta=0.99) if cone_kernel else None
+            num_pred_steps = 50
             common_pars: CommonPars = {
                 "covariate": "xyz",
                 "response": "x",
+                "dt": 0.1,
+                "num_spinup": 1000,
                 "num_half_delays": 0,
                 "velocity_covariate": True if cone_pars is not None else False,
-                "velocity_fd_order": fd_order
-                if cone_pars is not None
-                else None,
+                "velocity_fd_order": 4 if cone_pars is not None else None,
+                "num_before": 0,
+                "num_after": num_pred_steps,
             }
-            num_quad = 8192
-            num_pred_steps = 50
             train_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 1.1),
-                dt=0.03,
-                num_spinup=10_000,
-                num_samples=180_000,
-                # num_samples=131_072,
-                num_before=0,
-                num_after=num_quad,
+                num_samples=131_072,
             )
             test_data_pars = DataPars(
                 **common_pars,
                 x0=(1, 1, 0.9),
-                dt=0.01,
-                num_spinup=1000,
-                num_samples=2048,
+                num_samples=8192,
                 eval_batch_size=None,
-                num_before=0,
-                num_after=num_pred_steps,
             )
             bw_tune_pars = TunePars(
                 manifold_dim=None,
@@ -693,86 +528,42 @@ def initialize(
                     kernel_pars = DmKernelPars(
                         normalization="fokkerplanck",
                         eigensolver="eigsh",
-                        num_eigs=2048,
+                        num_eigs=4096,
                     )
                 case "bistochastic":
                     kernel_pars = BsKernelPars(
                         eigensolver="svds",
-                        num_eigs=2048,
+                        num_eigs=4096,
                     )
-            match integral_transform:
-                case "gauss":
-                    koopman_pars = KoopmanParsTransf(
-                        transform="gauss",
-                        quadrature="simpson",
-                        num_quad=num_quad,
-                        tau=0.05,  # 0.6
-                        bandwidth=4,  # 0.75,
-                        dt=train_data_pars.dt,
-                        laplacian_method="log",
-                        smoothing_kernel="exponential",
-                        which_eigs_galerkin=1024,
-                        num_eigs=513,
-                        sort_by="energy",
-                        eval_quad_batch_size=65_536,
-                        quad_batch_size=125,
-                        gram_batch_size=500,
-                    )
-                case "laplace":
-                    koopman_pars = KoopmanParsTransf(
-                        transform="laplace",
-                        quadrature="simpson",
-                        num_quad=num_quad,
-                        tau=0.3,
-                        bandwidth=1,
-                        dt=train_data_pars.dt,
-                        laplacian_method="log",
-                        smoothing_kernel="exponential",
-                        which_eigs_galerkin=1024,
-                        num_eigs=513,
-                        sort_by="energy",
-                        eval_quad_batch_size=8192,
-                        gram_batch_size=1000,
-                    )
-            pred_pars = PredPars(
-                dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=129
-            )
+            pred_pars = PredPars(num_steps=num_pred_steps, which_eigs=4096)
             if len(jax_env.devices) > 1:
-                sharder = NamedSharder(
+                sharder_1d = NamedSharder(
                     devices=jax_env.devices,
                     shape=(len(jax_env.devices),),
                     axis_names=("x"),
                 )
-                i_sharding = sharder.sharding("x")
-                j_sharding = sharder.sharding(None, "x")
-                replicating = sharder.sharding(None)
+                sharder_2d = NamedSharder(
+                    devices=jax_env.devices,
+                    shape=get_closest_factors(len(jax_env.devices)),
+                    axis_names=("x", "y"),
+                )
+                x_sharding = sharder_1d.sharding("x")
+                replicating = sharder_1d.sharding(None)
+                xy_sharding = sharder_2d.sharding("x", "y")
                 l2_shardings = L2FnAlgebraShardings(
-                    data=replicating, vectors=i_sharding
+                    data=replicating, vectors=x_sharding
                 )
                 l2_tst_shardings = L2FnAlgebraShardings(
                     data=replicating, vectors=replicating
                 )
-                l2_quad_shardings = L2FnAlgebraShardings(
-                    data=replicating, vectors=replicating
-                )
                 kernel_eigen_shardings = KernelEigenShardings(
                     eigenvalues=replicating,
-                    eigenvectors=j_sharding,
-                    weights=i_sharding,
-                )
-                integral_transform_shardings = IntegralTransformShardings(
-                    quadrature=l2_quad_shardings,
-                    weights=replicating,
-                    matrix=replicating,
-                )
-                koopman_eigen_shardings = KoopmanEigenShardings(
-                    eigenvalues=replicating, eigenvectors=replicating
+                    eigenvectors=x_sharding,
+                    weights=x_sharding,
                 )
                 train_shardings = TrainShardings(
                     l2=l2_shardings,
                     kernel_eigen=kernel_eigen_shardings,
-                    integral_transform=integral_transform_shardings,
-                    koopman_eigen=koopman_eigen_shardings,
                 )
                 test_shardings = TestShardings(l2=l2_tst_shardings)
             else:
@@ -786,17 +577,19 @@ def initialize(
         cone=cone_pars,
         tune=tune_pars,
         kernel=kernel_pars,
-        koopman=koopman_pars,
         pred=pred_pars,
     )
-    test_pars = TestPars(data=test_data_pars, num_pred_steps=num_pred_steps)
+    test_pars = TestPars(
+        data=test_data_pars,
+        num_pred_steps=num_pred_steps,
+        num_stat_steps=test_data_pars.num_samples,
+        stat_ic=128,
+    )
     pars = Pars(train=train_pars, test=test_pars)
     return pars, shardings
 
 
-pars, shardings = initialize(
-    EXPERIMENT, CONE_KERNEL, KERNEL_NORMALIZATION, INTEGRAL_TRANSFORM
-)
+pars, shardings = initialize(EXPERIMENT, CONE_KERNEL, KERNEL_NORMALIZATION)
 io = IO(root=Path.cwd() / OUTPUT_DATA_DIR)
 
 generate_data = timeit(
@@ -806,6 +599,7 @@ generate_data = timeit(
         mode=GENERATE_DATA_MODE,
         fname="data",
         cls=Data,
+        callback=shardings.train.l2.shard_pytree,
     )
 )
 compute_kernel_bandwidth = timeit(
@@ -827,47 +621,6 @@ compute_kernel_eigen = timeit(
         callback=shardings.train.kernel_eigen.shard_kernel_eigen,
     )
 )
-compute_integral_transform_matrix = timeit(
-    npyit(
-        koop.compute_integral_transform_matrix,
-        io=io,
-        mode=INTEGRAL_TRANSFORM_MATRIX_MODE,
-        fname="int_transf_mat",
-        cls=Array,
-        callback=partial(
-            jnp.asarray,
-            dtype=jax_env.real_dtype,
-            device=shardings.train.integral_transform,
-        ),
-    )
-)
-compute_integral_transform_eigen_comp = timeit(
-    pickleit(
-        koop.compute_integral_transform_eigen_comp,
-        io=io,
-        mode=KOOPMAN_EIGEN_MODE,
-        fname="int_transf_eigen_diff",
-        cls=KoopmanEigen,
-    )
-)
-compute_koopman_response_coeffs = timeit(
-    pickleit(
-        l63.compute_koopman_response_coeffs,
-        io=io,
-        mode=KOOPMAN_RESPONSE_COEFFS_MODE,
-        fname="koopman_response_coeffs",
-        cls=Array,
-    )
-)
-compute_koopman_preds = timeit(
-    pickleit(
-        koop.compute_koopman_preds,
-        io=io,
-        mode=KOOPMAN_PREDS_MODE,
-        fname="koopman_preds",
-        cls=Array,
-    )
-)
 compute_skill_scores = timeit(
     h5it(
         l63.compute_skill_scores,
@@ -878,6 +631,41 @@ compute_skill_scores = timeit(
         callback=l63.to_skill_scores,
     )
 )
+compute_iterative_kaf_covariate_coeffs = timeit(
+    pickleit(
+        l63.compute_iterative_kaf_covariate_coeffs,
+        io=io,
+        mode=KAF_COVARIATE_COEFFS_MODE,
+        fname="kaf_coeffs",
+        cls=Array,
+    )
+)
+compute_iterative_kaf_preds = timeit(
+    pickleit(
+        knl.compute_iterative_kaf_preds,
+        io=io,
+        mode=KAF_PREDS_MODE,
+        fname="iterative_kaf_preds",
+        cls=Array,
+    )
+)
+compute_iterative_kaf_stat_traj = timeit(
+    pickleit(
+        knl.compute_iterative_kaf_preds,
+        io=io,
+        mode=KAF_PREDS_MODE,
+        fname="iterative_kaf_stat_traj",
+        cls=Array,
+    )
+)
+compute_trajectory_stats = pickleit(
+    l63.compute_trajectory_stats,
+    io=io,
+    mode=TRAJECTORY_STATS_MODE,
+    fname="trajectory_stats",
+    cls=tuple[MultivariateTimeseriesStats, MultivariateTimeseriesStats],
+)
+
 plot_kernel_tuning = plotit(
     knl.plot_kernel_tuning,
     io=io,
@@ -890,23 +678,11 @@ plot_bandwidth_function = plotit(
     mode=PLOT_MODE,
     fname="bandwidth_func",
 )
-plot_laplacian_spectrum = plotit(
+plot_laplace_spectrum = plotit(
     knl.plot_laplacian_spectrum, io=io, mode=PLOT_MODE, fname="lapl_spec"
 )
 make_kernel_evecs_plotter = plotem(
     l63.make_kernel_evecs_plotter, io=io, mode=PLOT_MODE, fname="kernel_eigen"
-)
-plot_integral_transform_matrix = plotit(
-    koop.plot_operator_matrix, io=io, mode=PLOT_MODE, fname="int_transf_mat"
-)
-plot_generator_spectrum = plotit(
-    koop.plot_generator_spectrum, io=io, mode=PLOT_MODE, fname="gen_spec"
-)
-make_koopman_evecs_plotter = plotem(
-    l63.make_koopman_evecs_plotter,
-    io=io,
-    mode=PLOT_MODE,
-    fname="koopman_eigen",
 )
 make_running_pred_plotter = plotem(
     l63.make_running_pred_plotter, io=io, mode=PLOT_MODE, fname="pred_running"
@@ -920,21 +696,23 @@ make_pred_timeseries_plotter = plotem(
 plot_forecast_skill_scores = plotit(
     l63.plot_forecast_skill_scores, io=io, mode=PLOT_MODE, fname="pred_scores"
 )
+plot_reconstructed_trajectory = plotit(
+    l63.plot_reconstructed_trajectory,
+    io=io,
+    mode=PLOT_MODE,
+    fname="trajectory",
+)
+plot_trajectory_stats = plotit(
+    l63.plot_trajectory_stats, io=io, mode=PLOT_MODE, fname="trajectory_stats"
+)
 
 
 def main():
-    """Perform Koopman analysis of L63 using resolvent compactification."""
+    """Perform iterative kernel analog forecasting of the Lorenz 63 system."""
     global io
 
-    # Display information about the computation to be performed
+    # Display information about the computation to be performed.
     jax_env.tabulate()
-    # TODO: This printout needs to be incorporated into tabulate()
-    print(
-        f"-zT = {
-            -(pars.train.koopman.num_quad - 1)
-            * pars.train.data.dt
-            * pars.train.koopman.bandwidth: .3f}"
-    )
     pars.tabulate()
 
     # Generate training and test data
@@ -999,7 +777,6 @@ def main():
                 pars.test.data,
                 impl_l2_tst,
                 test_data,
-                delay_plot_mode=DELAY_PLOT_MODE,
                 num_plt_tst=NUM_PLT_TST,
             )
     else:
@@ -1048,18 +825,14 @@ def main():
         shardings=shardings.train.kernel_eigen,
     )
     if len(jax_env.devices) > 1:
-        jax.debug.inspect_array_sharding(kernel_eigen.evecs, callback=print)
-        jax.debug.inspect_array_sharding(
-            kernel_eigen.dual_evecs, callback=print
-        )
-        jax.debug.inspect_array_sharding(kernel_eigen.evals, callback=print)
+        kernel_eigen.inspect_array_shardings()
     kernel_eigen.tabulate(num_tabulate=NUM_TABULATE)
 
     # Plot spectrum of Laplacian eigenvalues
     if PLOT_MODE is not None and not {"all", "laplacian_spec"}.isdisjoint(
         WHICH_PLOTS
     ):
-        plot_laplacian_spectrum(kernel_eigen)
+        plot_laplace_spectrum(kernel_eigen)
 
     # Plot representative kernel eigenfunctions
     if (
@@ -1099,129 +872,33 @@ def main():
                 if "show" in PLOT_MODE:
                     input("Press any key to continue...")
 
-    # Compute integral transform matrix
-    io /= str(pars.train.koopman)
-    impl_eval_quad = l63.make_data_driven_quadrature_evaluation_functional(
-        pars.train.data,
-        dtype=jax_env.real_dtype,
-        num_quad=pars.train.koopman.num_quad,
-        batch_size=pars.train.koopman.eval_quad_batch_size,
-        shardings=shardings.train.l2,
-    )
-    int_transf_mat = compute_integral_transform_matrix(
-        (pars.train.kernel, pars.train.koopman),
-        impl_l2,
-        impl_eval_quad,
-        kernel,
-        train_data,
-        kernel_eigen,
-        shardings=shardings.train.integral_transform,
-    )
-    if len(jax_env.devices) > 1:
-        jax.debug.inspect_array_sharding(int_transf_mat, callback=print)
-
-    # Plot integral transform matrix
-    if PLOT_MODE is not None and not {"all", "integral_transf_mat"}.isdisjoint(
-        WHICH_PLOTS
-    ):
-        match pars.train.koopman.transform:
-            case "gauss":
-                _title = "Gauss transform operator matrix"
-            case "laplace":
-                _title = "Laplace transform operator matrix"
-        plot_integral_transform_matrix(int_transf_mat, title=_title)
-
-    # Compute Koopman eigendecomposition
-    c_k = L2VectorAlgebra(
-        shape=(pars.train.koopman.dim_galerkin + 1,),
-        dtype=jax_env.complex_dtype,
-    )
-    koopman_eigen = compute_integral_transform_eigen_comp(
-        (pars.train.kernel, pars.train.koopman),
-        impl_l2,
-        kernel,
-        train_data,
-        kernel_eigen,
-        int_transf_mat,
-        out_shardings=shardings.train.koopman_eigen,
-    )
-    koopman_eigen.tabulate(num_tabulate=NUM_TABULATE)
-
-    # Plot generator spectrum
-    if PLOT_MODE is not None and not {"all", "generator_spec"}.isdisjoint(
-        WHICH_PLOTS
-    ):
-        plot_generator_spectrum(koopman_eigen)
-
-    # Plot representative Koopman eigenfunctions
-    if (
-        PLOT_MODE is not None
-        and not {"all", "koopman_eigen"}.isdisjoint(WHICH_PLOTS)
-        and KOOPMAN_EIGS_PLT is not None
-    ):
-        _, plot_koopman_eig = make_koopman_evecs_plotter(
-            (pars.train.data, pars.train.kernel, pars.train.koopman),
-            c_k,
-            impl_l2,
-            train_data,
-            kernel_eigen,
-            koopman_eigen,
-            pars.test.data,
-            impl_l2_tst,
-            test_data,
-            kernel,
-            delay_plot_mode=DELAY_PLOT_MODE,
-            num_plt_tst=NUM_PLT_TST,
-        )
-        if KOOPMAN_EIGS_PLT == "interactive":
-            while True:
-                i = input(
-                    "Select Koopman eigenfunction "
-                    f"0-{koopman_eigen.num_eigs - 1} to plot, "
-                    "or press Enter to continue. "
-                )
-                if i == "":
-                    break
-                else:
-                    try:
-                        plot_koopman_eig(int(i))
-                    except ValueError:
-                        print("Invalid input.")
-        else:
-            for i in KOOPMAN_EIGS_PLT:
-                plot_koopman_eig(i)
-
     # Compute expansion coefficients of the response function
     io /= str(pars.train.pred)
-    io /= str(pars.train.data.response)
-    coeffs = compute_koopman_response_coeffs(
-        (pars.train.data, pars.train.kernel, pars.train.koopman),
-        c_k,
+    io /= str(pars.train.data.covariate)
+    coeffs = compute_iterative_kaf_covariate_coeffs(
+        (pars.train.data, pars.train.kernel),
         impl_l2,
         train_data,
         kernel,
         kernel_eigen,
-        koopman_eigen,
         pars.train.pred.which_eigs,
     )
 
     # Perform time series prediction
     io /= str(pars.test.data)
-    preds = compute_koopman_preds(
-        (pars.train.kernel, pars.train.koopman),
-        c_k,
+    preds = compute_iterative_kaf_preds(
+        pars.train.kernel,
         impl_l2,
         train_data,
         kernel,
         kernel_eigen,
-        koopman_eigen,
         coeffs,
         impl_l2_tst,
         test_data,
-        num_steps=pars.train.pred.num_steps,
-        dt=pars.train.pred.dt,
+        num_steps=pars.test.num_pred_steps,
+        num_delays=pars.train.data.num_delays,
         which_eigs=pars.train.pred.which_eigs,
-    ).real
+    )
 
     # Plot running forecast
     if (
@@ -1230,7 +907,7 @@ def main():
         and LEAD_TIMES_PLT is not None
     ):
         _, plot_pred = make_running_pred_plotter(
-            pars.test.data, test_data, preds
+            pars.test.data, test_data, preds, what="covariates"
         )
         if LEAD_TIMES_PLT == "interactive":
             while True:
@@ -1249,6 +926,8 @@ def main():
         else:
             for i in LEAD_TIMES_PLT:
                 plot_pred(i)
+                if "show" in PLOT_MODE:
+                    input("Press any key to continue...")
 
     # Plot time series forecast
     if (
@@ -1257,7 +936,7 @@ def main():
         and INITIALIZATION_TIMES_PLT is not None
     ):
         _, plot_pred_ts = make_pred_timeseries_plotter(
-            pars.test.data, test_data, preds
+            pars.test.data, test_data, preds, what="covariates"
         )
         if INITIALIZATION_TIMES_PLT == "interactive":
             while True:
@@ -1276,14 +955,24 @@ def main():
         else:
             for i in INITIALIZATION_TIMES_PLT:
                 plot_pred_ts(i)
+                if "show" in PLOT_MODE:
+                    input("Press any key to continue...")
 
     # Compute forecast skill scores
-    skill_scores = compute_skill_scores(pars.test.data, test_data, preds)
+    skill_scores = compute_skill_scores(
+        pars.test.data, test_data, preds, what="covariates", dropna=True
+    )
     ts = jnp.arange(pars.test.num_pred_steps + 1) * pars.test.data.dt
     print(
         tabulate(
-            jnp.vstack((ts, skill_scores["nrmses"], skill_scores["accs"])).T,
-            headers=["Lead time", "Normalized RMSE", "Anomaly Correlation"],
+            jnp.vstack(
+                (ts, skill_scores["nrmses"][0], skill_scores["accs"][0])
+            ).T,
+            headers=[
+                "Lead time",
+                "Normalized RMSE (x)",
+                "Anomaly Correlation (x)",
+            ],
             floatfmt=".4f",
         )
     )
@@ -1292,7 +981,54 @@ def main():
     if PLOT_MODE is not None and not {"all", "skill_scores"}.isdisjoint(
         WHICH_PLOTS
     ):
-        plot_forecast_skill_scores(pars.test.data, skill_scores)
+        plot_forecast_skill_scores(
+            pars.test.data, skill_scores, what="covariates"
+        )
+
+    # Compute long-time statistical trajectory
+    stat_traj = compute_iterative_kaf_stat_traj(
+        pars.train.kernel,
+        impl_l2,
+        train_data,
+        kernel,
+        kernel_eigen,
+        coeffs,
+        impl_l2_tst,
+        test_data.isel(
+            slice(
+                pars.test.stat_ic,
+                pars.test.stat_ic + pars.test.data.num_delays + 1,
+            )
+        ),
+        num_steps=pars.test.num_stat_steps + pars.test.num_pred_steps,
+        num_delays=pars.train.data.num_delays,
+        which_eigs=pars.train.pred.which_eigs,
+    )[0]
+    if jnp.isnan(stat_traj).any():
+        warnings.warn("NaN values occurred in trajectory.", RuntimeWarning)
+
+    # Plot trajectory
+    if PLOT_MODE is not None:
+        plot_reconstructed_trajectory(pars.train.data, train_data, stat_traj)
+
+    # Compute PDFs and lagged autocorrelations of covariate variables
+    train_stats, traj_stats = compute_trajectory_stats(
+        pars.train.data,
+        train_data,
+        stat_traj,
+        num_pred_steps=pars.test.num_pred_steps,
+        num_stat_steps=pars.test.num_stat_steps,
+        dropna=True,
+    )
+
+    # Plot PDFs and lagged autocorrelations
+    if PLOT_MODE is not None:
+        plot_trajectory_stats(
+            pars.test.data,
+            train_stats,
+            traj_stats,
+            num_pred_steps=pars.test.num_pred_steps,
+        )
 
 
 if __name__ == "__main__":

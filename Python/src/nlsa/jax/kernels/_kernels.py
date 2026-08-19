@@ -23,7 +23,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 from jax import Array, vmap
-from jax.sharding import NamedSharding
+from jax.sharding import NamedSharding, Sharding
 from jax.typing import ArrayLike, DTypeLike
 from nlsa.jax.sharding import (
     EigShardings,
@@ -138,6 +138,14 @@ class KernelEigen(NamedTuple):
     ) -> str:
         """Tabulate the eigenvalues in a KernelEigen object."""
         return knl.tabulate_eigen(self, num_tabulate, headers, show)
+
+    def inspect_array_shardings(
+        self, callback: Callable[[Sharding], None] = print
+    ) -> None:
+        """Inspect array shardings in JIT-ted functions."""
+        jax.debug.inspect_array_sharding(self.evecs, callback=callback)
+        jax.debug.inspect_array_sharding(self.dual_evecs, callback=callback)
+        jax.debug.inspect_array_sharding(self.evals, callback=callback)
 
 
 class KernelEigenShardings(NamedTuple):

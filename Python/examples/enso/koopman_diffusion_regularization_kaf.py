@@ -1,10 +1,21 @@
-"""Koopman spectral analysis of L63 system: Diffusion regularization."""
+"""Koopman spectral analysis of the El Nino Southern Oscillation.
 
-import jax
+This script performs Koopman eigendecomposition to extract ENSO
+eigenfunctions and then uses kernel analog forecasting to predict
+the evolution of these eigenfunctions.
+
+The training and test data used for the experiment ENSO_FROM_ERA5_IPSST
+are included under /examples/enso/data.
+"""
+
 import jax.numpy as jnp
+import nc_time_axis as nc_time_axis
 import nlsa.jax.distance as dst
 import nlsa.jax.kernels as knl
 import nlsa.jax.koopman as koop
+import nlsa_models.climate as clim
+import nlsa_models.era5 as era5
+import numpy as np
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -31,10 +42,19 @@ from nlsa.jax.koopman import (
 )
 from nlsa.jax.scalars import ScalarField
 from nlsa.jax.sharding import NamedSharder
-from nlsa.jax.utils import fst
 from nlsa.jax.vector_algebra import L2FnAlgebraShardings, L2VectorAlgebra
-from nlsa_models import lorenz63 as l63
-from nlsa_models.lorenz63 import Data, DataPars, SkillScores
+from nlsa.jax.utils import fst
+from nlsa_models.climate import (
+    Covariate,
+    Climatology,
+    DataPars,
+    NPData,
+    Response,
+    SkillScores,
+    SpaceSampling,
+    Time,
+    TimeSampling,
+)
 from pathlib import Path
 from tabulate import tabulate
 from typing import Literal, TypedDict
@@ -43,17 +63,11 @@ from typing import Literal, TypedDict
 class Experiment(StrEnum):
     """Experiments provided in this script."""
 
-    A100_EIGH = auto()
-    """Runs on 40GB A100 GPU using eigh direct kernel eigenvalue solver."""
+    ENSO_FROM_ERA5_IPSST = auto()
+    """ENSO extraction from ERA5 Indo-Pacific SST data ."""
 
-    A100_EIGSH = auto()
-    """Runs on 40GB A100 GPU using eigsh iterative kernel eigenvalue solver."""
-
-    A100_EIGSH_2GPU = auto()
-    """Multi-GPU case using eigsh iterative solver on 2 40GB A100s."""
-
-    TEST = auto()
-    """Test case."""
+    ENSO_FROM_ERA5_NINO34SST = auto()
+    """ENSO extraction from ERA5 Nino 3.4 SST data ."""
 
 
 type Plots = Literal[
@@ -66,56 +80,54 @@ type Plots = Literal[
     "generator_mat",
     "generator_spec",
     "koopman_eigen",
+    "expansion_coeffs",
     "running_pred",
     "pred_timeseries",
     "skill_scores",
 ]
 
-EXPERIMENT: Experiment = Experiment.TEST
-IDX_GPU: int | Sequence[int] | None = None  # 0
+EXPERIMENT: Experiment = Experiment.ENSO_FROM_ERA5_NINO34SST
+IDX_GPU: int | Sequence[int] | None = 0
 XLA_MEM_FRACTION: str | None = "0.95"
 JAX_CACHE_DIR: str | None = "jax_cache"
 FP: Literal["f32", "f64"] = "f32"
 CONE_KERNEL: bool = False
-KERNEL_TUNING_GRAD_METHOD: Literal["explicit", "automatic"] = "automatic"
+KERNEL_TUNING_GRAD_METHOD: Literal["explicit", "automatic"] = "explicit"
 KERNEL_NORMALIZATION: Literal["diffusion_maps", "bistochastic"] = (
     "diffusion_maps"
 )
 MATPLOTLIB_BACKEND: Literal["Agg"] | None = None
-OUTPUT_DATA_DIR = "examples/lorenz63/data"
+ERA5_DAILY_DATA_DIR = "/storage/data/era5/daily01"
+ERA5_MONTHLY_DATA_DIR = "/storage/data/era5/month_nc_1940_2025"
+OUTPUT_DATA_DIR = "examples/enso/data"
 NUM_TABULATE = 40
-NUM_PLT_TST: int | None = None
-GENERATE_DATA_MODE: Literal["calc", "calcsave", "read"] = "calc"
+EXTRACT_DATA_MODE: Literal["calc", "calcsave", "read"] = "read"
 TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
 GENERATOR_MATRIX_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KOOPMAN_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KOOPMAN_RESPONSE_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KOOPMAN_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KOOPMAN_EIG_EVAL_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KAF_EXPANSION_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KAF_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
 PLOT_MODE: Literal["save", "show", "saveshow"] | None = "show"
 WHICH_PLOTS: set[Plots] = {"all"}
-DELAY_PLOT_MODE: Literal["backward", "central"] = "backward"
-KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
-    "interactive"
-)
-KOOPMAN_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = (
-    "interactive"
-)
-LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
-    "interactive"
-)
+DELAY_PLOT_MODE: Literal["backward", "central"] = "central"
+PLT_DATE_RANGE: tuple[str, str] | None = None
+KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
+KOOPMAN_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
+LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
 INITIALIZATION_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
 )
 
-jax_env = l63.initialize_jax(
+
+jax_env = clim.initialize_jax(
     idx_gpu=IDX_GPU,
     xla_mem_fraction=XLA_MEM_FRACTION,
     fp=FP,
-    cache_dir=JAX_CACHE_DIR,
 )
-l63.initialize_matplotlib(backend=MATPLOTLIB_BACKEND)
+clim.initialize_matplotlib(backend=MATPLOTLIB_BACKEND)
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,37 +136,40 @@ class PredPars:
 
     dt: float
     """Prediction timestep."""
+    # TODO: The dt parameter is redundant for KAF and should be removed.
 
     num_steps: int
     """Number of timesteps for prediction."""
 
-    which_eigs: int | tuple[int, int] | list[int]
-    """Koopman eigenfunctions used in the prediction function."""
+    idx_koopman_eig: int
+    """Koopman eigenfunction to predict."""
+
+    which_kernel_eigs: int | tuple[int, int] | list[int]
+    """Kernel eigenfunctions used in the prediction function."""
 
     def __str__(self) -> str:
-        """Create string representation of prediction parameters."""
-        match self.which_eigs:
+        """Create string representing prediction parameters."""
+        match self.which_kernel_eigs:
             case int():
-                eigs_str = "-".join(map(str, (0, self.which_eigs)))
-            case tuple():
-                eigs_str = "-".join(map(str, self.which_eigs))
+                eigs_str = "-".join(map(str, (0, self.which_kernel_eigs)))
+            case (_, _):
+                eigs_str = "-".join(map(str, self.which_kernel_eigs))
             case list():
-                eigs_str = "_".join(map(str, self.which_eigs))
+                eigs_str = "_".join(map(str, self.which_kernel_eigs))
         return "_".join(
             (
-                "koop_pred",
-                f"dt{self.dt:.2g}",
+                f"pred_koop{self.idx_koopman_eig}",
                 f"nsteps{self.num_steps}",
-                "neigs" + eigs_str,
+                "eigs" + eigs_str,
             )
         )
 
 
 @dataclass(frozen=True, slots=True)
-class TrainPars[N: int]:
+class TrainPars[T: TimeSampling]:
     """Dataclass containing the training parameter values."""
 
-    data: DataPars[N]
+    data: DataPars[T]
     """Training data parameters."""
 
     tune: TunePars
@@ -163,11 +178,11 @@ class TrainPars[N: int]:
     kernel: KernelPars
     """Kernel eigendecomposition parameters."""
 
-    koopman: KoopmanParsDiff
-    """Koopman operator approximation parameters."""
-
     pred: PredPars
     """Prediction parameters."""
+
+    koopman: KoopmanParsDiff
+    """Koopman operator approximation parameters."""
 
     cone: ConePars | None = None
     """Cone kernel parameters."""
@@ -208,17 +223,14 @@ class TrainPars[N: int]:
 
 
 @dataclass(frozen=True, slots=True)
-class TestPars[Ntst: int]:
+class TestPars[T: TimeSampling]:
     """Dataclass containing test parameter values."""
 
     num_pred_steps: int
     """Number of prediction steps."""
 
-    data: DataPars[Ntst]
+    data: DataPars[T]
     """Test data parameters."""
-
-    max_batch_size: int | None = None
-    """Max batch size for evaluation of prediction function."""
 
     # TODO: Complete this
     def tabulate(self, show: bool = True) -> str:
@@ -228,13 +240,13 @@ class TestPars[Ntst: int]:
 
 
 @dataclass(frozen=True, slots=True)
-class Pars[N: int, Ntst: int]:
+class Pars[T: TimeSampling]:
     """Dataclass containing the parameter values used in this example."""
 
-    train: TrainPars[N]
+    train: TrainPars[T]
     """Training parameters."""
 
-    test: TestPars[Ntst]
+    test: TestPars[T]
     """Test parameters."""
 
     def tabulate(self, show: bool = True) -> str:
@@ -249,8 +261,6 @@ class Pars[N: int, Ntst: int]:
 class CommonPars(TypedDict):
     """Helper TypedDict to check common training/test parameter values."""
 
-    covariate: Literal["x", "y", "z", "xy", "xyz"]
-    response: Literal["x", "y", "z"]
     num_half_delays: int
     velocity_covariate: bool
     velocity_fd_order: Literal[2, 4, 6, 8] | None
@@ -292,43 +302,151 @@ class Shardings:
     """Test shardings."""
 
 
-def initialize(
+def tropical_belt_era5_domain[S: SpaceSampling](
+    sampling: S = "pointwise",
+    step_lon: int | None = None,
+    step_lat: int | None = None,
+) -> era5.Domain[S]:
+    """-15S to 15N tropical belt."""
+    return era5.Domain(
+        min_lon=-180,
+        max_lon=180,
+        step_lon=step_lon,
+        min_lat=-15,
+        max_lat=15,
+        step_lat=step_lat,
+        sampling=sampling,
+    )
+
+
+def maritime_continent_era5_domain[S: SpaceSampling](
+    sampling: S = "pointwise",
+    step_lon: int | None = None,
+    step_lat: int | None = None,
+) -> era5.Domain[S]:
+    """Maritime continent domain."""
+    return era5.Domain(
+        min_lon=120,
+        max_lon=150,
+        step_lon=step_lon,
+        min_lat=-5,
+        max_lat=5,
+        step_lat=step_lat,
+        sampling=sampling,
+    )
+
+
+def from_experiment(
     experiment: Experiment,
     cone_kernel: bool,
     kernel_normalization: Literal["diffusion_maps", "bistochastic"],
-) -> tuple[Pars[int, int], Shardings]:
+) -> tuple[Pars[Literal["monthly"]], Shardings]:
     """Prepare parameters and shardings for the numerical experiment."""
     match experiment:
-        case Experiment.TEST:
-            fd_order = 4
+        case Experiment.ENSO_FROM_ERA5_IPSST:
             cone_pars = ConePars(zeta=0.99) if cone_kernel else None
+            era5_io = era5.IO(
+                input_path=ERA5_MONTHLY_DATA_DIR, file_format="nc"
+            )
+            time_sampling = "monthly"
+            fd_order = 4
+            num_pred_steps = 24
+            train_date_range = ("1940-01-01", "2019-12-31")
+            test_date_range = ("2016-01-01", "2025-12-31")
             common_pars: CommonPars = {
-                "covariate": "xyz",
-                "response": "x",
-                "num_half_delays": 0,
+                "num_half_delays": 24,
                 "velocity_covariate": True if cone_pars is not None else False,
                 "velocity_fd_order": fd_order
                 if cone_pars is not None
                 else None,
             }
-            num_pred_steps = 100
+            climatology_date_range = train_date_range
+            covariate_rolling_window = None
+            covariate_rolling_mode = "center"
+            train_covariate_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=covariate_rolling_window,
+                rolling_mode=covariate_rolling_mode,
+            )
+            test_covariate_time = Time(
+                date_range=test_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=covariate_rolling_window,
+                rolling_mode=covariate_rolling_mode,
+            )
+            covariate_climatology = Climatology(remove=False, standardize=True)
+            covariate_era5_vars = [era5.Var.SST]
+            covariate_era5_domain = era5.indo_pacific_domain(
+                step_lon=4, step_lat=4
+            )
+            response_rolling_window = None
+            response_rolling_mode = "center"
+            train_response_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                rolling_window=response_rolling_window,
+                rolling_mode=response_rolling_mode,
+                custom_climatology_date_range=climatology_date_range,
+            )
+            test_response_time = Time(
+                date_range=test_date_range,
+                sampling=time_sampling,
+                rolling_window=response_rolling_window,
+                rolling_mode=response_rolling_mode,
+                custom_climatology_date_range=climatology_date_range,
+            )
+            response_climatology = Climatology(remove=True, standardize=False)
+            response_era5_var = era5.Var.SST
+            response_era5_domain = era5.nino34_domain(sampling="area_averaged")
+            train_covariate_specs = (
+                era5.DataSpecs(
+                    vars=covariate_era5_vars,
+                    domain=covariate_era5_domain,
+                    time=train_covariate_time,
+                    io=era5_io,
+                    climatology=covariate_climatology,
+                ),
+            )
+            train_response_specs = era5.DataSpecs(
+                vars=[response_era5_var],
+                domain=response_era5_domain,
+                time=train_response_time,
+                io=era5_io,
+                climatology=response_climatology,
+            )
+            test_covariate_specs = (
+                era5.DataSpecs(
+                    vars=covariate_era5_vars,
+                    domain=covariate_era5_domain,
+                    time=test_covariate_time,
+                    io=era5_io,
+                    climatology=covariate_climatology,
+                ),
+            )
+            test_response_specs = era5.DataSpecs(
+                vars=[response_era5_var],
+                domain=response_era5_domain,
+                time=test_response_time,
+                io=era5_io,
+                climatology=response_climatology,
+            )
             train_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 1.1),
-                dt=0.01,
-                num_spinup=10_000,
-                num_samples=4096,
+                covariate=Covariate(specs=train_covariate_specs),
+                response=Response(specs=train_response_specs),
                 num_before=fd_order // 2,
-                num_after=fd_order // 2,
+                num_after=fd_order // 2 + num_pred_steps,
+                eval_batch_size=None,
+                **common_pars,
             )
             test_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 0.9),
-                dt=0.1,
-                num_spinup=10_000,
-                num_samples=2048,
+                covariate=Covariate(specs=test_covariate_specs),
+                response=Response(specs=test_response_specs),
                 num_before=0,
                 num_after=num_pred_steps,
+                **common_pars,
             )
             bw_tune_pars = TunePars(
                 manifold_dim=None,
@@ -341,257 +459,44 @@ def initialize(
                     manifold_dim=None,
                     num_bandwidths=128,
                     log10_bandwidth_lims=(-3, 3),
-                    bandwidth_scl=1,
+                    bandwidth_scl=2,
                 )
             else:
-                tune_pars = bw_tune_pars
+                tune_pars = TunePars(
+                    manifold_dim=None,
+                    num_bandwidths=128,
+                    log10_bandwidth_lims=(-3, 3),
+                    bandwidth_scl=1.5,
+                )
             match kernel_normalization:
                 case "diffusion_maps":
                     kernel_pars = DmKernelPars(
                         normalization="fokkerplanck",
                         eigensolver="eigh",
                         num_eigs=512,
-                        batch_size=32,
                     )
                 case "bistochastic":
                     kernel_pars = BsKernelPars(
                         eigensolver="svd",
                         num_eigs=512,
-                        batch_size=32,
                     )
             koopman_pars = KoopmanParsDiff(
                 fd_order=fd_order,
-                dt=train_data_pars.dt,
+                dt=1,
                 antisym=True,
                 tau=0.005,
-                laplacian_method="log",
-                which_eigs_galerkin=256,
-                num_eigs=129,
+                laplacian_method="inv",
+                which_eigs_galerkin=64,
+                num_eigs=65,
                 sort_by="energy",
+                gram_batch_size=None,
+                eval_tx_batch_size=None,
             )
             pred_pars = PredPars(
-                dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=129
-            )
-            shardings = Shardings()
-        case Experiment.A100_EIGH:
-            fd_order = 4
-            cone_pars = ConePars(zeta=0.99) if cone_kernel else None
-            common_pars: CommonPars = {
-                "covariate": "xyz",
-                "response": "x",
-                "num_half_delays": 0,
-                "velocity_covariate": True if cone_pars is not None else False,
-                "velocity_fd_order": fd_order
-                if cone_pars is not None
-                else None,
-            }
-            num_pred_steps = 50
-            train_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 1.1),
-                dt=0.01,
-                num_spinup=10_000,
-                num_samples=16_384,
-                num_before=fd_order // 2,
-                num_after=fd_order // 2,
-            )
-            test_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 0.9),
-                dt=0.01,
-                num_spinup=10_000,
-                num_samples=2048,
-                num_before=0,
-                num_after=num_pred_steps,
-            )
-            bw_tune_pars = TunePars(
-                manifold_dim=None,
-                num_bandwidths=128,
-                log10_bandwidth_lims=(-3, 3),
-                bandwidth_scl=1,
-            )
-            if cone_pars is not None:
-                tune_pars = TunePars(
-                    manifold_dim=None,
-                    num_bandwidths=128,
-                    log10_bandwidth_lims=(-3, 3),
-                    bandwidth_scl=1,
-                )
-            else:
-                tune_pars = bw_tune_pars
-            match kernel_normalization:
-                case "diffusion_maps":
-                    kernel_pars = DmKernelPars(
-                        normalization="fokkerplanck",
-                        eigensolver="eigh",
-                        num_eigs=2048,
-                    )
-                case "bistochastic":
-                    kernel_pars = BsKernelPars(
-                        eigensolver="svd",
-                        num_eigs=2048,
-                    )
-            koopman_pars = KoopmanParsDiff(
-                fd_order=fd_order,
-                dt=train_data_pars.dt,
-                antisym=True,
-                tau=0.003,
-                laplacian_method="log",
-                which_eigs_galerkin=1024,
-                num_eigs=1025,
-                sort_by="energy",
-            )
-            pred_pars = PredPars(
-                dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=1025
-            )
-            shardings = Shardings()
-        case Experiment.A100_EIGSH:
-            fd_order = 4
-            cone_pars = ConePars(zeta=0.99) if cone_kernel else None
-            common_pars: CommonPars = {
-                "covariate": "xyz",
-                "response": "x",
-                "num_half_delays": 0,
-                "velocity_covariate": True if cone_pars is not None else False,
-                "velocity_fd_order": fd_order
-                if cone_pars is not None
-                else None,
-            }
-            num_pred_steps = 500
-            train_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 1.1),
-                dt=0.01,
-                num_spinup=10_000,
-                num_samples=65_536,
-                num_before=fd_order // 2,
-                num_after=fd_order // 2,
-            )
-            test_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 0.9),
-                dt=0.01,
-                num_spinup=10_000,
-                num_samples=2048,
-                num_before=0,
-                num_after=num_pred_steps,
-            )
-            bw_tune_pars = TunePars(
-                manifold_dim=None,
-                num_bandwidths=128,
-                log10_bandwidth_lims=(-3, 3),
-                bandwidth_scl=1,
-            )
-            if cone_pars is not None:
-                tune_pars = TunePars(
-                    manifold_dim=None,
-                    num_bandwidths=128,
-                    log10_bandwidth_lims=(-3, 3),
-                    bandwidth_scl=1,
-                )
-            else:
-                tune_pars = bw_tune_pars
-            match kernel_normalization:
-                case "diffusion_maps":
-                    kernel_pars = DmKernelPars(
-                        normalization="fokkerplanck",
-                        eigensolver="eigsh",
-                        num_eigs=2048,
-                    )
-                case "bistochastic":
-                    kernel_pars = BsKernelPars(
-                        eigensolver="svds",
-                        num_eigs=2048,
-                    )
-            koopman_pars = KoopmanParsDiff(
-                fd_order=fd_order,
-                dt=train_data_pars.dt,
-                antisym=True,
-                tau=0.003,
-                laplacian_method="log",
-                which_eigs_galerkin=1024,
-                num_eigs=1025,
-                sort_by="energy",
-                grad_batch_size=128,
-                gram_batch_size=512,
-            )
-            pred_pars = PredPars(
-                dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=1025
-            )
-            shardings = Shardings()
-        case Experiment.A100_EIGSH_2GPU:
-            fd_order = 4
-            cone_pars = ConePars(zeta=0.99) if cone_kernel else None
-            common_pars: CommonPars = {
-                "covariate": "xyz",
-                "response": "x",
-                "num_half_delays": 0,
-                "velocity_covariate": True if cone_pars is not None else False,
-                "velocity_fd_order": fd_order
-                if cone_pars is not None
-                else None,
-            }
-            num_pred_steps = 500
-            train_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 1.1),
-                dt=0.01,
-                num_spinup=10_000,
-                num_samples=131_072,
-                num_before=fd_order // 2,
-                num_after=fd_order // 2,
-            )
-            test_data_pars = DataPars(
-                **common_pars,
-                x0=(1, 1, 0.9),
-                dt=0.01,
-                num_spinup=10_000,
-                num_samples=2048,
-                num_before=0,
-                num_after=num_pred_steps,
-            )
-            bw_tune_pars = TunePars(
-                manifold_dim=None,
-                num_bandwidths=128,
-                log10_bandwidth_lims=(-3, 3),
-                bandwidth_scl=1,
-                bandwidth_batch_size=16,
-            )
-            if cone_pars is not None:
-                tune_pars = TunePars(
-                    manifold_dim=None,
-                    num_bandwidths=128,
-                    log10_bandwidth_lims=(-3, 3),
-                    bandwidth_scl=1,
-                )
-            else:
-                tune_pars = bw_tune_pars
-            match kernel_normalization:
-                case "diffusion_maps":
-                    kernel_pars = DmKernelPars(
-                        normalization="fokkerplanck",
-                        eigensolver="eigsh",
-                        num_eigs=2048,
-                    )
-                case "bistochastic":
-                    kernel_pars = BsKernelPars(
-                        eigensolver="svds",
-                        num_eigs=2048,
-                    )
-            koopman_pars = KoopmanParsDiff(
-                fd_order=fd_order,
-                dt=train_data_pars.dt,
-                antisym=True,
-                tau=0.002,
-                laplacian_method="log",
-                which_eigs_galerkin=2000,
-                num_eigs=513,
-                sort_by="energy",
-                eval_tx_batch_size=8192,
-                gram_batch_size=1000,
-            )
-            pred_pars = PredPars(
-                dt=test_data_pars.dt, num_steps=num_pred_steps, which_eigs=129
+                dt=1,
+                which_kernel_eigs=512,
+                idx_koopman_eig=17,
+                num_steps=num_pred_steps,
             )
             if len(jax_env.devices) > 1:
                 sharder = NamedSharder(
@@ -599,30 +504,223 @@ def initialize(
                     shape=(len(jax_env.devices),),
                     axis_names=("x"),
                 )
-                i_sharding = sharder.sharding("x")
-                j_sharding = sharder.sharding(None, "x")
+                x_sharding = sharder.sharding("x")
                 replicating = sharder.sharding(None)
                 l2_shardings = L2FnAlgebraShardings(
-                    data=replicating, vectors=i_sharding
+                    data=x_sharding, vectors=x_sharding
                 )
                 l2_tst_shardings = L2FnAlgebraShardings(
                     data=replicating, vectors=replicating
                 )
-                l2_tx_shardings = L2FnAlgebraShardings(
-                    data=replicating, vectors=i_sharding
+                l2_quad_shardings = L2FnAlgebraShardings(
+                    data=replicating, vectors=x_sharding
                 )
                 kernel_eigen_shardings = KernelEigenShardings(
                     eigenvalues=replicating,
-                    eigenvectors=j_sharding,
-                    weights=i_sharding,
+                    eigenvectors=x_sharding,
+                    weights=x_sharding,
                 )
                 gen_shardings = GeneratorShardings(
-                    tangents=l2_tx_shardings,
-                    basis_grads=j_sharding,
-                    matrix=i_sharding,
+                    tangents=l2_quad_shardings,
+                    matrix=x_sharding,
                 )
                 koopman_eigen_shardings = KoopmanEigenShardings(
-                    eigenvalues=replicating, eigenvectors=replicating
+                    eigenvalues=replicating,
+                    eigenvectors=replicating,
+                )
+                train_shardings = TrainShardings(
+                    l2=l2_shardings,
+                    kernel_eigen=kernel_eigen_shardings,
+                    generator=gen_shardings,
+                    koopman_eigen=koopman_eigen_shardings,
+                )
+                test_shardings = TestShardings(l2=l2_tst_shardings)
+            else:
+                train_shardings = TrainShardings()
+                test_shardings = TestShardings()
+            shardings = Shardings(train=train_shardings, test=test_shardings)
+        case Experiment.ENSO_FROM_ERA5_NINO34SST:
+            cone_pars = ConePars(zeta=0.99) if cone_kernel else None
+            era5_io = era5.IO(
+                input_path=ERA5_MONTHLY_DATA_DIR, file_format="nc"
+            )
+            time_sampling = "monthly"
+            fd_order = 4
+            num_pred_steps = 24
+            train_date_range = ("1940-01-01", "2019-12-31")
+            test_date_range = ("2016-01-01", "2025-12-31")
+            common_pars: CommonPars = {
+                "num_half_delays": 24,
+                "velocity_covariate": True if cone_pars is not None else False,
+                "velocity_fd_order": fd_order
+                if cone_pars is not None
+                else None,
+            }
+            climatology_date_range = train_date_range
+            covariate_rolling_window = None
+            covariate_rolling_mode = "center"
+            train_covariate_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=covariate_rolling_window,
+                rolling_mode=covariate_rolling_mode,
+            )
+            test_covariate_time = Time(
+                date_range=test_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=covariate_rolling_window,
+                rolling_mode=covariate_rolling_mode,
+            )
+            covariate_climatology = Climatology(remove=False, standardize=True)
+            covariate_era5_vars = [era5.Var.SST]
+            covariate_era5_domain = era5.nino34_domain(step_lon=4, step_lat=4)
+            response_rolling_window = None
+            response_rolling_mode = "center"
+            train_response_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                rolling_window=response_rolling_window,
+                rolling_mode=response_rolling_mode,
+                custom_climatology_date_range=climatology_date_range,
+            )
+            test_response_time = Time(
+                date_range=test_date_range,
+                sampling=time_sampling,
+                rolling_window=response_rolling_window,
+                rolling_mode=response_rolling_mode,
+                custom_climatology_date_range=climatology_date_range,
+            )
+            response_climatology = Climatology(remove=True, standardize=False)
+            response_era5_var = era5.Var.SST
+            response_era5_domain = era5.nino34_domain(sampling="area_averaged")
+            train_covariate_specs = (
+                era5.DataSpecs(
+                    vars=covariate_era5_vars,
+                    domain=covariate_era5_domain,
+                    time=train_covariate_time,
+                    io=era5_io,
+                    climatology=covariate_climatology,
+                ),
+            )
+            train_response_specs = era5.DataSpecs(
+                vars=[response_era5_var],
+                domain=response_era5_domain,
+                time=train_response_time,
+                io=era5_io,
+                climatology=response_climatology,
+            )
+            test_covariate_specs = (
+                era5.DataSpecs(
+                    vars=covariate_era5_vars,
+                    domain=covariate_era5_domain,
+                    time=test_covariate_time,
+                    io=era5_io,
+                    climatology=covariate_climatology,
+                ),
+            )
+            test_response_specs = era5.DataSpecs(
+                vars=[response_era5_var],
+                domain=response_era5_domain,
+                time=test_response_time,
+                io=era5_io,
+                climatology=response_climatology,
+            )
+            train_data_pars = DataPars(
+                covariate=Covariate(specs=train_covariate_specs),
+                response=Response(specs=train_response_specs),
+                num_before=fd_order // 2,
+                num_after=fd_order // 2 + num_pred_steps,
+                eval_batch_size=None,
+                **common_pars,
+            )
+            test_data_pars = DataPars(
+                covariate=Covariate(specs=test_covariate_specs),
+                response=Response(specs=test_response_specs),
+                num_before=0,
+                num_after=num_pred_steps,
+                **common_pars,
+            )
+            bw_tune_pars = TunePars(
+                manifold_dim=None,
+                num_bandwidths=128,
+                log10_bandwidth_lims=(-3, 3),
+                bandwidth_scl=1,
+            )
+            if cone_pars is not None:
+                tune_pars = TunePars(
+                    manifold_dim=None,
+                    num_bandwidths=128,
+                    log10_bandwidth_lims=(-3, 3),
+                    bandwidth_scl=2,
+                )
+            else:
+                tune_pars = TunePars(
+                    manifold_dim=None,
+                    num_bandwidths=128,
+                    log10_bandwidth_lims=(-3, 3),
+                    bandwidth_scl=1.5,
+                )
+            match kernel_normalization:
+                case "diffusion_maps":
+                    kernel_pars = DmKernelPars(
+                        normalization="fokkerplanck",
+                        eigensolver="eigh",
+                        num_eigs=512,
+                    )
+                case "bistochastic":
+                    kernel_pars = BsKernelPars(
+                        eigensolver="svd",
+                        num_eigs=512,
+                    )
+            koopman_pars = KoopmanParsDiff(
+                fd_order=fd_order,
+                dt=1,
+                antisym=True,
+                tau=0.005,
+                laplacian_method="inv",
+                which_eigs_galerkin=64,
+                num_eigs=65,
+                sort_by="energy",
+                gram_batch_size=None,
+                eval_tx_batch_size=None,
+            )
+            pred_pars = PredPars(
+                dt=1,
+                which_kernel_eigs=512,
+                idx_koopman_eig=3,
+                num_steps=num_pred_steps,
+            )
+            if len(jax_env.devices) > 1:
+                sharder = NamedSharder(
+                    devices=jax_env.devices,
+                    shape=(len(jax_env.devices),),
+                    axis_names=("x"),
+                )
+                x_sharding = sharder.sharding("x")
+                replicating = sharder.sharding(None)
+                l2_shardings = L2FnAlgebraShardings(
+                    data=x_sharding, vectors=x_sharding
+                )
+                l2_tst_shardings = L2FnAlgebraShardings(
+                    data=replicating, vectors=replicating
+                )
+                l2_quad_shardings = L2FnAlgebraShardings(
+                    data=replicating, vectors=x_sharding
+                )
+                kernel_eigen_shardings = KernelEigenShardings(
+                    eigenvalues=replicating,
+                    eigenvectors=x_sharding,
+                    weights=x_sharding,
+                )
+                gen_shardings = GeneratorShardings(
+                    tangents=l2_quad_shardings,
+                    matrix=x_sharding,
+                )
+                koopman_eigen_shardings = KoopmanEigenShardings(
+                    eigenvalues=replicating,
+                    eigenvectors=replicating,
                 )
                 train_shardings = TrainShardings(
                     l2=l2_shardings,
@@ -645,21 +743,26 @@ def initialize(
         koopman=koopman_pars,
         pred=pred_pars,
     )
-    test_pars = TestPars(data=test_data_pars, num_pred_steps=num_pred_steps)
+    test_pars = TestPars(
+        data=test_data_pars, num_pred_steps=pred_pars.num_steps
+    )
     pars = Pars(train=train_pars, test=test_pars)
     return pars, shardings
 
 
-pars, shardings = initialize(EXPERIMENT, CONE_KERNEL, KERNEL_NORMALIZATION)
+pars, shardings = from_experiment(
+    EXPERIMENT, CONE_KERNEL, KERNEL_NORMALIZATION
+)
 io = IO(root=Path.cwd() / OUTPUT_DATA_DIR)
 
-generate_data = timeit(
+
+extract_data_arrays = timeit(
     pickleit(
-        l63.generate_data,
+        clim.extract_data_arrays,
         io=io,
-        mode=GENERATE_DATA_MODE,
+        mode=EXTRACT_DATA_MODE,
         fname="data",
-        cls=Data,
+        cls=NPData,
     )
 )
 compute_kernel_bandwidth = timeit(
@@ -695,7 +798,7 @@ compute_generator_matrix = timeit(
         ),
     )
 )
-compute_generator_eigen_diff = timeit(
+compute_diffusion_regularized_generator_eigen = timeit(
     pickleit(
         koop.compute_diffusion_regularized_generator_eigen,
         io=io,
@@ -704,32 +807,41 @@ compute_generator_eigen_diff = timeit(
         cls=KoopmanEigen,
     )
 )
-compute_koopman_response_coeffs = timeit(
+evaluate_koopman_eigenfunction = timeit(
     pickleit(
-        l63.compute_koopman_response_coeffs,
+        koop.evaluate_eigenfunction,
         io=io,
-        mode=KOOPMAN_RESPONSE_COEFFS_MODE,
-        fname="koopman_response_coeffs",
+        mode=KOOPMAN_EIG_EVAL_MODE,
+        fname="koop_eig",
         cls=Array,
     )
 )
-compute_koopman_preds = timeit(
+compute_kaf_expansion_coeffs = timeit(
     pickleit(
-        koop.compute_koopman_preds,
+        clim.compute_kaf_expansion_coeffs,
         io=io,
-        mode=KOOPMAN_PREDS_MODE,
-        fname="koopman_preds",
+        mode=KAF_EXPANSION_COEFFS_MODE,
+        fname="kaf_coeffs",
+        cls=Array,
+    )
+)
+compute_kaf_preds = timeit(
+    pickleit(
+        knl.compute_kaf_preds,
+        io=io,
+        mode=KAF_PREDS_MODE,
+        fname="kaf_preds",
         cls=Array,
     )
 )
 compute_skill_scores = timeit(
     h5it(
-        l63.compute_skill_scores,
+        clim.compute_skill_scores,
         io=io,
         mode=SKILL_SCORES_MODE,
         fname="pred_scores",
         cls=SkillScores,
-        callback=l63.to_skill_scores,
+        callback=clim.to_skill_scores,
     )
 )
 plot_kernel_tuning = plotit(
@@ -739,16 +851,19 @@ plot_kernel_tuning = plotit(
     fname="bandwidth_tuning_func",
 )
 plot_bandwidth_function = plotit(
-    l63.plot_bandwidth_function,
+    clim.plot_bandwidth_function,
     io=io,
     mode=PLOT_MODE,
     fname="bandwidth_func",
 )
-plot_laplacian_spectrum = plotit(
+plot_laplace_spectrum = plotit(
     knl.plot_laplacian_spectrum, io=io, mode=PLOT_MODE, fname="lapl_spec"
 )
 make_kernel_evecs_plotter = plotem(
-    l63.make_kernel_evecs_plotter, io=io, mode=PLOT_MODE, fname="kernel_eigen"
+    clim.make_kernel_evecs_plotter,
+    io=io,
+    mode=PLOT_MODE,
+    fname="kernel_eigen",
 )
 plot_generator_matrix = plotit(
     koop.plot_operator_matrix, io=io, mode=PLOT_MODE, fname="gen_mat"
@@ -757,27 +872,39 @@ plot_generator_spectrum = plotit(
     koop.plot_generator_spectrum, io=io, mode=PLOT_MODE, fname="gen_spec"
 )
 make_koopman_evecs_plotter = plotem(
-    l63.make_koopman_evecs_plotter,
+    clim.make_koopman_evecs_plotter,
     io=io,
     mode=PLOT_MODE,
     fname="koopman_eigen",
 )
+plot_kaf_expansion_coeffs = plotit(
+    knl.plot_kaf_expansion_coeffs,
+    io=io,
+    mode=PLOT_MODE,
+    fname="kaf_expansion_coeffs",
+)
 make_running_pred_plotter = plotem(
-    l63.make_running_pred_plotter, io=io, mode=PLOT_MODE, fname="pred_running"
+    clim.make_running_pred_plotter,
+    io=io,
+    mode=PLOT_MODE,
+    fname="pred_running",
 )
 make_pred_timeseries_plotter = plotem(
-    l63.make_pred_timeseries_plotter,
+    clim.make_pred_timeseries_plotter,
     io=io,
     mode=PLOT_MODE,
     fname="pred_timeseries",
 )
 plot_forecast_skill_scores = plotit(
-    l63.plot_forecast_skill_scores, io=io, mode=PLOT_MODE, fname="pred_scores"
+    clim.plot_forecast_skill_scores,
+    io=io,
+    mode=PLOT_MODE,
+    fname="pred_scores",
 )
 
 
 def main():
-    """Perform Koopman spectral analysis of the Lorenz 63 system."""
+    """Koopman analysis of ESTCP data."""
     global io
 
     # Display information about the computation to be performed
@@ -785,29 +912,36 @@ def main():
     pars.tabulate()
 
     # Generate training and test data
-    io @= str(pars.test.data)
-    test_data = generate_data(
-        pars.test.data, dtype=jax_env.real_dtype, device=jax_env.device_cpu
-    )
-    io @= str(pars.train.data)
-    train_data = generate_data(
-        pars.train.data, dtype=jax_env.real_dtype, device=jax_env.device_cpu
-    )
+    io @= str(pars.train.data.covariate)
+    io /= str(pars.train.data.response)
+    io /= str(pars.train.data)
+    train_data = extract_data_arrays(
+        pars.train.data,
+        dtype=np.dtype(np.float64),
+    ).to_device(dtype=jax_env.real_dtype, shardings=shardings.train.l2.data)
+    io @= str(pars.test.data.covariate)
+    io /= str(pars.test.data.response)
+    io /= str(pars.test.data)
+    test_data = extract_data_arrays(
+        pars.test.data, dtype=np.dtype(np.float64)
+    ).to_device(dtype=jax_env.real_dtype, shardings=shardings.test.l2.data)
 
     # Make scalar field and L2 space builders
     scl_r = ScalarField(jax_env.real_dtype)
-    impl_l2 = l63.make_data_driven_l2_space(
-        pars=pars.train.data,
+    impl_l2 = clim.make_data_driven_l2_space(
+        data_pars=pars.train.data,
         dtype=jax_env.real_dtype,
         shardings=shardings.train.l2,
     )
-    impl_l2_tst = l63.make_data_driven_l2_space(
-        pars=pars.test.data,
+    impl_l2_tst = clim.make_data_driven_l2_space(
+        data_pars=pars.test.data,
         dtype=jax_env.real_dtype,
         shardings=shardings.test.l2,
     )
 
     # Set kernel shape function
+    io @= str(pars.train.data.covariate)
+    io /= str(pars.train.data)
     shape_func = jnp.exp
     match KERNEL_TUNING_GRAD_METHOD:
         case "explicit":
@@ -835,14 +969,12 @@ def main():
         )
         bw_tune_info.tabulate(name="Bandwidth function tuning")
 
-        # Plot bandwidth tuning function
+        # Plot bandwidth function tuning and bandwidth function
         if PLOT_MODE is not None and not {
             "all",
             "bandwidth_tuning",
         }.isdisjoint(WHICH_PLOTS):
             plot_kernel_tuning(bw_tune_info, title="Bandwidth function tuning")
-
-        # Plot kernel bandwidth function
         if PLOT_MODE is not None and not {"all", "bandwidth_func"}.isdisjoint(
             WHICH_PLOTS
         ):
@@ -851,10 +983,13 @@ def main():
                 impl_l2,
                 bandwidth_func,
                 train_data,
+                shardings.train.l2.data,
                 pars.test.data,
                 impl_l2_tst,
                 test_data,
-                num_plt_tst=NUM_PLT_TST,
+                shardings.test.l2.data,
+                delay_plot_mode=DELAY_PLOT_MODE,
+                plt_date_range=PLT_DATE_RANGE,
             )
     else:
         bandwidth_func = None
@@ -907,18 +1042,14 @@ def main():
         shardings=shardings.train.kernel_eigen,
     )
     if len(jax_env.devices) > 1:
-        jax.debug.inspect_array_sharding(kernel_eigen.evecs, callback=print)
-        jax.debug.inspect_array_sharding(
-            kernel_eigen.dual_evecs, callback=print
-        )
-        jax.debug.inspect_array_sharding(kernel_eigen.evals, callback=print)
+        kernel_eigen.inspect_array_shardings()
     kernel_eigen.tabulate(num_tabulate=NUM_TABULATE)
 
     # Plot spectrum of Laplacian eigenvalues
     if PLOT_MODE is not None and not {"all", "laplacian_spec"}.isdisjoint(
         WHICH_PLOTS
     ):
-        plot_laplacian_spectrum(kernel_eigen)
+        plot_laplace_spectrum(kernel_eigen)
 
     # Plot representative kernel eigenfunctions
     if (
@@ -931,12 +1062,14 @@ def main():
             impl_l2,
             train_data,
             kernel_eigen,
+            shardings.train.l2.data,
             pars.test.data,
             impl_l2_tst,
             test_data,
+            shardings.test.l2.data,
             kernel,
             delay_plot_mode=DELAY_PLOT_MODE,
-            num_plt_tst=NUM_PLT_TST,
+            plt_date_range=PLT_DATE_RANGE,
         )
         if KERNEL_EIGS_PLT == "interactive":
             while True:
@@ -960,11 +1093,10 @@ def main():
 
     # Compute generator matrix
     io /= str(pars.train.koopman)
-    impl_eval_tx = l63.make_data_driven_tangent_evaluation_functional_fd(
-        pars=pars.train.data,
+    impl_eval_tx = clim.make_data_driven_tangent_evaluation_functional_fd(
+        data_pars=pars.train.data,
         dtype=jax_env.real_dtype,
         fd_order=pars.train.koopman.fd_order,
-        batch_size=pars.train.koopman.eval_tx_batch_size,
         shardings=shardings.train.l2,
     )
     gen_mat = compute_generator_matrix(
@@ -977,9 +1109,6 @@ def main():
         shardings=shardings.train.generator,
     )
 
-    if len(jax_env.devices) > 1:
-        jax.debug.inspect_array_sharding(gen_mat, callback=print)
-
     # Plot generator matrix
     if PLOT_MODE is not None and not {"all", "generator_mat"}.isdisjoint(
         WHICH_PLOTS
@@ -991,7 +1120,7 @@ def main():
         shape=(pars.train.koopman.dim_galerkin + 1,),
         dtype=jax_env.complex_dtype,
     )
-    koopman_eigen = compute_generator_eigen_diff(
+    koopman_eigen = compute_diffusion_regularized_generator_eigen(
         (pars.train.kernel, pars.train.koopman),
         impl_l2,
         kernel,
@@ -1000,7 +1129,43 @@ def main():
         gen_mat,
         out_shardings=shardings.train.koopman_eigen,
     )
-    koopman_eigen.tabulate(num_tabulate=NUM_TABULATE)
+    match pars.train.data.time_sampling:
+        case "daily":
+            growth_scl = 365
+            freq_scl = 365
+            period_scl = 1
+            growth_str = "1/y"
+            freq_str = "cycles/year"
+            period_str = "days"
+        case "monthly":
+            growth_scl = 12
+            freq_scl = 12
+            period_scl = 1 / 12
+            growth_str = "1/y"
+            freq_str = "cycles/year"
+            period_str = "years"
+    print(
+        tabulate(
+            jnp.vstack(
+                (
+                    koopman_eigen.evals[:NUM_TABULATE].real * growth_scl,
+                    koopman_eigen.engys[:NUM_TABULATE],
+                    koopman_eigen.efreqs[:NUM_TABULATE]
+                    / (2 * jnp.pi)
+                    * freq_scl,
+                    koopman_eigen.eperiods[:NUM_TABULATE] * period_scl,
+                )
+            ).T,
+            headers=[
+                f"Growth rate ({growth_str})",
+                "Dirichlet energies",
+                f"Eigenfreqs. ({freq_str})",
+                f"Eigenperiods ({period_str})",
+            ],
+            floatfmt=".3f",
+            showindex=True,
+        )
+    )
 
     # Plot generator spectrum
     if PLOT_MODE is not None and not {"all", "generator_spec"}.isdisjoint(
@@ -1021,12 +1186,14 @@ def main():
             train_data,
             kernel_eigen,
             koopman_eigen,
+            shardings.train.l2.data,
             pars.test.data,
             impl_l2_tst,
             test_data,
+            shardings.test.l2.data,
             kernel,
             delay_plot_mode=DELAY_PLOT_MODE,
-            num_plt_tst=NUM_PLT_TST,
+            plt_date_range=PLT_DATE_RANGE,
         )
         if KOOPMAN_EIGS_PLT == "interactive":
             while True:
@@ -1046,37 +1213,92 @@ def main():
             for i in KOOPMAN_EIGS_PLT:
                 plot_koopman_eig(i)
 
-    # Compute expansion coefficients of the response function
+    # Compute values of the prediction eigenfunction
     io /= str(pars.train.pred)
-    io /= str(pars.train.data.response)
-    coeffs = compute_koopman_response_coeffs(
-        (pars.train.data, pars.train.kernel, pars.train.koopman),
-        c_k,
-        impl_l2,
-        train_data,
-        kernel,
-        kernel_eigen,
-        koopman_eigen,
-        pars.train.pred.which_eigs,
+    impl_eval_kaf = clim.make_data_driven_evaluation_functional(
+        data_pars=pars.train.data,
+        dtype=jax_env.real_dtype,
+        num_before=0,
+        num_after=pars.train.pred.num_steps,
+        shardings=shardings.train.l2,
     )
-
-    # Perform time series prediction
-    io /= str(pars.test.data)
-    preds = compute_koopman_preds(
+    koop_efun_vals = evaluate_koopman_eigenfunction(
         (pars.train.kernel, pars.train.koopman),
         c_k,
         impl_l2,
+        impl_eval_kaf,
+        kernel,
+        pars.train.pred.idx_koopman_eig,
+        train_data,
+        kernel_eigen,
+        koopman_eigen,
+        train_data,
+    )
+
+    # Compute expansion coefficients of the prediction eigenfunction
+    coeffs = compute_kaf_expansion_coeffs(
+        (pars.train.data, pars.train.kernel),
+        impl_l2,
         train_data,
         kernel,
         kernel_eigen,
-        koopman_eigen,
+        pars.train.pred.num_steps,
+        pars.train.pred.which_kernel_eigs,
+        responses=koop_efun_vals.real,
+    )
+
+    # Make heatmap of KAF response coefficients
+    if PLOT_MODE is not None and not {"all", "expansion_coeffs"}.isdisjoint(
+        WHICH_PLOTS
+    ):
+        plot_kaf_expansion_coeffs(
+            coeffs,
+            title=(
+                "Koopman eigenfunction "
+                f"$\\zeta_{{{pars.train.pred.idx_koopman_eig}}}$"
+            ),
+        )
+
+    # Perform time series prediction
+    io /= str(pars.test.data)
+    preds = compute_kaf_preds(
+        pars.train.kernel,
+        impl_l2,
+        train_data,
+        kernel,
+        kernel_eigen,
         coeffs,
         impl_l2_tst,
         test_data,
-        num_steps=pars.train.pred.num_steps,
-        dt=pars.train.pred.dt,
-        which_eigs=pars.train.pred.which_eigs,
-    ).real
+        pars.train.pred.which_kernel_eigs,
+    )
+
+    # Compute out-of-sample values of Koopman eigenfunction
+    impl_eval_kaf_tst = clim.make_data_driven_evaluation_functional(
+        data_pars=pars.test.data,
+        dtype=jax_env.real_dtype,
+        num_before=pars.test.data.num_before,
+        num_after=pars.test.data.num_after
+        + pars.test.data.num_velocity_fd // 2,
+        delay_window_pad=0,
+        shardings=shardings.test.l2,
+    )
+    koop_efun_vals_tst = evaluate_koopman_eigenfunction(
+        (pars.train.kernel, pars.train.koopman),
+        c_k,
+        impl_l2,
+        impl_eval_kaf_tst,
+        kernel,
+        pars.train.pred.idx_koopman_eig,
+        train_data,
+        kernel_eigen,
+        koopman_eigen,
+        test_data,
+    )
+    koop_efun_test_data = clim.TimedResponse(
+        time=pars.test.data.to_datetime_index(),
+        response=koop_efun_vals_tst.real,
+    )
 
     # Plot running forecast
     if (
@@ -1085,7 +1307,7 @@ def main():
         and LEAD_TIMES_PLT is not None
     ):
         _, plot_pred = make_running_pred_plotter(
-            pars.test.data, test_data, preds
+            pars.test.data, koop_efun_test_data, preds
         )
         if LEAD_TIMES_PLT == "interactive":
             while True:
@@ -1104,6 +1326,8 @@ def main():
         else:
             for i in LEAD_TIMES_PLT:
                 plot_pred(i)
+                if "show" in PLOT_MODE:
+                    input("Press any key to continue...")
 
     # Plot time series forecast
     if (
@@ -1112,7 +1336,7 @@ def main():
         and INITIALIZATION_TIMES_PLT is not None
     ):
         _, plot_pred_ts = make_pred_timeseries_plotter(
-            pars.test.data, test_data, preds
+            pars.test.data, koop_efun_test_data, preds
         )
         if INITIALIZATION_TIMES_PLT == "interactive":
             while True:
@@ -1131,14 +1355,29 @@ def main():
         else:
             for i in INITIALIZATION_TIMES_PLT:
                 plot_pred_ts(i)
+                if "show" in PLOT_MODE:
+                    input("Press any key to continue...")
 
     # Compute forecast skill scores
-    skill_scores = compute_skill_scores(pars.test.data, test_data, preds)
-    ts = jnp.arange(pars.test.num_pred_steps + 1) * pars.test.data.dt
+    skill_scores = compute_skill_scores(
+        pars.test.data,
+        koop_efun_test_data,
+        preds,
+    )
+    ts = jnp.arange(pars.test.num_pred_steps + 1)
+    match pars.train.data.time_sampling:
+        case "daily":
+            timestep_str = "days"
+        case "monthly":
+            timestep_str = "months"
     print(
         tabulate(
             jnp.vstack((ts, skill_scores["nrmses"], skill_scores["accs"])).T,
-            headers=["Lead time", "Normalized RMSE", "Anomaly Correlation"],
+            headers=[
+                f"Lead time ({timestep_str})",
+                "Normalized RMSE",
+                "Anomaly Correlation",
+            ],
             floatfmt=".4f",
         )
     )
