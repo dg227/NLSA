@@ -2,7 +2,7 @@
 
 import numpy as np
 import jax
-from collections.abc import Iterable, Sized
+from collections.abc import Iterable, Sequence, Sized
 from numpy.typing import ArrayLike
 from types import EllipsisType
 from typing import (
@@ -15,7 +15,9 @@ from typing import (
     overload,
     runtime_checkable,
 )
-from collections.abc import Sequence
+from typing_extensions import Sentinel
+
+DEFAULT = Sentinel("DEFAULT")
 
 
 @runtime_checkable

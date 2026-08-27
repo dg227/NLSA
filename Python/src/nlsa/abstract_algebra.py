@@ -1,9 +1,5 @@
 """Provide protocols and functions for abstract algebraic structures."""
 
-# TODO: Consider refactoring the code to use ReadOnly attributes as opposed to
-# @property-decorrated methods. This could lead to significant reduction of
-# boilerplate and potential performance improvements.
-
 from collections.abc import Callable, Iterable
 from functools import partial, reduce
 from typing import (
@@ -13,7 +9,6 @@ from typing import (
     final,
     runtime_checkable,
 )
-from typing import ReadOnly
 
 type F[X, Y] = Callable[[X], Y]
 
@@ -22,9 +17,8 @@ type F[X, Y] = Callable[[X], Y]
 class ImplementsZero[V](Protocol):
     """Implement additive zero."""
 
-    @property
-    def zero(self) -> Callable[[], V]:
-        """Additive zero."""
+    def zero(self, /) -> V:
+        """Compute additive zero."""
         ...
 
 
@@ -32,9 +26,8 @@ class ImplementsZero[V](Protocol):
 class ImplementsAdd[V](Protocol):
     """Implement addition."""
 
-    @property
-    def add(self) -> Callable[[V, V], V]:
-        """Addition."""
+    def add(self, u: V, v: V, /) -> V:
+        """Perform addition."""
         ...
 
 
@@ -42,9 +35,8 @@ class ImplementsAdd[V](Protocol):
 class ImplementsSub[V](Protocol):
     """Implement subtraction."""
 
-    @property
-    def sub(self) -> Callable[[V, V], V]:
-        """Subtraction."""
+    def sub(self, u: V, v: V, /) -> V:
+        """Perform subtraction."""
         ...
 
 
@@ -52,9 +44,8 @@ class ImplementsSub[V](Protocol):
 class ImplementsNeg[V](Protocol):
     """Implement additive negation."""
 
-    @property
-    def neg(self) -> Callable[[V], V]:
-        """Additive negation."""
+    def neg(self, v: V, /) -> V:
+        """Perform additive negation."""
         ...
 
 
@@ -62,9 +53,8 @@ class ImplementsNeg[V](Protocol):
 class ImplementsSmul[K, V](Protocol):
     """Implement scalar multiplication."""
 
-    @property
-    def smul(self) -> Callable[[K, V], V]:
-        """Scalar multiplication."""
+    def smul(self, k: K, v: V, /) -> V:
+        """Perform scalar multiplication."""
         ...
 
 
@@ -72,9 +62,8 @@ class ImplementsSmul[K, V](Protocol):
 class ImplementsSdiv[K, V](Protocol):
     """Implement scalar division."""
 
-    @property
-    def sdiv(self) -> Callable[[K, V], V]:
-        """Scalar division."""
+    def sdiv(self, k: K, v: V, /) -> V:
+        """Perform scalar division."""
         ...
 
 
@@ -82,9 +71,8 @@ class ImplementsSdiv[K, V](Protocol):
 class ImplementsMul[A](Protocol):
     """Implement algebraic multiplication."""
 
-    @property
-    def mul(self) -> Callable[[A, A], A]:
-        """Algebraic multiplication."""
+    def mul(self, a: A, b: A, /) -> A:
+        """Perform algebraic multiplication."""
         ...
 
 
@@ -92,9 +80,8 @@ class ImplementsMul[A](Protocol):
 class ImplementsUnit[A](Protocol):
     """Implement algebraic unit."""
 
-    @property
-    def unit(self) -> Callable[[], A]:
-        """Algebraic unit."""
+    def unit(self, /) -> A:
+        """Compute algebraic unit."""
         ...
 
 
@@ -102,9 +89,8 @@ class ImplementsUnit[A](Protocol):
 class ImplementsDiv[A](Protocol):
     """Implement algebraic division."""
 
-    @property
-    def div(self) -> Callable[[A, A], A]:
-        """Algebraic division."""
+    def div(self, a: A, b: A, /) -> A:
+        """Perform algebraic division."""
         ...
 
 
@@ -112,9 +98,8 @@ class ImplementsDiv[A](Protocol):
 class ImplementsInv[A](Protocol):
     """Implement algebraic inversion."""
 
-    @property
-    def inv(self) -> Callable[[A], A]:
-        """Algebraic inversion."""
+    def inv(self, a: A, /) -> A:
+        """Perform algebraic inversion."""
         ...
 
 
@@ -122,9 +107,8 @@ class ImplementsInv[A](Protocol):
 class ImplementsLog[A](Protocol):
     """Implement natural logarithm."""
 
-    @property
-    def log(self) -> Callable[[A], A]:
-        """Natural logarithm."""
+    def log(self, a: A, /) -> A:
+        """Compute natural logarithm."""
         ...
 
 
@@ -132,9 +116,8 @@ class ImplementsLog[A](Protocol):
 class ImplementsLog10[A](Protocol):
     """Implement base 10 logarithm."""
 
-    @property
-    def log10(self) -> Callable[[A], A]:
-        """Base 10 logarithm."""
+    def log10(self, a: A, /) -> A:
+        """Compute base 10 logarithm."""
         ...
 
 
@@ -142,9 +125,8 @@ class ImplementsLog10[A](Protocol):
 class ImplementsAbs[A](Protocol):
     """Implement algebraic modulus (absolute value)."""
 
-    @property
-    def abs(self) -> Callable[[A], A]:
-        """Algebraic modulus."""
+    def abs(self, a: A, /) -> A:
+        """Compute algebraic modulus."""
         ...
 
 
@@ -152,9 +134,8 @@ class ImplementsAbs[A](Protocol):
 class ImplementsLmul[L, V](Protocol):
     """Implement left module multiplication."""
 
-    @property
-    def lmul(self) -> Callable[[L, V], V]:
-        """Left module multiplication."""
+    def lmul(self, k: L, v: V, /) -> V:
+        """Perform left module multiplication."""
         ...
 
 
@@ -162,19 +143,17 @@ class ImplementsLmul[L, V](Protocol):
 class ImplementsRmul[V, R](Protocol):
     """Implement right module multiplication."""
 
-    @property
-    def rmul(self) -> Callable[[V, R], V]:
-        """Right module multiplication."""
+    def rmul(self, v: V, k: R, /) -> V:
+        """Perform right module multiplication."""
         ...
 
 
 @runtime_checkable
 class ImplementsPower[A, K](Protocol):
-    """Implement monoidal power."""
+    """Implement power."""
 
-    @property
-    def power(self) -> Callable[[A, K], A]:
-        """Monoidal power."""
+    def power(self, a: A, k: K, /) -> A:
+        """Compute power."""
         ...
 
 
@@ -182,9 +161,8 @@ class ImplementsPower[A, K](Protocol):
 class ImplementsMPower[A](Protocol):
     """Implement monoidal power."""
 
-    @property
-    def mpower(self) -> Callable[[A, int], A]:
-        """Monoidal power."""
+    def mpower(self, a: A, k: int, /) -> A:
+        """Compute monoidal power."""
         ...
 
 
@@ -192,19 +170,17 @@ class ImplementsMPower[A](Protocol):
 class ImplementsSqrt[A](Protocol):
     """Implement square root."""
 
-    @property
-    def sqrt(self) -> Callable[[A], A]:
-        """Square root."""
+    def sqrt(self, a: A, /) -> A:
+        """Compute square root."""
         ...
 
 
 @runtime_checkable
-class ImplementsExp[A, B](Protocol):
+class ImplementsExp[A](Protocol):
     """Implement exponentiation."""
 
-    @property
-    def exp(self) -> Callable[[A], B]:
-        """Exponentiation."""
+    def exp(self, a: A, /) -> A:
+        """Perform exponentiation."""
         ...
 
 
@@ -212,9 +188,8 @@ class ImplementsExp[A, B](Protocol):
 class ImplementsExp10[A](Protocol):
     """Implement exponentiation with base 10."""
 
-    @property
-    def exp10(self) -> Callable[[A], A]:
-        """Base 10 exponentiation."""
+    def exp10(self, a: A, /) -> A:
+        """Perform base 10 exponentiation."""
         ...
 
 
@@ -222,9 +197,8 @@ class ImplementsExp10[A](Protocol):
 class ImplementsAdj[A](Protocol):
     """Implement algebraic adjunction."""
 
-    @property
-    def adj(self) -> Callable[[A], A]:
-        """Algebraic adjunction."""
+    def adj(self, a: A, /) -> A:
+        """Perform algebraic adjunction."""
         ...
 
 
@@ -232,9 +206,8 @@ class ImplementsAdj[A](Protocol):
 class ImplementsLdiv[L, V](Protocol):
     """Implement left module division."""
 
-    @property
-    def ldiv(self) -> Callable[[L, V], V]:
-        """Left module division."""
+    def ldiv(self, k: L, v: V, /) -> V:
+        """Perform left module division."""
         ...
 
 
@@ -242,9 +215,8 @@ class ImplementsLdiv[L, V](Protocol):
 class ImplementsRdiv[V, R](Protocol):
     """Implement right module division."""
 
-    @property
-    def rdiv(self) -> Callable[[V, R], V]:
-        """Right module division."""
+    def rdiv(self, v: V, k: R, /) -> V:
+        """Perform right module division."""
         ...
 
 
@@ -252,9 +224,8 @@ class ImplementsRdiv[V, R](Protocol):
 class ImplementsNorm[V, R](Protocol):
     """Implement norm."""
 
-    @property
-    def norm(self) -> Callable[[V], R]:
-        """Norm."""
+    def norm(self, v: V, /) -> R:
+        """Compute norm."""
         ...
 
 
@@ -262,9 +233,8 @@ class ImplementsNorm[V, R](Protocol):
 class ImplementsInnerp[V, K](Protocol):
     """Implement inner product."""
 
-    @property
-    def innerp(self) -> Callable[[V, V], K]:
-        """Inner product."""
+    def innerp(self, u: V, v: V, /) -> K:
+        """Compute inner product."""
         ...
 
 
@@ -272,9 +242,8 @@ class ImplementsInnerp[V, K](Protocol):
 class ImplementsIncl[X, Y, V](Protocol):
     """Implement function inclusion."""
 
-    @property
-    def incl(self) -> Callable[[F[X, Y]], V]:
-        """Function inclusion."""
+    def incl(self, f: Callable[[X], Y], /) -> V:
+        """Perform function inclusion."""
         ...
 
 
@@ -282,9 +251,8 @@ class ImplementsIncl[X, Y, V](Protocol):
 class ImplementsIntegrate[V, K](Protocol):
     """Implement integration."""
 
-    @property
-    def integrate(self) -> Callable[[V], K]:
-        """Integration."""
+    def integrate(self, v: V, /) -> K:
+        """Perform integration (summation) of a vector."""
         ...
 
 
@@ -292,9 +260,8 @@ class ImplementsIntegrate[V, K](Protocol):
 class ImplementsCompose[F, G, H](Protocol):
     """Implement composition."""
 
-    @property
-    def compose(self) -> Callable[[F, G], H]:
-        """Composition."""
+    def compose(self, f: F, g: G, /) -> H:
+        """Perform composition."""
         ...
 
 
@@ -322,7 +289,7 @@ class ImplementsRealScalarField[K](
     ImplementsSqrt[K],
     ImplementsPower[K, K],
     ImplementsAbs[K],
-    ImplementsExp[K, K],
+    ImplementsExp[K],
     ImplementsExp10[K],
     ImplementsLog[K],
     ImplementsLog10[K],
@@ -330,8 +297,7 @@ class ImplementsRealScalarField[K](
 ):
     """Implement real scalar field."""
 
-    @property
-    def from_pyscalar(self) -> Callable[[SupportsFloat], K]:
+    def from_pyscalar(self, x: SupportsFloat, /) -> K:
         """Convert Python float to scalar."""
         ...
 
@@ -344,20 +310,19 @@ class ImplementsComplexScalarField[K](
 ):
     """Implement complex scalar field."""
 
-    @property
-    def from_pyscalar(self) -> Callable[[SupportsFloat | SupportsComplex], K]:
+    def from_pyscalar(self, x: SupportsFloat | SupportsComplex, /) -> K:
         """Convert Python float or complex to scalar."""
         ...
 
 
 @runtime_checkable
-class ImplementsVectorSpace[T, K](
-    ImplementsZero[T],
-    ImplementsAdd[T],
-    ImplementsSub[T],
-    ImplementsNeg[T],
-    ImplementsSmul[K, T],
-    ImplementsSdiv[K, T],
+class ImplementsVectorSpace[V, K](
+    ImplementsZero[V],
+    ImplementsAdd[V],
+    ImplementsSub[V],
+    ImplementsNeg[V],
+    ImplementsSmul[K, V],
+    ImplementsSdiv[K, V],
     Protocol,
 ):
     """Implement vector space."""
@@ -369,7 +334,7 @@ class ImplementsVectorSpace[T, K](
 
 
 @runtime_checkable
-class ImplementsDimension[T](Protocol):
+class ImplementsDimension(Protocol):
     """Implement dimension."""
 
     @property
@@ -379,8 +344,8 @@ class ImplementsDimension[T](Protocol):
 
 
 @runtime_checkable
-class ImplementsRealVectorSpace[T, K](
-    ImplementsVectorSpace[T, K],
+class ImplementsRealVectorSpace[V, K](
+    ImplementsVectorSpace[V, K],
     Protocol,
 ):
     """Implement real vector space."""
@@ -392,8 +357,8 @@ class ImplementsRealVectorSpace[T, K](
 
 
 @runtime_checkable
-class ImplementsComplexVectorSpace[T, K](
-    ImplementsRealVectorSpace[T, K],
+class ImplementsComplexVectorSpace[V, K](
+    ImplementsRealVectorSpace[V, K],
     Protocol,
 ):
     """Implement complex vector space."""
@@ -405,8 +370,8 @@ class ImplementsComplexVectorSpace[T, K](
 
 
 @runtime_checkable
-class ImplementsNormedSpace[T, K](
-    ImplementsRealVectorSpace[T, K], ImplementsNorm[T, K], Protocol
+class ImplementsNormedSpace[V, K](
+    ImplementsRealVectorSpace[V, K], ImplementsNorm[V, K], Protocol
 ):
     """Implement normed space operations."""
 
@@ -477,8 +442,8 @@ class ImplementsNormedStarAlgebra[A, K](
 
 
 @runtime_checkable
-class ImplementsInnerProductAlgebra[V, K](
-    ImplementsNormedAlgebra[V, K], ImplementsInnerp[V, K], Protocol
+class ImplementsInnerProductAlgebra[A, K](
+    ImplementsNormedAlgebra[A, K], ImplementsInnerp[A, K], Protocol
 ):
     """Implement algebra with inner product."""
 
@@ -486,8 +451,8 @@ class ImplementsInnerProductAlgebra[V, K](
 
 
 @runtime_checkable
-class ImplementsInnerProductStarAlgebra[V, K](
-    ImplementsNormedStarAlgebra[V, K], ImplementsInnerp[V, K], Protocol
+class ImplementsInnerProductStarAlgebra[A, K](
+    ImplementsNormedStarAlgebra[A, K], ImplementsInnerp[A, K], Protocol
 ):
     """Implement star algebra with inner product."""
 
@@ -530,6 +495,8 @@ class ImplementsCalculus[A, K](
     ImplementsPower[A, K],
     ImplementsSqrt[A],
     ImplementsAbs[A],
+    ImplementsExp[A],
+    ImplementsLog[A],
     Protocol,
 ):
     """Implement basic functional calculus operations."""
@@ -590,9 +557,9 @@ class ImplementsNormedStarAlgebraWithCalculus[A, K](
 
 
 @runtime_checkable
-class ImplementsInnerProductStarAlgebraWithCalculus[V, K](
-    ImplementsNormedStarAlgebraWithCalculus[V, K],
-    ImplementsInnerp[V, K],
+class ImplementsInnerProductStarAlgebraWithCalculus[A, K](
+    ImplementsNormedStarAlgebraWithCalculus[A, K],
+    ImplementsInnerp[A, K],
     Protocol,
 ):
     """Implement star algebra with inner product and functional calculus."""
@@ -617,8 +584,7 @@ class ImplementsOperatorSpace[T, V, W, K](
         """Codomain of operators in operator space."""
         ...
 
-    @property
-    def app(self) -> Callable[[T, V], W]:
+    def app(self, t: T, v: V, /) -> W:
         """Application of operators in operator space."""
         ...
 
@@ -996,7 +962,7 @@ class ImplementsL2FnAlgebra[X, Y, V, K](
 @runtime_checkable
 class ImplementsDimensionedL2FnAlgebra[X, Y, V, K](
     ImplementsL2FnAlgebra[X, Y, V, K],
-    ImplementsDimension[V],
+    ImplementsDimension,
     Protocol,
 ):
     """Implement operations on dimensioned L2 function algebra."""
@@ -1008,22 +974,26 @@ class ImplementsDimensionedL2FnAlgebra[X, Y, V, K](
 class ImplementsAnalysisOperators[V, Ks](Protocol):
     """Implement analysis operators associated with frame."""
 
-    anal: ReadOnly[Callable[[V], Ks]]
-    """Analysis operator."""
+    def anal(self, v: V, /) -> Ks:
+        """Apply analysis operator."""
+        ...
 
-    dual_anal: ReadOnly[Callable[[V], Ks]]
-    """Analysis operator."""
+    def dual_anal(self, v: V, /) -> Ks:
+        """Apply dual analysis operator."""
+        ...
 
 
 @runtime_checkable
 class ImplementsSynthesisOperators[V, Ks](Protocol):
     """Implement synthesis operators associated with fame."""
 
-    synth: ReadOnly[Callable[[Ks], V]]
-    """Analysis operator."""
+    def synth(self, ks: Ks, /) -> V:
+        """Apply synthesis operator."""
+        ...
 
-    dual_synth: ReadOnly[Callable[[Ks], V]]
-    """Analysis operator."""
+    def dual_synth(self, ks: Ks, /) -> V:
+        """Apply dual synthesis operator."""
+        ...
 
 
 @runtime_checkable
@@ -1034,43 +1004,46 @@ class ImplementsFrame[V, Ks, I](
 ):
     """Implement analysis and synthesis operators associated with frame."""
 
-    vec: ReadOnly[Callable[[I], V]]
-    """Analysis operator."""
+    def vec(self, i: I, /) -> V:
+        """Return frame element."""
+        ...
 
-    dual_vec: ReadOnly[Callable[[I], V]]
-    """Analysis operator."""
+    def dual_vec(self, i: I, /) -> V:
+        """Return dual frame element."""
+        ...
 
 
 @runtime_checkable
 class ImplementsDimensionedFrame[V, Ks, I](
-    ImplementsFrame[V, Ks, I], Protocol
+    ImplementsFrame[V, Ks, I], ImplementsDimension, Protocol
 ):
     """Implement operators of frame with known dimension."""
-
-    dim: int
-    """Number of frame elements."""
 
 
 @runtime_checkable
 class ImplementsFnAnalysisOperators[X, Y, Ks](Protocol):
     """Implement function analysis operators."""
 
-    fn_anal: ReadOnly[Callable[[F[X, Y]], Ks]]
-    """Analysis operator."""
+    def fn_anal(self, f: Callable[[X], Y], /) -> Ks:
+        """Apply function analysis operator."""
+        ...
 
-    dual_fn_anal: ReadOnly[Callable[[F[X, Y]], Ks]]
-    """Analysis operator."""
+    def dual_fn_anal(self, f: Callable[[X], Y], /) -> Ks:
+        """Apply dual function analysis operator."""
+        ...
 
 
 @runtime_checkable
 class ImplementsFnSynthesisOperators[X, Y, Ks](Protocol):
     """Implement function synthesis operators."""
 
-    fn_synth: ReadOnly[Callable[[Ks], F[X, Y]]]
-    """Analysis operator."""
+    def fn_synth(self, ks: Ks, /) -> Callable[[X], Y]:
+        """Apply function synthesis operator."""
+        ...
 
-    dual_fn_synth: ReadOnly[Callable[[Ks], F[X, Y]]]
-    """Analysis operator."""
+    def dual_fn_synth(self, ks: Ks, /) -> Callable[[X], Y]:
+        """Apply dual function synthesis operator."""
+        ...
 
 
 @runtime_checkable
@@ -1082,21 +1055,20 @@ class ImplementsL2FnFrame[X, Y, V, Ks, I](
 ):
     """Implement frame of L2 function space."""
 
-    fn: ReadOnly[Callable[[I], F[X, Y]]]
-    """Analysis operator."""
+    def fn(self, i: I, /) -> Callable[[X], Y]:
+        """Return frame function element."""
+        ...
 
-    dual_fn: ReadOnly[Callable[[I], F[X, Y]]]
-    """Analysis operator."""
+    def dual_fn(self, i: I, /) -> Callable[[X], Y]:
+        """Return frame function element."""
+        ...
 
 
 @runtime_checkable
 class ImplementsDimensionedL2FnFrame[X, Y, V, Ks, I](
-    ImplementsL2FnFrame[X, Y, V, Ks, I], Protocol
+    ImplementsL2FnFrame[X, Y, V, Ks, I], ImplementsDimension, Protocol
 ):
     """Implement operators of L2 function frame with known dimension."""
-
-    dim: int
-    """Analysis operator."""
 
 
 @runtime_checkable
@@ -1105,11 +1077,14 @@ class ImplementsL2FnEigenbasis[X, Y, V, K, Ks, I](
 ):
     """Implement eigenbasis of L2 function space."""
 
-    spec: Ks
-    """Analysis operator."""
+    @property
+    def spec(self) -> Ks:
+        """Eigenvalue spectrum."""
+        ...
 
-    evl: Callable[[I], K]
-    """Analysis operator."""
+    def evl(self, i: I, /) -> K:
+        """Return eigenvalue in the spectrum."""
+        ...
 
 
 @final
@@ -1125,45 +1100,37 @@ class AsBimodule[A, K](ImplementsBimodule[A, K, A, A]):
         """Return scl property of AsAlgebra object."""
         return self._alg.scl
 
-    @property
-    def zero(self) -> Callable[[], A]:
+    def zero(self, /) -> A:
         """Return zero property of AsBimodule object."""
-        return self._alg.zero
+        return self._alg.zero()
 
-    @property
-    def add(self) -> Callable[[A, A], A]:
+    def add(self, a: A, b: A, /) -> A:
         """Return add property of AsBimodule object."""
-        return self._alg.add
+        return self._alg.add(a, b)
 
-    @property
-    def sub(self) -> Callable[[A, A], A]:
+    def sub(self, a: A, b: A, /) -> A:
         """Return sub property of AsBimodule object."""
-        return self._alg.sub
+        return self._alg.sub(a, b)
 
-    @property
-    def neg(self) -> Callable[[A], A]:
+    def neg(self, a: A, /) -> A:
         """Return neg property of AsBimodule object."""
-        return self._alg.neg
+        return self._alg.neg(a)
 
-    @property
-    def smul(self) -> Callable[[K, A], A]:
+    def smul(self, k: K, a: A) -> A:
         """Return smul property of AsBimodule object."""
-        return self._alg.smul
+        return self._alg.smul(k, a)
 
-    @property
-    def sdiv(self) -> Callable[[K, A], A]:
+    def sdiv(self, k: K, a: A) -> A:
         """Return sdiv property of AsAlgebra object."""
-        return self._alg.sdiv
+        return self._alg.sdiv(k, a)
 
-    @property
-    def lmul(self) -> Callable[[A, A], A]:
+    def lmul(self, a: A, b: A, /) -> A:
         """Return lmul property of AsBimodule object."""
-        return self._alg.mul
+        return self._alg.mul(a, b)
 
-    @property
-    def rmul(self) -> Callable[[A, A], A]:
+    def rmul(self, a: A, b: A, /) -> A:
         """Return rmul property of AsBimodule object."""
-        return self._alg.mul
+        return self._alg.mul(a, b)
 
 
 def compose_by[F, G, H](

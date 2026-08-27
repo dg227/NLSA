@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import nc_time_axis as nc_time_axis
 import nlsa.jax.distance as dst
 import nlsa.jax.kernels as knl
+import nlsa.jax.scalars as scls
 import nlsa_models.climate as clim
 import nlsa_models.era5 as era5
 import numpy as np
@@ -28,7 +29,6 @@ from nlsa.jax.kernels import (
     TuneInfo,
     TunePars,
 )
-from nlsa.jax.scalars import ScalarField
 from nlsa.jax.sharding import NamedSharder
 from nlsa.jax.vector_algebra import L2FnAlgebraShardings
 from nlsa.jax.utils import fst
@@ -69,7 +69,7 @@ class Experiment(StrEnum):
 
 
 EXPERIMENT: Experiment = Experiment.NINO34_FROM_ERA5_NINO34SST
-IDX_GPU: int | Sequence[int] | None = 0
+IDX_GPU: int | Sequence[int] | None = None  # 0
 XLA_MEM_FRACTION: str | None = "0.95"
 JAX_CACHE_DIR: str | None = "jax_cache"
 FP: Literal["f32", "f64"] = "f32"
@@ -581,7 +581,7 @@ def main():
     ).to_device(dtype=jax_env.real_dtype, shardings=shardings.test.l2.data)
 
     # Make scalar field and L2 space builders
-    scl_r = ScalarField(jax_env.real_dtype)
+    scl_r = scls.scalar_field(jax_env.real_dtype)
     impl_l2 = clim.make_data_driven_l2_space(
         data_pars=pars.train.data,
         dtype=jax_env.real_dtype,

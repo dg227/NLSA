@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import math
 import nlsa.abstract_algebra as alg
 import nlsa.function_algebra as fun
+import nlsa.jax.scalars as scls
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import partial
@@ -12,9 +13,10 @@ from jax import Array, vmap
 from jax.sharding import Mesh, NamedSharding, PartitionSpec, Sharding
 from jax.scipy.signal import convolve
 from jax.typing import DTypeLike
-from nlsa.jax.scalars import ScalarField
 from nlsa.jax.sharding import shardit
+from nlsa.jax.typing import Idx, PyTree, typestable_jit
 from nlsa.jax.utils import batch_map, batch_map_bivariate
+from nlsa.typing import DEFAULT
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -37,15 +39,6 @@ type Vs = Array
 type X = Array
 type Y = Array
 type Xs = Array
-type PyTree = (
-    Array
-    | float
-    | int
-    | bool
-    | list[PyTree]
-    | tuple[PyTree, ...]
-    | dict[Any, PyTree]
-)
 type ConvMode = Literal["full", "same", "valid"]
 type Shape = tuple[int, ...]
 type F[*Xs, Y] = Callable[[*Xs], Y]
@@ -184,7 +177,7 @@ def make_normalized_counting_measure(n: int) -> Callable[[V], Y]:
     return mu
 
 
-def eval_at(xs: Xs, /) -> Callable[[F[Xs, V]], V]:
+def eval_at[Xs: PyTree](xs: Xs, /) -> Callable[[F[Xs, V]], V]:
     """Make evaluation functional."""
 
     def ev(f: F[Xs, V], /) -> V:
@@ -193,8 +186,8 @@ def eval_at(xs: Xs, /) -> Callable[[F[Xs, V]], V]:
     return ev
 
 
-def _veval_at(
-    xs: Xs,
+def _veval_at[X: PyTree, Y: Array](
+    xs: X,
     /,
     in_axis: int = 0,
     out_sharding: Sharding | None = None,
@@ -202,7 +195,7 @@ def _veval_at(
 ) -> Callable[[F[X, Y]], V]:
     """Make vectorized evaluation functional."""
 
-    def ev(f: F[Xs, Y], /) -> V:
+    def ev(f: F[X, Y], /) -> V:
         g = vmap(f, in_axes=in_axis)
         if out_sharding is not None:
             out_shard = partial(
@@ -210,14 +203,14 @@ def _veval_at(
             )
             g = fun.compose(out_shard, g)
         if jit:
-            g = jax.jit(g)
+            g = typestable_jit(g)
         return g(xs)
 
     return ev
 
 
-def _veval_at_tuple(
-    xss: tuple[Xs, Xs],
+def _veval_at_tuple[X: PyTree](
+    xss: tuple[X, X],
     /,
     in_axis: int = 0,
     out_sharding: Sharding | None = None,
@@ -233,7 +226,7 @@ def _veval_at_tuple(
             )
             g = fun.compose(out_shard, g)
         if jit:
-            g = jax.jit(g)
+            g = typestable_jit(g)
         return g(*xss)
 
     return ev
@@ -297,7 +290,7 @@ def _batch_eval_at(
             )
             g = fun.compose(out_shard, g)
         if jit:
-            g = jax.jit(g)
+            g = typestable_jit(g)
         return g(xs)
 
     return ev
@@ -321,7 +314,7 @@ def _batch_eval_at_tuple(
             )
             g = fun.compose(out_shard, g)
         if jit:
-            g = jax.jit(g)
+            g = typestable_jit(g)
         return g(*xss)
 
     return ev
@@ -390,10 +383,8 @@ def shardeval_at(
     def ev(f: F[X, Y], /) -> V:
         g: Callable[[Xs], V] = vmap(vmap(f), axis_name="i")
 
-        # @partial(jit, out_shardings=ys_sharding)
-        @jax.jit
+        @typestable_jit
         def evg(xss: Xs, /) -> V:
-            # ys = g(xss)
             ys = jax.lax.with_sharding_constraint(g(xss), ys_sharding)
             return ys
 
@@ -459,7 +450,7 @@ def make_synthesis_operator(
     return synth
 
 
-def make_fn_synthesis_operator[X: Array](
+def make_fn_synthesis_operator[X: PyTree, Ks: Array](
     basis: F[X, Ks],
 ) -> Callable[[Ks], F[X, K]]:
     """Make synthesis operator for functions from basis."""
@@ -474,7 +465,9 @@ def make_fn_synthesis_operator[X: Array](
     return synth
 
 
-def fn_synthesis[X: Array](coeffs: Ks, /, basis: F[X, Ks]) -> F[X, K]:
+def fn_synthesis[X: PyTree, Ks: Array](
+    coeffs: Ks, /, basis: F[X, Ks]
+) -> F[X, K]:
     """Perform function synthesis from basis."""
 
     def f(x: X, /) -> K:
@@ -489,11 +482,11 @@ def make_one_hot_basis(
     value: float | Array = 1,
     dtype: DTypeLike | None = None,
     sharding: NamedSharding | None = None,
-) -> Callable[[int | V], V]:
+) -> Callable[[Idx], V]:
     """Make standard basis of real or complex Euclidean space."""
 
     @partial(shardit, sharding=sharding)
-    def vc(i: int | V) -> V:
+    def vc(i: Idx) -> V:
         e = jnp.zeros(dim, dtype=dtype)
         e = e.at[i].set(value)
         return e
@@ -504,35 +497,36 @@ def make_one_hot_basis(
 # TODO: Consider creating separate LpVectorAlgebra classes implementing the
 # other Lp norms
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class L2VectorAlgebra[N: Shape, D: DTypeLike](
     alg.ImplementsInnerProductStarAlgebraWithCalculus[V, K]
 ):
-    """Implement vector algebra operations for JAX arrays."""
+    """Implement L2 vector algebra operations for JAX arrays."""
 
     shape: N
     dtype: D
-    weight: V | None = None
-    sharding: Sharding | None = None
-    _scl: ScalarField[D] | None = None
-    _zero: Callable[[], V] | None = None
-    _unit: Callable[[], V] | None = None
-    _add: Callable[[V, V], V] | None = None
-    _neg: Callable[[V], V] | None = None
-    _sub: Callable[[V, V], V] | None = None
-    _sdiv: Callable[[K, V], V] | None = None
-    _smul: Callable[[K, V], V] | None = None
-    _mul: Callable[[V, V], V] | None = None
-    _div: Callable[[V, V], V] | None = None
-    _inv: Callable[[V], V] | None = None
-    _adj: Callable[[V], V] | None = None
-    _sqrt: Callable[[V], V] | None = None
-    _exp: Callable[[V], V] | None = None
-    _abs: Callable[[V], V] | None = None
-    _mpower: Callable[[V, int], V] | None = None
-    _power: Callable[[V, K], V] | None = None
-    _innerp: Callable[[V, V], K] | None = None
-    _norm: Callable[[V], K] | None = None
+    weight: V | None
+    sharding: Sharding | None
+    _scl: alg.ImplementsComplexScalarField[K]
+    _zero: Callable[[], V]
+    _unit: Callable[[], V]
+    _add: Callable[[V, V], V]
+    _neg: Callable[[V], V]
+    _sub: Callable[[V, V], V]
+    _sdiv: Callable[[K, V], V]
+    _smul: Callable[[K, V], V]
+    _mul: Callable[[V, V], V]
+    _div: Callable[[V, V], V]
+    _inv: Callable[[V], V]
+    _adj: Callable[[V], V]
+    _sqrt: Callable[[V], V]
+    _exp: Callable[[V], V]
+    _log: Callable[[V], V]
+    _abs: Callable[[V], V]
+    _mpower: Callable[[V, int], V]
+    _power: Callable[[V, K], V]
+    _innerp: Callable[[V, V], K]
+    _norm: Callable[[V], K]
 
     @property
     def dim(self) -> int:
@@ -540,119 +534,151 @@ class L2VectorAlgebra[N: Shape, D: DTypeLike](
         return math.prod(self.shape)
 
     @property
-    def zero(self) -> Callable[[], V]:
-        """Return zero property of L2VectorAlgebra object."""
-        return (
-            make_zero(self.shape, self.dtype, self.sharding)
-            if self._zero is None
-            else self._zero
-        )
+    def scl(self) -> alg.ImplementsComplexScalarField[K]:
+        """Scalar field associated with L2VectorAlgebra object."""
+        return self._scl
 
-    @property
-    def unit(self) -> Callable[[], V]:
-        """Return unit property of L2VectorAlgebra object."""
-        return (
-            make_unit(self.shape, self.dtype, self.sharding)
-            if self._unit is None
-            else self._unit
-        )
+    def zero(self, /) -> V:
+        """Return zero vector."""
+        return self._zero()
 
-    @property
-    def scl(self) -> ScalarField[D]:
-        """Return scl property of L2VectorAlgebra object."""
-        return ScalarField(self.dtype) if self._scl is None else self._scl
+    def add(self, u: V, v: V, /) -> V:
+        """Add two vectors."""
+        return self._add(u, v)
 
-    @property
-    def add(self) -> Callable[[V, V], V]:
-        """Return add property of L2VectorAlgebra object."""
-        return jnp.add if self._add is None else self._add
+    def neg(self, v: V, /) -> V:
+        """Compute additive inverse (negation) of a vector."""
+        return self._neg(v)
 
-    @property
-    def neg(self) -> Callable[[V], V]:
-        """Return neg property of L2VectorAlgebra object."""
-        return neg if self._neg is None else self._neg
+    def sub(self, u: V, v: V, /) -> V:
+        """Subtract two vectors."""
+        return self._sub(u, v)
 
-    @property
-    def sub(self) -> Callable[[V, V], V]:
-        """Return sub property of L2VectorAlgebra object."""
-        return jnp.subtract if self._sub is None else self._sub
+    def smul(self, k: K, v: V, /) -> V:
+        """Multiply a vector by a scalar."""
+        return self._smul(k, v)
 
-    @property
-    def sdiv(self) -> Callable[[K, V], V]:
-        """Return sdiv property of L2VectorAlgebra object."""
-        return sdiv if self._sdiv is None else self._sdiv
+    def sdiv(self, k: K, v: V, /) -> V:
+        """Divide a vector by a scalar."""
+        return self._sdiv(k, v)
 
-    @property
-    def smul(self) -> Callable[[K, V], V]:
-        """Return smul property of L2VectorAlgebra object."""
-        return jnp.multiply if self._smul is None else self._smul
+    def unit(self, /) -> V:
+        """Return vector with elements equal to 1 (multiplicative unit)."""
+        return self._unit()
 
-    @property
-    def mul(self) -> Callable[[V, V], V]:
-        """Return mul property of L2VectorAlgebra object."""
-        return jnp.multiply if self._mul is None else self._mul
+    def mul(self, u: V, v: V, /) -> V:
+        """Compute elementwise multiplication of two vectors."""
+        return self._mul(u, v)
 
-    @property
-    def div(self) -> Callable[[V, V], V]:
-        """Return div property of L2VectorAlgebra object."""
-        return jnp.divide if self._div is None else self._div
+    def div(self, u: V, v: V, /) -> V:
+        """Compute elementwise division of two vectors."""
+        return self._div(u, v)
 
-    @property
-    def inv(self) -> Callable[[V], V]:
-        """Return inv property of L2VectorAlgebra object."""
-        return inv if self._inv is None else self._inv
+    def inv(self, v: V, /) -> V:
+        """Compute elementwise multiplicative inverse of a vector."""
+        return self._inv(v)
 
-    @property
-    def adj(self) -> Callable[[V], V]:
-        """Return adj property of L2VectorAlgebra object."""
-        return jnp.conjugate if self._adj is None else self._adj
+    def adj(self, v: V, /) -> V:
+        """Compute elementwise complex conjugate of a vector."""
+        return self._adj(v)
 
-    @property
-    def sqrt(self) -> Callable[[V], V]:
-        """Return sqrt property of L2VectorAlgebra object."""
-        return jnp.sqrt if self._sqrt is None else self._sqrt
+    def sqrt(self, v: V, /) -> V:
+        """Compute elementwise square root of a vector."""
+        return self._sqrt(v)
 
-    @property
-    def exp(self) -> Callable[[V], V]:
-        """Return exp property of L2VectorAlgebra object."""
-        return jnp.exp if self._exp is None else self._exp
+    def abs(self, v: V, /) -> V:
+        """Compute elementwise modulus of a vector."""
+        return self._abs(v)
 
-    @property
-    def abs(self) -> Callable[[V], V]:
-        """Return abs property of L2VectorAlgebra object."""
-        return jnp.abs if self._abs is None else self._abs
+    def exp(self, v: V, /) -> V:
+        """Compute elementwise exponential of a vector."""
+        return self._exp(v)
 
-    @property
-    def mpower(self) -> Callable[[V, int], V]:
-        """Return mpower property of L2VectorAlgebra object."""
-        return jnp.power if self._mpower is None else self._mpower
+    def log(self, a: V, /) -> V:
+        """Compute elementwise natural logarithm of a vector."""
+        return self._log(a)
 
-    @property
-    def power(self) -> Callable[[V, K], V]:
-        """Return power property of L2VectorAlgebra object."""
-        return jnp.power if self._power is None else self._power
+    def mpower(self, v: V, k: int, /) -> V:
+        """Compute elementwise exponentiation of a vector by an integer."""
+        return self._mpower(v, k)
 
-    @property
-    def innerp(self) -> Callable[[V, V], K]:
-        """Return inner product property of L2VectorAlgebra object."""
-        if self._innerp is None:
-            return (
-                euclidean_innerp
-                if self.weight is None
-                else make_weighted_innerp(self.weight)
-            )
-        else:
-            return self._innerp
+    def power(self, v: V, k: K, /) -> V:
+        """Compute elementwise exponentiation of a vector by a scalar."""
+        return self._power(v, k)
 
-    @property
-    def norm(self) -> Callable[[V], K]:
-        """Return norm property of L2VectorAlgebra object."""
-        return to_norm(self.innerp) if self._norm is None else self._norm
+    def innerp(self, u: V, v: V, /) -> K:
+        """Compute the inner product between two vectors."""
+        return self._innerp(u, v)
+
+    def norm(self, v: V, /) -> K:
+        """Compute the norm of a vector."""
+        return self._norm(v)
+
+
+def l2_vector_algebra[N: Shape, D: DTypeLike](
+    shape: N,
+    dtype: D,
+    weight: V | None = None,
+    sharding: Sharding | None = None,
+    scl: alg.ImplementsComplexScalarField[K] | DEFAULT = DEFAULT,
+    zero: Callable[[], V] | DEFAULT = DEFAULT,
+    unit: Callable[[], V] | DEFAULT = DEFAULT,
+    add: Callable[[V, V], V] | DEFAULT = DEFAULT,
+    neg: Callable[[V], V] | DEFAULT = DEFAULT,
+    sub: Callable[[V, V], V] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, V], V] | DEFAULT = DEFAULT,
+    smul: Callable[[K, V], V] | DEFAULT = DEFAULT,
+    mul: Callable[[V, V], V] | DEFAULT = DEFAULT,
+    div: Callable[[V, V], V] | DEFAULT = DEFAULT,
+    inv: Callable[[V], V] | DEFAULT = DEFAULT,
+    adj: Callable[[V], V] | DEFAULT = DEFAULT,
+    sqrt: Callable[[V], V] | DEFAULT = DEFAULT,
+    abs: Callable[[V], V] | DEFAULT = DEFAULT,
+    exp: Callable[[V], V] | DEFAULT = DEFAULT,
+    log: Callable[[V], V] | DEFAULT = DEFAULT,
+    mpower: Callable[[V, int], V] | DEFAULT = DEFAULT,
+    power: Callable[[V, K], V] | DEFAULT = DEFAULT,
+    innerp: Callable[[V, V], K] | DEFAULT = DEFAULT,
+    norm: Callable[[V], K] | DEFAULT = DEFAULT,
+) -> L2VectorAlgebra[N, D]:
+    """Build L2VectorAlgebra object."""
+    if innerp is not DEFAULT:
+        _innerp = innerp
+    elif weight is not None:
+        _innerp = make_weighted_innerp(weight)
+    else:
+        _innerp = euclidean_innerp
+    return L2VectorAlgebra(
+        shape=shape,
+        dtype=dtype,
+        weight=weight,
+        sharding=sharding,
+        _scl=scls.scalar_field(dtype) if scl is DEFAULT else scl,
+        _zero=(make_zero(shape, dtype, sharding) if zero is DEFAULT else zero),
+        _unit=(make_unit(shape, dtype, sharding) if unit is DEFAULT else unit),
+        _add=jnp.add if add is DEFAULT else add,
+        _neg=(lambda v: -v) if neg is DEFAULT else neg,
+        _sub=jnp.subtract if sub is DEFAULT else sub,
+        _sdiv=(lambda k, v: v / k) if sdiv is DEFAULT else sdiv,
+        _smul=jnp.multiply if smul is DEFAULT else smul,
+        _mul=jnp.multiply if mul is DEFAULT else mul,
+        _div=jnp.divide if div is DEFAULT else div,
+        _inv=(lambda v: 1 / v) if inv is DEFAULT else inv,
+        _adj=jnp.conjugate if adj is DEFAULT else adj,
+        _sqrt=jnp.sqrt if sqrt is DEFAULT else sqrt,
+        _abs=jnp.abs if abs is DEFAULT else abs,
+        _exp=jnp.exp if exp is DEFAULT else exp,
+        _log=jnp.log if log is DEFAULT else log,
+        _mpower=jnp.power if mpower is DEFAULT else mpower,
+        _power=jnp.power if power is DEFAULT else power,
+        _innerp=_innerp,
+        _norm=to_norm(_innerp) if norm is DEFAULT else norm,
+    )
 
 
 @final
-@dataclass(frozen=True)
-class L2FnAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
+@dataclass(frozen=True, slots=True)
+class L2FnAlgebra[N: Shape, D: DTypeLike, X: PyTree, Y: Array](
     alg.ImplementsL2FnAlgebra[X, Y, V, K]
 ):
     """Implement L2 function algebra operations for JAX arrays."""
@@ -661,148 +687,180 @@ class L2FnAlgebra[N: Shape, D: DTypeLike, X: Array, Y: Array](
     dtype: D
     measure: Callable[[V], Y]
     inclusion_map: Callable[[F[X, Y]], V]
-    sharding: Sharding | None = None
-    _scl: alg.ImplementsComplexScalarField[K] | None = None
-    _zero: Callable[[], V] | None = None
-    _unit: Callable[[], V] | None = None
-    _add: Callable[[V, V], V] | None = None
-    _neg: Callable[[V], V] | None = None
-    _sub: Callable[[V, V], V] | None = None
-    _sdiv: Callable[[K, V], V] | None = None
-    _smul: Callable[[K, V], V] | None = None
-    _mul: Callable[[V, V], V] | None = None
-    _div: Callable[[V, V], V] | None = None
-    _inv: Callable[[V], V] | None = None
-    _adj: Callable[[V], V] | None = None
-    _sqrt: Callable[[V], V] | None = None
-    _exp: Callable[[V], V] | None = None
-    _abs: Callable[[V], V] | None = None
-    _mpower: Callable[[V, int], V] | None = None
-    _power: Callable[[V, K], V] | None = None
-    _innerp: Callable[[V, V], K] | None = None
-    _norm: Callable[[V], K] | None = None
+    sharding: Sharding | None
+    _scl: alg.ImplementsComplexScalarField[K]
+    _zero: Callable[[], V]
+    _unit: Callable[[], V]
+    _add: Callable[[V, V], V]
+    _neg: Callable[[V], V]
+    _sub: Callable[[V, V], V]
+    _sdiv: Callable[[K, V], V]
+    _smul: Callable[[K, V], V]
+    _mul: Callable[[V, V], V]
+    _div: Callable[[V, V], V]
+    _inv: Callable[[V], V]
+    _adj: Callable[[V], V]
+    _sqrt: Callable[[V], V]
+    _exp: Callable[[V], V]
+    _log: Callable[[V], V]
+    _exp: Callable[[V], V]
+    _abs: Callable[[V], V]
+    _mpower: Callable[[V, int], V]
+    _power: Callable[[V, K], V]
+    _innerp: Callable[[V, V], K]
+    _norm: Callable[[V], K]
 
     @property
     def dim(self) -> int:
-        """Return dimension property of L2FnAlgebra object."""
+        """Return dimension property of L2FunctionAlgebra object."""
         return math.prod(self.shape)
 
     @property
-    def zero(self) -> Callable[[], V]:
-        """Return zero property of L2FnAlgebra object."""
-        return (
-            make_zero(self.shape, self.dtype, self.sharding)
-            if self._zero is None
-            else self._zero
-        )
-
-    @property
-    def unit(self) -> Callable[[], V]:
-        """Return unit property of L2FnAlgebra object."""
-        return (
-            make_unit(self.shape, self.dtype, self.sharding)
-            if self._unit is None
-            else self._unit
-        )
-
-    @property
     def scl(self) -> alg.ImplementsComplexScalarField[K]:
-        """Return scl property of L2FnAlgebra object."""
-        return ScalarField(self.dtype) if self._scl is None else self._scl
+        """Scalar field associated with L2FnAlgebra object."""
+        return self._scl
 
-    @property
-    def add(self) -> Callable[[V, V], V]:
-        """Return add property of L2FnAlgebra object."""
-        return jnp.add if self._add is None else self._add
+    def zero(self, /) -> V:
+        """Return zero vector."""
+        return self._zero()
 
-    @property
-    def neg(self) -> Callable[[V], V]:
-        """Return neg property of L2FnAlgebra object."""
-        return neg if self._neg is None else self._neg
+    def add(self, u: V, v: V, /) -> V:
+        """Add two vectors."""
+        return self._add(u, v)
 
-    @property
-    def sub(self) -> Callable[[V, V], V]:
-        """Return sub property of L2FnAlgebra object."""
-        return jnp.subtract if self._sub is None else self._sub
+    def neg(self, v: V, /) -> V:
+        """Compute additive inverse (negation) of a vector."""
+        return self._neg(v)
 
-    @property
-    def sdiv(self) -> Callable[[K, V], V]:
-        """Return sdiv property of L2FnAlgebra object."""
-        return sdiv if self._sdiv is None else self._sdiv
+    def sub(self, u: V, v: V, /) -> V:
+        """Subtract two vectors."""
+        return self._sub(u, v)
 
-    @property
-    def smul(self) -> Callable[[K, V], V]:
-        """Return smul property of L2FnAlgebra object."""
-        return jnp.multiply if self._smul is None else self._smul
+    def smul(self, k: K, v: V, /) -> V:
+        """Multiply a vector by a scalar."""
+        return self._smul(k, v)
 
-    @property
-    def mul(self) -> Callable[[V, V], V]:
-        """Return mul property of L2FnAlgebra object."""
-        return jnp.multiply if self._mul is None else self._mul
+    def sdiv(self, k: K, v: V, /) -> V:
+        """Divide a vector by a scalar."""
+        return self._sdiv(k, v)
 
-    @property
-    def div(self) -> Callable[[V, V], V]:
-        """Return div property of L2FnAlgebra object."""
-        return jnp.divide if self._div is None else self._div
+    def unit(self, /) -> V:
+        """Return vector with elements equal to 1 (multiplicative unit)."""
+        return self._unit()
 
-    @property
-    def inv(self) -> Callable[[V], V]:
-        """Return inv property of L2FnAlgebra object."""
-        return inv if self._inv is None else self._inv
+    def mul(self, u: V, v: V, /) -> V:
+        """Compute elementwise multiplication of two vectors."""
+        return self._mul(u, v)
 
-    @property
-    def adj(self) -> Callable[[V], V]:
-        """Return adj property of L2FnAlgebra object."""
-        return jnp.conjugate if self._adj is None else self._adj
+    def div(self, u: V, v: V, /) -> V:
+        """Compute elementwise division of two vectors."""
+        return self._div(u, v)
 
-    @property
-    def sqrt(self) -> Callable[[V], V]:
-        """Return sqrt property of L2FnAlgebra object."""
-        return jnp.sqrt if self._sqrt is None else self._sqrt
+    def inv(self, v: V, /) -> V:
+        """Compute elementwise multiplicative inverse of a vector."""
+        return self._inv(v)
 
-    @property
-    def exp(self) -> Callable[[V], V]:
-        """Return exp property of L2FnAlgebra object."""
-        return jnp.exp if self._exp is None else self._exp
+    def adj(self, v: V, /) -> V:
+        """Compute elementwise complex conjugate of a vector."""
+        return self._adj(v)
 
-    @property
-    def abs(self) -> Callable[[V], V]:
-        """Return abs property of L2FnAlgebra object."""
-        return jnp.abs if self._abs is None else self._abs
+    def sqrt(self, v: V, /) -> V:
+        """Compute elementwise square root of a vector."""
+        return self._sqrt(v)
 
-    @property
-    def mpower(self) -> Callable[[V, int], V]:
-        """Return mpower property of L2FnAlgebra object."""
-        return jnp.power if self._mpower is None else self._mpower
+    def abs(self, v: V, /) -> V:
+        """Compute elementwise modulus of a vector."""
+        return self._abs(v)
 
-    @property
-    def power(self) -> Callable[[V, K], V]:
-        """Return power property of L2FnAlgebra object."""
-        return jnp.power if self._power is None else self._power
+    def exp(self, v: V, /) -> V:
+        """Compute elementwise exponential of a vector."""
+        return self._exp(v)
 
-    @property
-    def innerp(self) -> Callable[[V, V], K]:
-        """Return inner product property of L2FnAlgebra object."""
-        return (
-            make_l2_innerp(self.measure)
-            if self._innerp is None
-            else self._innerp
-        )
+    def log(self, v: V, /) -> V:
+        """Compute elementwise natural logarithm of a vector."""
+        return self._log(v)
 
-    @property
-    def norm(self) -> Callable[[V], K]:
-        """Return norm property of L2FnAlgebra object."""
-        return to_norm(self.innerp) if self._norm is None else self._norm
+    def mpower(self, v: V, m: int, /) -> V:
+        """Compute elementwise exponentiation of a vector by an integer."""
+        return self._mpower(v, m)
 
-    @property
-    def integrate(self) -> Callable[[V], Y]:
-        """Return integrate property of L2FnAlgebra object."""
-        return self.measure
+    def power(self, v: V, k: K, /) -> V:
+        """Compute elementwise exponentiation of a vector by a scalar."""
+        return self._power(v, k)
 
-    @property
-    def incl(self) -> Callable[[F[X, Y]], V]:
-        """Return inclusion map property of L2FnAlgebra object."""
-        return self.inclusion_map
+    def innerp(self, u: V, v: V, /) -> K:
+        """Compute the inner product between two vectors."""
+        return self._innerp(u, v)
+
+    def norm(self, v: V, /) -> K:
+        """Compute the norm of a vector."""
+        return self._norm(v)
+
+    def integrate(self, v: V, /) -> Y:
+        """Integrate a vector with respect to a measure."""
+        return self.measure(v)
+
+    def incl(self, f: F[X, Y]) -> V:
+        """Apply the inclusion map to a function to obtain a vector."""
+        return self.inclusion_map(f)
+
+
+def l2_fn_algebra[N: Shape, D: DTypeLike, X: PyTree, Y: Array](
+    shape: N,
+    dtype: D,
+    measure: Callable[[V], Y],
+    inclusion_map: Callable[[F[X, Y]], V],
+    sharding: Sharding | None = None,
+    scl: alg.ImplementsComplexScalarField[K] | DEFAULT = DEFAULT,
+    zero: Callable[[], V] | DEFAULT = DEFAULT,
+    unit: Callable[[], V] | DEFAULT = DEFAULT,
+    add: Callable[[V, V], V] | DEFAULT = DEFAULT,
+    neg: Callable[[V], V] | DEFAULT = DEFAULT,
+    sub: Callable[[V, V], V] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, V], V] | DEFAULT = DEFAULT,
+    smul: Callable[[K, V], V] | DEFAULT = DEFAULT,
+    mul: Callable[[V, V], V] | DEFAULT = DEFAULT,
+    div: Callable[[V, V], V] | DEFAULT = DEFAULT,
+    inv: Callable[[V], V] | DEFAULT = DEFAULT,
+    adj: Callable[[V], V] | DEFAULT = DEFAULT,
+    sqrt: Callable[[V], V] | DEFAULT = DEFAULT,
+    exp: Callable[[V], V] | DEFAULT = DEFAULT,
+    log: Callable[[V], V] | DEFAULT = DEFAULT,
+    abs: Callable[[V], V] | DEFAULT = DEFAULT,
+    mpower: Callable[[V, int], V] | DEFAULT = DEFAULT,
+    power: Callable[[V, K], V] | DEFAULT = DEFAULT,
+    innerp: Callable[[V, V], K] | DEFAULT = DEFAULT,
+    norm: Callable[[V], K] | DEFAULT = DEFAULT,
+) -> L2FnAlgebra[N, D, X, Y]:
+    """Build L2FnAlgebra object."""
+    _innerp = make_l2_innerp(measure) if innerp is DEFAULT else innerp
+    return L2FnAlgebra(
+        shape=shape,
+        dtype=dtype,
+        measure=measure,
+        inclusion_map=inclusion_map,
+        sharding=sharding,
+        _scl=scls.scalar_field(dtype) if scl is DEFAULT else scl,
+        _zero=(make_zero(shape, dtype, sharding) if zero is DEFAULT else zero),
+        _unit=(make_unit(shape, dtype, sharding) if unit is DEFAULT else unit),
+        _add=jnp.add if add is DEFAULT else add,
+        _neg=(lambda v: -v) if neg is DEFAULT else neg,
+        _sub=jnp.subtract if sub is DEFAULT else sub,
+        _sdiv=(lambda k, v: v / k) if sdiv is DEFAULT else sdiv,
+        _smul=jnp.multiply if smul is DEFAULT else smul,
+        _mul=jnp.multiply if mul is DEFAULT else mul,
+        _div=jnp.divide if div is DEFAULT else div,
+        _inv=(lambda v: 1 / v) if inv is DEFAULT else inv,
+        _adj=jnp.conjugate if adj is DEFAULT else adj,
+        _sqrt=jnp.sqrt if sqrt is DEFAULT else sqrt,
+        _exp=jnp.exp if exp is DEFAULT else exp,
+        _log=jnp.log if log is DEFAULT else log,
+        _abs=jnp.abs if abs is DEFAULT else abs,
+        _mpower=jnp.power if mpower is DEFAULT else mpower,
+        _power=jnp.power if power is DEFAULT else power,
+        _innerp=_innerp,
+        _norm=to_norm(_innerp) if norm is DEFAULT else norm,
+    )
 
 
 class L2FnAlgebraShardings(NamedTuple):
@@ -830,7 +888,7 @@ class L2FnAlgebraShardings(NamedTuple):
         return shard
 
 
-def make_l2_analysis_operator[N: Shape, D: DTypeLike, X: Array, Y: Array](
+def make_l2_analysis_operator[N: Shape, D: DTypeLike, X: PyTree, Y: Array](
     impl: L2VectorAlgebra[N, D] | L2FnAlgebra[N, D, X, Y],
     basis: Iterable[V],
     axis: int | None = None,

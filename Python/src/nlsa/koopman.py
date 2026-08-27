@@ -520,32 +520,41 @@ class ImplementsKoopmanEigenbasis[X, Y, V, K, Ks, I](
 ):
     """Implement Koopman eigenbasis."""
 
-    spec: Ks
-    """Operator spectrum."""
+    @property
+    def gen_spec(self) -> Ks:
+        """Generator spectrum."""
+        ...
 
-    gen_spec: Ks
-    """Generator spectrum."""
+    @property
+    def efreqs(self) -> Ks:
+        """Eigenfrequencies."""
+        ...
 
-    efreqs: Ks
-    """Eigenfrequencies."""
+    @property
+    def eperiods(self) -> Ks:
+        """Eigenperiods."""
+        ...
 
-    eperiods: Ks
-    """Eigenperiods."""
+    @property
+    def engys(self) -> Ks:
+        """Dirichlet energies."""
+        ...
 
-    engys: Ks
-    """Dirichlet energies."""
+    def gen_evl(self, i: I, /) -> K:
+        """Return generator eigenvalues."""
+        ...
 
-    gen_evl: Callable[[I], K]
-    """Generator eigenvalues."""
+    def efreq(self, i: I, /) -> K:
+        """Return generator eigenfrequencies."""
+        ...
 
-    efreq: Callable[[I], K]
-    """Function indexing eigenfrequencies."""
+    def eperiod(self, i: I, /) -> K:
+        """Return generator eigenperiods."""
+        ...
 
-    eperiod: Callable[[I], K]
-    """Function indexing eigenperiods."""
-
-    engy: Callable[[I], K]
-    """Function indexing Dirichlet energies."""
+    def engy(self, i: I, /) -> K:
+        """Return Dirichlet energies."""
+        ...
 
 
 def plot_operator_matrix(

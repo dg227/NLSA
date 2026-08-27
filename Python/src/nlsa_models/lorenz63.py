@@ -70,6 +70,7 @@ type Vs = Array  # Collection of vectors in L2
 type Vtst = Array  #  Vector in L2 with respect to the test dataset
 type Vtsts = Array  # Collection of vectors in L2 with respect to test dataset
 type Mat = Array  # Matrix
+type Idx = int | Array  # basis vector index
 type F[*Ss, T] = Callable[[*Ss], T]  # Shorthand for Callables
 
 
@@ -393,7 +394,7 @@ def make_data_driven_l2_space[N: int, D: DTypeLike](
                 jit=jit,
             )
         mu = vec.make_normalized_counting_measure(pars.num_samples)
-        return L2FnAlgebra(
+        return vec.l2_fn_algebra(
             shape=(pars.num_samples,),
             dtype=dtype,
             measure=mu,
@@ -754,7 +755,7 @@ def compute_covariate_skill_scores[Ntst: int](
             out_axes=-1,
         ),
     )
-    hankel = cast_like(hankel, jax.jit(hankel))
+    hankel = typestable_jit(hankel)
     normalized_rmses = typestable_jit(
         vmap(vmap(stats.normalized_rmse, in_axes=1), in_axes=2)
     )
@@ -766,6 +767,7 @@ def compute_covariate_skill_scores[Ntst: int](
         mask = ~jnp.isnan(ys_pred).any(axis=(1, 2))
         ys_pred = ys_pred[mask]
         ys_true = ys_true[mask]
+        assert isinstance(ys_true, Array)
     nrmses = normalized_rmses(ys_true, ys_pred)
     accs = anomaly_correlation_coefficients(ys_true, ys_pred)
     scores: SkillScores = {"nrmses": nrmses, "accs": accs}
@@ -1124,13 +1126,13 @@ def make_koopman_evecs_plotter[N: int, Ntst: int, D: DTypeLike, L: int](
     else:
         impl_koopman_basis = None
 
-    @jax.jit
+    @typestable_jit
     def efunc(
         _train_data: Data,
         _kernel_eigen: KernelEigen,
-        _koopman_eigen: KoopmanEigen[C, Cs, Css],
+        _koopman_eigen: KoopmanEigen,
         _test_data: Data,
-        j: Array,
+        j: Idx,
     ) -> Vtst:
         assert impl_koopman_basis is not None
         assert impl_l2_tst is not None
@@ -1276,6 +1278,7 @@ def make_koopman_evecs_plotter[N: int, Ntst: int, D: DTypeLike, L: int](
         if test_data is not None:
             assert isinstance(evec_tst, Array)
             assert axs_tst is not None
+            assert ts_tst is not None
             ax = axs_tst[0]
             assert isinstance(ax, Axes3D)
             sc_tst = ax.scatter(

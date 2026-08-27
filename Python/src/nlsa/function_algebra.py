@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import repeat
 from functools import reduce
+from nlsa.typing import DEFAULT
 from typing import final
 
 type F[*Xs, Y] = Callable[[*Xs], Y]
@@ -93,20 +94,20 @@ def make_bivariate_tensor_product[X, Y, A](
     return tensorp
 
 
-def mpower[A](f: F[A, A], n: int, /) -> F[A, A]:
+def mpower[A](f: F[A, A], m: int, /) -> F[A, A]:
     """Form monoidal power of endomorphism."""
-    if n == 0:
+    if m == 0:
         fn = identity
     else:
-        fn = reduce(compose, repeat(f, n))
+        fn = reduce(compose, repeat(f, m))
     return fn
 
 
 def make_mpower[A](f: Callable[[A, A], A], /) -> Callable[[A, int], A]:
     """Make monoidal power flom binary operation."""
 
-    def mpower(a: A, n: int) -> A:
-        return reduce(f, repeat(a, n))
+    def mpower(a: A, m: int) -> A:
+        return reduce(f, repeat(a, m))
 
     return mpower
 
@@ -217,159 +218,152 @@ def lift_right_bivariate[X1, X2, A, B, C](
 
 
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FunctionSpace[*Xs, Y, K](alg.ImplementsVectorSpace[F[*Xs, Y], K]):
     """Implement function space."""
 
     codomain: alg.ImplementsVectorSpace[Y, K]
-    _scl: alg.ImplementsScalarField[K] | None = None
-    _zero: Callable[[], F[*Xs, Y]] | None = None
-    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
+    _zero: Callable[[], F[*Xs, Y]]
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
-        """Return scl property of FunctionSpace object."""
-        return self.codomain.scl if self._scl is None else self._scl
+        """Scalar field associated with FunctionSpace object."""
+        return self.codomain.scl
 
-    @property
-    def zero(self) -> Callable[[], F[*Xs, Y]]:
-        """Return zero property of FunctionSpace object."""
-        return (
-            lift_constant(self.codomain.zero)
-            if self._zero is None
-            else self._zero
-        )
+    def zero(self, /) -> F[*Xs, Y]:
+        """Return zero function."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return add property of FunctionSpace object."""
-        return (
-            lift_binary(self.codomain.add) if self._add is None else self._add
-        )
+    def add(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Add two functions."""
+        return self._add(f, g)
 
-    @property
-    def sub(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sub property of FunctionSpace object."""
-        return (
-            lift_binary(self.codomain.sub) if self._sub is None else self._sub
-        )
+    def sub(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Subtract two functions."""
+        return self._sub(f, g)
 
-    @property
-    def neg(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return neg property of FunctionSpace object."""
-        return (
-            lift_unary(self.codomain.neg) if self._neg is None else self._neg
-        )
+    def neg(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute additive inverse (negation) of a function."""
+        return self._neg(f)
 
-    @property
-    def smul(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return smul property of FunctionSpace object."""
-        return (
-            lift_left(self.codomain.smul) if self._smul is None else self._smul
-        )
+    def smul(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Multiply a function by a scalar."""
+        return self._smul(k, f)
 
-    @property
-    def sdiv(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sdiv property of FunctionSpace object."""
-        return (
-            lift_left(self.codomain.sdiv) if self._sdiv is None else self._sdiv
-        )
+    def sdiv(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Divide a function by a scalar."""
+        return self._sdiv(k, f)
+
+
+def function_space[*Xs, Y, K](
+    codomain: alg.ImplementsVectorSpace[Y, K],
+    zero: Callable[[], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+) -> FunctionSpace[*Xs, Y, K]:
+    """Build FunctionAlgebraWithCalculus object."""
+    return FunctionSpace(
+        codomain=codomain,
+        _zero=(lift_constant(codomain.zero) if zero is DEFAULT else zero),
+        _add=(lift_binary(codomain.add) if add is DEFAULT else add),
+        _sub=(lift_binary(codomain.sub) if sub is DEFAULT else sub),
+        _neg=(lift_unary(codomain.neg) if neg is DEFAULT else neg),
+        _smul=(lift_left(codomain.smul) if smul is DEFAULT else smul),
+        _sdiv=(lift_left(codomain.sdiv) if sdiv is DEFAULT else sdiv),
+    )
 
 
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FunctionAlgebra[*Xs, Y, K](alg.ImplementsAlgebra[F[*Xs, Y], K]):
     """Implement algebra of algebra-valued functions."""
 
     codomain: alg.ImplementsAlgebra[Y, K]
-    _scl: alg.ImplementsScalarField[K] | None = None
-    _zero: Callable[[], F[*Xs, Y]] | None = None
-    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _unit: Callable[[], F[*Xs, Y]] | None = None
-    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | None = None
+    _zero: Callable[[], F[*Xs, Y]]
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _unit: Callable[[], F[*Xs, Y]]
+    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]]
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
-        """Return scl property of FunctionAlgebra object."""
-        return self.codomain.scl if self._scl is None else self._scl
+        """Scalar field associated with FunctionAlgebra object."""
+        return self.codomain.scl
 
-    @property
-    def zero(self) -> Callable[[], F[*Xs, Y]]:
-        """Return zero property of FunctionAlgebra object."""
-        return (
-            lift_constant(self.codomain.zero)
-            if self._zero is None
-            else self._zero
-        )
+    def zero(self, /) -> F[*Xs, Y]:
+        """Return zero function."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return add property of FunctionAlgebra object."""
-        return (
-            lift_binary(self.codomain.add) if self._add is None else self._add
-        )
+    def add(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Add two functions."""
+        return self._add(f, g)
 
-    @property
-    def sub(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sub property of FunctionAlgebra object."""
-        return (
-            lift_binary(self.codomain.sub) if self._sub is None else self._sub
-        )
+    def sub(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Subtract two functions."""
+        return self._sub(f, g)
 
-    @property
-    def neg(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return neg property of FunctionAlgebra object."""
-        return (
-            lift_unary(self.codomain.neg) if self._neg is None else self._neg
-        )
+    def neg(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute additive inverse (negation) of a function."""
+        return self._neg(f)
 
-    @property
-    def smul(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return smul property of FunctionAlgebra object."""
-        return (
-            lift_left(self.codomain.smul) if self._smul is None else self._smul
-        )
+    def smul(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Multiply a function by a scalar."""
+        return self._smul(k, f)
 
-    @property
-    def sdiv(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sdiv property of FunctionAlgebra object."""
-        return (
-            lift_left(self.codomain.sdiv) if self._sdiv is None else self._sdiv
-        )
+    def sdiv(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Divide a function by a scalar."""
+        return self._sdiv(k, f)
 
-    @property
-    def unit(self) -> Callable[[], F[*Xs, Y]]:
-        """Return unit property of FunctionAlgebra object."""
-        return (
-            lift_constant(self.codomain.unit)
-            if self._unit is None
-            else self._unit
-        )
+    def unit(self, /) -> F[*Xs, Y]:
+        """Return multiplicative unit function."""
+        return self._unit()
 
-    @property
-    def mul(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return mul property of FunctionAlgebra object."""
-        return (
-            lift_binary(self.codomain.mul) if self._mul is None else self._mul
-        )
+    def mul(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Multiply two functions."""
+        return self._mul(f, g)
 
-    @property
-    def mpower(self) -> Callable[[F[*Xs, Y], int], F[*Xs, Y]]:
-        """Return mpower property of FunctionAlgebra object."""
-        return (
-            lift_right(self.codomain.mpower)
-            if self._mpower is None
-            else self._mpower
-        )
+    def mpower(self, f: F[*Xs, Y], m: int, /) -> F[*Xs, Y]:
+        """Exponentiate a function by an integer."""
+        return self._mpower(f, m)
+
+
+def function_algebra[*Xs, Y, K](
+    codomain: alg.ImplementsAlgebra[Y, K],
+    zero: Callable[[], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    unit: Callable[[], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | DEFAULT = DEFAULT,
+) -> FunctionAlgebra[*Xs, Y, K]:
+    """Build FunctionAlgebraWithCalculus object."""
+    return FunctionAlgebra(
+        codomain=codomain,
+        _zero=(lift_constant(codomain.zero) if zero is DEFAULT else zero),
+        _add=(lift_binary(codomain.add) if add is DEFAULT else add),
+        _sub=(lift_binary(codomain.sub) if sub is DEFAULT else sub),
+        _neg=(lift_unary(codomain.neg) if neg is DEFAULT else neg),
+        _smul=(lift_left(codomain.smul) if smul is DEFAULT else smul),
+        _sdiv=(lift_left(codomain.sdiv) if sdiv is DEFAULT else sdiv),
+        _unit=(lift_constant(codomain.unit) if unit is DEFAULT else unit),
+        _mul=(lift_binary(codomain.mul) if mul is DEFAULT else mul),
+        _mpower=(lift_right(codomain.mpower) if mpower is DEFAULT else mpower),
+    )
 
 
 @final
@@ -380,561 +374,542 @@ class FunctionAlgebraWithCalculus[*Xs, Y, K](
     """Implement function algebra with functional calculus."""
 
     codomain: alg.ImplementsAlgebraWithCalculus[Y, K]
-    _scl: alg.ImplementsRealScalarField[K] | None = None
-    _zero: Callable[[], F[*Xs, Y]] | None = None
-    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _unit: Callable[[], F[*Xs, Y]] | None = None
-    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _div: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _inv: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sqrt: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _abs: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _power: Callable[[F[*Xs, Y], K], F[*Xs, Y]] | None = None
-    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | None = None
+    _zero: Callable[[], F[*Xs, Y]]
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _unit: Callable[[], F[*Xs, Y]]
+    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _div: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _inv: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _sqrt: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _abs: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _exp: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _log: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _power: Callable[[F[*Xs, Y], K], F[*Xs, Y]]
+    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]]
 
     @property
     def scl(self) -> alg.ImplementsRealScalarField[K]:
-        """Return scl property of FunctionAlgebraWithCalculus object."""
-        return self.codomain.scl if self._scl is None else self._scl
+        """Scalar field associated with FunctionAlgebra object."""
+        return self.codomain.scl
 
-    @property
-    def zero(self) -> Callable[[], F[*Xs, Y]]:
-        """Return zero property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_constant(self.codomain.zero)
-            if self._zero is None
-            else self._zero
-        )
+    def zero(self, /) -> F[*Xs, Y]:
+        """Return zero function."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return add property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_binary(self.codomain.add) if self._add is None else self._add
-        )
+    def add(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Add two functions."""
+        return self._add(f, g)
 
-    @property
-    def sub(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sub property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_binary(self.codomain.sub) if self._sub is None else self._sub
-        )
+    def sub(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Subtract two functions."""
+        return self._sub(f, g)
 
-    @property
-    def neg(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return neg property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.neg) if self._neg is None else self._neg
-        )
+    def neg(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute additive inverse (negation) of a function."""
+        return self._neg(f)
 
-    @property
-    def smul(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return smul property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_left(self.codomain.smul) if self._smul is None else self._smul
-        )
+    def smul(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Multiply a function by a scalar."""
+        return self._smul(k, f)
 
-    @property
-    def sdiv(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sdiv property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_left(self.codomain.sdiv) if self._sdiv is None else self._sdiv
-        )
+    def sdiv(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Divide a function by a scalar."""
+        return self._sdiv(k, f)
 
-    @property
-    def unit(self) -> Callable[[], F[*Xs, Y]]:
-        """Return unit property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_constant(self.codomain.unit)
-            if self._unit is None
-            else self._unit
-        )
+    def unit(self, /) -> F[*Xs, Y]:
+        """Return multiplicative unit function."""
+        return self._unit()
 
-    @property
-    def mul(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return mul property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_binary(self.codomain.mul) if self._mul is None else self._mul
-        )
+    def mul(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Multiply two functions."""
+        return self._mul(f, g)
 
-    @property
-    def div(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return div property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_binary(self.codomain.div) if self._div is None else self._div
-        )
+    def mpower(self, f: F[*Xs, Y], m: int, /) -> F[*Xs, Y]:
+        """Exponentiate a function by an integer."""
+        return self._mpower(f, m)
 
-    @property
-    def inv(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return inv property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.inv) if self._inv is None else self._inv
-        )
+    def div(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Divide two functions."""
+        return self._div(f, g)
 
-    @property
-    def sqrt(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sqrt property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.sqrt)
-            if self._sqrt is None
-            else self._sqrt
-        )
+    def inv(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute multiplicative inverse of a function."""
+        return self._inv(f)
 
-    @property
-    def abs(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return mod property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.abs) if self._abs is None else self._abs
-        )
+    def sqrt(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute square root of a function."""
+        return self._sqrt(f)
 
-    @property
-    def power(self) -> Callable[[F[*Xs, Y], K], F[*Xs, Y]]:
-        """Return power property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_right(self.codomain.power)
-            if self._power is None
-            else self._power
-        )
+    def abs(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute modulus of a function."""
+        return self._abs(f)
 
-    @property
-    def mpower(self) -> Callable[[F[*Xs, Y], int], F[*Xs, Y]]:
-        """Return mpower property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_right(self.codomain.mpower)
-            if self._mpower is None
-            else self._mpower
-        )
+    def exp(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute exponential of a function."""
+        return self._exp(f)
+
+    def log(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute natural logarithm of a function."""
+        return self._log(f)
+
+    def power(self, f: F[*Xs, Y], k: K, /) -> F[*Xs, Y]:
+        """Exponentiate a function by a scalar."""
+        return self._power(f, k)
+
+
+def function_algebra_with_calculus[*Xs, Y, K](
+    codomain: alg.ImplementsAlgebraWithCalculus[Y, K],
+    zero: Callable[[], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    unit: Callable[[], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    div: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    inv: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sqrt: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    abs: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    exp: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    log: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    power: Callable[[F[*Xs, Y], K], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | DEFAULT = DEFAULT,
+) -> FunctionAlgebraWithCalculus[*Xs, Y, K]:
+    """Build FunctionAlgebraWithCalculus object."""
+    return FunctionAlgebraWithCalculus(
+        codomain=codomain,
+        _zero=(lift_constant(codomain.zero) if zero is DEFAULT else zero),
+        _add=(lift_binary(codomain.add) if add is DEFAULT else add),
+        _sub=(lift_binary(codomain.sub) if sub is DEFAULT else sub),
+        _neg=(lift_unary(codomain.neg) if neg is DEFAULT else neg),
+        _smul=(lift_left(codomain.smul) if smul is DEFAULT else smul),
+        _sdiv=(lift_left(codomain.sdiv) if sdiv is DEFAULT else sdiv),
+        _unit=(lift_constant(codomain.unit) if unit is DEFAULT else unit),
+        _mul=(lift_binary(codomain.mul) if mul is DEFAULT else mul),
+        _div=(lift_binary(codomain.div) if div is DEFAULT else div),
+        _inv=(lift_unary(codomain.inv) if inv is DEFAULT else inv),
+        _sqrt=(lift_unary(codomain.sqrt) if sqrt is DEFAULT else sqrt),
+        _abs=(lift_unary(codomain.abs) if abs is DEFAULT else abs),
+        _exp=(lift_unary(codomain.exp) if exp is DEFAULT else exp),
+        _log=(lift_unary(codomain.log) if log is DEFAULT else log),
+        _power=(lift_right(codomain.power) if power is DEFAULT else power),
+        _mpower=(lift_right(codomain.mpower) if mpower is DEFAULT else mpower),
+    )
 
 
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FunctionStarAlgebraWithCalculus[*Xs, Y, K](
     alg.ImplementsStarAlgebraWithCalculus[F[*Xs, Y], K]
 ):
     """Implement function star algebra with functional calculus."""
 
     codomain: alg.ImplementsStarAlgebraWithCalculus[Y, K]
-    _scl: alg.ImplementsComplexScalarField[K] | None = None
-    _zero: Callable[[], F[*Xs, Y]] | None = None
-    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _unit: Callable[[], F[*Xs, Y]] | None = None
-    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _div: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _inv: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sqrt: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _adj: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _abs: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _power: Callable[[F[*Xs, Y], K], F[*Xs, Y]] | None = None
-    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | None = None
+    _zero: Callable[[], F[*Xs, Y]]
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _unit: Callable[[], F[*Xs, Y]]
+    _mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _div: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _inv: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _sqrt: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _abs: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _exp: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _log: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _power: Callable[[F[*Xs, Y], K], F[*Xs, Y]]
+    _mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]]
+    _adj: Callable[[F[*Xs, Y]], F[*Xs, Y]]
 
     @property
     def scl(self) -> alg.ImplementsComplexScalarField[K]:
-        """Return scl property of FunctionAlgebraWithCalculus object."""
-        return self.codomain.scl if self._scl is None else self._scl
+        """Scalar field associated with FunctionStarAlgebra object."""
+        return self.codomain.scl
 
-    @property
-    def zero(self) -> Callable[[], F[*Xs, Y]]:
-        """Return zero property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_constant(self.codomain.zero)
-            if self._zero is None
-            else self._zero
-        )
+    def zero(self, /) -> F[*Xs, Y]:
+        """Return zero function."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return add property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_binary(self.codomain.add) if self._add is None else self._add
-        )
+    def add(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Add two functions."""
+        return self._add(f, g)
 
-    @property
-    def sub(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sub property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_binary(self.codomain.sub) if self._sub is None else self._sub
-        )
+    def sub(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Subtract two functions."""
+        return self._sub(f, g)
 
-    @property
-    def neg(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return neg property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.neg) if self._neg is None else self._neg
-        )
+    def neg(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute additive inverse (negation) of a function."""
+        return self._neg(f)
 
-    @property
-    def smul(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return smul property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_left(self.codomain.smul) if self._smul is None else self._smul
-        )
+    def smul(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Multiply a function by a scalar."""
+        return self._smul(k, f)
 
-    @property
-    def sdiv(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sdiv property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_left(self.codomain.sdiv) if self._sdiv is None else self._sdiv
-        )
+    def sdiv(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Divide a function by a scalar."""
+        return self._sdiv(k, f)
 
-    @property
-    def unit(self) -> Callable[[], F[*Xs, Y]]:
-        """Return unit property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_constant(self.codomain.unit)
-            if self._unit is None
-            else self._unit
-        )
+    def unit(self, /) -> F[*Xs, Y]:
+        """Return multiplicative unit function."""
+        return self._unit()
 
-    @property
-    def mul(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return mul property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_binary(self.codomain.mul) if self._mul is None else self._mul
-        )
+    def mul(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Multiply two functions."""
+        return self._mul(f, g)
 
-    @property
-    def div(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return div property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_binary(self.codomain.div) if self._div is None else self._div
-        )
+    def div(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Divide two functions."""
+        return self._div(f, g)
 
-    @property
-    def inv(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return inv property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.inv) if self._inv is None else self._inv
-        )
+    def mpower(self, f: F[*Xs, Y], m: int, /) -> F[*Xs, Y]:
+        """Exponentiate a function by an integer."""
+        return self._mpower(f, m)
 
-    @property
-    def sqrt(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sqrt property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.sqrt)
-            if self._sqrt is None
-            else self._sqrt
-        )
+    def inv(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute the multiplicative inverse of a function."""
+        return self._inv(f)
 
-    @property
-    def adj(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return adj property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.adj) if self._adj is None else self._adj
-        )
+    def sqrt(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute the square root of a function."""
+        return self._sqrt(f)
 
-    @property
-    def abs(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return mod property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_unary(self.codomain.abs) if self._abs is None else self._abs
-        )
+    def abs(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute the modulus of a function."""
+        return self._abs(f)
 
-    @property
-    def power(self) -> Callable[[F[*Xs, Y], K], F[*Xs, Y]]:
-        """Return power property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_right(self.codomain.power)
-            if self._power is None
-            else self._power
-        )
+    def exp(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute exponential of a function."""
+        return self._exp(f)
 
-    @property
-    def mpower(self) -> Callable[[F[*Xs, Y], int], F[*Xs, Y]]:
-        """Return mpower property of FunctionAlgebraWithCalculus object."""
-        return (
-            lift_right(self.codomain.mpower)
-            if self._mpower is None
-            else self._mpower
-        )
+    def log(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute natural logarithm of a function."""
+        return self._log(f)
+
+    def power(self, f: F[*Xs, Y], k: K, /) -> F[*Xs, Y]:
+        """Exponentiate a function by a scalar."""
+        return self._power(f, k)
+
+    def adj(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Compute algebraic adjoint of a function."""
+        return self._adj(f)
+
+
+def function_star_algebra_with_calculus[*Xs, Y, K](
+    codomain: alg.ImplementsStarAlgebraWithCalculus[Y, K],
+    zero: Callable[[], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    unit: Callable[[], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    mul: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    div: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    inv: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sqrt: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    abs: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    exp: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    log: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    power: Callable[[F[*Xs, Y], K], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    mpower: Callable[[F[*Xs, Y], int], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    adj: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+) -> FunctionStarAlgebraWithCalculus[*Xs, Y, K]:
+    """Build FunctionStarAlgebraWithCalculus object."""
+    return FunctionStarAlgebraWithCalculus(
+        codomain=codomain,
+        _zero=(lift_constant(codomain.zero) if zero is DEFAULT else zero),
+        _add=(lift_binary(codomain.add) if add is DEFAULT else add),
+        _sub=(lift_binary(codomain.sub) if sub is DEFAULT else sub),
+        _neg=(lift_unary(codomain.neg) if neg is DEFAULT else neg),
+        _smul=(lift_left(codomain.smul) if smul is DEFAULT else smul),
+        _sdiv=(lift_left(codomain.sdiv) if sdiv is DEFAULT else sdiv),
+        _unit=(lift_constant(codomain.unit) if unit is DEFAULT else unit),
+        _mul=(lift_binary(codomain.mul) if mul is DEFAULT else mul),
+        _div=(lift_binary(codomain.div) if div is DEFAULT else div),
+        _inv=(lift_unary(codomain.inv) if inv is DEFAULT else inv),
+        _sqrt=(lift_unary(codomain.sqrt) if sqrt is DEFAULT else sqrt),
+        _abs=(lift_unary(codomain.abs) if abs is DEFAULT else abs),
+        _power=(lift_right(codomain.power) if power is DEFAULT else power),
+        _exp=(lift_unary(codomain.exp) if exp is DEFAULT else exp),
+        _log=(lift_unary(codomain.log) if log is DEFAULT else log),
+        _mpower=(lift_right(codomain.mpower) if mpower is DEFAULT else mpower),
+        _adj=(lift_unary(codomain.adj) if adj is DEFAULT else adj),
+    )
 
 
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FunctionBimodule[*Xs, Y, K, L, R](
     alg.ImplementsBimodule[F[*Xs, Y], K, L, R]
 ):
     """Implement bimodule of bimodule-valued functions."""
 
     codomain: alg.ImplementsBimodule[Y, K, L, R]
-    _scl: alg.ImplementsScalarField[K] | None = None
-    _zero: Callable[[], F[*Xs, Y]] | None = None
-    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _lmul: Callable[[L, F[*Xs, Y]], F[*Xs, Y]] | None = None
-    _rmul: Callable[[F[*Xs, Y], R], F[*Xs, Y]] | None = None
+    _zero: Callable[[], F[*Xs, Y]]
+    _add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]
+    _neg: Callable[[F[*Xs, Y]], F[*Xs, Y]]
+    _smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]]
+    _lmul: Callable[[L, F[*Xs, Y]], F[*Xs, Y]]
+    _rmul: Callable[[F[*Xs, Y], R], F[*Xs, Y]]
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
-        """Return scl property of FunctionBimodule object."""
-        return self.codomain.scl if self._scl is None else self._scl
+        """Return scl property of FunctionAlgebra object."""
+        return self.codomain.scl
 
-    @property
-    def zero(self) -> Callable[[], F[*Xs, Y]]:
-        """Return zero property of FunctionBimodule object."""
-        return (
-            lift_constant(self.codomain.zero)
-            if self._zero is None
-            else self._zero
-        )
+    def zero(self, /) -> F[*Xs, Y]:
+        """Return zero property of FunctionAlgebraWithCalculus object."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return add property of FunctionBimodule object."""
-        return (
-            lift_binary(self.codomain.add) if self._add is None else self._add
-        )
+    def add(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Return add property of FunctionAlgebraWithCalculus object."""
+        return self._add(f, g)
 
-    @property
-    def sub(self) -> Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sub property of FunctionBimodule object."""
-        return (
-            lift_binary(self.codomain.sub) if self._sub is None else self._sub
-        )
+    def sub(self, f: F[*Xs, Y], g: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Return sub property of FunctionAlgebraWithCalculus object."""
+        return self._sub(f, g)
 
-    @property
-    def neg(self) -> Callable[[F[*Xs, Y]], F[*Xs, Y]]:
-        """Return neg property of FunctionBimodule object."""
-        return (
-            lift_unary(self.codomain.neg) if self._neg is None else self._neg
-        )
+    def neg(self, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Return neg property of FunctionAlgebraWithCalculus object."""
+        return self._neg(f)
 
-    @property
-    def smul(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return smul property of FunctionBimodule object."""
-        return (
-            lift_left(self.codomain.smul) if self._smul is None else self._smul
-        )
+    def smul(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Return smul property of FunctionAlgebraWithCalculus object."""
+        return self._smul(k, f)
 
-    @property
-    def sdiv(self) -> Callable[[K, F[*Xs, Y]], F[*Xs, Y]]:
-        """Return sdiv property of FunctionBimodule object."""
-        return (
-            lift_left(self.codomain.sdiv) if self._sdiv is None else self._sdiv
-        )
+    def sdiv(self, k: K, f: F[*Xs, Y], /) -> F[*Xs, Y]:
+        """Return sdiv property of FunctionAlgebraWithCalculus object."""
+        return self._sdiv(k, f)
 
-    @property
-    def lmul(self) -> Callable[[L, F[*Xs, Y]], F[*Xs, Y]]:
+    def lmul(self, k: L, f: F[*Xs, Y], /) -> F[*Xs, Y]:
         """Return lmul property of FunctionBimodule object."""
-        return (
-            lift_left(self.codomain.lmul) if self._lmul is None else self._lmul
-        )
+        return self._lmul(k, f)
 
-    @property
-    def rmul(self) -> Callable[[F[*Xs, Y], R], F[*Xs, Y]]:
+    def rmul(self, f: F[*Xs, Y], k: R, /) -> F[*Xs, Y]:
         """Return rmul property of FunctionBimodule object."""
-        return (
-            lift_right(self.codomain.rmul)
-            if self._rmul is None
-            else self._rmul
-        )
+        return self._rmul(f, k)
+
+
+def function_bimodule[*Xs, Y, K, L, R](
+    codomain: alg.ImplementsBimodule[Y, K, L, R],
+    zero: Callable[[], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    add: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sub: Callable[[F[*Xs, Y], F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    neg: Callable[[F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    smul: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    lmul: Callable[[L, F[*Xs, Y]], F[*Xs, Y]] | DEFAULT = DEFAULT,
+    rmul: Callable[[F[*Xs, Y], R], F[*Xs, Y]] | DEFAULT = DEFAULT,
+) -> FunctionBimodule[*Xs, Y, K, L, R]:
+    """Build FunctionAlgebraWithCalculus object."""
+    return FunctionBimodule(
+        codomain=codomain,
+        _zero=(lift_constant(codomain.zero) if zero is DEFAULT else zero),
+        _add=(lift_binary(codomain.add) if add is DEFAULT else add),
+        _sub=(lift_binary(codomain.sub) if sub is DEFAULT else sub),
+        _neg=(lift_unary(codomain.neg) if neg is DEFAULT else neg),
+        _smul=(lift_left(codomain.smul) if smul is DEFAULT else smul),
+        _sdiv=(lift_left(codomain.sdiv) if sdiv is DEFAULT else sdiv),
+        _lmul=(lift_left(codomain.lmul) if lmul is DEFAULT else lmul),
+        _rmul=(lift_right(codomain.rmul) if rmul is DEFAULT else rmul),
+    )
 
 
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BivariateFunctionBimodule[X1, X2, Y, K](
     alg.ImplementsBimodule[F[X1, X2, Y], K, F[X1, Y], F[X2, Y]]
 ):
-    """Implement bivariate function space as a bivariate function bimodule."""
+    """Implement space of bivariate functions as a bimodule."""
 
     codomain: alg.ImplementsBimodule[Y, K, Y, Y]
-    _scl: alg.ImplementsScalarField[K] | None = None
-    _zero: Callable[[], F[X1, X2, Y]] | None = None
-    _add: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _sub: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _neg: Callable[[F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _smul: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _sdiv: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _lmul: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _rmul: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | None = None
+    _zero: Callable[[], F[X1, X2, Y]]
+    _add: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    _sub: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    _neg: Callable[[F[X1, X2, Y]], F[X1, X2, Y]]
+    _smul: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]
+    _sdiv: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]
+    _lmul: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    _rmul: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
-        """Return scl property of BivariateFunctionBimodule object."""
-        return self.codomain.scl if self._scl is None else self._scl
+        """Scalar field associated with BivariateFunctionBimodule object."""
+        return self.codomain.scl
 
-    @property
-    def zero(self) -> Callable[[], F[X1, X2, Y]]:
-        """Return zero property of BivariateFunctionBimodule object."""
-        return (
-            lift_constant(self.codomain.zero)
-            if self._zero is None
-            else self._zero
-        )
+    def zero(self, /) -> F[X1, X2, Y]:
+        """Return zero bivariate function."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return add property of BivariateFunctionBimodule object."""
-        return (
-            (lift_binary(self.codomain.add))
-            if self._add is None
-            else self._add
-        )
+    def add(self, f: F[X1, X2, Y], g: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Add two bivariate functions."""
+        return self._add(f, g)
 
-    @property
-    def sub(self) -> Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return sub property of BivariateFunctionBimodule object."""
-        return (
-            (lift_binary(self.codomain.sub))
-            if self._sub is None
-            else self._sub
-        )
+    def sub(self, f: F[X1, X2, Y], g: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Subtract two bivariate functions."""
+        return self._sub(f, g)
 
-    @property
-    def neg(self) -> Callable[[F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return neg property of BivariateFunctionBimodule object."""
-        return (
-            lift_unary(self.codomain.neg) if self._neg is None else self._neg
-        )
+    def neg(self, f: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Compute additive inverse (negation) of a bivariate function."""
+        return self._neg(f)
 
-    @property
-    def smul(self) -> Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return smul property of BivariateFunctionBimodule object."""
-        return (
-            lift_left(self.codomain.smul) if self._smul is None else self._smul
-        )
+    def smul(self, k: K, f: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Multiply a bivariate function by a scalar."""
+        return self._smul(k, f)
 
-    @property
-    def sdiv(self) -> Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return sdiv property of BivariateFunctionBimodule object."""
-        return (
-            lift_left(self.codomain.sdiv) if self._sdiv is None else self._sdiv
-        )
+    def sdiv(self, k: K, f: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Divide a bivariate function by a scalar."""
+        return self._sdiv(k, f)
 
-    @property
-    def lmul(self) -> Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return lmul property of BivariateFunctionBimodule object."""
-        return (
-            (lift_left_bivariate(self.codomain.lmul))
-            if self._lmul is None
-            else self._lmul
-        )
+    def lmul(self, f: F[X1, Y], g: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Left-multiply a bivariate function by a univariate function."""
+        return self._lmul(f, g)
 
-    @property
-    def rmul(self) -> Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]:
-        """Return rmul property of BivariateFunctionBimodule object."""
-        return (
-            (lift_right_bivariate(self.codomain.rmul))
-            if self._rmul is None
-            else self._rmul
-        )
+    def rmul(self, f: F[X1, X2, Y], g: F[X2, Y], /) -> F[X1, X2, Y]:
+        """Right-divide a bivariate function by a univariate function."""
+        return self._rmul(f, g)
+
+
+def bivariate_function_bimodule[X1, X2, Y, K](
+    codomain: alg.ImplementsBimodule[Y, K, Y, Y],
+    zero: Callable[[], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    add: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    | DEFAULT = DEFAULT,
+    sub: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    | DEFAULT = DEFAULT,
+    neg: Callable[[F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    smul: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    lmul: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    rmul: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+) -> BivariateFunctionBimodule[X1, X2, Y, K]:
+    """Build BivariateFunctionBimodule object."""
+    return BivariateFunctionBimodule(
+        codomain=codomain,
+        _zero=(lift_constant(codomain.zero) if zero is DEFAULT else zero),
+        _add=(lift_binary(codomain.add) if add is DEFAULT else add),
+        _sub=(lift_binary(codomain.sub) if sub is DEFAULT else sub),
+        _neg=(lift_unary(codomain.neg) if neg is DEFAULT else neg),
+        _smul=(lift_left(codomain.smul) if smul is DEFAULT else smul),
+        _sdiv=(lift_left(codomain.sdiv) if sdiv is DEFAULT else sdiv),
+        _lmul=(
+            lift_left_bivariate(codomain.lmul) if lmul is DEFAULT else lmul
+        ),
+        _rmul=(
+            lift_right_bivariate(codomain.rmul) if rmul is DEFAULT else rmul
+        ),
+    )
 
 
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BivariateFunctionDivBimodule[X1, X2, Y, K](
     alg.ImplementsDivBimodule[F[X1, X2, Y], K, F[X1, Y], F[X2, Y]]
 ):
-    """Implement bivariate function space as a bivariate function bimodule."""
+    """Implement space of bivariate functions as a bimodule with division."""
 
     codomain: alg.ImplementsDivBimodule[Y, K, Y, Y]
-    _scl: alg.ImplementsScalarField[K] | None = None
-    _zero: Callable[[], F[X1, X2, Y]] | None = None
-    _add: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _sub: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _neg: Callable[[F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _smul: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _sdiv: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _lmul: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _ldiv: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | None = None
-    _rmul: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | None = None
-    _rdiv: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | None = None
+    _zero: Callable[[], F[X1, X2, Y]]
+    _add: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    _sub: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    _neg: Callable[[F[X1, X2, Y]], F[X1, X2, Y]]
+    _smul: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]
+    _sdiv: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]
+    _lmul: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    _ldiv: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    _rmul: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]
+    _rdiv: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]
 
     @property
     def scl(self) -> alg.ImplementsScalarField[K]:
-        """Return scl property of BivariateFunctionDivBimodule object."""
-        return self.codomain.scl if self._scl is None else self._scl
+        """Scalar field associated with BivariateFunctionDivBimodule object."""
+        return self.codomain.scl
 
-    @property
-    def zero(self) -> Callable[[], F[X1, X2, Y]]:
-        """Return zero property of BivariateFunctionDivBimodule object."""
-        return (
-            lift_constant(self.codomain.zero)
-            if self._zero is None
-            else self._zero
-        )
+    def zero(self, /) -> F[X1, X2, Y]:
+        """Return zero bivariate function."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return add property of BivariateFunctionDivBimodule object."""
-        return (
-            (lift_binary(self.codomain.add))
-            if self._add is None
-            else self._add
-        )
+    def add(self, f: F[X1, X2, Y], g: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Add two bivariate functions."""
+        return self._add(f, g)
 
-    @property
-    def sub(self) -> Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return sub property of BivariateFunctionDivBimodule object."""
-        return (
-            (lift_binary(self.codomain.sub))
-            if self._sub is None
-            else self._sub
-        )
+    def sub(self, f: F[X1, X2, Y], g: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Subtract two bivariate functions."""
+        return self._sub(f, g)
 
-    @property
-    def neg(self) -> Callable[[F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return neg property of BivariateFunctionDivBimodule object."""
-        return (
-            lift_unary(self.codomain.neg) if self._neg is None else self._neg
-        )
+    def neg(self, f: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Compute additive inverse (negation) of a bivariate function."""
+        return self._neg(f)
 
-    @property
-    def smul(self) -> Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return smul property of BivariateFunctionDivBimodule object."""
-        return (
-            lift_left(self.codomain.smul) if self._smul is None else self._smul
-        )
+    def smul(self, k: K, f: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Multiply a bivariate function by a scalar."""
+        return self._smul(k, f)
 
-    @property
-    def sdiv(self) -> Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return sdiv property of BivariateFunctionDivBimodule object."""
-        return (
-            lift_left(self.codomain.sdiv) if self._sdiv is None else self._sdiv
-        )
+    def sdiv(self, k: K, f: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Divide a bivariate function by a scalar."""
+        return self._sdiv(k, f)
 
-    @property
-    def lmul(self) -> Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return lmul property of BivariateFunctionDivBimodule object."""
-        return (
-            (lift_left_bivariate(self.codomain.lmul))
-            if self._lmul is None
-            else self._lmul
-        )
+    def lmul(self, f: F[X1, Y], g: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Left-multiply a bivariate function by a univariate function."""
+        return self._lmul(f, g)
 
-    @property
-    def ldiv(self) -> Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]]:
-        """Return ldiv property of BivariateFunctionDivBimodule object."""
-        return (
-            (lift_left_bivariate(self.codomain.ldiv))
-            if self._ldiv is None
-            else self._ldiv
-        )
+    def ldiv(self, f: F[X1, Y], g: F[X1, X2, Y], /) -> F[X1, X2, Y]:
+        """Left-divide a bivariate function by a univariate function."""
+        return self._ldiv(f, g)
 
-    @property
-    def rmul(self) -> Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]:
-        """Return rmul property of BivariateFunctionDivBimodule object."""
-        return (
-            (lift_right_bivariate(self.codomain.rmul))
-            if self._rmul is None
-            else self._rmul
-        )
+    def rmul(self, f: F[X1, X2, Y], g: F[X2, Y], /) -> F[X1, X2, Y]:
+        """Right-multiply a bivariate function by a univariate function."""
+        return self._rmul(f, g)
 
-    @property
-    def rdiv(self) -> Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]]:
-        """Return rdiv property of BivariateFunctionDivBimodule object."""
-        return (
-            (lift_right_bivariate(self.codomain.rdiv))
-            if self._rdiv is None
-            else self._rdiv
-        )
+    def rdiv(self, f: F[X1, X2, Y], g: F[X2, Y], /) -> F[X1, X2, Y]:
+        """Right-divide a bivariate function by a univariate function."""
+        return self._rdiv(f, g)
+
+
+def bivariate_function_div_bimodule[X1, X2, Y, K](
+    codomain: alg.ImplementsDivBimodule[Y, K, Y, Y],
+    zero: Callable[[], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    add: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    | DEFAULT = DEFAULT,
+    sub: Callable[[F[X1, X2, Y], F[X1, X2, Y]], F[X1, X2, Y]]
+    | DEFAULT = DEFAULT,
+    neg: Callable[[F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    smul: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    sdiv: Callable[[K, F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    lmul: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    ldiv: Callable[[F[X1, Y], F[X1, X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    rmul: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+    rdiv: Callable[[F[X1, X2, Y], F[X2, Y]], F[X1, X2, Y]] | DEFAULT = DEFAULT,
+) -> BivariateFunctionDivBimodule[X1, X2, Y, K]:
+    """Build BivariateFunctionDivBimodule object."""
+    return BivariateFunctionDivBimodule(
+        codomain=codomain,
+        _zero=(lift_constant(codomain.zero) if zero is DEFAULT else zero),
+        _add=(lift_binary(codomain.add) if add is DEFAULT else add),
+        _sub=(lift_binary(codomain.sub) if sub is DEFAULT else sub),
+        _neg=(lift_unary(codomain.neg) if neg is DEFAULT else neg),
+        _smul=(lift_left(codomain.smul) if smul is DEFAULT else smul),
+        _sdiv=(lift_left(codomain.sdiv) if sdiv is DEFAULT else sdiv),
+        _lmul=(
+            lift_left_bivariate(codomain.lmul) if lmul is DEFAULT else lmul
+        ),
+        _ldiv=(
+            lift_left_bivariate(codomain.ldiv) if ldiv is DEFAULT else ldiv
+        ),
+        _rmul=(
+            lift_right_bivariate(codomain.rmul) if rmul is DEFAULT else rmul
+        ),
+        _rdiv=(
+            lift_right_bivariate(codomain.rdiv) if rdiv is DEFAULT else rdiv
+        ),
+    )

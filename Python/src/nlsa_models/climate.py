@@ -1,6 +1,5 @@
 """Computation and plotting functions for general climate data."""
 
-import jax
 import nlsa.jax.delays as dl
 import jax.numpy as jnp
 import matplotlib.figure as mpf
@@ -34,7 +33,6 @@ from nlsa.jax.vector_algebra import (
     L2VectorAlgebra,
 )
 from nlsa.koopman import ImplementsKoopmanEigenbasis
-from nlsa.typing import cast_like
 from nlsa_models.core import (
     JaxEnv as JaxEnv,
     Matrix,
@@ -1029,7 +1027,7 @@ def make_data_driven_l2_space[T: TimeSampling, D: DTypeLike](
                 jit=jit,
             )
         mu = vec.make_normalized_counting_measure(data_pars.num_samples)
-        return L2FnAlgebra(
+        return vec.l2_fn_algebra(
             shape=(data_pars.num_samples,),
             dtype=dtype,
             measure=mu,
@@ -1306,7 +1304,7 @@ def compute_covariate_skill_scores[T: TimeSampling](
             out_axes=-1,
         ),
     )
-    hankel = cast_like(hankel, jax.jit(hankel))
+    hankel = typestable_jit(hankel)
     normalized_rmses = typestable_jit(
         vmap(vmap(stats.normalized_rmse, in_axes=1), in_axes=2)
     )
@@ -1314,11 +1312,11 @@ def compute_covariate_skill_scores[T: TimeSampling](
         vmap(vmap(stats.anomaly_correlation_coefficient, in_axes=1), in_axes=2)
     )
     ys_true = hankel(jnp.asarray(test_data.covariate[i0:i1]))
+    assert isinstance(ys_true, Array)
     if dropna:
         mask = ~jnp.isnan(ys_pred).any(axis=(1, 2))
         ys_pred = ys_pred[mask]
         ys_true = ys_true[mask]
-        assert isinstance(ys_true, Array)
     nrmses = normalized_rmses(ys_true, ys_pred)
     accs = anomaly_correlation_coefficients(ys_true, ys_pred)
     scores: SkillScores = {"nrmses": nrmses, "accs": accs}
@@ -2146,7 +2144,7 @@ def make_running_pred_plotter[T: TimeSampling](
         ax.set_xlabel("Verification time")
         ax.grid(True)
         ax.legend()
-        ax.set_ylabel(test_data_pars.response.specs)
+        ax.set_ylabel(str(test_data_pars.response.specs))
         ax.set_title(f"Prediction; lead time = {i_step} {timestep_str}")
 
         ax = axs[1]

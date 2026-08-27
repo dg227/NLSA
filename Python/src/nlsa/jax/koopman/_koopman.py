@@ -109,77 +109,127 @@ class KoopmanEigen(NamedTuple):
 
 @final
 @dataclass(frozen=True, slots=True)
-class KoopmanEigenbasis(koop.ImplementsKoopmanEigenbasis[X, K, K, V, Ks, Idx]):
+class KoopmanEigenbasis[X: PyTree](
+    koop.ImplementsKoopmanEigenbasis[X, K, K, V, Ks, Idx]
+):
     """Dataclass implementing frame operators for Koopman eigenbasis."""
 
-    dim: int
-    """Number of eigenfunctions."""
+    _anal: Callable[[V], Ks]
+    _dual_anal: Callable[[V], Ks]
+    _synth: Callable[[Ks], V]
+    _dual_synth: Callable[[Ks], V]
+    _fn_anal: Callable[[F[X, K]], Ks]
+    _dual_fn_anal: Callable[[F[X, K]], Ks]
+    _fn_synth: Callable[[Ks], F[X, K]]
+    _dual_fn_synth: Callable[[Ks], F[X, K]]
+    _vec: Callable[[Idx], V]
+    _dual_vec: Callable[[Idx], V]
+    _fn: Callable[[Idx], F[X, K]]
+    _dual_fn: Callable[[Idx], F[X, K]]
+    _spec: Ks
+    _gen_spec: Ks
+    _engys: Ks
+    _evl: Callable[[Idx], K]
+    _gen_evl: Callable[[Idx], K]
+    _engy: Callable[[Idx], K]
 
-    anal: Callable[[V], Ks]
-    """Analysis operator."""
+    @property
+    def dim(self) -> int:
+        """Number of eigenvalues/eigenfunctions."""
+        return len(self.spec)
 
-    dual_anal: Callable[[V], Ks]
-    """Dual analysis operator."""
+    @property
+    def spec(self) -> Ks:
+        """Operator spectrum (set of eigenvalues)."""
+        return self._spec
 
-    synth: Callable[[Ks], V]
-    """Synthesis operator."""
+    @property
+    def gen_spec(self) -> Ks:
+        """Generator spectrum (set of eigenvalues)."""
+        return self._gen_spec
 
-    dual_synth: Callable[[Ks], V]
-    """Dual synthesis operator."""
+    @property
+    def efreqs(self) -> Ks:
+        """Eigenfrequencies."""
+        return jnp.imag(self.gen_spec)
 
-    fn_anal: Callable[[F[X, K]], Ks]
-    """Function analysis operator."""
+    @property
+    def eperiods(self) -> Ks:
+        """Eigenperiods."""
+        return 2 * jnp.pi / self.efreqs
 
-    dual_fn_anal: Callable[[F[X, K]], Ks]
-    """Dual function analysis operator."""
+    @property
+    def engys(self) -> Ks:
+        """Dirichlet energies."""
+        return self._engys
 
-    fn_synth: Callable[[Ks], F[X, K]]
-    """Function synthesis operator."""
+    def anal(self, v: V, /) -> Ks:
+        """Evaluate analysis operator."""
+        return self._anal(v)
 
-    dual_fn_synth: Callable[[Ks], F[X, K]]
-    """Dual function synthesis operator."""
+    def dual_anal(self, v: V, /) -> Ks:
+        """Evaluate dual analysis operator."""
+        return self._dual_anal(v)
 
-    vec: Callable[[Idx], V]
-    """Basis vectors."""
+    def synth(self, ks: Ks, /) -> V:
+        """Evaluate synthesis operator."""
+        return self._synth(ks)
 
-    dual_vec: Callable[[Idx], V]
-    """Dual basis vectors."""
+    def dual_synth(self, ks: Ks, /) -> V:
+        """Evaluate dual synthesis operator."""
+        return self._dual_synth(ks)
 
-    fn: Callable[[Idx], F[X, K]]
-    """Function representatives of basis vectors."""
+    def fn_anal(self, f: F[X, K], /) -> Ks:
+        """Evaluate function analysis operator."""
+        return self._fn_anal(f)
 
-    dual_fn: Callable[[Idx], F[X, K]]
-    """Function representatives of dual basis vectors."""
+    def dual_fn_anal(self, f: F[X, K], /) -> Ks:
+        """Evaluate dual function analysis operator."""
+        return self._dual_fn_anal(f)
 
-    spec: Ks
-    """Operator spectrum."""
+    def fn_synth(self, ks: Ks, /) -> F[X, K]:
+        """Evaluate function synthesis operator."""
+        return self._fn_synth(ks)
 
-    gen_spec: Ks
-    """Generator spectrum."""
+    def dual_fn_synth(self, ks: Ks, /) -> F[X, K]:
+        """Evaluate dual function synthesis operator."""
+        return self._dual_fn_synth(ks)
 
-    efreqs: Ks
-    """Eigenfrequencies."""
+    def vec(self, i: Idx, /) -> V:
+        """Return basis vectors."""
+        return self._vec(i)
 
-    eperiods: Ks
-    """Eigenperiods."""
+    def dual_vec(self, i: Idx, /) -> V:
+        """Return dual basis vectors."""
+        return self._dual_vec(i)
 
-    engys: Ks
-    """Dirichlet energies."""
+    def fn(self, i: Idx, /) -> F[X, K]:
+        """Return function representatives of basis vectors."""
+        return self._fn(i)
 
-    evl: Callable[[Idx], K]
-    """Operator eigenvalues."""
+    def dual_fn(self, i: Idx, /) -> F[X, K]:
+        """Return function representatives of dual basis vectors."""
+        return self._dual_fn(i)
 
-    gen_evl: Callable[[Idx], K]
-    """Generator eigenvalues."""
+    def evl(self, i: Idx, /) -> K:
+        """Return operator eigenvalues."""
+        return self._evl(i)
 
-    efreq: Callable[[Idx], K]
-    """Function indexing eigenfrequencies."""
+    def gen_evl(self, i: Idx, /) -> K:
+        """Return generator eigenvalues."""
+        return self._gen_evl(i)
 
-    eperiod: Callable[[Idx], K]
-    """Function indexing eigenperiods."""
+    def efreq(self, i: Idx, /) -> K:
+        """Return eigenfrequencies."""
+        return jnp.imag(self.gen_evl(i))
 
-    engy: Callable[[Idx], K]
-    """Function indexing Dirichlet energies."""
+    def eperiod(self, i: Idx, /) -> K:
+        """Return eigenperiods."""
+        return 2 * jnp.pi / self.efreq(i)
+
+    def engy(self, i: Idx, /) -> K:
+        """Return Dirichlet energies."""
+        return self._engy(i)
 
 
 class GeneratorShardings(NamedTuple):
@@ -302,7 +352,7 @@ class IntegralTransformShardings(NamedTuple):
     """Sharding of Qz matrix."""
 
 
-def make_integral_transform_basis(
+def make_integral_transform_basis[X: PyTree](
     bandwidth: float,
     dt: float,
     transform: Literal["gauss", "laplace"],
@@ -344,6 +394,7 @@ def make_integral_transform_basis(
 def make_integral_transform_builder[
     Data: PyTree,
     Eigen: knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs],
+    X: PyTree,
 ](
     bandwidth: float,
     dt: float,
@@ -393,7 +444,7 @@ def make_integral_transform_builder[
     return build_integral_transform
 
 
-def compute_integral_transform_matrix[Data: PyTree](
+def compute_integral_transform_matrix[Data: PyTree, X: PyTree](
     pars: tuple[KernelPars, KoopmanParsTransf],
     impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
     impl_eval_quad: Callable[[Data], Callable[[F[X, K]], V]],
@@ -467,6 +518,8 @@ class _GeneratorSpectrum(NamedTuple):
     """Basis expansion coefficients of the dual (left) eigenvectors."""
 
 
+# TODO: Consider renaming this to_koopman_eigen and making it a method of
+# _GeneratorSpectrum.
 def _from_generator_spectrum(
     kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     spec: _GeneratorSpectrum,
@@ -662,7 +715,9 @@ class _IntegralTransformSpectrum(NamedTuple):
     """Basis expansion coefficients of the dual (left) eigenvectors."""
 
 
-def _from_integral_transform_spectrum(
+# TODO: Consider renaming this to_koopman_eigen and making it a method of
+# _IntegralTransformSpectrum
+def _from_integral_transform_spectrum[X: PyTree](
     bandwidth: float,
     transform: Literal["gauss", "laplace"],
     kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
@@ -747,6 +802,7 @@ def _from_integral_transform_spectrum(
 def make_compactified_integral_transform_eigensolver[
     Data: PyTree,
     Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    X: PyTree,
 ](
     koopman_pars: KoopmanParsTransf,
     impl_basis: Callable[
@@ -800,9 +856,9 @@ def make_compactified_integral_transform_eigensolver[
     return eigensolve
 
 
-def compute_integral_transform_eigen_comp[Data: PyTree](
+def compute_integral_transform_eigen_comp[Data: PyTree, X: PyTree](
     pars: tuple[KernelPars, KoopmanParsTransf],
-    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, X, V, R]],
+    impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     data: Data,
     kernel_eigen: KernelEigen,
@@ -830,46 +886,40 @@ def compute_integral_transform_eigen_comp[Data: PyTree](
     return eigensolve(data, kernel_eigen, transf_mat)
 
 
-def make_eigenbasis_asym[L: int, D: DTypeLike](
+def make_eigenbasis_asym[L: int, D: DTypeLike, X: PyTree](
     c_l: L2VectorAlgebra[tuple[L], D],
     kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     koopman_eigen: koop.ImplementsSliceableKoopmanEigen[C, Cs, Css],
-) -> KoopmanEigenbasis:
+) -> KoopmanEigenbasis[X]:
     """Make Koopman eigenbasis from eigendecomposition of asymmetric op."""
 
-    def vc(i: int | Array) -> V:
+    def _vec(i: Idx, /) -> V:
         return kernel_basis.synth(koopman_eigen.evec_coeffs[i])
 
-    def dual_vc(i: int | Array) -> V:
+    def dual_vec(i: Idx, /) -> V:
         return kernel_basis.dual_synth(koopman_eigen.dual_evec_coeffs[i])
 
-    def evl(i: int | Array) -> K:
+    def evl(i: Idx, /) -> K:
         return koopman_eigen.evals[i]
 
-    def gen_evl(i: int | Array) -> K:
+    def gen_evl(i: Idx, /) -> K:
         return koopman_eigen.gen_evals[i]
 
-    def efreq(i: int | Array) -> K:
-        return koopman_eigen.efreqs[i]
-
-    def eperiod(i: int | Array) -> K:
-        return koopman_eigen.eperiods[i]
-
-    def engy(i: int | Array) -> K:
+    def engy(i: Idx, /) -> K:
         return koopman_eigen.engys[i]
 
-    def fn(i: int | Array) -> Callable[[X], K]:
+    def fn(i: Idx, /) -> Callable[[X], K]:
         return kernel_basis.fn_synth(koopman_eigen.evec_coeffs[i])
 
-    def dual_fn(i: int | Array) -> Callable[[X], K]:
+    def dual_fn(i: Idx, /) -> Callable[[X], K]:
         return kernel_basis.dual_fn_synth(koopman_eigen.dual_evec_coeffs[i])
 
     @partial(vmap, in_axes=(0, None))
-    def anal_eval_c(i: int | Array, v: V) -> K:
+    def anal_eval_c(i: Idx, v: V, /) -> K:
         return c_l.innerp(koopman_eigen.dual_evec_coeffs[i], v)
 
     @partial(vmap, in_axes=(0, None))
-    def dual_anal_eval_c(i: int | Array, v: V) -> K:
+    def dual_anal_eval_c(i: Idx, v: V, /) -> K:
         return c_l.innerp(koopman_eigen.evec_coeffs[i], v)
 
     num_eigs = koop.num_eigs_in_eigen(koopman_eigen)
@@ -890,67 +940,54 @@ def make_eigenbasis_asym[L: int, D: DTypeLike](
     dual_fn_synth = fun.compose(kernel_basis.dual_fn_synth, synth_c)
     spec = koopman_eigen.evals[idxs]
     gen_spec = koopman_eigen.gen_evals[idxs]
-    efreqs = koopman_eigen.efreqs[idxs]
-    eperiods = koopman_eigen.eperiods[idxs]
     engys = koopman_eigen.engys[idxs]
     basis = KoopmanEigenbasis(
-        dim=len(idxs),
-        anal=anal,
-        dual_anal=dual_anal,
-        synth=synth,
-        dual_synth=dual_synth,
-        fn_anal=fn_anal,
-        dual_fn_anal=dual_fn_anal,
-        fn_synth=fn_synth,
-        dual_fn_synth=dual_fn_synth,
-        vec=vc,
-        dual_vec=dual_vc,
-        fn=fn,
-        dual_fn=dual_fn,
-        evl=evl,
-        gen_evl=gen_evl,
-        efreq=efreq,
-        eperiod=eperiod,
-        engy=engy,
-        spec=spec,
-        gen_spec=gen_spec,
-        efreqs=efreqs,
-        eperiods=eperiods,
-        engys=engys,
+        _anal=anal,
+        _dual_anal=dual_anal,
+        _synth=synth,
+        _dual_synth=dual_synth,
+        _fn_anal=fn_anal,
+        _dual_fn_anal=dual_fn_anal,
+        _fn_synth=fn_synth,
+        _dual_fn_synth=dual_fn_synth,
+        _vec=_vec,
+        _dual_vec=dual_vec,
+        _fn=fn,
+        _dual_fn=dual_fn,
+        _evl=evl,
+        _gen_evl=gen_evl,
+        _engy=engy,
+        _spec=spec,
+        _gen_spec=gen_spec,
+        _engys=engys,
     )
     return basis
 
 
-def make_eigenbasis_antisym[L: int, D: DTypeLike](
+def make_eigenbasis_antisym[L: int, D: DTypeLike, X: PyTree](
     c_l: L2VectorAlgebra[tuple[L], D],
     kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     koopman_eigen: koop.ImplementsSliceableKoopmanEigen[C, Cs, Css],
-) -> KoopmanEigenbasis:
+) -> KoopmanEigenbasis[X]:
     """Make Koopman eigenbasis from eigendecomposition of antisymmetric op."""
 
-    def vc(i: int | Array) -> V:
+    def _vec(i: Idx, /) -> V:
         return kernel_basis.synth(koopman_eigen.evec_coeffs[i])
 
-    def evl(i: int | Array) -> K:
+    def evl(i: Idx, /) -> K:
         return koopman_eigen.evals[i]
 
-    def gen_evl(i: int | Array) -> K:
+    def gen_evl(i: Idx, /) -> K:
         return koopman_eigen.gen_evals[i]
 
-    def efreq(i: int | Array) -> K:
-        return koopman_eigen.efreqs[i]
-
-    def eperiod(i: int | Array) -> K:
-        return koopman_eigen.eperiods[i]
-
-    def engy(i: int | Array) -> K:
+    def engy(i: Idx, /) -> K:
         return koopman_eigen.engys[i]
 
-    def fn(i: int | Array) -> Callable[[X], K]:
+    def fn(i: Idx, /) -> Callable[[X], K]:
         return kernel_basis.fn_synth(koopman_eigen.evec_coeffs[i])
 
     @partial(vmap, in_axes=(0, None))
-    def anal_eval_c(i: int | Array, v: V) -> K:
+    def anal_eval_c(i: Idx, v: V, /) -> K:
         return c_l.innerp(koopman_eigen.evec_coeffs[i], v)
 
     num_eigs = koop.num_eigs_in_eigen(koopman_eigen)
@@ -963,43 +1000,36 @@ def make_eigenbasis_antisym[L: int, D: DTypeLike](
     fn_synth = fun.compose(kernel_basis.fn_synth, synth_c)
     spec = koopman_eigen.evals[idxs]
     gen_spec = koopman_eigen.gen_evals[idxs]
-    efreqs = koopman_eigen.efreqs[idxs]
-    eperiods = koopman_eigen.eperiods[idxs]
     engys = koopman_eigen.engys[idxs]
     basis = KoopmanEigenbasis(
-        dim=len(idxs),
-        anal=anal,
-        dual_anal=anal,
-        synth=synth,
-        dual_synth=synth,
-        fn_anal=fn_anal,
-        dual_fn_anal=fn_anal,
-        fn_synth=fn_synth,
-        dual_fn_synth=fn_synth,
-        vec=vc,
-        dual_vec=vc,
-        fn=fn,
-        dual_fn=fn,
-        evl=evl,
-        gen_evl=gen_evl,
-        efreq=efreq,
-        eperiod=eperiod,
-        engy=engy,
-        spec=spec,
-        gen_spec=gen_spec,
-        efreqs=efreqs,
-        eperiods=eperiods,
-        engys=engys,
+        _anal=anal,
+        _dual_anal=anal,
+        _synth=synth,
+        _dual_synth=synth,
+        _fn_anal=fn_anal,
+        _dual_fn_anal=fn_anal,
+        _fn_synth=fn_synth,
+        _dual_fn_synth=fn_synth,
+        _vec=_vec,
+        _dual_vec=_vec,
+        _fn=fn,
+        _dual_fn=fn,
+        _evl=evl,
+        _gen_evl=gen_evl,
+        _engy=engy,
+        _spec=spec,
+        _gen_spec=gen_spec,
+        _engys=engys,
     )
     return basis
 
 
-def make_eigenbasis[L: int, D: DTypeLike](
+def make_eigenbasis[L: int, D: DTypeLike, X: PyTree](
     pars: KoopmanPars,
     c_l: L2VectorAlgebra[tuple[L], D],
     kernel_basis: knl.ImplementsKernelEigenbasis[X, R, V, R, Rs, Idx],
     koopman_eigen: koop.ImplementsSliceableKoopmanEigen[C, Cs, Css],
-) -> KoopmanEigenbasis:
+) -> KoopmanEigenbasis[X]:
     """Make Koopman eigenbasis."""
     match pars, pars.antisym:
         case KoopmanParsTransf(), True:
@@ -1009,23 +1039,6 @@ def make_eigenbasis[L: int, D: DTypeLike](
     return basis
 
 
-# def slice_eigen(
-#     eigen: KoopmanEigen[C, Cs, Css],
-#     which_eigs: int | tuple[int, int] | list[int] | None = None,
-# ) -> KoopmanEigen[C, Cs, Css]:
-#     """Slice KoopmanEigen object using `which_eigs` convention."""
-#     match which_eigs:
-#         case None:
-#             sliced_eigen = eigen
-#         case int() as num_eigs:
-#             sliced_eigen = eigen.isel(slice(0, num_eigs))
-#         case tuple() as idx:
-#             sliced_eigen = eigen.isel(slice(idx[0], idx[1] + 1))
-#         case list() as idxs:
-#             sliced_eigen = eigen.isel(idxs)
-#     return sliced_eigen
-
-
 # TODO: Consider automating the process of building these data-driven wrappers
 # using a decorator.
 def make_data_driven_eigenbasis[
@@ -1033,6 +1046,7 @@ def make_data_driven_eigenbasis[
     KnlEigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
     D: DTypeLike,
     L: int,
+    X: PyTree,
 ](
     koopman_pars: KoopmanPars,
     c_l: L2VectorAlgebra[tuple[L], D],
@@ -1043,7 +1057,7 @@ def make_data_driven_eigenbasis[
     which_eigs: int | tuple[int, int] | list[int] | None = None,
 ) -> Callable[
     [Data, KnlEigen, koop.ImplementsSliceableKoopmanEigen[C, Cs, Css]],
-    KoopmanEigenbasis,
+    KoopmanEigenbasis[X],
 ]:
     """Make data-driven Koopman eigenbasis builder."""
 
@@ -1051,7 +1065,7 @@ def make_data_driven_eigenbasis[
         data: Data,
         kernel_eigen: KnlEigen,
         koopman_eigen: koop.ImplementsSliceableKoopmanEigen[C, Cs, Css],
-    ) -> KoopmanEigenbasis:
+    ) -> KoopmanEigenbasis[X]:
         kernel_basis = impl_kernel_basis(data, kernel_eigen)
         _koopman_eigen = koop.slice_eigen(koopman_eigen, which_eigs)
         return make_eigenbasis(koopman_pars, c_l, kernel_basis, _koopman_eigen)
@@ -1063,10 +1077,11 @@ def make_koopman_analysis_operator[
     Data: PyTree,
     KnlEigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
     KoopEigen: koop.ImplementsKoopmanEigen[C, Cs, Css],
+    X: PyTree,
 ](
     impl_basis: Callable[
         [Data, KnlEigen, KoopEigen],
-        KoopmanEigenbasis,
+        KoopmanEigenbasis[X],
     ],
     which_samples: tuple[int, int] | None = None,
 ) -> Callable[[Data, V, KnlEigen, KoopEigen], Cs]:
@@ -1095,10 +1110,11 @@ def make_koopman_prediction_function[
     KnlEigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
     KoopEigen: koop.ImplementsKoopmanEigen[C, Cs, Css],
     TestData: PyTree,
+    X: PyTree,
 ](
     impl_basis: Callable[
         [Data, KnlEigen, KoopEigen],
-        KoopmanEigenbasis,
+        KoopmanEigenbasis[X],
     ],
     impl_l2_tst: Callable[
         [TestData], alg.ImplementsL2FnAlgebra[X, R, Vtst, R]
@@ -1121,7 +1137,7 @@ def make_koopman_prediction_function[
         l2x_tst = impl_l2_tst(test_data)
 
         @partial(vmap, in_axes=(None, 0, None))
-        def _predict(cs: Cs, t: R, x: X) -> R:
+        def _predict(cs: Cs, t: R, x: X, /) -> R:
             phases = jnp.exp(basis.gen_spec * t)
             return basis.fn_synth(phases * cs)(x)
 
@@ -1135,6 +1151,7 @@ def compute_koopman_preds[
     D: DTypeLike,
     L: int,
     TestData: PyTree,
+    X: PyTree,
 ](
     pars: tuple[KernelPars, KoopmanPars],
     c_l: L2VectorAlgebra[tuple[L], D],
@@ -1189,6 +1206,7 @@ def make_eigenfunction_evaluation_functional[
     TestData: PyTree,
     KnlEigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
     KoopEigen: koop.ImplementsKoopmanEigen[C, Cs, Css],
+    X: PyTree,
 ](
     impl_eval: Callable[[TestData], Callable[[F[X, R]], Vtst]],
     impl_koopman_basis: Callable[
@@ -1219,6 +1237,7 @@ def evaluate_eigenfunction[
     TestData: PyTree,
     D: DTypeLike,
     L: int,
+    X: PyTree,
 ](
     pars: tuple[KernelPars, KoopmanPars],
     c_l: L2VectorAlgebra[tuple[L], D],

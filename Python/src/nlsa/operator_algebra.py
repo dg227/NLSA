@@ -11,115 +11,102 @@ type L[V] = Callable[[V], V]
 
 
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OperatorAlgebra[V, K](alg.ImplementsOperatorAlgebra[L[V], V, K]):
     """Implement operator algebra structure on a vector space."""
 
     domain: alg.ImplementsInnerProductSpace[V, K]
-    _scl: alg.ImplementsScalarField[K] | None = None
-    _codom: alg.ImplementsInnerProductSpace[V, K] | None = None
-    _zero: Callable[[], L[V]] | None = None
-    _add: Callable[[L[V], L[V]], L[V]] | None = None
-    _sub: Callable[[L[V], L[V]], L[V]] | None = None
-    _neg: Callable[[L[V]], L[V]] | None = None
-    _smul: Callable[[K, L[V]], L[V]] | None = None
-    _sdiv: Callable[[K, L[V]], L[V]] | None = None
-    _mul: Callable[[L[V], L[V]], L[V]] | None = None
-    _mpower: Callable[[L[V], int], L[V]] | None = None
-    _unit: Callable[[], L[V]] | None = None
-    _app: Callable[[L[V], V], V] | None = None
+    _zero: Callable[[], L[V]]
+    _add: Callable[[L[V], L[V]], L[V]]
+    _sub: Callable[[L[V], L[V]], L[V]]
+    _neg: Callable[[L[V]], L[V]]
+    _smul: Callable[[K, L[V]], L[V]]
+    _sdiv: Callable[[K, L[V]], L[V]]
+    _mul: Callable[[L[V], L[V]], L[V]]
+    _mpower: Callable[[L[V], int], L[V]]
+    _unit: Callable[[], L[V]]
+    _app: Callable[[L[V], V], V]
+
+    @property
+    def scl(self) -> alg.ImplementsRealScalarField[K]:
+        """Scalar field associated with an OperatorAlgebra object."""
+        return self.domain.scl
 
     @property
     def dom(self) -> alg.ImplementsInnerProductSpace[V, K]:
-        """Return dom property of L2FnAlgebra object."""
+        """Vector space domain associated with an OperatorAlgebra object."""
         return self.domain
 
     @property
-    def scl(self) -> alg.ImplementsScalarField[K]:
-        """Return scl property of OperatorAlgebra object."""
-        return self.domain.scl if self._scl is None else self._scl
-
-    @property
     def codom(self) -> alg.ImplementsInnerProductSpace[V, K]:
-        """Return codom property of OperatorAlgebra object."""
-        return self.domain if self._codom is None else self._codom
+        """Vector space codomain associated with an OperatorAlgebra object."""
+        return self.domain
 
-    @property
-    def zero(self) -> Callable[[], L[V]]:
-        """Return zero property of OperatorAlgebra object."""
-        return (
-            fun.lift_constant(self.domain.zero)
-            if self._zero is None
-            else self._zero
-        )
+    def zero(self, /) -> L[V]:
+        """Return zero operator."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[L[V], L[V]], L[V]]:
-        """Return add property of OperatorAlgebra object."""
-        return (
-            fun.lift_binary(self.domain.add)
-            if self._add is None
-            else self._add
-        )
+    def add(self, a: L[V], b: L[V], /) -> L[V]:
+        """Add two operators."""
+        return self._add(a, b)
 
-    @property
-    def sub(self) -> Callable[[L[V], L[V]], L[V]]:
-        """Return sub property of OperatorAlgebra object."""
-        return (
-            fun.lift_binary(self.domain.sub)
-            if self._sub is None
-            else self._sub
-        )
+    def sub(self, a: L[V], b: L[V], /) -> L[V]:
+        """Subtract two operators."""
+        return self._sub(a, b)
 
-    @property
-    def neg(self) -> Callable[[L[V]], L[V]]:
-        """Return neg property of OperatorAlgebra object."""
-        return (
-            fun.lift_unary(self.domain.neg) if self._neg is None else self._neg
-        )
+    def neg(self, a: L[V], /) -> L[V]:
+        """Compute additive inverse (negation) of an operator."""
+        return self._neg(a)
 
-    @property
-    def smul(self) -> Callable[[K, L[V]], L[V]]:
-        """Return smul property of OperatorAlgebra object."""
-        return (
-            fun.lift_left(self.domain.smul)
-            if self._smul is None
-            else self._smul
-        )
+    def smul(self, k: K, a: L[V], /) -> L[V]:
+        """Multiply an operator by a scalar."""
+        return self._smul(k, a)
 
-    @property
-    def sdiv(self) -> Callable[[K, L[V]], L[V]]:
-        """Return sdiv property of OperatorAlgebra object."""
-        return (
-            fun.lift_left(self.domain.sdiv)
-            if self._sdiv is None
-            else self._sdiv
-        )
+    def sdiv(self, k: K, a: L[V], /) -> L[V]:
+        """Divide an operator by a scalar."""
+        return self._sdiv(k, a)
 
-    @property
-    def mul(self) -> Callable[[L[V], L[V]], L[V]]:
-        """Return mul property of OperatorAlgebra object."""
-        return fun.compose if self._mul is None else self._mul
+    def unit(self, /) -> L[V]:
+        """Return identity operator."""
+        return self._unit()
 
-    @property
-    def mpower(self) -> Callable[[L[V], int], L[V]]:
-        """Return mpower property of OperatorAlgebra object."""
-        return (
-            fun.make_mpower(fun.compose)
-            if self._mpower is None
-            else self._mpower
-        )
+    def mul(self, a: L[V], b: L[V], /) -> L[V]:
+        """Compose two operators."""
+        return self._mul(a, b)
 
-    @property
-    def unit(self) -> Callable[[], L[V]]:
-        """Return unit property of OperatorAlgebra object."""
-        return (
-            fun.make_constant(fun.identity)
-            if self._unit is None
-            else self._unit
-        )
+    def mpower(self, a: L[V], m: int, /) -> L[V]:
+        """M-fold composition of an operator."""
+        return self._mpower(a, m)
 
-    @property
-    def app(self) -> Callable[[L[V], V], V]:
-        """Return app property of OperatorAlgebra object."""
-        return fun.apply if self._app is None else self._app
+    def app(self, a: L[V], v: V) -> V:
+        """Apply an operator to a vector."""
+        return self._app(a, v)
+
+
+def operator_algebra[V, K](
+    domain: alg.ImplementsInnerProductSpace[V, K],
+    zero: Callable[[], L[V]] | None = None,
+    add: Callable[[L[V], L[V]], L[V]] | None = None,
+    sub: Callable[[L[V], L[V]], L[V]] | None = None,
+    neg: Callable[[L[V]], L[V]] | None = None,
+    smul: Callable[[K, L[V]], L[V]] | None = None,
+    sdiv: Callable[[K, L[V]], L[V]] | None = None,
+    mul: Callable[[L[V], L[V]], L[V]] | None = None,
+    mpower: Callable[[L[V], int], L[V]] | None = None,
+    unit: Callable[[], L[V]] | None = None,
+    app: Callable[[L[V], V], V] | None = None,
+) -> OperatorAlgebra[V, K]:
+    """Build OperatorAlgebraObject."""
+    return OperatorAlgebra(
+        domain=domain,
+        _zero=(fun.lift_constant(domain.zero) if zero is None else zero),
+        _add=(fun.lift_binary(domain.add) if add is None else add),
+        _sub=(fun.lift_binary(domain.sub) if sub is None else sub),
+        _neg=(fun.lift_unary(domain.neg) if neg is None else neg),
+        _smul=(fun.lift_left(domain.smul) if smul is None else smul),
+        _sdiv=(fun.lift_left(domain.sdiv) if sdiv is None else sdiv),
+        _unit=(fun.make_constant(fun.identity) if unit is None else unit),
+        _mul=(fun.compose if mul is None else mul),
+        _mpower=(fun.make_mpower(fun.compose) if mpower is None else mpower),
+        _app=(fun.apply if app is None else app),
+    )

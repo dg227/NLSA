@@ -3,6 +3,7 @@
 import jax.numpy as jnp
 import nlsa.jax.distance as dst
 import nlsa.jax.kernels as knl
+import nlsa.jax.scalars as scls
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -20,7 +21,6 @@ from nlsa.jax.kernels import (
     TuneInfo,
     TunePars,
 )
-from nlsa.jax.scalars import ScalarField
 from nlsa.jax.sharding import NamedSharder
 from nlsa.jax.utils import fst
 from nlsa.jax.vector_algebra import L2FnAlgebraShardings
@@ -642,7 +642,7 @@ def main():
     )
 
     # Make scalar field and L2 space builders
-    scl_r = ScalarField(jax_env.real_dtype)
+    scl_r = scls.scalar_field(jax_env.real_dtype)
     impl_l2 = l63.make_data_driven_l2_space(
         pars=pars.train.data,
         dtype=jax_env.real_dtype,

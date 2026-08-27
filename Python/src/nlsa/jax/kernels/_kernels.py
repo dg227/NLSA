@@ -206,62 +206,101 @@ class KernelEigenShardings(NamedTuple):
 
 @final
 @dataclass(frozen=True, slots=True)
-class KernelEigenbasis(knl.ImplementsKernelEigenbasis[X, K, K, V, Ks, Idx]):
+class KernelEigenbasis[X: PyTree](
+    knl.ImplementsKernelEigenbasis[X, K, K, V, Ks, Idx]
+):
     """Dataclass implementing frame operators for kernel eigenbasis."""
 
-    dim: int
-    """Number of eigenfunctions."""
+    _anal: Callable[[V], Ks]
+    _dual_anal: Callable[[V], Ks]
+    _synth: Callable[[Ks], V]
+    _dual_synth: Callable[[Ks], V]
+    _fn_anal: Callable[[F[X, K]], Ks]
+    _dual_fn_anal: Callable[[F[X, K]], Ks]
+    _fn_synth: Callable[[Ks], F[X, K]]
+    _dual_fn_synth: Callable[[Ks], F[X, K]]
+    _vec: Callable[[Idx], V]
+    _dual_vec: Callable[[Idx], V]
+    _fn: Callable[[Idx], F[X, K]]
+    _dual_fn: Callable[[Idx], F[X, K]]
+    _spec: Ks
+    _lapl_spec: Ks
+    _evl: Callable[[Idx], K]
+    _lapl_evl: Callable[[Idx], K]
 
-    anal: Callable[[V], Ks]
-    """Analysis operator."""
+    @property
+    def dim(self) -> int:
+        """Number of eigenvalues/eigenfunctions."""
+        return len(self.spec)
 
-    dual_anal: Callable[[V], Ks]
-    """Dual analysis operator."""
+    @property
+    def spec(self) -> Ks:
+        """Kernel operator spectrum (set of eigenvalues)."""
+        return self._spec
 
-    synth: Callable[[Ks], V]
-    """Synthesis operator."""
+    @property
+    def lapl_spec(self) -> Ks:
+        """Laplace spectrum."""
+        return self._lapl_spec
 
-    dual_synth: Callable[[Ks], V]
-    """Dual synthesis operator."""
+    def anal(self, v: V, /) -> Ks:
+        """Evaluate analysis operator."""
+        return self._anal(v)
 
-    fn_anal: Callable[[F[X, K]], Ks]
-    """Function analysis operator."""
+    def dual_anal(self, v: V, /) -> Ks:
+        """Evaluate dual analysis operator."""
+        return self._dual_anal(v)
 
-    dual_fn_anal: Callable[[F[X, K]], Ks]
-    """Dual function analysis operator."""
+    def synth(self, ks: Ks, /) -> V:
+        """Evaluate synthesis operator."""
+        return self._synth(ks)
 
-    fn_synth: Callable[[Ks], F[X, K]]
-    """Function synthesis operator."""
+    def dual_synth(self, ks: Ks, /) -> V:
+        """Evaluate dual synthesis operator."""
+        return self._dual_synth(ks)
 
-    dual_fn_synth: Callable[[Ks], F[X, K]]
-    """Dual function synthesis operator."""
+    def fn_anal(self, f: F[X, K], /) -> Ks:
+        """Evaluate function analysis operator."""
+        return self._fn_anal(f)
 
-    vec: Callable[[Idx], V]
-    """Basis vectors."""
+    def dual_fn_anal(self, f: F[X, K], /) -> Ks:
+        """Evaluate dual function analysis operator."""
+        return self._dual_fn_anal(f)
 
-    dual_vec: Callable[[Idx], V]
-    """Dual basis vectors."""
+    def fn_synth(self, ks: Ks, /) -> F[X, K]:
+        """Evaluate function synthesis operator."""
+        return self._fn_synth(ks)
 
-    fn: Callable[[Idx], F[X, K]]
-    """Function representatives of basis vectors."""
+    def dual_fn_synth(self, ks: Ks, /) -> F[X, K]:
+        """Evaluate dual function synthesis operator."""
+        return self._dual_fn_synth(ks)
 
-    dual_fn: Callable[[Idx], F[X, K]]
-    """Function representatives of dual basis vectors."""
+    def vec(self, i: Idx, /) -> V:
+        """Return basis vectors."""
+        return self._vec(i)
 
-    spec: Ks
-    """Kernel operator spectrum (set of eigenvalues)."""
+    def dual_vec(self, i: Idx, /) -> V:
+        """Return dual basis vectors."""
+        return self._dual_vec(i)
 
-    lapl_spec: Ks
-    """Laplace spectrum."""
+    def fn(self, i: Idx, /) -> F[X, K]:
+        """Return function representatives of basis vectors."""
+        return self._fn(i)
 
-    evl: Callable[[Idx], K]
-    """Kernel eigenvalues."""
+    def dual_fn(self, i: Idx, /) -> F[X, K]:
+        """Return function representatives of dual basis vectors."""
+        return self._dual_fn(i)
 
-    lapl_evl: Callable[[Idx], K]
-    """Laplacian eigenvalues."""
+    def evl(self, i: Idx, /) -> K:
+        """Return kernel eigenvalues."""
+        return self._evl(i)
+
+    def lapl_evl(self, i: Idx, /) -> K:
+        """Return Laplacian eigenvalues."""
+        return self._lapl_evl(i)
 
 
-def _tune_bandwidth_from_kernel_family(
+def _tune_bandwidth_from_kernel_family[X: PyTree](
     pars: TunePars,
     l2x: alg.ImplementsL2FnAlgebra[X, R, V, R],
     kernel_family: Callable[[R], F[X, X, R]],
@@ -310,7 +349,7 @@ def _tune_bandwidth_from_kernel_family(
     )
 
 
-def _tune_bandwidth_from_shape_function(
+def _tune_bandwidth_from_shape_function[X: PyTree](
     pars: TunePars,
     l2x: alg.ImplementsL2FnAlgebra[X, K, V, K],
     shape_func: Callable[[K], K],
@@ -363,8 +402,7 @@ def _tune_bandwidth_from_shape_function(
     )
 
 
-# TODO: Generalize X to PyTree
-def make_bandwidth_tuner[Data: PyTree](
+def make_bandwidth_tuner[Data: PyTree, X: PyTree](
     pars: TunePars,
     impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
     shape_func: Callable[[K], K],
@@ -396,7 +434,7 @@ def make_bandwidth_tuner[Data: PyTree](
     return tune
 
 
-def tune_bandwidth[Data: PyTree](
+def tune_bandwidth[Data: PyTree, X: PyTree](
     pars: TunePars,
     impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, K, V, K]],
     shape_func: Callable[[K], K],
@@ -424,6 +462,8 @@ class _DmSymOperatorSpectrum(NamedTuple):
     """Kernel eigenvectors."""
 
 
+# TODO: Consider renaming this to_kernel_eigen and making it a method of
+# _DmSymOperatorSpectrum.
 def _from_dm_sym_operator_spectrum(
     l2x: alg.ImplementsDimensionedL2FnAlgebra[X, R, V, R],
     spec: _DmSymOperatorSpectrum,
@@ -985,13 +1025,13 @@ def to_laplace_eigenvalues(
     return etas
 
 
-def make_eigenbasis_dm(
+def make_eigenbasis_dm[X: PyTree](
     l2x: alg.ImplementsL2FnAlgebra[X, R, V, R],
     kernel: Callable[[X, X], R],
     normalization: Literal["laplace", "fokkerplanck"] | None,
     laplacian_method: Literal["lin", "log", "inv"],
     kernel_eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
-) -> KernelEigenbasis:
+) -> KernelEigenbasis[X]:
     """Make kernel eigenbasis for diffusion maps kernels."""
     match normalization:
         case "laplace":
@@ -1010,40 +1050,40 @@ def make_eigenbasis_dm(
         l2x, swap_args(extension_kernel)
     )
 
-    def vc(i: Idx) -> V:
+    def _vec(i: Idx, /) -> V:
         return kernel_eigen.evecs[i]
 
-    def dual_vc(i: Idx) -> V:
+    def dual_vec(i: Idx, /) -> V:
         return kernel_eigen.dual_evecs[i]
 
-    def evl(i: Idx) -> R:
+    def evl(i: Idx, /) -> R:
         return kernel_eigen.evals[i]
 
-    def lapl_evl(i: Idx) -> R:
+    def lapl_evl(i: Idx, /) -> R:
         return lapl_spec[i]
 
-    def fn(i: Idx) -> Callable[[X], R]:
+    def fn(i: Idx, /) -> Callable[[X], R]:
         return extension_op(kernel_eigen.evecs[i] / kernel_eigen.evals[i])
 
-    def dual_fn(i: Idx) -> Callable[[X], R]:
+    def dual_fn(i: Idx, /) -> Callable[[X], R]:
         return dual_extension_op(
             kernel_eigen.dual_evecs[i] / kernel_eigen.evals[i]
         )
 
     @partial(vmap, in_axes=(0, None))
-    def anal_eval(i: Idx, v: V) -> R:
+    def anal_eval(i: Idx, v: V, /) -> R:
         return l2x.innerp(kernel_eigen.dual_evecs[i], v)
 
     @partial(vmap, in_axes=(0, None))
-    def dual_anal_eval(i: Idx, v: V) -> R:
+    def dual_anal_eval(i: Idx, v: V, /) -> R:
         return l2x.innerp(kernel_eigen.evecs[i], v)
 
     @partial(vmap, in_axes=(0, None))
-    def fn_eval(i: Idx, x: X) -> R:
+    def fn_eval(i: Idx, x: X, /) -> R:
         return fn(i)(x)
 
     @partial(vmap, in_axes=(0, None))
-    def dual_fn_eval(i: Idx, x: X) -> R:
+    def dual_fn_eval(i: Idx, x: X, /) -> R:
         return dual_fn(i)(x)
 
     num_eigs = knl.num_eigs_in_eigen(kernel_eigen)
@@ -1058,33 +1098,32 @@ def make_eigenbasis_dm(
     dual_fn_synth = vec.make_fn_synthesis_operator(partial(dual_fn_eval, idxs))
     spec = kernel_eigen.evals[idxs]
     basis = KernelEigenbasis(
-        dim=len(idxs),
-        anal=anal,
-        dual_anal=dual_anal,
-        synth=synth,
-        dual_synth=dual_synth,
-        fn_anal=fn_anal,
-        dual_fn_anal=dual_fn_anal,
-        fn_synth=fn_synth,
-        dual_fn_synth=dual_fn_synth,
-        vec=vc,
-        dual_vec=dual_vc,
-        fn=fn,
-        dual_fn=dual_fn,
-        evl=evl,
-        lapl_evl=lapl_evl,
-        spec=spec,
-        lapl_spec=lapl_spec,
+        _anal=anal,
+        _dual_anal=dual_anal,
+        _synth=synth,
+        _dual_synth=dual_synth,
+        _fn_anal=fn_anal,
+        _dual_fn_anal=dual_fn_anal,
+        _fn_synth=fn_synth,
+        _dual_fn_synth=dual_fn_synth,
+        _vec=_vec,
+        _dual_vec=dual_vec,
+        _fn=fn,
+        _dual_fn=dual_fn,
+        _evl=evl,
+        _lapl_evl=lapl_evl,
+        _spec=spec,
+        _lapl_spec=lapl_spec,
     )
     return basis
 
 
-def make_eigenbasis_bs(
+def make_eigenbasis_bs[X: PyTree](
     l2x: alg.ImplementsL2FnAlgebra[X, R, V, R],
     kernel: Callable[[X, X], R],
     laplacian_method: Literal["lin", "log", "inv"],
     kernel_eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
-) -> KernelEigenbasis:
+) -> KernelEigenbasis[X]:
     """Make kernel eigenbasis for bistochastic kernels."""
     lapl_spec = to_laplace_eigenvalues(
         kernel_eigen.evals,
@@ -1094,7 +1133,7 @@ def make_eigenbasis_bs(
     extension_kernel = knl.bs_normalize(l2x, kernel)
     extension_op = knl.make_integral_operator(l2x, extension_kernel)
 
-    def vc(i: Idx) -> V:
+    def _vec(i: Idx) -> V:
         return kernel_eigen.evecs[i]
 
     def evl(i: Idx) -> R:
@@ -1124,34 +1163,33 @@ def make_eigenbasis_bs(
     fn_synth = vec.make_fn_synthesis_operator(partial(fn_eval, idxs))
     spec = kernel_eigen.evals[idxs]
     basis = KernelEigenbasis(
-        dim=len(idxs),
-        anal=anal,
-        dual_anal=anal,
-        synth=synth,
-        dual_synth=synth,
-        fn_anal=fn_anal,
-        dual_fn_anal=fn_anal,
-        fn_synth=fn_synth,
-        dual_fn_synth=fn_synth,
-        vec=vc,
-        dual_vec=vc,
-        fn=fn,
-        dual_fn=fn,
-        evl=evl,
-        lapl_evl=lapl_evl,
-        spec=spec,
-        lapl_spec=lapl_spec,
+        _anal=anal,
+        _dual_anal=anal,
+        _synth=synth,
+        _dual_synth=synth,
+        _fn_anal=fn_anal,
+        _dual_fn_anal=fn_anal,
+        _fn_synth=fn_synth,
+        _dual_fn_synth=fn_synth,
+        _vec=_vec,
+        _dual_vec=_vec,
+        _fn=fn,
+        _dual_fn=fn,
+        _evl=evl,
+        _lapl_evl=lapl_evl,
+        _spec=spec,
+        _lapl_spec=lapl_spec,
     )
     return basis
 
 
-def make_eigenbasis(
+def make_eigenbasis[X: PyTree](
     kernel_pars: KernelPars,
     l2x: alg.ImplementsL2FnAlgebra[X, R, V, R],
     kernel: Callable[[X, X], R],
     kernel_eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
     laplacian_method: Literal["lin", "log", "inv"] = "log",
-) -> KernelEigenbasis:
+) -> KernelEigenbasis[X]:
     """Make kernel eigenbasis."""
     match kernel_pars:
         case DmKernelPars():
@@ -1169,20 +1207,21 @@ def make_eigenbasis(
     return basis
 
 
-def make_data_driven_eigenbasis[Data: PyTree](
+def make_data_driven_eigenbasis[Data: PyTree, X: PyTree](
     kernel_pars: KernelPars,
     impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
     kernel: Callable[[X, X], R] | Callable[[Data, X, X], R],
     which_eigs: int | tuple[int, int] | list[int] | None = None,
 ) -> Callable[
-    [Data, knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs]], KernelEigenbasis
+    [Data, knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs]],
+    KernelEigenbasis[X],
 ]:
     """Make data-driven kernel eigenbasis builder."""
 
     def _make_eigenbasis(
         data: Data,
         kernel_eigen: knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs],
-    ) -> KernelEigenbasis:
+    ) -> KernelEigenbasis[X]:
         l2x = impl_l2(data)
         if has_two_args(kernel):
             _kernel = kernel
@@ -1197,6 +1236,7 @@ def make_data_driven_eigenbasis[Data: PyTree](
 def make_kaf_analysis_operator[
     Data: PyTree,
     Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    X: PyTree,
 ](
     impl_basis: Callable[
         [Data, Eigen],
@@ -1232,6 +1272,7 @@ def make_kaf_prediction_function[
     Data: PyTree,
     Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
     TestData: PyTree,
+    X: PyTree,
 ](
     impl_basis: Callable[
         [Data, Eigen],
@@ -1258,7 +1299,7 @@ def make_kaf_prediction_function[
     return predict
 
 
-def compute_kaf_preds[Data: PyTree, TestData: PyTree](
+def compute_kaf_preds[Data: PyTree, TestData: PyTree, X: PyTree](
     kernel_pars: KernelPars,
     impl_l2: Callable[[Data], alg.ImplementsL2FnAlgebra[X, R, V, R]],
     train_data: Data,
@@ -1287,6 +1328,7 @@ def compute_kaf_preds[Data: PyTree, TestData: PyTree](
 def make_iterative_kaf_analysis_operator[
     Data: PyTree,
     Eigen: knl.ImplementsKernelEigen[R, Rs, V, Vs],
+    X: PyTree,
 ](
     impl_basis: Callable[
         [Data, Eigen],

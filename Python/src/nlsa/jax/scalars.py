@@ -6,15 +6,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from jax import Array
 from jax.typing import DTypeLike
+from nlsa.typing import DEFAULT
 from typing import SupportsComplex, SupportsFloat, final
 
 type K = Array
-type F[*Xs, Y] = Callable[[*Xs], Y]
-
-
-def neg(s: K, /) -> K:
-    """Negate a scalar."""
-    return jnp.multiply(-1, s)
 
 
 def make_zero(dtype: DTypeLike) -> Callable[[], K]:
@@ -35,128 +30,143 @@ def make_unit(dtype: DTypeLike) -> Callable[[], K]:
     return unit
 
 
-def make_inv(dtype: DTypeLike) -> Callable[[K], K]:
-    """Make inversion function."""
-
-    def inv(s: K, /) -> K:
-        return jnp.divide(jnp.ones((), dtype=dtype), s)
-
-    return inv
-
-
-def ldiv(s: K, t: K, /) -> K:
-    """Left-divide two scalars."""
-    return jnp.divide(t, s)
-
-
 # TODO: We should distinguish more carefully between real and complex dtypes.
 # This may warrant having separate RealScalarField and ComplexScalarField.
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ScalarField[D: DTypeLike](alg.ImplementsComplexScalarField[K]):
     """Implement scalar field operations on JAX arrays."""
 
     dtype: D
-    _zero: Callable[[], K] | None = None
-    _add: Callable[[K, K], K] | None = None
-    _sub: Callable[[K, K], K] | None = None
-    _neg: Callable[[K], K] | None = None
-    _unit: Callable[[], K] | None = None
-    _mul: Callable[[K, K], K] | None = None
-    _mpower: Callable[[K, int], K] | None = None
-    _power: Callable[[K, K], K] | None = None
-    _div: Callable[[K, K], K] | None = None
-    _inv: Callable[[K], K] | None = None
-    _adj: Callable[[K], K] | None = None
-    _sqrt: Callable[[K], K] | None = None
-    _mod: Callable[[K], K] | None = None
+    _zero: Callable[[], K]
+    _add: Callable[[K, K], K]
+    _sub: Callable[[K, K], K]
+    _neg: Callable[[K], K]
+    _unit: Callable[[], K]
+    _mul: Callable[[K, K], K]
+    _mpower: Callable[[K, int], K]
+    _power: Callable[[K, K], K]
+    _div: Callable[[K, K], K]
+    _inv: Callable[[K], K]
+    _adj: Callable[[K], K]
+    _sqrt: Callable[[K], K]
+    _abs: Callable[[K], K]
+    _log: Callable[[K], K]
+    _log10: Callable[[K], K]
+    _exp: Callable[[K], K]
+    _exp10: Callable[[K], K]
 
-    @property
-    def zero(self) -> Callable[[], K]:
-        """Return zero property of ScalarField object."""
-        return make_zero(self.dtype) if self._zero is None else self._zero
+    def zero(self, /) -> K:
+        """Return a zero scalar array."""
+        return self._zero()
 
-    @property
-    def add(self) -> Callable[[K, K], K]:
-        """Return add property of ScalarField object."""
-        return jnp.add if self._add is None else self._add
+    def add(self, w: K, z: K) -> K:
+        """Add two scalar arrays."""
+        return self._add(w, z)
 
-    @property
-    def sub(self) -> Callable[[K, K], K]:
-        """Return sub property of ScalarField object."""
-        return jnp.subtract if self._sub is None else self._sub
+    def sub(self, w: K, z: K) -> K:
+        """Subtract two scalar arrays."""
+        return self._sub(w, z)
 
-    @property
-    def neg(self) -> Callable[[K], K]:
-        """Return neg property of ScalarField object."""
-        return neg if self._neg is None else self._neg
+    def neg(self, z: K) -> K:
+        """Compute additive inverse (negation) of a scalar array."""
+        return self._neg(z)
 
-    @property
-    def unit(self) -> Callable[[], K]:
-        """Return unit property of ScalarField object."""
-        return make_unit(self.dtype) if self._unit is None else self._unit
+    def unit(self, /) -> K:
+        """Return a unit scalar array."""
+        return self._unit()
 
-    @property
-    def mul(self) -> Callable[[K, K], K]:
-        """Return mul property of ScalarField object."""
-        return jnp.multiply if self._mul is None else self._mul
+    def mul(self, w: K, z: K) -> K:
+        """Multiply two scalar arrays."""
+        return self._mul(w, z)
 
-    @property
-    def mpower(self) -> Callable[[K, int], K]:
-        """Return mpower property of ScalarField object."""
-        return jnp.power if self._mpower is None else self._mpower
+    def mpower(self, z: K, m: int) -> K:
+        """Exponentiate a scalar array by an integer."""
+        return self._mpower(z, m)
 
-    @property
-    def power(self) -> Callable[[K, K], K]:
-        """Return power property of ScalarField object."""
-        return jnp.power if self._power is None else self._power
+    def power(self, w: K, z: K) -> K:
+        """Exponentiate a scalar array by another scalar array."""
+        return self._power(w, z)
 
-    @property
-    def div(self) -> Callable[[K, K], K]:
-        """Return div property of ScalarField object."""
-        return jnp.divide if self._div is None else self._div
+    def div(self, w: K, z: K) -> K:
+        """Divide two scalar arrays."""
+        return self._div(w, z)
 
-    @property
-    def inv(self) -> Callable[[K], K]:
-        """Return inv property of ScalarField object."""
-        return make_inv(self.dtype) if self._inv is None else self._inv
+    def inv(self, z: K) -> K:
+        """Compute multiplicative inverse of a scalar array."""
+        return self._inv(z)
 
-    @property
-    def adj(self) -> Callable[[K], K]:
-        """Return adj property of ScalarField object."""
-        return jnp.conjugate if self._adj is None else self._adj
+    def adj(self, z: K) -> K:
+        """Compute complex conjugate of a scalar array."""
+        return self._adj(z)
 
-    @property
-    def sqrt(self) -> Callable[[K], K]:
-        """Return sqrt property of ScalarField object."""
-        return jnp.sqrt if self._sqrt is None else self._sqrt
+    def sqrt(self, z: K) -> K:
+        """Compute the square root of a scalar array."""
+        return self._sqrt(z)
 
-    @property
-    def abs(self) -> Callable[[K], K]:
-        """Return abs property of ScalarField object."""
-        return jnp.abs if self._mod is None else self._mod
+    def abs(self, z: K) -> K:
+        """Compute the absolute value of a scalar array."""
+        return self._abs(z)
 
-    @property
-    def exp(self) -> Callable[[K], K]:
-        """Return exp property of FloatScalarField object."""
-        return jnp.exp
+    def exp(self, z: K) -> K:
+        """Exponentiate a scalar array."""
+        return self._exp(z)
 
-    @property
-    def exp10(self) -> Callable[[K], K]:
-        """Return exp10 property of FloatScalarField object."""
-        return lambda x: 10**x
+    def exp10(self, z: K) -> K:
+        """Compute base-10 exponentiation of a scalar array."""
+        return self._exp10(z)
 
-    @property
-    def log(self) -> Callable[[K], K]:
-        """Return log property of FloatScalarField object."""
-        return jnp.log
+    def log(self, z: K) -> K:
+        """Compute natural logarithm of a scalar array."""
+        return self._log(z)
 
-    @property
-    def log10(self) -> Callable[[K], K]:
-        """Return log10 property of FloatScalarField object."""
-        return jnp.log10
+    def log10(self, z: K) -> K:
+        """Compute base-10 logarithm of a scalar array."""
+        return self._log10(z)
 
-    @property
-    def from_pyscalar(self) -> Callable[[SupportsFloat | SupportsComplex], K]:
-        """Return from_pyscalar property of FloatScalarField object."""
-        return lambda x: jnp.asarray(x, dtype=self.dtype)
+    def from_pyscalar(self, z: SupportsFloat | SupportsComplex, /) -> K:
+        """Convert real or complex scalar to JAX array."""
+        return jnp.asarray(z, dtype=self.dtype)
+
+
+def scalar_field[D: DTypeLike](
+    dtype: D,
+    zero: Callable[[], K] | DEFAULT = DEFAULT,
+    add: Callable[[K, K], K] | DEFAULT = DEFAULT,
+    sub: Callable[[K, K], K] | DEFAULT = DEFAULT,
+    neg: Callable[[K], K] | DEFAULT = DEFAULT,
+    unit: Callable[[], K] | DEFAULT = DEFAULT,
+    mul: Callable[[K, K], K] | DEFAULT = DEFAULT,
+    mpower: Callable[[K, int], K] | DEFAULT = DEFAULT,
+    power: Callable[[K, K], K] | DEFAULT = DEFAULT,
+    div: Callable[[K, K], K] | DEFAULT = DEFAULT,
+    inv: Callable[[K], K] | DEFAULT = DEFAULT,
+    adj: Callable[[K], K] | DEFAULT = DEFAULT,
+    sqrt: Callable[[K], K] | DEFAULT = DEFAULT,
+    abs: Callable[[K], K] | DEFAULT = DEFAULT,
+    exp: Callable[[K], K] | DEFAULT = DEFAULT,
+    exp10: Callable[[K], K] | DEFAULT = DEFAULT,
+    log: Callable[[K], K] | DEFAULT = DEFAULT,
+    log10: Callable[[K], K] | DEFAULT = DEFAULT,
+) -> ScalarField[D]:
+    """Build ScalarField object."""
+    return ScalarField(
+        dtype=dtype,
+        _zero=make_zero(dtype) if zero is DEFAULT else zero,
+        _add=jnp.add if add is DEFAULT else add,
+        _sub=jnp.subtract if sub is DEFAULT else sub,
+        _neg=(lambda z: -z) if neg is DEFAULT else neg,
+        _unit=make_unit(dtype) if unit is DEFAULT else unit,
+        _mul=jnp.multiply if mul is DEFAULT else mul,
+        _mpower=jnp.power if mpower is DEFAULT else mpower,
+        _power=jnp.power if power is DEFAULT else power,
+        _div=jnp.divide if div is DEFAULT else div,
+        _inv=(lambda z: 1 / z) if inv is DEFAULT else inv,
+        _adj=jnp.conjugate if adj is DEFAULT else adj,
+        _sqrt=jnp.sqrt if sqrt is DEFAULT else sqrt,
+        _abs=jnp.abs if abs is DEFAULT else abs,
+        _exp=jnp.exp if exp is DEFAULT else exp,
+        _exp10=(lambda z: 10**z) if exp10 is DEFAULT else exp10,
+        _log=jnp.log if log is DEFAULT else log,
+        _log10=jnp.log10 if log10 is DEFAULT else log10,
+    )

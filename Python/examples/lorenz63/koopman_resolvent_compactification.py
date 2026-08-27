@@ -5,6 +5,8 @@ import jax.numpy as jnp
 import nlsa.jax.distance as dst
 import nlsa.jax.kernels as knl
 import nlsa.jax.koopman as koop
+import nlsa.jax.vector_algebra as vec
+import nlsa.jax.scalars as scls
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -29,13 +31,9 @@ from nlsa.jax.koopman import (
     KoopmanParsTransf,
     IntegralTransformShardings,
 )
-from nlsa.jax.scalars import ScalarField
 from nlsa.jax.sharding import NamedSharder
 from nlsa.jax.utils import fst
-from nlsa.jax.vector_algebra import (
-    L2FnAlgebraShardings,
-    L2VectorAlgebra,
-)
+from nlsa.jax.vector_algebra import L2FnAlgebraShardings
 from nlsa_models import lorenz63 as l63
 from nlsa_models.lorenz63 import Data, DataPars, SkillScores
 from pathlib import Path
@@ -942,7 +940,7 @@ def main():
     )
 
     # Make scalar field and L2 space builders
-    scl_r = ScalarField(jax_env.real_dtype)
+    scl_r = scls.scalar_field(jax_env.real_dtype)
     impl_l2 = l63.make_data_driven_l2_space(
         pars=pars.train.data,
         dtype=jax_env.real_dtype,
@@ -1122,7 +1120,7 @@ def main():
         plot_integral_transform_matrix(int_transf_mat, title=_title)
 
     # Compute Koopman eigendecomposition
-    c_k = L2VectorAlgebra(
+    c_k = vec.l2_vector_algebra(
         shape=(pars.train.koopman.dim_galerkin + 1,),
         dtype=jax_env.complex_dtype,
     )

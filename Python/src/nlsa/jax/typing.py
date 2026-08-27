@@ -7,6 +7,7 @@ from nlsa.typing import cast_like, is_array_like
 from typing import Any, TypeIs, cast, overload
 
 
+type Idx = int | jax.Array
 type PyTree = (
     None
     | int

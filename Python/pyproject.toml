@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlsa"
-version = "0.3"
+version = "0.4"
 description = "Data-driven algorithms for dynamical systems"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -51,6 +51,7 @@ dependencies = [
     "tabulate",
     "tensorflow-probability",
     "typeguard",
+    "typing_extensions",
     "xarray"
 ]
 

@@ -303,11 +303,14 @@ class ImplementsKernelEigenbasis[X, Y, V, K, Ks, I](
 ):
     """Implement kernel eigenbasis."""
 
-    lapl_spec: Ks
-    """Laplace spectrum."""
+    @property
+    def lapl_spec(self) -> Ks:
+        """Laplace spectrum."""
+        ...
 
-    lapl_evl: Callable[[I], K]
-    """Laplacian eigenvalues."""
+    def lapl_evl(self, i: I, /) -> K:
+        """Return Laplacian eigenvalues."""
+        ...
 
 
 def make_scaled_sqdist[X, K](
@@ -317,7 +320,9 @@ def make_scaled_sqdist[X, K](
 ) -> Callable[[X, X], K]:
     """Make scaled square distance function from bandwidth function."""
     func: FunctionAlgebraWithCalculus[X, X, K, K] = (
-        FunctionAlgebraWithCalculus(codomain=scl.AsAlgebraWithCalculus(impl))
+        fun.function_algebra_with_calculus(
+            codomain=scl.AsAlgebraWithCalculus(impl)
+        )
     )
     tensorp = fun.make_bivariate_tensor_product(impl)
     d2_scl = func.div(sqdist, tensorp(bandwdith_func, bandwdith_func))
@@ -421,7 +426,9 @@ def left_normalize[X, V, K](
 ) -> Callable[[X, X], K]:
     """Perform left normalization of kernel function."""
     func: BivariateFunctionDivBimodule[X, X, K, K] = (
-        BivariateFunctionDivBimodule(codomain=scl.AsDivBimodule(impl.scl))
+        fun.bivariate_function_div_bimodule(
+            codomain=scl.AsDivBimodule(impl.scl)
+        )
     )
     k_op = make_integral_operator(impl, k)
     lfun = k_op(impl.unit())
@@ -435,7 +442,9 @@ def right_normalize[X, V, K](
 ) -> Callable[[X, X], K]:
     """Perform right normalization of kernel function."""
     func: BivariateFunctionDivBimodule[X, X, K, K] = (
-        BivariateFunctionDivBimodule(codomain=scl.AsDivBimodule(impl.scl))
+        fun.bivariate_function_div_bimodule(
+            codomain=scl.AsDivBimodule(impl.scl)
+        )
     )
     k_op = make_integral_operator(impl, k)
     rfun = k_op(impl.unit())
@@ -449,7 +458,9 @@ def sym_normalize[X, V, K](
 ) -> Callable[[X, X], K]:
     """Perform symmetric normalization of kernel function."""
     func: BivariateFunctionDivBimodule[X, X, K, K] = (
-        BivariateFunctionDivBimodule(codomain=scl.AsDivBimodule(impl.scl))
+        fun.bivariate_function_div_bimodule(
+            codomain=scl.AsDivBimodule(impl.scl)
+        )
     )
     k_op = make_integral_operator(impl, k)
     sfun = k_op(impl.unit())
@@ -463,11 +474,15 @@ def right_sqrt_normalize[X, V, K](
     k: Callable[[X, X], K],
 ) -> Callable[[X, X], K]:
     """Perform right square root normalization of kernel function."""
-    func: FunctionAlgebraWithCalculus[X, K, K] = FunctionAlgebraWithCalculus(
-        codomain=scl.AsAlgebraWithCalculus(impl.scl)
+    func: FunctionAlgebraWithCalculus[X, K, K] = (
+        fun.function_algebra_with_calculus(
+            codomain=scl.AsAlgebraWithCalculus(impl.scl)
+        )
     )
     func2: BivariateFunctionDivBimodule[X, X, K, K] = (
-        BivariateFunctionDivBimodule(codomain=scl.AsDivBimodule(impl.scl))
+        fun.bivariate_function_div_bimodule(
+            codomain=scl.AsDivBimodule(impl.scl)
+        )
     )
     k_op = make_integral_operator(impl, k)
     rfun = func.sqrt(k_op(impl.unit()))
@@ -480,11 +495,15 @@ def sym_sqrt_normalize[X, V, K](
     k: Callable[[X, X], K],
 ) -> Callable[[X, X], K]:
     """Perform symmetric square root normalization of kernel function."""
-    func: FunctionAlgebraWithCalculus[X, K, K] = FunctionAlgebraWithCalculus(
-        codomain=scl.AsAlgebraWithCalculus(impl.scl)
+    func: FunctionAlgebraWithCalculus[X, K, K] = (
+        fun.function_algebra_with_calculus(
+            codomain=scl.AsAlgebraWithCalculus(impl.scl)
+        )
     )
     func2: BivariateFunctionDivBimodule[X, X, K, K] = (
-        BivariateFunctionDivBimodule(codomain=scl.AsDivBimodule(impl.scl))
+        fun.bivariate_function_div_bimodule(
+            codomain=scl.AsDivBimodule(impl.scl)
+        )
     )
     k_op = make_integral_operator(impl, k)
     sfun = func.sqrt(k_op(impl.unit()))
@@ -572,11 +591,15 @@ def bs_normalize[X, V, K](
     k: Callable[[X, X], K],
 ) -> Callable[[X, X], K]:
     """Perform bistochastic kernel normalization (left part)."""
-    func: FunctionAlgebraWithCalculus[X, K, K] = FunctionAlgebraWithCalculus(
-        codomain=scl.AsAlgebraWithCalculus(impl.scl)
+    func: FunctionAlgebraWithCalculus[X, K, K] = (
+        fun.function_algebra_with_calculus(
+            codomain=scl.AsAlgebraWithCalculus(impl.scl)
+        )
     )
     func2: BivariateFunctionDivBimodule[X, X, K, K] = (
-        BivariateFunctionDivBimodule(codomain=scl.AsDivBimodule(impl.scl))
+        fun.bivariate_function_div_bimodule(
+            codomain=scl.AsDivBimodule(impl.scl)
+        )
     )
     k_op = make_integral_operator(impl, k)
     k_op = make_integral_operator(impl, k)
@@ -698,8 +721,10 @@ def make_bandwidth_function[X, V, K](
     normalization: K | None = None,
 ) -> Callable[[X], K]:
     """Make bandwidth function for variable-bandwidth kernel."""
-    func: FunctionAlgebraWithCalculus[X, K, K] = FunctionAlgebraWithCalculus(
-        codomain=scl.AsAlgebraWithCalculus(impl.scl)
+    func: FunctionAlgebraWithCalculus[X, K, K] = (
+        fun.function_algebra_with_calculus(
+            codomain=scl.AsAlgebraWithCalculus(impl.scl)
+        )
     )
     w = sym_normalize(impl, k)
     w_op = make_integral_operator(impl, w)
@@ -762,7 +787,7 @@ def make_tuning_objective_from_shape_function[X, V, K](
     sqdist: F[X, X, K],
 ) -> Callable[[K], K]:
     """Make objective function for kernel tuning."""
-    func: FunctionAlgebra[X, X, K, K] = FunctionAlgebra(
+    func: FunctionAlgebra[X, X, K, K] = fun.function_algebra(
         codomain=scl.AsAlgebraWithCalculus(impl.scl)
     )
     kernel_family = make_rbf_kernel_family(impl.scl, shape_func, sqdist)
@@ -850,7 +875,9 @@ def make_resolvent_compactification_kernels[X, TX, V, K](
 ) -> tuple[F[X, X, K], F[X, X, K], F[X, X, K]]:
     """Make kernels for resolvent compactification scheme."""
     func2: BivariateFunctionDivBimodule[X, X, K, K] = (
-        BivariateFunctionDivBimodule(codomain=scl.AsDivBimodule(impl.scl))
+        fun.bivariate_function_div_bimodule(
+            codomain=scl.AsDivBimodule(impl.scl)
+        )
     )
 
     @swap_args
