@@ -25,7 +25,16 @@ from enum import StrEnum, auto
 from functools import partial
 from jax import Array
 from nlsa.function_algebra import compose2
-from nlsa.io_actions import IO, h5it, npyit, pickleit, plotit, plotem, timeit
+from nlsa.io_actions import (
+    IO,
+    h5it,
+    netcdfit,
+    npyit,
+    pickleit,
+    plotit,
+    plotem,
+    timeit,
+)
 from nlsa.jax.kernels import (
     BsKernelPars,
     ConePars,
@@ -50,9 +59,9 @@ from nlsa_models.climate import (
     Climatology,
     DataPars,
     NPData,
+    ProjectionPars,
     Response,
     SkillScores,
-    SpaceSampling,
     Time,
     TimeSampling,
 )
@@ -78,16 +87,18 @@ type Plots = Literal[
     "kernel_tuning",
     "laplacian_spec",
     "kernel_eigen",
+    "kernel_modes",
     "generator_mat",
     "generator_spec",
     "koopman_eigen",
+    "koopman_modes",
     "expansion_coeffs",
     "running_pred",
     "pred_timeseries",
     "skill_scores",
 ]
 
-EXPERIMENT: Experiment = Experiment.ENSO_FROM_ERA5_NINO34SST
+EXPERIMENT: Experiment = Experiment.ENSO_FROM_ERA5_IPSST
 IDX_GPU: int | Sequence[int] | None = None  # 0
 XLA_MEM_FRACTION: str | None = "0.95"
 JAX_CACHE_DIR: str | None = "jax_cache"
@@ -103,20 +114,26 @@ ERA5_MONTHLY_DATA_DIR = "/storage/data/era5/month_nc_1940_2025"
 OUTPUT_DATA_DIR = "examples/enso/data"
 NUM_TABULATE = 40
 EXTRACT_DATA_MODE: Literal["calc", "calcsave", "read"] = "read"
-TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calc"
-KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
+TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "read"
+KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "read"
+KERNEL_PROJECTION_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
 GENERATOR_MATRIX_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KOOPMAN_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
+KOOPMAN_PROJECTION_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
 KOOPMAN_EIG_EVAL_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KAF_EXPANSION_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KAF_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
 PLOT_MODE: Literal["save", "show", "saveshow"] | None = "show"
-WHICH_PLOTS: set[Plots] = {"all"}
+WHICH_PLOTS: set[Plots] = {"koopman_modes"}
 DELAY_PLOT_MODE: Literal["backward", "central"] = "central"
 PLT_DATE_RANGE: tuple[str, str] | None = None
 KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
+KERNEL_MODES_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
 KOOPMAN_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
+KOOPMAN_MODES_PLT: Sequence[int] | Literal["interactive"] | None = (
+    "interactive"
+)
 LEAD_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
 INITIALIZATION_TIMES_PLT: Sequence[int] | Literal["interactive"] | None = (
     "interactive"
@@ -250,13 +267,29 @@ class Pars[T: TimeSampling]:
     test: TestPars[T]
     """Test parameters."""
 
+    kernel_projection: ProjectionPars[T] | None = None
+    """Kernel projection parameters."""
+
+    koopman_projection: ProjectionPars[T] | None = None
+    """Kernel projection parameters."""
+
     def tabulate(self, show: bool = True) -> str:
         """Create tabulated summary of the properties of a Pars object."""
-        tables = [
+        if self.kernel_projection is not None:
+            kernel_proj_tab = self.kernel_projection.tabulate(show=show)
+        else:
+            kernel_proj_tab = None
+        if self.koopman_projection is not None:
+            koopman_proj_tab = self.koopman_projection.tabulate(show=show)
+        else:
+            koopman_proj_tab = None
+        tables = (
             self.train.tabulate(show=show),
             self.test.tabulate(show=show),
-        ]
-        return "".join(tables)
+            kernel_proj_tab,
+            koopman_proj_tab,
+        )
+        return "".join(filter(None, tables))
 
 
 class CommonPars(TypedDict):
@@ -303,40 +336,6 @@ class Shardings:
     """Test shardings."""
 
 
-def tropical_belt_era5_domain[S: SpaceSampling](
-    sampling: S = "pointwise",
-    step_lon: int | None = None,
-    step_lat: int | None = None,
-) -> era5.Domain[S]:
-    """-15S to 15N tropical belt."""
-    return era5.Domain(
-        min_lon=-180,
-        max_lon=180,
-        step_lon=step_lon,
-        min_lat=-15,
-        max_lat=15,
-        step_lat=step_lat,
-        sampling=sampling,
-    )
-
-
-def maritime_continent_era5_domain[S: SpaceSampling](
-    sampling: S = "pointwise",
-    step_lon: int | None = None,
-    step_lat: int | None = None,
-) -> era5.Domain[S]:
-    """Maritime continent domain."""
-    return era5.Domain(
-        min_lon=120,
-        max_lon=150,
-        step_lon=step_lon,
-        min_lat=-5,
-        max_lat=5,
-        step_lat=step_lat,
-        sampling=sampling,
-    )
-
-
 def from_experiment(
     experiment: Experiment,
     cone_kernel: bool,
@@ -353,7 +352,8 @@ def from_experiment(
             fd_order = 4
             num_pred_steps = 24
             train_date_range = ("1940-01-01", "2019-12-31")
-            test_date_range = ("2016-01-01", "2025-12-31")
+            # test_date_range = ("2016-01-01", "2025-12-31")
+            test_date_range = ("1986-01-01", "2022-12-31")
             common_pars: CommonPars = {
                 "num_half_delays": 24,
                 "velocity_covariate": True if cone_pars is not None else False,
@@ -379,10 +379,22 @@ def from_experiment(
                 rolling_mode=covariate_rolling_mode,
             )
             covariate_climatology = Climatology(remove=False, standardize=True)
-            covariate_era5_vars = [era5.Var.SST]
-            covariate_era5_domain = era5.indo_pacific_domain(
-                step_lon=4, step_lat=4
+            covariate_vars = [era5.Var.SST]
+            covariate_domain = era5.indo_pacific_domain(step_lon=4, step_lat=4)
+            projection_rolling_window = None
+            projection_rolling_mode = "center"
+            projection_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=projection_rolling_window,
+                rolling_mode=projection_rolling_mode,
             )
+            projection_climatology = Climatology(
+                remove=False, standardize=False
+            )
+            projection_vars = [era5.Var.SST]
+            projection_domain = era5.global_domain(step_lon=4, step_lat=4)
             response_rolling_window = None
             response_rolling_mode = "center"
             train_response_time = Time(
@@ -400,36 +412,43 @@ def from_experiment(
                 custom_climatology_date_range=climatology_date_range,
             )
             response_climatology = Climatology(remove=True, standardize=False)
-            response_era5_var = era5.Var.SST
-            response_era5_domain = era5.nino34_domain(sampling="area_averaged")
+            response_var = era5.Var.SST
+            response_domain = era5.nino34_domain(sampling="area_averaged")
             train_covariate_specs = (
                 era5.DataSpecs(
-                    vars=covariate_era5_vars,
-                    domain=covariate_era5_domain,
+                    vars=covariate_vars,
+                    domain=covariate_domain,
                     time=train_covariate_time,
                     io=era5_io,
                     climatology=covariate_climatology,
                 ),
             )
+            projection_specs = era5.DataSpecs(
+                vars=projection_vars,
+                domain=projection_domain,
+                time=projection_time,
+                io=era5_io,
+                climatology=projection_climatology,
+            )
             train_response_specs = era5.DataSpecs(
-                vars=[response_era5_var],
-                domain=response_era5_domain,
+                vars=[response_var],
+                domain=response_domain,
                 time=train_response_time,
                 io=era5_io,
                 climatology=response_climatology,
             )
             test_covariate_specs = (
                 era5.DataSpecs(
-                    vars=covariate_era5_vars,
-                    domain=covariate_era5_domain,
+                    vars=covariate_vars,
+                    domain=covariate_domain,
                     time=test_covariate_time,
                     io=era5_io,
                     climatology=covariate_climatology,
                 ),
             )
             test_response_specs = era5.DataSpecs(
-                vars=[response_era5_var],
-                domain=response_era5_domain,
+                vars=[response_var],
+                domain=response_domain,
                 time=test_response_time,
                 io=era5_io,
                 climatology=response_climatology,
@@ -485,9 +504,9 @@ def from_experiment(
                 fd_order=fd_order,
                 dt=1,
                 antisym=True,
-                tau=0.005,
+                tau=0.01,
                 laplacian_method="inv",
-                which_eigs_galerkin=64,
+                which_eigs_galerkin=256,
                 num_eigs=65,
                 sort_by="energy",
                 gram_batch_size=None,
@@ -498,6 +517,13 @@ def from_experiment(
                 which_kernel_eigs=512,
                 idx_koopman_eig=17,
                 num_steps=num_pred_steps,
+            )
+            kernel_projection_pars = None
+            koopman_projection_pars = ProjectionPars(
+                data=projection_specs,
+                time_origin=train_data_pars.delay_embedding_center,
+                which_pcs=slice(0, 25),
+                lead_steps=0,
             )
             if len(jax_env.devices) > 1:
                 sharder = NamedSharder(
@@ -575,8 +601,22 @@ def from_experiment(
                 rolling_mode=covariate_rolling_mode,
             )
             covariate_climatology = Climatology(remove=False, standardize=True)
-            covariate_era5_vars = [era5.Var.SST]
-            covariate_era5_domain = era5.nino34_domain(step_lon=4, step_lat=4)
+            covariate_vars = [era5.Var.SST]
+            covariate_domain = era5.nino34_domain(step_lon=4, step_lat=4)
+            projection_rolling_window = None
+            projection_rolling_mode = "center"
+            projection_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=projection_rolling_window,
+                rolling_mode=projection_rolling_mode,
+            )
+            projection_climatology = Climatology(
+                remove=False, standardize=False
+            )
+            projection_vars = [era5.Var.SST]
+            projection_domain = era5.global_domain(step_lon=4, step_lat=4)
             response_rolling_window = None
             response_rolling_mode = "center"
             train_response_time = Time(
@@ -594,36 +634,43 @@ def from_experiment(
                 custom_climatology_date_range=climatology_date_range,
             )
             response_climatology = Climatology(remove=True, standardize=False)
-            response_era5_var = era5.Var.SST
-            response_era5_domain = era5.nino34_domain(sampling="area_averaged")
+            response_var = era5.Var.SST
+            response_domain = era5.nino34_domain(sampling="area_averaged")
             train_covariate_specs = (
                 era5.DataSpecs(
-                    vars=covariate_era5_vars,
-                    domain=covariate_era5_domain,
+                    vars=covariate_vars,
+                    domain=covariate_domain,
                     time=train_covariate_time,
                     io=era5_io,
                     climatology=covariate_climatology,
                 ),
             )
             train_response_specs = era5.DataSpecs(
-                vars=[response_era5_var],
-                domain=response_era5_domain,
+                vars=[response_var],
+                domain=response_domain,
                 time=train_response_time,
                 io=era5_io,
                 climatology=response_climatology,
             )
+            projection_specs = era5.DataSpecs(
+                vars=projection_vars,
+                domain=projection_domain,
+                time=projection_time,
+                io=era5_io,
+                climatology=projection_climatology,
+            )
             test_covariate_specs = (
                 era5.DataSpecs(
-                    vars=covariate_era5_vars,
-                    domain=covariate_era5_domain,
+                    vars=covariate_vars,
+                    domain=covariate_domain,
                     time=test_covariate_time,
                     io=era5_io,
                     climatology=covariate_climatology,
                 ),
             )
             test_response_specs = era5.DataSpecs(
-                vars=[response_era5_var],
-                domain=response_era5_domain,
+                vars=[response_var],
+                domain=response_domain,
                 time=test_response_time,
                 io=era5_io,
                 climatology=response_climatology,
@@ -633,7 +680,7 @@ def from_experiment(
                 response=Response(specs=train_response_specs),
                 num_before=fd_order // 2,
                 num_after=fd_order // 2 + num_pred_steps,
-                eval_batch_size=None,
+                eval_batch_size=442,
                 **common_pars,
             )
             test_data_pars = DataPars(
@@ -662,6 +709,7 @@ def from_experiment(
                     num_bandwidths=128,
                     log10_bandwidth_lims=(-3, 3),
                     bandwidth_scl=1.5,
+                    bandwidth_batch_size=32,
                 )
             match kernel_normalization:
                 case "diffusion_maps":
@@ -684,7 +732,7 @@ def from_experiment(
                 which_eigs_galerkin=64,
                 num_eigs=65,
                 sort_by="energy",
-                gram_batch_size=None,
+                gram_batch_size=16,
                 eval_tx_batch_size=None,
             )
             pred_pars = PredPars(
@@ -692,6 +740,13 @@ def from_experiment(
                 which_kernel_eigs=512,
                 idx_koopman_eig=3,
                 num_steps=num_pred_steps,
+            )
+            kernel_projection_pars = None
+            koopman_projection_pars = ProjectionPars(
+                data=projection_specs,
+                time_origin=train_data_pars.delay_embedding_center,
+                which_pcs=[0, 1, 2, 3],
+                lead_steps=0,
             )
             if len(jax_env.devices) > 1:
                 sharder = NamedSharder(
@@ -747,7 +802,12 @@ def from_experiment(
     test_pars = TestPars(
         data=test_data_pars, num_pred_steps=pred_pars.num_steps
     )
-    pars = Pars(train=train_pars, test=test_pars)
+    pars = Pars(
+        train=train_pars,
+        test=test_pars,
+        kernel_projection=kernel_projection_pars,
+        koopman_projection=koopman_projection_pars,
+    )
     return pars, shardings
 
 
@@ -785,6 +845,14 @@ compute_kernel_eigen = timeit(
         callback=shardings.train.kernel_eigen.shard_kernel_eigen,
     )
 )
+compute_kernel_eigen_projections = timeit(
+    netcdfit(
+        clim.compute_eigenfunction_projections,
+        io=io,
+        mode=KERNEL_PROJECTION_MODE,
+        fname="kernel_eigen_proj",
+    )
+)
 compute_generator_matrix = timeit(
     npyit(
         koop.compute_generator_matrix,
@@ -815,6 +883,14 @@ evaluate_koopman_eigenfunction = timeit(
         mode=KOOPMAN_EIG_EVAL_MODE,
         fname="koop_eig",
         cls=Array,
+    )
+)
+compute_koopman_eigen_projections = timeit(
+    netcdfit(
+        clim.compute_eigenfunction_projections,
+        io=io,
+        mode=KOOPMAN_PROJECTION_MODE,
+        fname="koopman_eigen_proj",
     )
 )
 compute_kaf_expansion_coeffs = timeit(
@@ -866,6 +942,12 @@ make_kernel_evecs_plotter = plotem(
     mode=PLOT_MODE,
     fname="kernel_eigen",
 )
+make_kernel_mode_plotter = plotem(
+    clim.make_2d_mode_plotter_with_leads,
+    io=io,
+    mode=PLOT_MODE,
+    fname="kernel_modes",
+)
 plot_generator_matrix = plotit(
     koop.plot_operator_matrix, io=io, mode=PLOT_MODE, fname="gen_mat"
 )
@@ -877,6 +959,12 @@ make_koopman_evecs_plotter = plotem(
     io=io,
     mode=PLOT_MODE,
     fname="koopman_eigen",
+)
+make_koopman_mode_plotter = plotem(
+    clim.make_2d_mode_plotter_with_leads,
+    io=io,
+    mode=PLOT_MODE,
+    fname="koopman_modes",
 )
 plot_kaf_expansion_coeffs = plotit(
     knl.plot_kaf_expansion_coeffs,
@@ -1092,6 +1180,49 @@ def main():
                 if "show" in PLOT_MODE:
                     input("Press any key to continue...")
 
+    # Compute projections onto kernel eigenfunctions
+    if pars.kernel_projection is not None:
+        io /= str(pars.kernel_projection.data)
+        io /= str(pars.kernel_projection)
+        ds_kernel_proj = compute_kernel_eigen_projections(
+            pars.kernel_projection,
+            kernel_eigen.dual_evecs,
+            weights=1 / pars.train.data.num_delay_samples,
+        )
+
+        # Plot representative kernel modes
+        if (
+            PLOT_MODE is not None
+            and not {"all", "kernel_modes"}.isdisjoint(WHICH_PLOTS)
+            and KERNEL_MODES_PLT is not None
+        ):
+            _, plot_kernel_mode = make_kernel_mode_plotter(
+                ds_kernel_proj,
+                vars=pars.kernel_projection.data.varnames,
+                ocean_only_vars=pars.kernel_projection.data.varnames,
+            )
+            if KERNEL_MODES_PLT == "interactive":
+                while True:
+                    i = input(
+                        "Select kernel mode "
+                        f"0-{ds_kernel_proj.sizes['mode'] - 1} to plot, "
+                        "or press Enter to continue. "
+                    )
+                    if i == "":
+                        break
+                    else:
+                        try:
+                            plot_kernel_mode(int(i))
+                        except ValueError:
+                            print("Invalid input.")
+            else:
+                for i in KERNEL_MODES_PLT:
+                    plot_kernel_mode(i)
+                    if "show" in PLOT_MODE:
+                        input("Press any key to continue...")
+
+        io -= 2
+
     # Compute generator matrix
     io /= str(pars.train.koopman)
     impl_eval_tx = clim.make_data_driven_tangent_evaluation_functional_fd(
@@ -1213,6 +1344,52 @@ def main():
         else:
             for i in KOOPMAN_EIGS_PLT:
                 plot_koopman_eig(i)
+
+    # Compute projections onto Koopman eigenfunctions
+    if pars.koopman_projection is not None:
+        io /= str(pars.koopman_projection.data)
+        io /= str(pars.koopman_projection)
+        ds_koopman_proj = compute_koopman_eigen_projections(
+            pars.koopman_projection,
+            koopman_eigen.dual_evecs(
+                kernel_eigen,
+                which_kernel_eigs=pars.train.koopman.which_kernel_eigs,
+            ),
+            weights=1 / pars.train.data.num_delay_samples,
+        )
+
+        # Plot representative koopman modes
+        if (
+            PLOT_MODE is not None
+            and not {"all", "koopman_modes"}.isdisjoint(WHICH_PLOTS)
+            and KOOPMAN_MODES_PLT is not None
+        ):
+            _, plot_koopman_mode = make_koopman_mode_plotter(
+                ds_koopman_proj,
+                vars=pars.koopman_projection.data.varnames,
+                ocean_only_vars=pars.koopman_projection.data.varnames,
+            )
+            if KOOPMAN_MODES_PLT == "interactive":
+                while True:
+                    i = input(
+                        "Select Koopman mode "
+                        f"0-{ds_koopman_proj.sizes['mode'] - 1} to plot, "
+                        "or press Enter to continue. "
+                    )
+                    if i == "":
+                        break
+                    else:
+                        try:
+                            plot_koopman_mode(int(i))
+                        except ValueError:
+                            print("Invalid input.")
+            else:
+                for i in KOOPMAN_MODES_PLT:
+                    plot_koopman_mode(i)
+                    if "show" in PLOT_MODE:
+                        input("Press any key to continue...")
+
+        io -= 2
 
     # Compute values of the prediction eigenfunction
     io /= str(pars.train.pred)
