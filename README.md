@@ -18,3 +18,10 @@ The NLSA repo started out as a MATLAB implementation of the nonlinear Laplacian 
 
 Development of the NLSA Python library is funded by the U.S. Environmental Security Technology Certification Program under grant NH24-8392. Research on associated mathematical methods is supported by the U.S. Office of Naval Research (ONR) and Department of Energy under grants N00014-19-1-2421, N00014-21-1-2946, and DE-SC0025101. Previous grants supporting this work include U.S. National Science Foundation grants DMS-1521775, 1842538, and DMS-1854383 and ONR grants N00014-14-1-0150 and N00014-16-1-2649.
 
+
+## Screenshots
+
+### Extraction and forecasting of the El Nino Southern Oscillation (ENSO)
+
+![Koopman ENSO mode](Python/examples/enso/images/kooopman_diffusion_regularization_kaf/ENSO_FROM_ERA5_IPSST/ip_sst_koopman_mode15_enso.png)
+*Koopman ENSO mode. Generated using [`Python/examples/enso/koopman_diffusion_regularization_kaf.py`](Python/examples/enso/koopman_diffusion_regularization_kaf.py)*
