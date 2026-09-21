@@ -28,6 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "cfgrib",
     "diffrax",
     "ipympl",
     "ipywidgets",
@@ -60,6 +61,9 @@ cuda = [
     "jax[cuda]==0.8.0"
 ]
 cuda13 = [
+    "jax[cuda13]"
+]
+jax08 = [
     "jax[cuda13]==0.8.0"
 ]
 xarray_complete = [

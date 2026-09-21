@@ -134,3 +134,16 @@ def has_two_args[D, X, Y](
     """Return True if the function takes exactly 2 arguments."""
     sig = inspect.signature(f)
     return len(sig.parameters) == 2
+
+
+def print_sel(i: int | slice | Sequence[int]) -> str:
+    """Pretty-print an integer selection."""
+    match i:
+        case int():
+            s = str(i)
+        case slice():
+            contents = filter(None, (i.start, i.stop, i.step))
+            s = "-".join(map(str, contents))
+        case [*_]:
+            s = "_".join(map(str, i))
+    return s

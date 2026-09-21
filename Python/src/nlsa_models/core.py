@@ -9,10 +9,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from jax import Array
 from jax.typing import DTypeLike
+from nlsa.typing import ALL as ALL, DEFAULT as DEFAULT
 from numpy.typing import ArrayLike
 from pathlib import Path
 from tabulate import tabulate
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, TypeIs
 from collections.abc import Sequence
 
 if TYPE_CHECKING:
@@ -29,6 +30,36 @@ type NPMatrix[M: int, N: int, D: np.dtype[np.floating[Any]]] = np.ndarray[
 type Matrix[M: int, N: int, D: np.dtype[np.floating[Any]]] = (
     jax.Array | NPMatrix[M, N, D]
 )
+
+
+def is_npvector(
+    arr: np.ndarray[Any, Any],
+) -> TypeIs[NPVector[int, np.dtype[np.floating[Any]]]]:
+    """Check that an ndarray is compatible with NPVector."""
+    return arr.ndim == 1 and np.isdtype(
+        arr.dtype, ("real floating", "complex floating")
+    )
+
+
+def is_npvector_of_size[N: int](
+    arr: np.ndarray[Any, Any], size: N
+) -> TypeIs[NPVector[N, np.dtype[np.floating[Any]]]]:
+    """Check that an ndarray is compatible with NPVector of known size."""
+    return (
+        arr.ndim == 1
+        and arr.shape[0] == size
+        and np.isdtype(arr.dtype, ("real floating", "complex floating"))
+    )
+
+
+def is_npmatrix(
+    arr: np.ndarray[Any, Any],
+) -> TypeIs[NPMatrix[int, int, np.dtype[np.floating[Any]]]]:
+    """Check that an ndarray is compatible with NPVector."""
+    return arr.ndim == 2 and np.isdtype(
+        arr.dtype, ("real floating", "complex floating")
+    )
+    # return arr.ndim == 2 and np.issubdtype(arr.dtype, np.floating)
 
 
 @dataclass(frozen=True, slots=True)

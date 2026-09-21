@@ -17,6 +17,7 @@ from typing import (
 )
 from typing_extensions import Sentinel
 
+ALL = Sentinel("ALL")
 DEFAULT = Sentinel("DEFAULT")
 
 

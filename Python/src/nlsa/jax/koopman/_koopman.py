@@ -97,6 +97,56 @@ class KoopmanEigen(NamedTuple):
             dual_evec_coeffs=self.dual_evec_coeffs[s],
         )
 
+    # NOTE: We could consider making kernel_eigen and which_kernel_eigs
+    # elements of the KoopmanEigen NamedTuple. The issue with this approach is
+    # that the resulting type is no longer a subtype of nlsa.jax.typing.
+    # PyTree, and thus is not accepted by type checkers as an argument to
+    # typestable_jit. On the other hand, the downside of _not_ including
+    # kernel_eigen and which_kernel_eigs within KoopmanEigen is that the
+    # caller of evecs and related functions could pass an inconsistent
+    # kernel_eigen object.
+    def evecs(
+        self,
+        kernel_eigen: knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs]
+        | None = None,
+        which_kernel_eigs: int | tuple[int, int] | list[int] | None = None,
+    ) -> Vs:
+        """Return Koopman eigenvectors."""
+        match which_kernel_eigs:
+            case None:
+                idxs = None
+            case int() as num_eigs:
+                idxs = slice(0, num_eigs)
+            case tuple() as idx:
+                idxs = slice(idx[0], idx[1] + 1)
+            case list() as idxs:
+                idxs = idxs
+        if kernel_eigen is not None:
+            return self.evec_coeffs @ kernel_eigen.evecs[idxs]
+        else:
+            return self.evec_coeffs
+
+    def dual_evecs(
+        self,
+        kernel_eigen: knl.ImplementsSliceableKernelEigen[R, Rs, V, Vs]
+        | None = None,
+        which_kernel_eigs: int | tuple[int, int] | list[int] | None = None,
+    ) -> Vs:
+        """Return Koopman eigenvectors."""
+        match which_kernel_eigs:
+            case None:
+                idxs = None
+            case int() as num_eigs:
+                idxs = slice(0, num_eigs)
+            case tuple() as idx:
+                idxs = slice(idx[0], idx[1] + 1)
+            case list() as idxs:
+                idxs = idxs
+        if kernel_eigen is not None:
+            return self.dual_evec_coeffs @ kernel_eigen.dual_evecs[idxs]
+        else:
+            return self.dual_evec_coeffs
+
     def tabulate(
         self,
         num_tabulate: int | None = None,

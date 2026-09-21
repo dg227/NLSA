@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import time
+import xarray as xr
 from collections.abc import Callable, Iterable, Mapping
 from itertools import starmap
 from functools import wraps
@@ -16,6 +17,7 @@ from pandas import DataFrame
 from pathlib import Path
 from typeguard import check_type
 from typing import Literal, Self
+from xarray import Dataset
 
 type F[*Ss, T] = Callable[[*Ss], T]  # Shorthand for Callables
 
@@ -48,6 +50,14 @@ class IO:
             case Path():
                 pth = p
         self.paths.append(pth)
+        return self
+
+    def __isub__(self, i: int) -> Self:
+        """Append previous state to the path history."""
+        if i <= len(self.paths) - 1:
+            self.paths.append(self.paths[-(1 + i)])
+        else:
+            self.paths.append(Path())
         return self
 
     @property
@@ -228,7 +238,7 @@ def csvit[**P](
                 df.to_csv(pth, index=_index)
                 print(f"Data saved at {pth}")
             case "read":
-                pth: Path = io.cwd / ".".join((fname, "npy"))
+                pth: Path = io.cwd / ".".join((fname, "csv"))
                 df = pd.read_csv(pth)
                 assert isinstance(pd, DataFrame)
                 if callback is not None:
@@ -238,6 +248,41 @@ def csvit[**P](
                     df = df.set_index(index)
                 print(f"Data read from {pth}")
         return df
+
+    return f_wrapped
+
+
+def netcdfit[**P](
+    f: Callable[P, Dataset],
+    io: IO,
+    mode: Literal["calc", "calcsave", "read"] = "calc",
+    fname: str = "Untitled",
+    lazy: bool = False,
+    auto_complex: bool = True,
+    callback: Callable[[Dataset], Dataset] | None = None,
+) -> Callable[P, Dataset]:
+    """Wrap computation to perform saving to/reading from NetCDF file."""
+
+    @wraps(f)
+    def f_wrapped(*args: P.args, **kwargs: P.kwargs) -> Dataset:
+        match mode:
+            case "calc":
+                ds = f(*args, **kwargs)
+            case "calcsave":
+                ds = f(*args, **kwargs)
+                pth: Path = io.cwd / ".".join((fname, "nc"))
+                pth.parent.mkdir(parents=True, exist_ok=True)
+                if not lazy:
+                    ds.load()
+                ds.to_netcdf(pth, auto_complex=auto_complex)
+                print(f"Data saved at {pth}")
+            case "read":
+                pth: Path = io.cwd / ".".join((fname, "nc"))
+                ds = xr.open_dataset(pth, auto_complex=auto_complex)
+                if callback is not None:
+                    ds = callback(ds)
+                print(f"Data read from {pth}")
+        return ds
 
     return f_wrapped
 

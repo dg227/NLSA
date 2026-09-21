@@ -77,9 +77,12 @@ class Experiment(StrEnum):
     NINO34_FROM_ERA5_NINO34SST = auto()
     """Prediction of the Nino 3.4 index from ERA5 Nino 3.4 SST."""
 
+    ELNINO_2027_FROM_ERA5_NINO34SST = auto()
+    """Prediction of the 2026-27 super El Nino from ERA5 Nino 3.4 SST."""
 
-EXPERIMENT: Experiment = Experiment.NINO34_FROM_ERA5_NINO34SST
-IDX_GPU: int | Sequence[int] | None = 0  # 0
+
+EXPERIMENT: Experiment = Experiment.ELNINO_2027_FROM_ERA5_NINO34SST
+IDX_GPU: int | Sequence[int] | None = 0
 XLA_MEM_FRACTION: str | None = "0.95"
 JAX_CACHE_DIR: str | None = "jax_cache"
 FP: Literal["f32", "f64"] = "f32"
@@ -89,11 +92,9 @@ KERNEL_NORMALIZATION: Literal["diffusion_maps", "bistochastic"] = (
     "diffusion_maps"
 )
 MATPLOTLIB_BACKEND: Literal["Agg"] | None = None
-ERA5_DAILY_DATA_DIR = "/storage/data/era5/daily"
-ERA5_MONTHLY_DATA_DIR = "/storage/data/era5/month_nc_1940_2025"
 OUTPUT_DATA_DIR = "examples/enso/data"
 NUM_TABULATE = 40
-EXTRACT_DATA_MODE: Literal["calc", "calcsave", "read"] = "calcsave"
+EXTRACT_DATA_MODE: Literal["calc", "calcsave", "read"] = "read"
 TUNE_KERNEL_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KERNEL_EIGEN_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KERNEL_PROJECTION_MODE: Literal["calc", "calcsave", "read"] = "calc"
@@ -101,7 +102,7 @@ KAF_EXPANSION_COEFFS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 KAF_PREDS_MODE: Literal["calc", "calcsave", "read"] = "calc"
 SKILL_SCORES_MODE: Literal["calc", "calcsave", "read"] = "calc"
 PLOT_MODE: Literal["save", "show", "saveshow"] | None = "show"
-WHICH_PLOTS: set[Plots] = {"kernel_modes"}
+WHICH_PLOTS: set[Plots] = {"running_pred", "pred_timeseries", "skill_scores"}
 DELAY_PLOT_MODE: Literal["backward", "central"] = "central"
 PLT_DATE_RANGE: tuple[str, str] | None = None
 KERNEL_EIGS_PLT: Sequence[int] | Literal["interactive"] | None = "interactive"
@@ -256,7 +257,6 @@ class CommonPars(TypedDict):
     velocity_covariate: bool
     velocity_fd_order: Literal[2, 4, 6, 8] | None
     num_before: int
-    num_after: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,7 +299,8 @@ def from_experiment(
         case Experiment.NINO34_FROM_ERA5_NINO34SST:
             cone_pars = ConePars(zeta=0.99) if cone_kernel else None
             era5_io = era5.IO(
-                input_path=ERA5_MONTHLY_DATA_DIR, file_format="nc"
+                input_path="/storage/data/era5/monthly_1940-2025_nc",
+                file_format="nc",
             )
             time_sampling = "monthly"
             fd_order = 4
@@ -313,7 +314,6 @@ def from_experiment(
                 if cone_pars is not None
                 else None,
                 "num_before": 0,
-                "num_after": num_pred_steps,
             }
             climatology_date_range = train_date_range
             covariate_rolling_window = None
@@ -410,6 +410,197 @@ def from_experiment(
             train_data_pars = DataPars(
                 covariate=Covariate(specs=train_covariate_specs),
                 response=Response(specs=train_response_specs),
+                **common_pars,
+            )
+            test_data_pars = DataPars(
+                covariate=Covariate(specs=test_covariate_specs),
+                response=Response(specs=test_response_specs),
+                **common_pars,
+            )
+            bw_tune_pars = TunePars(
+                manifold_dim=None,
+                num_bandwidths=128,
+                log10_bandwidth_lims=(-3, 3),
+                bandwidth_scl=1,
+            )
+            if cone_pars is not None:
+                tune_pars = TunePars(
+                    manifold_dim=None,
+                    num_bandwidths=128,
+                    log10_bandwidth_lims=(-3, 3),
+                    bandwidth_scl=2,
+                )
+            else:
+                tune_pars = TunePars(
+                    manifold_dim=None,
+                    num_bandwidths=128,
+                    log10_bandwidth_lims=(-3, 3),
+                    bandwidth_scl=1,
+                )
+            match kernel_normalization:
+                case "diffusion_maps":
+                    kernel_pars = DmKernelPars(
+                        normalization="fokkerplanck",
+                        eigensolver="eigh",
+                        num_eigs=512,
+                    )
+                case "bistochastic":
+                    kernel_pars = BsKernelPars(
+                        eigensolver="svd",
+                        num_eigs=512,
+                    )
+            pred_pars = PredPars(
+                dt=1, which_eigs=512, num_steps=num_pred_steps
+            )
+            kernel_projection_pars = ProjectionPars(
+                data=projection_specs,
+                time_origin=train_data_pars.delay_embedding_center,
+                which_pcs=[0, 1, 2, 3],
+                lead_steps=0,
+            )
+            if len(jax_env.devices) > 1:
+                sharder = NamedSharder(
+                    devices=jax_env.devices,
+                    shape=(len(jax_env.devices),),
+                    axis_names=("x"),
+                )
+                x_sharding = sharder.sharding("x")
+                replicating = sharder.sharding(None)
+                l2_shardings = L2FnAlgebraShardings(
+                    data=x_sharding, vectors=x_sharding
+                )
+                l2_tst_shardings = L2FnAlgebraShardings(
+                    data=replicating, vectors=replicating
+                )
+                kernel_eigen_shardings = KernelEigenShardings(
+                    eigenvalues=replicating,
+                    eigenvectors=x_sharding,
+                    weights=x_sharding,
+                )
+                train_shardings = TrainShardings(
+                    l2=l2_shardings,
+                    kernel_eigen=kernel_eigen_shardings,
+                )
+                test_shardings = TestShardings(l2=l2_tst_shardings)
+            else:
+                train_shardings = TrainShardings()
+                test_shardings = TestShardings()
+            shardings = Shardings(train=train_shardings, test=test_shardings)
+        case Experiment.ELNINO_2027_FROM_ERA5_NINO34SST:
+            cone_pars = ConePars(zeta=0.99) if cone_kernel else None
+            era5_io = era5.IO(
+                input_path="/storage/data/era5/monthly_1940-202608_nc",
+                file_format="nc",
+            )
+            time_sampling = "monthly"
+            fd_order = 4
+            num_pred_steps = 24
+            train_date_range = ("1940-01-01", "2026-08-31")
+            test_date_range = ("2009-01-01", "2026-08-31")
+            common_pars: CommonPars = {
+                "num_half_delays": 6,
+                "velocity_covariate": True if cone_pars is not None else False,
+                "velocity_fd_order": fd_order
+                if cone_pars is not None
+                else None,
+                "num_before": 0,
+            }
+            climatology_date_range = train_date_range
+            covariate_rolling_window = None
+            covariate_rolling_mode = "center"
+            train_covariate_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=covariate_rolling_window,
+                rolling_mode=covariate_rolling_mode,
+            )
+            test_covariate_time = Time(
+                date_range=test_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=covariate_rolling_window,
+                rolling_mode=covariate_rolling_mode,
+            )
+            covariate_climatology = Climatology(remove=False, standardize=True)
+            covariate_vars = [era5.Var.SST]
+            covariate_domain = era5.nino34_domain(step_lon=4, step_lat=4)
+            projection_rolling_window = None
+            projection_rolling_mode = "center"
+            projection_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                custom_climatology_date_range=climatology_date_range,
+                rolling_window=projection_rolling_window,
+                rolling_mode=projection_rolling_mode,
+            )
+            projection_climatology = Climatology(
+                remove=False, standardize=False
+            )
+            projection_vars = [era5.Var.SST]
+            projection_domain = era5.global_domain(step_lon=4, step_lat=4)
+            response_rolling_window = None
+            response_rolling_mode = "center"
+            train_response_time = Time(
+                date_range=train_date_range,
+                sampling=time_sampling,
+                rolling_window=response_rolling_window,
+                rolling_mode=response_rolling_mode,
+                custom_climatology_date_range=climatology_date_range,
+            )
+            test_response_time = Time(
+                date_range=test_date_range,
+                sampling=time_sampling,
+                rolling_window=response_rolling_window,
+                rolling_mode=response_rolling_mode,
+                custom_climatology_date_range=climatology_date_range,
+            )
+            response_climatology = Climatology(remove=True, standardize=False)
+            response_var = era5.Var.SST
+            response_domain = era5.nino34_domain(sampling="area_averaged")
+            train_covariate_specs = (
+                era5.DataSpecs(
+                    vars=covariate_vars,
+                    domain=covariate_domain,
+                    time=train_covariate_time,
+                    io=era5_io,
+                    climatology=covariate_climatology,
+                ),
+            )
+            projection_specs = era5.DataSpecs(
+                vars=projection_vars,
+                domain=projection_domain,
+                time=projection_time,
+                io=era5_io,
+                climatology=projection_climatology,
+            )
+            train_response_specs = era5.DataSpecs(
+                vars=[response_var],
+                domain=response_domain,
+                time=train_response_time,
+                io=era5_io,
+                climatology=response_climatology,
+            )
+            test_covariate_specs = (
+                era5.DataSpecs(
+                    vars=covariate_vars,
+                    domain=covariate_domain,
+                    time=test_covariate_time,
+                    io=era5_io,
+                    climatology=covariate_climatology,
+                ),
+            )
+            test_response_specs = era5.DataSpecs(
+                vars=[response_var],
+                domain=response_domain,
+                time=test_response_time,
+                io=era5_io,
+                climatology=response_climatology,
+            )
+            train_data_pars = DataPars(
+                covariate=Covariate(specs=train_covariate_specs),
+                response=Response(specs=train_response_specs),
+                num_after=num_pred_steps,
                 **common_pars,
             )
             test_data_pars = DataPars(

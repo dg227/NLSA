@@ -23,5 +23,10 @@ Development of the NLSA Python library is funded by the U.S. Environmental Secur
 
 ### Extraction and forecasting of the El Nino Southern Oscillation (ENSO)
 
-![Koopman ENSO mode](Python/examples/enso/images/kooopman_diffusion_regularization_kaf/ENSO_FROM_ERA5_IPSST/ip_sst_koopman_mode15_enso.png)
-*Koopman ENSO mode. Generated using [`Python/examples/enso/koopman_diffusion_regularization_kaf.py`](Python/examples/enso/koopman_diffusion_regularization_kaf.py)*
+![Koopman ENSO mode](Python/examples/enso/images/koopman_diffusion_regularization_kaf/ENSO_FROM_ERA5_IPSST/ip_sst_koopman_mode15_enso.png)
+
+*Above: Koopman ENSO mode. Generated using [`Python/examples/enso/koopman_diffusion_regularization_kaf.py`](Python/examples/enso/koopman_diffusion_regularization_kaf.py).*
+
+![2026/27 super El Nino forecast](Python/examples/enso/images/kernel_analog_forecasting/ELNINO_2027_FROM_ERA5_NINO34SST/kaf_nino34_init2026-06-01.png)
+
+*Above: Kernel analog forecast (KAF) of the Nino 3.4 index using sea surface temperature (SST) fields in the Nino 3.4 index as predictors. The forecast was initialized in June 1, 2026. It predicts a strong El Nino event peaking in December 2026, witn ENSO-neutral conditions returning around May 2027 and persisting through the end of the forecast interval in June 2028. Generated using [`Python/examples/enso/kernel_analog_forecasting.py`](Python/examples/enso/kernel_analog_forecasting.py).*  

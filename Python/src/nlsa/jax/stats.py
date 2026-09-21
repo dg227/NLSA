@@ -61,14 +61,16 @@ def make_von_mises_density(
 
 def normalized_rmse(xs_true: Xs, xs_pred: Xs) -> R:
     """Compute normalized root mean square error."""
-    nmse = jnp.sum((xs_true - xs_pred) ** 2) / jnp.sum(xs_true**2)
+    num_true = len(xs_true)
+    nmse = jnp.sum((xs_true - xs_pred[:num_true]) ** 2) / jnp.sum(xs_true**2)
     return jnp.sqrt(nmse)
 
 
 def anomaly_correlation_coefficient(xs_true: Xs, xs_pred: Xs) -> R:
     """Compute anomaly correlation coefficient."""
+    num_true = len(xs_true)
     anom_true = xs_true - jnp.mean(xs_true)
-    anom_pred = xs_pred - jnp.mean(xs_pred)
+    anom_pred = xs_pred[:num_true] - jnp.mean(xs_pred[:num_true])
     sqnorm_true = jnp.sum(anom_true**2)
     sqnorm_pred = jnp.sum(anom_pred**2)
     return jnp.sum(anom_true * anom_pred) / jnp.sqrt(sqnorm_true * sqnorm_pred)

@@ -255,3 +255,20 @@ def indo_pacific_domain[S: SpaceSampling](
         step_lat=step_lat,
         sampling=sampling,
     )
+
+
+def global_domain[S: SpaceSampling](
+    sampling: S = "pointwise",
+    step_lon: int | None = None,
+    step_lat: int | None = None,
+) -> Domain[S]:
+    """ERA5 global domain."""
+    return Domain(
+        min_lon=0,
+        max_lon=360,
+        step_lon=step_lon,
+        min_lat=-90,
+        max_lat=90,
+        step_lat=step_lat,
+        sampling=sampling,
+    )

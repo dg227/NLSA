@@ -1,5 +1,8 @@
 """Computation and plotting functions for general climate data."""
 
+from __future__ import annotations
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import nlsa.jax.delays as dl
 import jax.numpy as jnp
 import matplotlib.figure as mpf
@@ -12,7 +15,7 @@ import nlsa.jax.koopman as koop
 import nlsa.jax.stats as stats
 import nlsa.jax.vector_algebra as vec
 import numpy as np
-import os
+import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 from collections.abc import Callable, Iterator, Sequence
@@ -33,7 +36,10 @@ from nlsa.jax.vector_algebra import (
     L2VectorAlgebra,
 )
 from nlsa.koopman import ImplementsKoopmanEigenbasis
+from nlsa.utils import print_sel
 from nlsa_models.core import (
+    ALL as ALL,
+    DEFAULT as DEFAULT,
     JaxEnv as JaxEnv,
     Matrix,
     NPMatrix,
@@ -42,6 +48,8 @@ from nlsa_models.core import (
     Vector,
     initialize_jax as initialize_jax,
     initialize_matplotlib as initialize_matplotlib,
+    is_npmatrix,
+    is_npvector,
     to_skill_scores as to_skill_scores,
 )
 from pandas import DataFrame, DatetimeIndex, Series
@@ -56,7 +64,7 @@ from typing import (
     assert_never,
     runtime_checkable,
 )
-from xarray import Dataset
+from xarray import Dataset, DataArray
 
 if TYPE_CHECKING:
     type Device = Any
@@ -407,10 +415,10 @@ class DataPars[T: TimeSampling]:
     """Dataclass containing training and test data parameter values."""
 
     covariate: Covariate[T]
-    """Covariate function."""
+    """Covariate data."""
 
     response: Response[T]
-    """Response function."""
+    """Response data."""
 
     num_half_delays: int = 0
     """Half number of delays (to ensure even two-sided embedding window)."""
@@ -540,18 +548,61 @@ class DataPars[T: TimeSampling]:
             print(table)
         return table
 
-    def to_datetime_index(self) -> DatetimeIndex:
+    def to_datetime_index(self, num_after: int = 0) -> DatetimeIndex:
         """Get DatetimeIndex associated with DataPars object."""
         match self.covariate.specs[0].time_sampling:
             case "daily":
                 freq = "D"
+                offset = pd.DateOffset(days=num_after)
             case "monthly":
                 freq = "MS"
+                offset = pd.DateOffset(months=num_after)
+        end = pd.to_datetime(self.covariate.specs[0].date_range[1]) + offset
         return pd.date_range(
             start=self.covariate.specs[0].date_range[0],
-            end=self.covariate.specs[0].date_range[1],
+            end=end,
             freq=freq,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectionPars[T: TimeSampling]:
+    """Dataclass containing projection parameters onto principal components."""
+
+    data: ImplementsGriddedDataSpecs[T, SpaceSampling, Dataset]
+    """Projected data."""
+
+    # TODO: Consider typing which_pcs as SupportsIndex | SliceItem
+    which_pcs: int | slice | Sequence[int] = slice(None)
+    """Principal component indices."""
+
+    time_origin: str | int = 0
+    """Time origin for projection."""
+
+    lead_steps: int | Sequence[int] = 0
+    """Lead steps."""
+
+    def __str__(self) -> str:
+        """Create string representation of projection parameters."""
+        return "_".join(
+            (
+                f"pcs{print_sel(self.which_pcs)}",
+                f"origin{self.time_origin}",
+                f"steps{print_sel(self.lead_steps)}",
+            )
+        )
+
+    def tabulate(self, name: str = "ProjectionPars", show: bool = True) -> str:
+        """Create tabulated summary of the properties of a DataPars object."""
+        headers = [name, "Property Value"]
+        data = {
+            "Principal components": self.which_pcs,
+            "Lead steps": self.lead_steps,
+        }
+        table = tabulate(data.items(), headers=headers)
+        if show:
+            print(table)
+        return table
 
 
 class Data(NamedTuple):
@@ -616,10 +667,10 @@ def read_gridded_dataset[T: TimeSampling](
         case str() | Path(), None:
             pth = Path(specs.input_path)
         case str() | Path(), str():
-            pth = Path(specs.input_path) / ("*." + specs.file_format)
+            pth = list(Path(specs.input_path).glob("*." + specs.file_format))
 
     ds_in = (
-        xr.open_mfdataset(os.fspath(pth), parallel=True, chunks="auto")
+        xr.open_mfdataset(pth, parallel=True, chunks="auto")
         .unify_chunks()
         .sortby("latitude")
         .sel(
@@ -1345,6 +1396,190 @@ def compute_skill_scores[T: TimeSampling](
     return scores
 
 
+def project_ndarray[
+    NSamples: tuple[int, *tuple[int, ...]],
+    NXs: tuple[int, ...],
+    M: int,
+    D: np.dtype[np.floating[Any]],
+](
+    arr: np.ndarray[tuple[*NSamples, *NXs], D],
+    pcs: np.ndarray[tuple[M, *NSamples], D],
+    weights: np.ndarray[tuple[*NSamples], D] | None = None,
+    axes: int | tuple[int, *tuple[int, ...]] = -1,
+) -> np.ndarray[tuple[M, *NXs], D]:
+    """Project data array onto principal components."""
+    _pcs: np.ndarray[tuple[M, *NSamples], D]
+    if weights is not None:
+        _pcs = pcs * weights
+    else:
+        _pcs = pcs
+    p = np.tensordot(_pcs, arr, axes=(axes, axes))
+    return np.moveaxis(p, 0, -1)
+
+
+def _project_data_array[
+    NSamples: tuple[int, *tuple[int, ...]],
+    M: int,
+    D: np.dtype[np.floating[Any]],
+](
+    da: DataArray,
+    pcs: np.ndarray[tuple[M, *NSamples], D],
+    weights: np.ndarray[tuple[*NSamples], D] | None = None,
+    projection_dims: str | Sequence[str] | None = None,
+    pc_projection_axes: int | tuple[int, *tuple[int, ...]] | None = None,
+    time_dim: str = "time",
+    pc_time_axis: int = -1,
+    time_origin: str | int = 0,
+    data_lead_steps: int = 0,
+) -> DataArray:
+    """Project data array onto principal components.
+
+    data_lead_steps represents the number of time steps that the data array
+    _leads_ the principal components array.
+    """
+    num_samples = pcs.shape[pc_time_axis]
+    match projection_dims:
+        case None:
+            _projection_dims = [time_dim]
+        case str():
+            _projection_dims = [projection_dims]
+        case _:
+            _projection_dims = list(projection_dims)
+    broadcast_dims = [str(d) for d in da.dims if d not in _projection_dims]
+    match pc_projection_axes:
+        case None:
+            _pc_projection_axes = np.arange(-len(_projection_dims), 0)
+        case _:
+            _pc_projection_axes = pc_projection_axes
+    match time_origin:
+        case str():
+            start_idx = da.get_index(time_dim).get_loc(time_origin)
+            assert isinstance(start_idx, int)
+        case int():
+            start_idx = time_origin
+    da_prepared = (
+        da.shift({time_dim: data_lead_steps})
+        .isel({time_dim: slice(start_idx, start_idx + num_samples)})
+        .transpose(*(broadcast_dims + _projection_dims))
+        .chunk({dim: -1 for dim in _projection_dims})
+    )
+    assert isinstance(da_prepared, DataArray)
+    da_projected = xr.apply_ufunc(
+        project_ndarray,
+        da_prepared,
+        kwargs={"pcs": pcs, "weights": weights, "axes": _pc_projection_axes},
+        input_core_dims=[_projection_dims],
+        output_core_dims=[["mode"]],
+        vectorize=False,
+        dask="parallelized",
+        output_dtypes=[pcs.dtype],
+        dask_gufunc_kwargs={"output_sizes": {"mode": pcs.shape[0]}},
+    )
+    assert isinstance(da_projected, DataArray)
+    return da_projected.assign_coords(mode=np.arange(pcs.shape[0]))
+
+
+def project_data_array[
+    NSamples: tuple[int, *tuple[int, ...]],
+    M: int,
+    D: np.dtype[np.floating[Any]],
+](
+    da: DataArray,
+    pcs: np.ndarray[tuple[M, *NSamples], D],
+    weights: np.ndarray[tuple[*NSamples], D] | None = None,
+    projection_dims: str | Sequence[str] | None = None,
+    pc_projection_axes: int | tuple[int, *tuple[int, ...]] | None = None,
+    time_dim: str = "time",
+    pc_time_axis: int = -1,
+    time_origin: str | int = 0,
+    data_lead_steps: int | Sequence[int] = 0,
+) -> DataArray:
+    """Project data array onto principal components.
+
+    This function accepts multiple leads and creates a new dimension to store
+    the projected data for each lead.
+    """
+    leads = (
+        [data_lead_steps]
+        if isinstance(data_lead_steps, int)
+        else data_lead_steps
+    )
+    da_leads = [
+        _project_data_array(
+            da,
+            pcs,
+            weights,
+            projection_dims,
+            pc_projection_axes,
+            time_dim,
+            pc_time_axis,
+            time_origin,
+            lead,
+        )
+        for lead in leads
+    ]
+    return xr.concat(da_leads, dim="lead").assign_coords({"lead": leads})
+
+
+def project_dataset[
+    NSamples: tuple[int, *tuple[int, ...]],
+    M: int,
+    D: np.dtype[np.floating[Any]],
+](
+    ds: Dataset,
+    pcs: np.ndarray[tuple[M, *NSamples], D],
+    weights: np.ndarray[tuple[*NSamples], D] | None = None,
+    projection_dims: str | Sequence[str] | None = None,
+    pc_projection_axes: int | tuple[int, *tuple[int, ...]] | None = None,
+    time_dim: str = "time",
+    pc_time_axis: int = -1,
+    time_origin: str | int = 0,
+    data_lead_steps: int | Sequence[int] = 0,
+    variables: list[str] | None = None,
+) -> Dataset:
+    """Project dataset onto principal components.
+
+    data_lead_steps represents the number of time steps that the data array
+    _leads_ the principal components array.
+    """
+    if variables is not None:
+        ds_target = ds[variables]
+    else:
+        ds_target = ds
+    da_projected = project_data_array(
+        ds_target.to_array(dim="variable"),
+        pcs,
+        weights,
+        projection_dims,
+        pc_projection_axes,
+        time_dim,
+        pc_time_axis,
+        time_origin,
+        data_lead_steps,
+    )
+    return da_projected.to_dataset(dim="variable")
+
+
+def compute_eigenfunction_projections[T: TimeSampling](
+    projection_pars: ProjectionPars[T],
+    pcs: npt.ArrayLike | Array,
+    weights: npt.ArrayLike | Array = float(1),
+) -> Dataset:
+    """Compute projections of gridded data onto eigenfunctions."""
+    matrix_pcs = np.atleast_2d(np.asarray(pcs)[projection_pars.which_pcs])
+    assert is_npmatrix(matrix_pcs)
+    vector_weights = np.atleast_1d(np.asarray(weights))
+    assert is_npvector(vector_weights)
+    ds = read_gridded_dataset(projection_pars.data)
+    return project_dataset(
+        ds,
+        matrix_pcs,
+        vector_weights,
+        time_origin=projection_pars.time_origin,
+        data_lead_steps=projection_pars.lead_steps,
+    )
+
+
 def plot_bandwidth_function[T: TimeSampling](
     data_pars: DataPars[T],
     impl_l2y: Callable[[Data], alg.ImplementsL2FnAlgebra[Yd, R, V, R]],
@@ -1588,7 +1823,7 @@ def make_kernel_evecs_plotter[T: TimeSampling](
     else:
         i0_tst, i1_tst, j0_tst, j1_tst = None, None, None, None
 
-    def plot_eig(k: int):
+    def plot_eig(k: int) -> None:
         evec = kernel_eigen.evecs[k]
         if test_data is not None:
             match train_data, test_data:
@@ -1666,21 +1901,21 @@ def make_koopman_evecs_plotter[T: TimeSampling, D: DTypeLike, L: int](
 ) -> tuple[Figure, Callable[[int], None]]:
     """Make plotting function for Koopman eigenfunctions."""
     data_pars, kernel_pars, koopman_pars = pars
-    match koopman_pars.which_eigs_galerkin:
-        case int():
-            which_kernel_eigs = koopman_pars.which_eigs_galerkin + 1
-        case tuple():
-            which_kernel_eigs = [0] + list(
-                range(
-                    koopman_pars.which_eigs_galerkin[0],
-                    koopman_pars.which_eigs_galerkin[1] + 1,
-                )
-            )
-        case list():
-            which_kernel_eigs = [0] + koopman_pars.which_eigs_galerkin
+    # match koopman_pars.which_eigs_galerkin:
+    #     case int():
+    #         which_kernel_eigs = koopman_pars.which_eigs_galerkin + 1
+    #     case tuple():
+    #         which_kernel_eigs = [0] + list(
+    #             range(
+    #                 koopman_pars.which_eigs_galerkin[0],
+    #                 koopman_pars.which_eigs_galerkin[1] + 1,
+    #             )
+    #         )
+    #     case list():
+    #         which_kernel_eigs = [0] + koopman_pars.which_eigs_galerkin
     if kernel is not None:
         impl_kernel_basis = knl.make_data_driven_eigenbasis(
-            kernel_pars, impl_l2, kernel, which_kernel_eigs
+            kernel_pars, impl_l2, kernel, koopman_pars.which_kernel_eigs
         )
         impl_koopman_basis = koop.make_data_driven_eigenbasis(
             koopman_pars, c_l, impl_kernel_basis
@@ -1771,7 +2006,9 @@ def make_koopman_evecs_plotter[T: TimeSampling, D: DTypeLike, L: int](
             ax.cla()
         evec = (
             koopman_eigen.evec_coeffs[k]
-            @ knl.slice_eigen(kernel_eigen, which_kernel_eigs).evecs
+            @ knl.slice_eigen(
+                kernel_eigen, koopman_pars.which_kernel_eigs
+            ).evecs
         )
         if test_data is not None:
             match train_data, test_data:
@@ -2089,36 +2326,45 @@ def make_running_pred_plotter[T: TimeSampling](
         constrained_layout=True,
     )
 
+    # In what follows, i0 and i1 represent time indices in test_data.
+    # j0 and j1 represent time indices in preds
+    num_total_tst_samples = len(test_data.response)
+    i0_dl = test_data_pars.delay_embedding_end
+    if plt_date_range_tst is not None:
+        match test_data_pars.time_sampling:
+            case "daily":
+                freq_str = "D"
+            case "monthly":
+                freq_str = "M"
+        plt_periods_tst = pd.period_range(
+            start=plt_date_range_tst[0],
+            end=plt_date_range_tst[1],
+            freq=freq_str,
+        )
+        i0_periods = pd.period_range(
+            start=test_data_pars.to_datetime_index()[0],
+            end=plt_date_range_tst[0],
+            freq=freq_str,
+        )
+        num_plt_tst = len(plt_periods_tst)
+        i0 = i0_dl + len(i0_periods)
+    else:
+        num_plt_tst = test_data_pars.num_samples
+        i0 = i0_dl
+    i1 = i0 + num_plt_tst
+    j0 = i0 - test_data_pars.delay_embedding_end
+    j1 = j0 + num_plt_tst
+
     def plot_pred(i_step: int):
-        i0_dl_tst = test_data_pars.delay_embedding_end
-        if plt_date_range_tst is not None:
-            match test_data_pars.time_sampling:
-                case "daily":
-                    freq_str = "D"
-                case "monthly":
-                    freq_str = "M"
-            plt_periods_tst = pd.period_range(
-                start=plt_date_range_tst[0],
-                end=plt_date_range_tst[1],
-                freq=freq_str,
-            )
-            i0_periods_tst = pd.period_range(
-                start=test_data_pars.to_datetime_index()[0],
-                end=plt_date_range_tst[0],
-                freq=freq_str,
-            )
-            num_plt_tst = len(plt_periods_tst)
-            i0_tst = i0_dl_tst + len(i0_periods_tst)
-        else:
-            num_plt_tst = test_data_pars.num_samples
-            i0_tst = i0_dl_tst
-        i1_tst = i0_tst + num_plt_tst
-        i0_pred = i0_tst + i_step
-        i1_pred = i1_tst + i_step
-        j0_tst = i0_tst - test_data_pars.delay_embedding_end
-        j1_tst = i1_tst - test_data_pars.delay_embedding_end
+        i0_pred = i0 + i_step
+        i1_pred = i1 + i_step
+        i1_pred_trunc = min(i1_pred, num_total_tst_samples)
+        num_plt_pred = i1_pred_trunc - i0_pred
+        j1_trunc = j0 + num_plt_pred
+
         err = (
-            preds[j0_tst:j1_tst, i_step] - test_data.response[i0_pred:i1_pred]
+            preds[j0:j1_trunc, i_step]
+            - test_data.response[i0_pred:i1_pred_trunc]
         )
         for ax in axs:
             ax.cla()
@@ -2130,14 +2376,16 @@ def make_running_pred_plotter[T: TimeSampling](
             case "monthly":
                 timestep_str = "months"
         ax.plot(
-            test_data_pars.to_datetime_index()[i0_tst:i1_tst:plt_step_tst],
-            test_data.response[i0_pred:i1_pred:plt_step_tst],
+            test_data_pars.to_datetime_index()[i0:i1_pred_trunc:plt_step_tst],
+            test_data.response[i0:i1_pred_trunc:plt_step_tst],
             "-",
             label="True",
         )
         ax.plot(
-            test_data_pars.to_datetime_index()[i0_tst:i1_tst:plt_step_tst],
-            preds[j0_tst:j1_tst:plt_step_tst, i_step],
+            test_data_pars.to_datetime_index(num_after=i_step)[
+                i0_pred:i1_pred:plt_step_tst
+            ],
+            preds[j0:j1:plt_step_tst, i_step],
             "-",
             label="Prediction",
         )
@@ -2149,7 +2397,9 @@ def make_running_pred_plotter[T: TimeSampling](
 
         ax = axs[1]
         ax.plot(
-            test_data_pars.to_datetime_index()[i0_tst:i1_tst:plt_step_tst],
+            test_data_pars.to_datetime_index()[
+                i0_pred:i1_pred_trunc:plt_step_tst
+            ],
             err[::plt_step_tst],
             "-",
         )
@@ -2170,6 +2420,7 @@ def make_pred_timeseries_plotter[T: TimeSampling](
     if plt.fignum_exists(i_fig):
         plt.close(i_fig)
     fig, ax = plt.subplots(num=i_fig, constrained_layout=True)
+    num_total_tst_samples = len(test_data.response)
     num_pred_steps = preds.shape[1] - 1
     ts = jnp.arange(num_pred_steps + 1)
     match test_data_pars.time_sampling:
@@ -2181,9 +2432,16 @@ def make_pred_timeseries_plotter[T: TimeSampling](
     def plot_pred(i_init: int):
         i0_tst = test_data_pars.delay_embedding_end + i_init
         i1_tst = i0_tst + num_pred_steps + 1
+        i1_tst_trunc = min(i1_tst, num_total_tst_samples)
+        num_plt_tst = i1_tst_trunc - i0_tst
         init_timestamp = test_data_pars.to_datetime_index()[i0_tst]
         ax.cla()
-        ax.plot(ts, test_data.response[i0_tst:i1_tst], "o-", label="True")
+        ax.plot(
+            ts[:num_plt_tst],
+            test_data.response[i0_tst:i1_tst_trunc],
+            "o-",
+            label="True",
+        )
         ax.plot(ts, preds[i_init, :], "o-", label="Prediction")
         ax.grid()
         ax.legend()
@@ -2221,3 +2479,365 @@ def plot_forecast_skill_scores[T: TimeSampling](
             ax.set_xlabel(f"Lead time ({timestep_str})")
         ax.set_ylabel(label)
     return fig
+
+
+def make_2d_mode_plotter_with_leads_real(
+    ds: Dataset,
+    vars: str | Sequence[str] | None = None,
+    ocean_only_vars: str | Sequence[str] | None = None,
+    leads: int
+    | slice[int | None, int | None, int | None]
+    | Sequence[int] = slice(None),
+    mode_dim: str = "mode",
+    lead_dim: str = "lead",
+    spatial_dims: tuple[str, str] = ("longitude", "latitude"),
+    fig_num: int = 1,
+    width_per_var: float = 4.0,
+) -> tuple[Figure, Callable[[int], None]]:
+    """Make plotting function for 2D modes."""
+    match ocean_only_vars:
+        case None:
+            ocean_only_vars_seq = []
+        case str():
+            ocean_only_vars_seq = [ocean_only_vars]
+        case _:
+            ocean_only_vars_seq = ocean_only_vars
+    if isinstance(vars, str):
+        ds = ds[[vars]]
+    elif isinstance(vars, Sequence):
+        ds = ds[list(vars)]
+    ds = ds.sel({lead_dim: leads})
+    num_vars = len(ds)
+    num_leads = ds.sizes[lead_dim]
+    map_proj = ccrs.PlateCarree(central_longitude=0)
+
+    # Spatial bounds
+    lon_name, lat_name = spatial_dims[0], spatial_dims[1]
+    min_lon, max_lon = float(ds[lon_name].min()), float(ds[lon_name].max())
+    min_lat, max_lat = float(ds[lat_name].min()), float(ds[lat_name].max())
+    local_extent = [min_lon, max_lon, min_lat, max_lat]
+
+    # Dynamic aspect ratio calculation
+    lon_range = max_lon - min_lon
+    lat_range = max_lat - min_lat
+    geo_aspect_ratio = lat_range / lon_range if lon_range > 0 else 1
+    height_per_lead = width_per_var * geo_aspect_ratio
+
+    # Set up figure canvas
+    if plt.fignum_exists(fig_num):
+        plt.close(fig_num)
+    fig = plt.figure(
+        num=fig_num,
+        figsize=(width_per_var * num_vars, height_per_lead * num_leads + 1.0),
+    )
+    axs = fig.subplots(
+        num_leads,
+        num_vars,
+        squeeze=False,
+        subplot_kw={"projection": map_proj},
+    )
+    fig.subplots_adjust(
+        left=0.15, right=0.92, top=0.88, bottom=0.12, hspace=0.08, wspace=0.05
+    )
+    fig.canvas.draw()
+
+    # Pre-build standalone horizontal colorbars
+    column_cbar_axs = []
+    for c in range(num_vars):
+        bottom_ax = axs[num_leads - 1, c]
+        bbox = bottom_ax.get_position()
+        cbar_pos = [
+            bbox.x0 + bbox.width * 0.05,
+            bbox.y0 - 0.07,
+            bbox.width * 0.9,
+            0.015,
+        ]
+        cax = fig.add_axes(cbar_pos)
+        column_cbar_axs.append(cax)
+
+    def plot_mode(mode_idx: int) -> None:
+        fig.suptitle(f"Mode {mode_idx}", fontsize=14, weight="bold")
+
+        for c, var_name in enumerate(ds):
+            full_var_slice = ds[var_name].sel({mode_dim: mode_idx})
+
+            q_low, q_high = np.nanpercentile(full_var_slice.values, [2, 98])
+            vmax_val = max(abs(q_low), abs(q_high))
+            if vmax_val == 0 or np.isnan(vmax_val):
+                vmax_val = 1.0
+
+            shared_cax = column_cbar_axs[c]
+            shared_cax.clear()
+            shared_cax.tick_params(labelsize=7)
+
+            for r, lead_val in enumerate(ds[lead_dim].values):
+                data_slice = full_var_slice.sel({lead_dim: lead_val})
+                ax = axs[r, c]
+                ax.clear()
+                ax.set_aspect("equal")
+                ax.set_extent(local_extent, crs=ccrs.PlateCarree())
+                is_last_row = r == num_leads - 1
+
+                data_slice.plot(
+                    x=spatial_dims[0],
+                    y=spatial_dims[1],
+                    ax=ax,
+                    transform=ccrs.PlateCarree(),
+                    cmap="RdBu_r",
+                    center=0,
+                    vmin=-vmax_val,
+                    vmax=vmax_val,
+                    add_colorbar=is_last_row,
+                    add_labels=False,
+                    cbar_ax=shared_cax if is_last_row else None,
+                    cbar_kwargs={"orientation": "horizontal", "label": ""}
+                    if is_last_row
+                    else None,
+                )
+
+                if var_name in ocean_only_vars_seq:
+                    ax.add_feature(
+                        cfeature.LAND,
+                        facecolor="lightgray",
+                        edgecolor="none",
+                        zorder=2,
+                    )
+                ax.coastlines(
+                    resolution="110m", color="black", linewidth=0.8, zorder=3
+                )
+                gl = ax.gridlines(
+                    draw_labels=False, linewidth=0.5, color="gray", alpha=0.5
+                )
+                if c == 0:
+                    gl.left_labels = True
+                    ax.text(
+                        -0.16,
+                        0.5,
+                        f"Lead: {lead_val}",
+                        transform=ax.transAxes,
+                        va="center",
+                        ha="center",
+                        fontsize=9,
+                        rotation=90,
+                    )
+                if r == num_leads - 1:
+                    gl.bottom_labels = True
+                gl.xlabel_style = {"size": 9}
+                gl.ylabel_style = {"size": 9}
+                if r == 0:
+                    ax.set_title(var_name, fontsize=12)
+                else:
+                    ax.set_title("")
+
+        fig.canvas.draw_idle()
+
+    return fig, plot_mode
+
+
+def make_2d_mode_plotter_with_leads(
+    ds: Dataset,
+    vars: str | Sequence[str] | None = None,
+    ocean_only_vars: str | Sequence[str] | None = None,
+    leads: int
+    | slice[int | None, int | None, int | None]
+    | Sequence[int] = slice(None),
+    mode_dim: str = "mode",
+    lead_dim: str = "lead",
+    spatial_dims: tuple[str, str] = ("longitude", "latitude"),
+    fig_num: int = 1,
+    width_per_var: float = 4.0,
+) -> tuple[Figure, Callable[[int], None]]:
+    """Make plotting function for 2D modes. Optimized for lazy datasets and handles Complex EOF columns."""
+    match ocean_only_vars:
+        case None:
+            ocean_only_vars_seq = []
+        case str():
+            ocean_only_vars_seq = [ocean_only_vars]
+        case _:
+            ocean_only_vars_seq = ocean_only_vars
+
+    if isinstance(vars, str):
+        ds = ds[[vars]]
+    elif isinstance(vars, Sequence):
+        ds = ds[list(vars)]
+
+    # Slice first to keep the memory footprint minimal
+    ds = ds.sel({lead_dim: leads})
+
+    # Path A: Load only the sliced subset into memory exactly once
+    ds = ds.load()
+
+    # Metadata-only check for complex types (safe, fast, and now fully backed by in-memory data)
+    is_complex_dict = {
+        var_name: np.issubdtype(ds[var_name].dtype, np.complexfloating)
+        for var_name in ds
+    }
+
+    # Map out column distribution based on whether variables are complex
+    var_col_indices = {}
+    current_col = 0
+    for var_name in ds:
+        if is_complex_dict[var_name]:
+            var_col_indices[var_name] = (current_col, current_col + 1)
+            current_col += 2
+        else:
+            var_col_indices[var_name] = (current_col,)
+            current_col += 1
+
+    num_plot_cols = current_col  # Adjusted column size for figure setup
+    num_leads = ds.sizes[lead_dim]
+    map_proj = ccrs.PlateCarree(central_longitude=0)
+
+    # Spatial bounds
+    lon_name, lat_name = spatial_dims[0], spatial_dims[1]
+    min_lon, max_lon = float(ds[lon_name].min()), float(ds[lon_name].max())
+    min_lat, max_lat = float(ds[lat_name].min()), float(ds[lat_name].max())
+    local_extent = [min_lon, max_lon, min_lat, max_lat]
+
+    # Dynamic aspect ratio calculation
+    lon_range = max_lon - min_lon
+    lat_range = max_lat - min_lat
+    geo_aspect_ratio = lat_range / lon_range if lon_range > 0 else 1
+    height_per_lead = width_per_var * geo_aspect_ratio
+
+    # Set up figure canvas
+    if plt.fignum_exists(fig_num):
+        plt.close(fig_num)
+
+    fig = plt.figure(
+        num=fig_num,
+        figsize=(
+            width_per_var * num_plot_cols,
+            height_per_lead * num_leads + 1.0,
+        ),
+    )
+    axs = fig.subplots(
+        num_leads,
+        num_plot_cols,
+        squeeze=False,
+        subplot_kw={"projection": map_proj},
+    )
+    fig.subplots_adjust(
+        left=0.08, right=0.95, top=0.88, bottom=0.12, hspace=0.08, wspace=0.05
+    )
+    fig.canvas.draw()
+
+    # Pre-build standalone horizontal colorbars
+    column_cbar_axs = []
+    for c in range(num_plot_cols):
+        bottom_ax = axs[num_leads - 1, c]
+        bbox = bottom_ax.get_position()
+        cbar_pos = [
+            bbox.x0 + bbox.width * 0.05,
+            bbox.y0 - 0.07,
+            bbox.width * 0.9,
+            0.015,
+        ]
+        cax = fig.add_axes(cbar_pos)
+        column_cbar_axs.append(cax)
+
+    def plot_mode(mode_idx: int) -> None:
+        fig.suptitle(f"Mode {mode_idx}", fontsize=14, weight="bold")
+
+        for var_name in ds:
+            full_var_slice = ds[var_name].sel({mode_dim: mode_idx})
+            cols = var_col_indices[var_name]
+            is_complex = is_complex_dict[var_name]
+
+            # Build components to plot
+            parts = []
+            if is_complex:
+                parts.append(("Real", np.real(full_var_slice)))
+                parts.append(("Imag", np.imag(full_var_slice)))
+            else:
+                parts.append(("", full_var_slice))
+
+            for part_idx, (part_label, part_ds) in enumerate(parts):
+                c = cols[part_idx]
+
+                # Percentile on memory-loaded NumPy arrays is now fast
+                q_low, q_high = np.nanpercentile(part_ds.values, [2, 98])
+                vmax_val = max(abs(q_low), abs(q_high))
+                if vmax_val == 0 or np.isnan(vmax_val):
+                    vmax_val = 1
+
+                shared_cax = column_cbar_axs[c]
+                shared_cax.clear()
+                shared_cax.tick_params(labelsize=7)
+
+                for r, lead_val in enumerate(ds[lead_dim].values):
+                    data_slice = part_ds.sel({lead_dim: lead_val})
+                    ax = axs[r, c]
+                    ax.clear()
+                    ax.set_aspect("equal")
+                    ax.set_extent(local_extent, crs=ccrs.PlateCarree())
+                    is_last_row = r == num_leads - 1
+
+                    data_slice.plot(
+                        x=spatial_dims[0],
+                        y=spatial_dims[1],
+                        ax=ax,
+                        transform=ccrs.PlateCarree(),
+                        cmap="RdBu_r",
+                        center=0,
+                        vmin=-vmax_val,
+                        vmax=vmax_val,
+                        add_colorbar=is_last_row,
+                        add_labels=False,
+                        cbar_ax=shared_cax if is_last_row else None,
+                        cbar_kwargs={"orientation": "horizontal", "label": ""}
+                        if is_last_row
+                        else None,
+                    )
+
+                    if var_name in ocean_only_vars_seq:
+                        ax.add_feature(
+                            cfeature.LAND,
+                            facecolor="lightgray",
+                            edgecolor="none",
+                            zorder=2,
+                        )
+                    ax.coastlines(
+                        resolution="110m",
+                        color="black",
+                        linewidth=0.8,
+                        zorder=3,
+                    )
+                    gl = ax.gridlines(
+                        draw_labels=False,
+                        linewidth=0.5,
+                        color="gray",
+                        alpha=0.5,
+                    )
+
+                    if c == 0:
+                        gl.left_labels = True
+                        ax.text(
+                            -0.16,
+                            0.5,
+                            f"Lead: {lead_val}",
+                            transform=ax.transAxes,
+                            va="center",
+                            ha="center",
+                            fontsize=9,
+                            rotation=90,
+                        )
+
+                    if r == num_leads - 1:
+                        gl.bottom_labels = True
+                    gl.xlabel_style = {"size": 9}
+                    gl.ylabel_style = {"size": 9}
+
+                    if r == 0:
+                        title_text = (
+                            f"{var_name} ({part_label})"
+                            if part_label
+                            else var_name
+                        )
+                        ax.set_title(title_text, fontsize=12)
+                    else:
+                        ax.set_title("")
+
+        fig.canvas.draw_idle()
+
+    return fig, plot_mode
